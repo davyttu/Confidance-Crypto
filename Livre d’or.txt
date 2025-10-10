@@ -1,0 +1,67 @@
+📖 Livre d’or — Confidance Crypto
+🌟 Vision
+
+Confidance Crypto est la première plateforme simple et sécurisée de paiements programmés en crypto.
+Grâce aux smart contracts, vous pouvez envoyer, différer ou planifier vos transferts d’argent en toute confiance, sans intermédiaire.
+
+Notre mission : rendre la crypto utile et prévisible au quotidien.
+
+🚀 Ce que permet Confidance Crypto
+
+🎁 Cadeaux programmés
+Exemple : Envoyer 1000$ à Jean le jour de son anniversaire.
+
+🔁 Abonnements / mensualités
+Exemple : Payer 50$ à Louis tous les 10 du mois.
+
+💰 Épargne avec déblocage différé
+Exemple : Je m’envoie à moi-même 500$ dans 1 an.
+
+💼 Salaires différés / paiements contractuels
+Exemple : Libérer 2000$ à mon freelance après 3 mois.
+
+🏛 Transmission / héritage crypto
+Exemple : Si je n’annule pas le contrat, transmettre X$ à telle adresse dans Y années.
+
+✅ Valeurs & engagements
+
+Simplicité : en quelques clics, programmez vos paiements.
+
+Sécurité : tout est géré par un smart contract transparent et immuable.
+
+Prévisibilité : vous définissez le montant, la fréquence et la date.
+
+Confiance : aucun intermédiaire ne peut bloquer ou modifier vos choix.
+
+🔧 Fonctionnement simple
+
+L’utilisateur crée un projet de paiement (bénéficiaire, montant, date ou fréquence).
+
+Les fonds sont déposés dans un smart contract dédié.
+
+Au moment défini, le contrat libère automatiquement l’argent au destinataire.
+
+Chaque transaction est visible, traçable et garantie par la blockchain.
+
+💵 Modèle économique
+
+Commission légère (ex. 2% par transaction, avec minimum fixe) pour couvrir les frais de déploiement.
+
+Possibilité d’offres premium pour réduire les frais sur paiements récurrents.
+
+🎯 Cas d’usage phares
+
+Offrir un cadeau crypto le jour J sans oublier.
+
+Mettre en place des rentes mensuelles pour ses proches.
+
+Se créer une cagnotte personnelle débloquée dans le futur.
+
+Payer un salarié ou un freelance de manière différée et transparente.
+
+Organiser la transmission de son patrimoine crypto avec une logique de temps.
+
+📌 Positionnement
+
+Confidance Crypto se positionne comme la solution de confiance pour planifier l’avenir en crypto.
+Une plateforme claire, accessible et sécurisée, adaptée aussi bien aux particuliers qu’aux professionnels.
