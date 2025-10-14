@@ -1,0 +1,13 @@
+{
+  "network": "sepolia",
+  "chainId": "11155111",
+  "scheduledPayment": "0x9Ff8C6a542a0bEAA3Deb5b877164D9F27a6E67eb",
+  "resolver": "0x18BB1bC5143d9fC38407fd506D6d5a1cDEafE367",
+  "beneficiary": "0x7A764F9dED8CA54A5514023643fE117c6eAddD90",
+  "releaseTime": 1760398795,
+  "releaseTimeReadable": "14/10/2025 01:39:55",
+  "amount": "0.001",
+  "deployedAt": "2025-10-13T23:19:24.779Z",
+  "gelatoTaskId": "0x66c3a7f65dd76b1373cc7638335d6c7868e8efc5a949d9047a2f78dabbda004e",
+  "gelatoTxHash": "0xbe0e4e0e705df48bdd3b80e120acc5c94a34b4115cc4f196d9f4da98350a9a3c"
+}

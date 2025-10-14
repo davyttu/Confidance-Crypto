@@ -1,0 +1,14 @@
+{
+  "network": "base_mainnet",
+  "chainId": "8453",
+  "scheduledPayment": "0x0B97CcA44D25D53e2B0da57Be028A53dB3c6E0Cf",
+  "resolver": "0x37aa1954d7C5429aE64A9F24B39Aa616e95E795D",
+  "beneficiary": "0x7A764F9dED8CA54A5514023643fE117c6eAddD90",
+  "releaseTime": 1760428768,
+  "releaseTimeReadable": "2025-10-14T07:59:28.000Z",
+  "amount": "0.0001",
+  "deployedAt": "2025-10-14T07:44:31.994Z",
+  "deployedBy": "0x7A764F9dED8CA54A5514023643fE117c6eAddD90",
+  "gelatoTaskId": "0xccb27cd9a8ed84d5e0d79a5c91655f7bafa2b5c4a688dded22a414260bdc7e2c",
+  "gelatoTxHash": "0x96f62199fb30b1a0c1df7433d7bc0ac84202b51224e082ebeefd3e02b946f307"
+}

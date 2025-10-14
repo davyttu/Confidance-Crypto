@@ -56,67 +56,55 @@ function OwlBubble({ onOwlClick }) {
     return shuffled;
   };
 
-  // Fonction pour afficher le prochain message
-  const showNextMessage = () => {
-    // Afficher le message actuel
-    setCurrentMessage(messageQueue[currentIndex]);
-    setIsVisible(true);
-
-    // Passer à l'index suivant
-    const nextIndex = (currentIndex + 1) % messageQueue.length;
-
-    // Si on revient au début, remélanger la file
-    if (nextIndex === 0) {
-      setMessageQueue(shuffleArray(messages));
-    }
-
-    setCurrentIndex(nextIndex);
-  };
-
   // Initialiser la file de messages mélangée
   useEffect(() => {
     setMessageQueue(shuffleArray(messages));
   }, []);
 
+  // Fonction pour afficher le prochain message
+  const showNextMessage = () => {
+    setCurrentIndex(prevIndex => {
+      const newIndex = (prevIndex + 1) % messageQueue.length;
+
+      // Afficher le message
+      setCurrentMessage(messageQueue[prevIndex]);
+      setIsVisible(true);
+
+      // Si on revient au début, remélanger la file
+      if (newIndex === 0) {
+        setTimeout(() => setMessageQueue(shuffleArray(messages)), 100);
+      }
+
+      return newIndex;
+    });
+  };
+
   // Gestion de l'affichage automatique
   useEffect(() => {
     if (messageQueue.length === 0 || !autoPlayEnabled) return;
 
-    let hideTimeout;
-    let intervalId;
-
-    const autoShowMessage = () => {
-      showNextMessage();
-
-      // Cacher le message après 30 secondes
-      hideTimeout = setTimeout(() => {
-        setIsVisible(false);
-      }, 30000);
-    };
-
     // Afficher le premier message après 10 secondes
     const initialTimeout = setTimeout(() => {
-      autoShowMessage();
+      showNextMessage();
     }, 10000);
 
     // Ensuite afficher un nouveau message toutes les 30 secondes
-    intervalId = setInterval(() => {
-      autoShowMessage();
+    const intervalId = setInterval(() => {
+      showNextMessage();
     }, 30000);
 
     return () => {
       clearTimeout(initialTimeout);
       clearInterval(intervalId);
-      if (hideTimeout) clearTimeout(hideTimeout);
     };
-  }, [messageQueue, autoPlayEnabled]);
+  }, [messageQueue.length, autoPlayEnabled]);
 
   // Exposer la fonction showNextMessage au parent via onOwlClick
   useEffect(() => {
     if (onOwlClick && messageQueue.length > 0) {
       onOwlClick(() => showNextMessage);
     }
-  }, [onOwlClick, messageQueue, currentIndex]);
+  }, [onOwlClick, messageQueue.length]);
 
   const handleClose = () => {
     setIsVisible(false);

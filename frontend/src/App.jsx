@@ -3,6 +3,7 @@ import Navbar from "./components/Navbar";
 import PaymentForm from "./components/PaymentForm";
 import UserDashboard from "./components/UserDashboard";
 import UserSignup from "./components/UserSignup";
+import PaymentAutomation from "./components/PaymentAutomation"; // 👈 ajout minimal ici
 
 function App() {
   const [user, setUser] = useState(null);
@@ -10,16 +11,10 @@ function App() {
   const [page, setPage] = useState("signup");
 
   React.useEffect(() => {
-  const handleNavigation = (e) => setPage(e.detail);
-  window.addEventListener("navigate", handleNavigation);
-  return () => window.removeEventListener("navigate", handleNavigation);
-}, []);
-
-{page === "payment" && (
-  <PaymentForm user={user} wallet={walletAddress} onNavigate={setPage} />
-)}
-
-
+    const handleNavigation = (e) => setPage(e.detail);
+    window.addEventListener("navigate", handleNavigation);
+    return () => window.removeEventListener("navigate", handleNavigation);
+  }, []);
 
   // ✅ Lorsqu’un wallet est connecté
   const handleConnectWallet = (address) => {
@@ -45,11 +40,18 @@ function App() {
 
       <main className="p-8">
         {page === "signup" && <UserSignup setUser={setUser} />}
+
         {page === "dashboard" && (
           <UserDashboard user={user} wallet={walletAddress} />
         )}
+
         {page === "payment" && (
-          <PaymentForm user={user} wallet={walletAddress} />
+          <>
+            <PaymentForm user={user} wallet={walletAddress} />
+            <div className="mt-8">
+              <PaymentAutomation /> {/* 👈 ajout discret du module Gelato */}
+            </div>
+          </>
         )}
       </main>
     </div>

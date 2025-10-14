@@ -6,32 +6,32 @@ async function main() {
   const network = await hre.ethers.provider.getNetwork();
 
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-  console.log("🚀 DÉPLOIEMENT DES CONTRATS");
+  console.log("🚀 DÉPLOIEMENT BASE MAINNET - PRODUCTION");
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-  console.log("👤 Déploiement par :", deployer.address);
+  console.log("👤 Compte :", deployer.address);
   console.log("🌐 Réseau :", network.name, `(chainId: ${network.chainId})`);
   
   const balance = await hre.ethers.provider.getBalance(deployer.address);
   console.log("💰 Solde :", hre.ethers.formatEther(balance), "ETH");
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
-  if (balance === 0n) {
-    throw new Error("❌ Pas assez d'ETH pour déployer !");
+  if (network.chainId !== 8453n) {
+    throw new Error("❌ Pas sur Base Mainnet ! ChainId devrait être 8453");
   }
 
-  // Configuration
-  const payee = "0x7A764F9dED8CA54A5514023643fE117c6eAddD90"; // ton wallet ou destinataire test
+  // Configuration : montant minuscule pour test
+  const payee = deployer.address;
   const now = Math.floor(Date.now() / 1000);
-  const releaseTime = now + 180; // 3 minutes
-  const amount = hre.ethers.parseEther("0.001");
+  const releaseTime = now + (15 * 60); // 15 minutes
+  const amount = hre.ethers.parseEther("0.0001"); // ⚠️ PETIT MONTANT TEST
 
-  console.log("📋 Paramètres de déploiement :");
+  console.log("📋 Paramètres :");
   console.log("   👤 Bénéficiaire :", payee);
   console.log("   ⏰ Release time :", new Date(releaseTime * 1000).toLocaleString());
-  console.log("   💵 Montant :", hre.ethers.formatEther(amount), "ETH");
-  console.log();
+  console.log("   💵 Montant : 0.0001 ETH (TEST)");
+  console.log("   ⏱️  Dans 15 minutes !\n");
 
-  // 🔹 1. Déployer ScheduledPayment
+  // 1. Déployer ScheduledPayment
   console.log("📦 Déploiement de ScheduledPayment...");
   const ScheduledPayment = await hre.ethers.getContractFactory("ScheduledPayment");
   const payment = await ScheduledPayment.deploy(payee, releaseTime, { value: amount });
@@ -39,7 +39,7 @@ async function main() {
   const paymentAddress = await payment.getAddress();
   console.log("✅ ScheduledPayment déployé à :", paymentAddress);
 
-  // 🔹 2. Déployer Resolver
+  // 2. Déployer Resolver
   console.log("\n📦 Déploiement de ScheduledPaymentResolver...");
   const Resolver = await hre.ethers.getContractFactory("ScheduledPaymentResolver");
   const resolver = await Resolver.deploy(paymentAddress);
@@ -47,49 +47,21 @@ async function main() {
   const resolverAddress = await resolver.getAddress();
   console.log("✅ Resolver déployé à :", resolverAddress);
 
-  // 🔹 3. Déployer PaymentFactory
-  console.log("\n📦 Déploiement de PaymentFactory...");
-  const PaymentFactory = await hre.ethers.getContractFactory("PaymentFactory");
-  const factory = await PaymentFactory.deploy();
-  await factory.waitForDeployment();
-  const factoryAddress = await factory.getAddress();
-  console.log("✅ PaymentFactory déployé à :", factoryAddress);
-
-  // Résumé final
+  // Résumé
   console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
   console.log("✨ DÉPLOIEMENT TERMINÉ");
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
   console.log("📍 ScheduledPayment :", paymentAddress);
   console.log("📍 Resolver :", resolverAddress);
-  console.log("📍 PaymentFactory :", factoryAddress);
-  console.log("👤 Bénéficiaire :", payee);
-  console.log("⏰ Release time :", new Date(releaseTime * 1000).toLocaleString());
-  console.log("💵 Montant :", hre.ethers.formatEther(amount), "ETH");
-
-  // Lien Etherscan selon le réseau
-  if (network.chainId === 11155111n) {
-    console.log("\n🔍 Vérification sur Etherscan :");
-    console.log(`   ScheduledPayment: https://sepolia.etherscan.io/address/${paymentAddress}`);
-    console.log(`   Resolver: https://sepolia.etherscan.io/address/${resolverAddress}`);
-    console.log(`   Factory: https://sepolia.etherscan.io/address/${factoryAddress}`);
-  } else if (network.chainId === 8453n) {
-    console.log("\n🔍 Vérification sur Basescan :");
-    console.log(`   ScheduledPayment: https://basescan.org/address/${paymentAddress}`);
-    console.log(`   Resolver: https://basescan.org/address/${resolverAddress}`);
-    console.log(`   Factory: https://basescan.org/address/${factoryAddress}`);
-  }
-
-  console.log("\n💡 Prochaine étape :");
-  console.log("   node external-scripts/createGelatoTask.js");
+  console.log(`🔍 Basescan : https://basescan.org/address/${paymentAddress}`);
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
-  // Sauvegarder les adresses dans un fichier
+  // Sauvegarder
   const deploymentInfo = {
-    network: network.name,
+    network: "base_mainnet",
     chainId: network.chainId.toString(),
     scheduledPayment: paymentAddress,
     resolver: resolverAddress,
-    paymentFactory: factoryAddress,
     beneficiary: payee,
     releaseTime: releaseTime,
     releaseTimeReadable: new Date(releaseTime * 1000).toISOString(),
@@ -98,14 +70,15 @@ async function main() {
     deployedBy: deployer.address,
   };
 
-  fs.writeFileSync(
-    "deployment-info.json",
-    JSON.stringify(deploymentInfo, null, 2)
-  );
-  console.log("📄 Infos sauvegardées dans deployment-info.json\n");
+  fs.writeFileSync("deployment-info-base.json", JSON.stringify(deploymentInfo, null, 2));
+  console.log("📄 Infos sauvegardées dans deployment-info-base.json");
+  
+  console.log("\n⚠️  IMPORTANT : Vérifiez les contrats sur Basescan !");
+  console.log("💡 Prochaine étape :");
+  console.log("   node external-scripts/createGelatoTaskBase.js\n");
 }
 
 main().catch((error) => {
-  console.error("\n❌ Erreur de déploiement :", error);
+  console.error("\n❌ Erreur :", error);
   process.exitCode = 1;
 });

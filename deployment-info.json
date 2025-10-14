@@ -1,0 +1,13 @@
+{
+  "network": "sepolia",
+  "chainId": "11155111",
+  "scheduledPayment": "0x500B484884B2c75703c176Cf37c36665472440F2",
+  "resolver": "0xb29b8cE9404bA6995dAf3936a86E6a5853cbb1d3",
+  "paymentFactory": "0x29192880587762857753b88fB55E87d4890Ab983",
+  "beneficiary": "0x7A764F9dED8CA54A5514023643fE117c6eAddD90",
+  "releaseTime": 1760392570,
+  "releaseTimeReadable": "2025-10-13T21:56:10.000Z",
+  "amount": "0.001",
+  "deployedAt": "2025-10-13T21:54:13.027Z",
+  "deployedBy": "0x7A764F9dED8CA54A5514023643fE117c6eAddD90"
+}

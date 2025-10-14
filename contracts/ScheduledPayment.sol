@@ -1,58 +1,31 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-contract ScheduledPayment {
-    address payable public sender;
-    address payable public recipient;
-    address public platformWallet;
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+
+contract ScheduledPayment is ReentrancyGuard {
+    address public payer;
+    address public payee;
+    uint256 public amount;
     uint256 public releaseTime;
-    uint256 public feePercent;
-    bool public isCancelable;
-    bool public isDefinitive;
-    bool public executed;
+    bool public released;
 
-    constructor(
-        address payable _sender,
-        address payable _recipient,
-        uint256 _releaseTime,
-        bool _isCancelable,
-        bool _isDefinitive,
-        address _platformWallet,
-        uint256 _feePercent
-    ) payable {
+    event Released(address indexed payee, uint256 amount);
+
+    constructor(address _payee, uint256 _releaseTime) payable {
         require(msg.value > 0, "No funds sent");
-        require(_releaseTime > block.timestamp, "Invalid release time");
-
-        sender = _sender;
-        recipient = _recipient;
+        payer = msg.sender;
+        payee = _payee;
+        amount = msg.value;
         releaseTime = _releaseTime;
-        isCancelable = _isCancelable;
-        isDefinitive = _isDefinitive;
-        platformWallet = _platformWallet;
-        feePercent = _feePercent;
-        executed = false;
+        released = false;
     }
 
-    function release() external {
-        require(!executed, "Already executed");
+    function release() external nonReentrant {
+        require(!released, "Already released");
         require(block.timestamp >= releaseTime, "Too early");
-        executed = true;
-
-        uint256 feeAmount = (address(this).balance * feePercent) / 10000;
-        uint256 remaining = address(this).balance - feeAmount;
-
-        payable(platformWallet).transfer(feeAmount);
-        payable(recipient).transfer(remaining);
+        released = true;
+        payable(payee).transfer(amount);
+        emit Released(payee, amount);
     }
-
-    function cancel() external {
-        require(isCancelable, "Not cancelable");
-        require(!executed, "Already executed");
-        require(msg.sender == sender, "Only sender can cancel");
-
-        executed = true;
-        payable(sender).transfer(address(this).balance);
-    }
-
-    receive() external payable {}
 }

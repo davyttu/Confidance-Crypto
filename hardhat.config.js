@@ -1,18 +1,55 @@
 require("@nomicfoundation/hardhat-toolbox");
 require("dotenv").config();
 
-const { PRIVATE_KEY, RPC_URL } = process.env;
+const {
+  PRIVATE_KEY,
+  CORE_MAINNET_RPC,
+  CORE_TESTNET_RPC,
+  BASE_RPC,
+  BASE_SEPOLIA_RPC,
+  SEPOLIA_RPC,
+} = process.env;
 
 module.exports = {
-  solidity: "0.8.20",
-  networks: {
-    coretest: {
-      url: RPC_URL || "https://rpc.test.btcs.network",
-      accounts: PRIVATE_KEY ? [`0x${PRIVATE_KEY}`] : [],
-      chainId: 1115, // Core Testnet
+  solidity: {
+    version: "0.8.20",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200,
+      },
     },
-    hardhat: {
-      chainId: 31337,
+  },
+  networks: {
+    core_mainnet: {
+      url: CORE_MAINNET_RPC,
+      accounts: [PRIVATE_KEY],
+    },
+    core_testnet: {
+      url: CORE_TESTNET_RPC,
+      accounts: [PRIVATE_KEY],
+    },
+    base_mainnet: {
+  url: BASE_RPC || "https://mainnet.base.org",
+  chainId: 8453,
+  accounts: [PRIVATE_KEY],
+  timeout: 60000,
+},
+    base_sepolia: {
+      url: BASE_SEPOLIA_RPC || "https://sepolia.base.org",
+      chainId: 84532,
+      accounts: [PRIVATE_KEY],
+    },
+    sepolia: {
+      url: SEPOLIA_RPC || "https://rpc.sepolia.org",
+      chainId: 11155111,
+      accounts: [PRIVATE_KEY],
+    },
+  },
+  etherscan: {
+    apiKey: {
+      sepolia: process.env.ETHERSCAN_API_KEY || "",
+      base: process.env.BASESCAN_API_KEY || "",
     },
   },
 };
