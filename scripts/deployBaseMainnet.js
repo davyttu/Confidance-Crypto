@@ -1,5 +1,19 @@
 const hre = require("hardhat");
 const fs = require("fs");
+const { createClient } = require('@supabase/supabase-js');
+require("dotenv").config();
+
+// 🆕 Supabase
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  console.warn("⚠️  Variables Supabase manquantes - sauvegarde JSON uniquement");
+}
+
+const supabase = SUPABASE_URL && SUPABASE_KEY 
+  ? createClient(SUPABASE_URL, SUPABASE_KEY)
+  : null;
 
 async function main() {
   const [deployer] = await hre.ethers.getSigners();
@@ -19,17 +33,17 @@ async function main() {
     throw new Error("❌ Pas sur Base Mainnet ! ChainId devrait être 8453");
   }
 
-  // Configuration : montant minuscule pour test
-  const payee = deployer.address;
+  // Configuration
+  const payee = "0x8CC0D8f899b0eF553459Aac249b14A95F0470cE9";
   const now = Math.floor(Date.now() / 1000);
-  const releaseTime = now + (15 * 60); // 15 minutes
-  const amount = hre.ethers.parseEther("0.0001"); // ⚠️ PETIT MONTANT TEST
+  const releaseTime = now + (8 * 60); // 8 minutes  
+  const amount = hre.ethers.parseEther("0.0001");
 
   console.log("📋 Paramètres :");
   console.log("   👤 Bénéficiaire :", payee);
   console.log("   ⏰ Release time :", new Date(releaseTime * 1000).toLocaleString());
   console.log("   💵 Montant : 0.0001 ETH (TEST)");
-  console.log("   ⏱️  Dans 15 minutes !\n");
+  console.log("   ⏱️  Dans 8 minutes !\n");
 
   // 1. Déployer ScheduledPayment
   console.log("📦 Déploiement de ScheduledPayment...");
@@ -56,7 +70,7 @@ async function main() {
   console.log(`🔍 Basescan : https://basescan.org/address/${paymentAddress}`);
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
-  // Sauvegarder
+  // Préparer les données
   const deploymentInfo = {
     network: "base_mainnet",
     chainId: network.chainId.toString(),
@@ -70,12 +84,52 @@ async function main() {
     deployedBy: deployer.address,
   };
 
+  // 🆕 SAUVEGARDER DANS SUPABASE
+  if (supabase) {
+    try {
+      console.log("💾 Sauvegarde dans Supabase...");
+      
+      const { data, error } = await supabase
+        .from('scheduled_payments')
+        .insert([{
+          contract_address: paymentAddress,
+          resolver_address: resolverAddress,
+          beneficiary: payee,
+          amount: hre.ethers.formatEther(amount),
+          release_time: releaseTime,
+          status: 'pending',
+          deployed_by: deployer.address,
+          network: 'base_mainnet',
+          chain_id: 8453,
+          metadata: {
+            releaseTimeReadable: new Date(releaseTime * 1000).toISOString(),
+            deployedAt: new Date().toISOString()
+          }
+        }])
+        .select();
+      
+      if (error) {
+        console.error("❌ Erreur Supabase:", error.message);
+        console.log("⚠️  Continuons avec JSON uniquement...");
+      } else {
+        console.log("✅ Paiement enregistré dans Supabase !");
+        console.log(`   ID: ${data[0].id}`);
+      }
+    } catch (error) {
+      console.error("❌ Erreur sauvegarde DB:", error.message);
+    }
+  } else {
+    console.log("⚠️  Supabase non configuré - sauvegarde JSON uniquement");
+  }
+
+  // Sauvegarder JSON (backup / transition)
   fs.writeFileSync("deployment-info-base.json", JSON.stringify(deploymentInfo, null, 2));
-  console.log("📄 Infos sauvegardées dans deployment-info-base.json");
+  fs.writeFileSync("keeper-cloud/deployment-info-base.json", JSON.stringify(deploymentInfo, null, 2));
+  console.log("📄 Backup JSON sauvegardé");
   
   console.log("\n⚠️  IMPORTANT : Vérifiez les contrats sur Basescan !");
-  console.log("💡 Prochaine étape :");
-  console.log("   node external-scripts/createGelatoTaskBase.js\n");
+  console.log("💡 Le keeper détectera automatiquement le nouveau paiement");
+  console.log("⏰ Exécution prévue dans ~8 minutes\n");
 }
 
 main().catch((error) => {

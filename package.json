@@ -11,6 +11,7 @@
   "dependencies": {
     "@gelatonetwork/automate-sdk": "^3.1.0",
     "@openzeppelin/contracts": "^5.4.0",
+    "@supabase/supabase-js": "^2.75.0",
     "ethers": "^5.7.2"
   },
   "devDependencies": {
@@ -19,5 +20,18 @@
     "dotenv": "^17.2.3",
     "ethers": "^6.4.0",
     "hardhat": "^2.26.3"
-  }
+  },
+  "main": "hardhat.config.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/davyttu/Confidance-Crypto.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/davyttu/Confidance-Crypto/issues"
+  },
+  "homepage": "https://github.com/davyttu/Confidance-Crypto#readme"
 }

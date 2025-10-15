@@ -1,12 +1,12 @@
 {
   "network": "base_mainnet",
   "chainId": "8453",
-  "scheduledPayment": "0x40ef600A96Bed5f3f9b12aca9c7E67011a202Bd7",
-  "resolver": "0x7b5F76a4fe8EEDe1978035EFFD334c72B3e8037F",
+  "scheduledPayment": "0x4E2d2bfA8c5c3836291Bb84319Dc7579822Ea3e0",
+  "resolver": "0x688909d3aA9bF68264AC82070743def10Efcd51c",
   "beneficiary": "0x8CC0D8f899b0eF553459Aac249b14A95F0470cE9",
-  "releaseTime": 1760492699,
-  "releaseTimeReadable": "2025-10-15T01:44:59.000Z",
+  "releaseTime": 1760527059,
+  "releaseTimeReadable": "2025-10-15T11:17:39.000Z",
   "amount": "0.0001",
-  "deployedAt": "2025-10-15T01:37:05.776Z",
+  "deployedAt": "2025-10-15T11:09:45.528Z",
   "deployedBy": "0x7A764F9dED8CA54A5514023643fE117c6eAddD90"
 }
