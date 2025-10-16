@@ -30,11 +30,11 @@ module.exports = {
       accounts: [PRIVATE_KEY],
     },
     base_mainnet: {
-  url: BASE_RPC || "https://mainnet.base.org",
-  chainId: 8453,
-  accounts: [PRIVATE_KEY],
-  timeout: 60000,
-},
+      url: BASE_RPC || "https://mainnet.base.org",
+      chainId: 8453,
+      accounts: [PRIVATE_KEY],
+      timeout: 60000,
+    },
     base_sepolia: {
       url: BASE_SEPOLIA_RPC || "https://sepolia.base.org",
       chainId: 84532,
@@ -47,9 +47,16 @@ module.exports = {
     },
   },
   etherscan: {
-    apiKey: {
-      sepolia: process.env.ETHERSCAN_API_KEY || "",
-      base: process.env.BASESCAN_API_KEY || "",
-    },
+    apiKey: process.env.BASESCAN_API_KEY || "",
+    customChains: [
+      {
+        network: "base_mainnet",
+        chainId: 8453,
+        urls: {
+          apiURL: "https://api.basescan.org/api",
+          browserURL: "https://basescan.org"
+        }
+      }
+    ]
   },
 };

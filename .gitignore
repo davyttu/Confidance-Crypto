@@ -1,44 +1,74 @@
-# --- Node & build ---
-node_modules/
-dist/
-build/
-.cache/
-.next/
-out/
+# ============================================
+# CONFIDANCE CRYPTO - .gitignore
+# ============================================
 
-# --- Environment variables ---
+# ⚠️ CRITICAL : Fichiers avec clés privées
 .env
 .env.local
 .env.production
-.env.development
-.env.test
-.env.example
+keeper-cloud/.env
+*.pem
+*.key
 
-# --- Logs & temp files ---
+# Hardhat
+cache/
+artifacts/
+typechain-types/
+
+# Node
+node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-pnpm-debug.log*
-*.log
-*.tmp
+lerna-debug.log*
+.pnpm-debug.log*
 
-# --- OS / Editor ---
+# Testing
+coverage/
+.nyc_output/
+
+# Deployment info (peut contenir des infos sensibles)
+deployment-info-*.json
+keeper-cloud/deployment-info-*.json
+
+# Backup files
+*.backup
+*.backup.*
+.env.backup.*
+keeper-cloud/.env.backup.*
+
+# OS
 .DS_Store
 Thumbs.db
+desktop.ini
+
+# IDE
 .vscode/
 .idea/
 *.swp
+*.swo
+*~
 
-# --- Smart contract artifacts ---
-artifacts/
-cache/
-typechain/
-coverage/
-coverage.json
+# Logs
+logs/
+*.log
 
-# --- Deployed data ---
-deployments/
-addresses.json
+# Temporary
+tmp/
+temp/
+.tmp/
 
-# --- Frontend build ---
-public/static/
+# Build
+dist/
+build/
+
+# Scripts temporaires
+test-*.js
+temp-*.js
+
+# ============================================
+# IMPORTANT: Vérifie que .env n'est PAS commité !
+# Lance: git status
+# Si .env apparaît, supprime-le du cache:
+# git rm --cached .env
+# ============================================

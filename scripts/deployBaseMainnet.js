@@ -36,7 +36,7 @@ async function main() {
   // Configuration
   const payee = "0x8CC0D8f899b0eF553459Aac249b14A95F0470cE9";
   const now = Math.floor(Date.now() / 1000);
-  const releaseTime = now + (8 * 60); // 8 minutes  
+  const releaseTime = now + (3 * 60); // 3 minutes  
   const amount = hre.ethers.parseEther("0.0001");
 
   console.log("📋 Paramètres :");

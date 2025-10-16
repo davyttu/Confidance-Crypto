@@ -3,7 +3,7 @@ const { createClient } = require('@supabase/supabase-js');
 require("dotenv").config();
 
 // Adresse du ScheduledPayment déjà déployé
-const PAYMENT_ADDRESS = "0xc146964875E1121acE90d9CcEfe4626DBD47469d";
+const PAYMENT_ADDRESS = "0x05D44782992c96310133C74eB57b8A84C4CEAe9e";
 
 // Supabase
 const SUPABASE_URL = process.env.SUPABASE_URL;
