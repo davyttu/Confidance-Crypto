@@ -36,19 +36,45 @@ async function main() {
   // Configuration
   const payee = "0x8CC0D8f899b0eF553459Aac249b14A95F0470cE9";
   const now = Math.floor(Date.now() / 1000);
-  const releaseTime = now + (3 * 60); // 3 minutes  
+  const releaseTime = now + (8 * 60); // 8 minutes  
   const amount = hre.ethers.parseEther("0.0001");
+  
+  // 🆕 NOUVEAU : Option cancellable
+  const cancellable = false; // ⚠️ Change à true pour paiement annulable
+
+  // Calcul des fees
+  const FEE_PERCENTAGE = 179;
+  const FEE_DENOMINATOR = 10000;
+  const protocolFee = (amount * BigInt(FEE_PERCENTAGE)) / BigInt(FEE_DENOMINATOR);
+  const amountToPayee = amount - protocolFee;
 
   console.log("📋 Paramètres :");
   console.log("   👤 Bénéficiaire :", payee);
   console.log("   ⏰ Release time :", new Date(releaseTime * 1000).toLocaleString());
-  console.log("   💵 Montant : 0.0001 ETH (TEST)");
+  console.log("   💵 Montant : 0.0001 ETH");
+  console.log("");
+  console.log("💰 Répartition avec fees (1.79%) :");
+  console.log(`   → Bénéficiaire (98.21%) : ${hre.ethers.formatEther(amountToPayee)} ETH`);
+  console.log(`   → Protocole (1.79%) : ${hre.ethers.formatEther(protocolFee)} ETH`);
+  console.log(`   → Wallet protocole : 0xa34eDf91Cc494450000Eef08e6563062B2F115a9`);
+  console.log("");
+  console.log(`🔒 Type : ${cancellable ? '✅ ANNULABLE' : '🔒 DÉFINITIF'}`);
+  if (cancellable) {
+    console.log("   ℹ️  Peut être annulé avant échéance (remboursement intégral)");
+  } else {
+    console.log("   ⚠️  NON ANNULABLE après création");
+  }
   console.log("   ⏱️  Dans 8 minutes !\n");
 
-  // 1. Déployer ScheduledPayment
+  // 1. Déployer ScheduledPayment avec le nouveau paramètre
   console.log("📦 Déploiement de ScheduledPayment...");
   const ScheduledPayment = await hre.ethers.getContractFactory("ScheduledPayment");
-  const payment = await ScheduledPayment.deploy(payee, releaseTime, { value: amount });
+  const payment = await ScheduledPayment.deploy(
+    payee, 
+    releaseTime,
+    cancellable,  // 🆕 Nouveau paramètre
+    { value: amount }
+  );
   await payment.waitForDeployment();
   const paymentAddress = await payment.getAddress();
   console.log("✅ ScheduledPayment déployé à :", paymentAddress);
@@ -80,6 +106,7 @@ async function main() {
     releaseTime: releaseTime,
     releaseTimeReadable: new Date(releaseTime * 1000).toISOString(),
     amount: hre.ethers.formatEther(amount),
+    cancellable: cancellable,  // 🆕
     deployedAt: new Date().toISOString(),
     deployedBy: deployer.address,
   };
@@ -101,9 +128,12 @@ async function main() {
           deployed_by: deployer.address,
           network: 'base_mainnet',
           chain_id: 8453,
+          cancellable: cancellable,  // 🆕
           metadata: {
             releaseTimeReadable: new Date(releaseTime * 1000).toISOString(),
-            deployedAt: new Date().toISOString()
+            deployedAt: new Date().toISOString(),
+            protocolFee: hre.ethers.formatEther(protocolFee),
+            amountToPayee: hre.ethers.formatEther(amountToPayee)
           }
         }])
         .select();
@@ -114,6 +144,11 @@ async function main() {
       } else {
         console.log("✅ Paiement enregistré dans Supabase !");
         console.log(`   ID: ${data[0].id}`);
+        if (cancellable) {
+          console.log(`   ⚠️  Ce paiement peut être annulé avant ${new Date(releaseTime * 1000).toLocaleTimeString()}`);
+        } else {
+          console.log(`   🔒 Paiement DÉFINITIF - Non annulable`);
+        }
       }
     } catch (error) {
       console.error("❌ Erreur sauvegarde DB:", error.message);
