@@ -15,14 +15,23 @@ contract PaymentFactory {
         uint256 releaseTime,
         uint256 totalAmount,
         uint256 amountToPayee,
-        uint256 protocolFee
+        uint256 protocolFee,
+        bool cancellable
     );
 
-    function createPayment(address _payee, uint256 _releaseTime) external payable {
+    function createPayment(
+        address _payee, 
+        uint256 _releaseTime,
+        bool _cancellable  // 🆕 Nouveau paramètre
+    ) external payable {
         require(msg.value > 0, "No funds sent");
 
-        // Créer le contrat ScheduledPayment
-        ScheduledPayment newPayment = new ScheduledPayment{value: msg.value}(_payee, _releaseTime);
+        // ✅ Créer le contrat avec 3 paramètres
+        ScheduledPayment newPayment = new ScheduledPayment{value: msg.value}(
+            _payee, 
+            _releaseTime,
+            _cancellable
+        );
 
         // Calculer les montants pour l'event
         uint256 protocolFee = (msg.value * FEE_PERCENTAGE) / FEE_DENOMINATOR;
@@ -35,11 +44,12 @@ contract PaymentFactory {
             _releaseTime,
             msg.value,
             amountToPayee,
-            protocolFee
+            protocolFee,
+            _cancellable
         );
     }
 
-    // 🆕 Fonction pour prévisualiser les fees AVANT de créer le paiement
+    // Fonction pour prévisualiser les fees AVANT de créer le paiement
     function previewFees(uint256 amount) external pure returns (
         uint256 protocolFee,
         uint256 amountToPayee
