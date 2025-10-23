@@ -46,6 +46,9 @@ export default function PaymentProgressModal({
 
   if (!isOpen) return null;
 
+  // Si le statut est idle, ne rien afficher
+  if (status === 'idle') return null;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
@@ -57,7 +60,7 @@ export default function PaymentProgressModal({
       {/* Modal */}
       <div className="relative glass rounded-3xl p-8 max-w-md w-full shadow-2xl">
         {/* SUCCESS */}
-        {status === 'success' && contractAddress && (
+        {status === 'success' && (
           <div className="text-center space-y-6">
             {/* Icône succès animée */}
             <div className="w-20 h-20 mx-auto rounded-full bg-green-100 dark:bg-green-950 flex items-center justify-center animate-bounce">
@@ -78,32 +81,49 @@ export default function PaymentProgressModal({
 
             <div>
               <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                Paiement créé !
+                {contractAddress ? 'Paiement créé !' : 'Transaction confirmée !'}
               </h3>
               <p className="text-gray-600 dark:text-gray-400">
-                Votre paiement programmé a été déployé avec succès
+                {contractAddress 
+                  ? 'Votre paiement programmé a été déployé avec succès'
+                  : 'Consultez Basescan pour voir les détails'
+                }
               </p>
             </div>
 
-            {/* Adresse du contrat */}
-            <div className="p-4 rounded-xl bg-gray-100 dark:bg-gray-800">
-              <p className="text-xs text-gray-500 mb-1">Adresse du contrat</p>
-              <p className="font-mono text-sm text-gray-900 dark:text-white break-all">
-                {contractAddress}
-              </p>
-            </div>
+            {/* Adresse du contrat (si disponible) */}
+            {contractAddress && (
+              <div className="p-4 rounded-xl bg-gray-100 dark:bg-gray-800">
+                <p className="text-xs text-gray-500 mb-1">Adresse du contrat</p>
+                <p className="font-mono text-sm text-gray-900 dark:text-white break-all">
+                  {contractAddress}
+                </p>
+              </div>
+            )}
+
+            {/* Hash de la transaction (toujours disponible) */}
+            {createTxHash && (
+              <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900">
+                <p className="text-xs text-blue-600 dark:text-blue-400 mb-1">Transaction Hash</p>
+                <p className="font-mono text-xs text-gray-900 dark:text-white break-all">
+                  {createTxHash}
+                </p>
+              </div>
+            )}
 
             {/* Liens */}
             <div className="flex gap-3">
-              <a
-                href={`https://basescan.org/address/${contractAddress}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 py-3 px-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-primary-500 transition-all text-center font-medium"
-              >
-                Voir sur Basescan
-              </a>
-              {onViewPayment && (
+              {createTxHash && (
+                <a
+                  href={`https://basescan.org/tx/${createTxHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 py-3 px-4 rounded-xl border-2 border-primary-500 text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-950/30 transition-all text-center font-medium"
+                >
+                  Voir sur Basescan
+                </a>
+              )}
+              {contractAddress && onViewPayment && (
                 <button
                   onClick={onViewPayment}
                   className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-primary-500 to-purple-500 text-white font-bold hover:shadow-lg transition-all"
@@ -240,6 +260,13 @@ export default function PaymentProgressModal({
             <p className="text-xs text-gray-500">
               ⚠️ Ne fermez pas cette fenêtre
             </p>
+          </div>
+        )}
+
+        {/* CAS PAR DÉFAUT (ne devrait jamais arriver) */}
+        {status === 'idle' && (
+          <div className="text-center p-8">
+            <p className="text-gray-600 dark:text-gray-400">Chargement...</p>
           </div>
         )}
       </div>

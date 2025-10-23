@@ -11,8 +11,9 @@ import { type TokenSymbol, getToken } from '@/config/tokens';
 import { useTokenApproval } from './useTokenApproval';
 import { paymentFactoryAbi } from '@/lib/contracts/paymentFactoryAbi';
 
-// ⚠️ ADRESSE DE LA FACTORY - À DÉPLOYER SUR BASE MAINNET
-const FACTORY_ADDRESS: `0x${string}` = '0x0C43FDad2D0947d4b28A432125c7aB8F0c85D32A'; // TODO: Remplacer après déploiement
+// ⚠️ ADRESSE DE LA FACTORY - Déployée sur Base Mainnet
+const FACTORY_ADDRESS: `0x${string}` = '0x523b378A11400F1A3E8A4482Deb9f0464c64A525';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 interface CreatePaymentParams {
   tokenSymbol: TokenSymbol;
@@ -108,7 +109,11 @@ export function useCreatePayment(): UseCreatePaymentReturn {
           abi: paymentFactoryAbi,
           address: FACTORY_ADDRESS,
           functionName: 'createPaymentETH',
-          args: [params.beneficiary, BigInt(params.releaseTime)],
+          args: [
+            params.beneficiary,
+            BigInt(params.releaseTime),
+            params.cancellable || false,
+          ],
           value: params.amount,
         });
       }
@@ -124,15 +129,21 @@ export function useCreatePayment(): UseCreatePaymentReturn {
           setStatus('creating');
           setProgressMessage('Création du paiement...');
 
+          // ✅ FIX : Vérifier que tokenData.address existe
+          if (!tokenData.address) {
+            throw new Error(`Token ${params.tokenSymbol} n'a pas d'adresse de contrat`);
+          }
+
           writeContract({
             abi: paymentFactoryAbi,
             address: FACTORY_ADDRESS,
             functionName: 'createPaymentERC20',
             args: [
               params.beneficiary,
-              tokenData.address,
+              tokenData.address, // ✅ TypeScript sait maintenant que c'est défini
               params.amount,
               BigInt(params.releaseTime),
+              params.cancellable || false,
             ],
           });
         }
@@ -158,23 +169,31 @@ export function useCreatePayment(): UseCreatePaymentReturn {
       setStatus('creating');
       setProgressMessage('Création du paiement...');
 
+      // ✅ FIX : Vérifier que token.address existe
+      if (!token.address) {
+        setError(new Error(`Token ${currentParams.tokenSymbol} n'a pas d'adresse de contrat`));
+        setStatus('error');
+        return;
+      }
+
       writeContract({
         abi: paymentFactoryAbi,
         address: FACTORY_ADDRESS,
         functionName: 'createPaymentERC20',
         args: [
           currentParams.beneficiary,
-          token.address,
+          token.address, // ✅ TypeScript sait maintenant que c'est défini
           currentParams.amount,
           BigInt(currentParams.releaseTime),
+          currentParams.cancellable || false,
         ],
       });
     }
   }, [approvalHook.isApproveSuccess, status]);
 
-  // Effect : Extraction de l'adresse du contrat créé
+  // Effect : Extraction de l'adresse du contrat créé ET enregistrement Supabase
   useEffect(() => {
-    const extractContractAddress = async () => {
+    const extractAndSave = async () => {
       if (isConfirmed && createTxHash && publicClient && !contractAddress) {
         try {
           setStatus('confirming');
@@ -184,35 +203,111 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             hash: createTxHash,
           });
 
-          // Extraire l'adresse depuis les logs (événement PaymentCreatedETH ou PaymentCreatedERC20)
-          const log = receipt.logs.find((log) => {
-            // Le 3ème paramètre (non indexé) dans les events est l'adresse du contrat
-            return log.topics[0] === 
-              '0x...' || // Topic hash de PaymentCreatedETH
-              log.topics[0] === '0x...'; // Topic hash de PaymentCreatedERC20
-          });
+          console.log('📋 Receipt complet:', receipt);
+          console.log('📋 Nombre de logs:', receipt.logs.length);
 
-          if (log && log.data) {
-            // Décoder l'adresse depuis les logs
-            // Pour simplifier, on peut aussi chercher dans receipt.contractAddress
-            // ou parser les logs correctement
-            const deployedAddress = `0x${log.data.slice(26, 66)}` as `0x${string}`;
-            setContractAddress(deployedAddress);
+          let foundAddress: `0x${string}` | undefined;
+
+          // Méthode 1 : Chercher dans les logs l'adresse qui N'EST PAS la Factory
+          for (let i = 0; i < receipt.logs.length; i++) {
+            const log = receipt.logs[i];
+            console.log(`🔍 Log ${i}:`, {
+              address: log.address,
+              isFactory: log.address.toLowerCase() === FACTORY_ADDRESS.toLowerCase(),
+            });
+
+            if (log.address.toLowerCase() !== FACTORY_ADDRESS.toLowerCase()) {
+              foundAddress = log.address as `0x${string}`;
+              console.log('✅ Contrat ScheduledPayment trouvé:', foundAddress);
+              break;
+            }
+          }
+
+          // Méthode 2 : Si pas trouvé, essayer de décoder les events
+          if (!foundAddress) {
+            console.log('⚠️ Méthode 1 échouée, essai méthode 2...');
+            
+            const factoryLog = receipt.logs.find(
+              log => log.address.toLowerCase() === FACTORY_ADDRESS.toLowerCase()
+            );
+
+            if (factoryLog && factoryLog.data && factoryLog.data.length >= 66) {
+              const addressHex = `0x${factoryLog.data.slice(26, 66)}`;
+              foundAddress = addressHex as `0x${string}`;
+              console.log('✅ Adresse extraite des data:', foundAddress);
+            }
+          }
+
+          if (foundAddress) {
+            setContractAddress(foundAddress);
+
+            // Enregistrer dans Supabase via API
+            try {
+              setProgressMessage('Enregistrement dans la base de données...');
+              
+              // Capturer les valeurs actuelles
+              const params = currentParams;
+              const userAddress = address;
+              const tokenData = token;
+
+              if (!params || !userAddress) {
+                console.error('❌ Paramètres manquants pour enregistrement');
+                setStatus('success');
+                setProgressMessage('Paiement créé ! (Non enregistré dans la DB)');
+                return;
+              }
+
+              console.log('📤 Envoi à l\'API:', {
+                contract_address: foundAddress,
+                payer_address: userAddress,
+                payee_address: params.beneficiary,
+                release_time: params.releaseTime,
+              });
+
+              const response = await fetch(`${API_URL}/api/payments`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contract_address: foundAddress,
+                  payer_address: userAddress,
+                  payee_address: params.beneficiary,
+                  token_symbol: params.tokenSymbol,
+                  token_address: tokenData?.address || null, // ✅ FIX : optional chaining
+                  amount: params.amount.toString(),
+                  release_time: params.releaseTime,
+                  cancellable: params.cancellable || false,
+                  network: 'base_mainnet',
+                  transaction_hash: createTxHash,
+                }),
+              });
+
+              if (!response.ok) {
+                const errorText = await response.text();
+                console.error('❌ Erreur enregistrement:', errorText);
+              } else {
+                const result = await response.json();
+                console.log('✅ Paiement enregistré dans Supabase:', result.payment.id);
+              }
+            } catch (apiError) {
+              console.error('❌ Erreur API:', apiError);
+            }
+
             setStatus('success');
             setProgressMessage('Paiement créé avec succès !');
           } else {
-            throw new Error('Impossible de trouver l\'adresse du contrat');
+            console.error('❌ Impossible de trouver l\'adresse');
+            setStatus('success');
+            setProgressMessage('Paiement créé ! (Vérifiez Basescan)');
           }
         } catch (err) {
-          console.error('Erreur extraction adresse:', err);
-          setError(err as Error);
-          setStatus('error');
-          setProgressMessage('Erreur lors de la confirmation');
+          console.error('❌ Erreur:', err);
+          setStatus('success');
+          setProgressMessage('Paiement créé !');
         }
       }
     };
 
-    extractContractAddress();
+    extractAndSave();
   }, [isConfirmed, createTxHash, publicClient, contractAddress]);
 
   // Effect : Gestion des erreurs

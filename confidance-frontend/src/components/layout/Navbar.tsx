@@ -15,7 +15,7 @@ export function Navbar() {
     { href: '/', label: 'Accueil' },
     { href: '/create', label: 'Créer' },
     { href: '/dashboard', label: 'Dashboard' },
-    { href: '/create', label: 'Créer' },
+    // ✅ LIGNE SUPPRIMÉE : { href: '/create', label: 'Créer' },
   ];
 
   return (
