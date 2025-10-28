@@ -93,15 +93,16 @@ export const PROTOCOL_FEE_PERCENTAGE = 1.79; // 1.79%
 export const PROTOCOL_WALLET = '0xa34eDf91Cc494450000Eef08e6563062B2F115a9' as const;
 
 // Helper pour calculer les fees
-export const calculateFees = (amount: bigint, decimals: number) => {
-  const feeBasisPoints = BigInt(179); // 1.79% = 179 basis points
-  const fee = (amount * feeBasisPoints) / BigInt(10000);
-  const amountAfterFees = amount - fee;
+// ✅ V2 - Fees additives
+export const calculateFees = (amountToPayee: bigint, decimals: number) => {
+  const feeBasisPoints = BigInt(179); // 1.79%
+  const protocolFee = (amountToPayee * feeBasisPoints) / BigInt(10000);
+  const totalRequired = amountToPayee + protocolFee;
   
   return {
-    totalAmount: amount,
-    protocolFee: fee,
-    recipientAmount: amountAfterFees,
+    totalAmount: totalRequired,      // Ce que l'user envoie
+    protocolFee: protocolFee,        // Les fees (1.79%)
+    recipientAmount: amountToPayee,  // Ce que reçoit le bénéficiaire
   };
 };
 

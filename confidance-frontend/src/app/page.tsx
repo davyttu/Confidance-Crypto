@@ -4,8 +4,6 @@
 import { useAccount, useChainId } from 'wagmi';
 import { useEffect, useState } from 'react';
 import { testSupabaseConnection } from '@/lib/supabase/test';
-import { Navbar } from '@/components/layout/Navbar';
-import { Footer } from '@/components/layout/Footer';
 import Link from 'next/link';
 import { 
   ArrowRight, 
@@ -63,10 +61,7 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
-      <Navbar />
-
-      <main className="pt-16">
+    <>
         {/* Hero Section */}
         <section className="relative overflow-hidden py-20 sm:py-32">
           {/* Background decorations */}
@@ -254,9 +249,6 @@ export default function Home() {
             </div>
           </div>
         </section>
-      </main>
-
-      <Footer />
-    </div>
+    </>
   );
 }

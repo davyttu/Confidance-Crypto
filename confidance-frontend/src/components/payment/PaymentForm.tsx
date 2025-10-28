@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { useRouter } from 'next/navigation';
 import { type TokenSymbol, getToken } from '@/config/tokens';
@@ -10,6 +10,7 @@ import FeeDisplay from './FeeDisplay';
 import PaymentProgressModal from './PaymentProgressModal';
 import { useTokenBalance } from '@/hooks/useTokenBalance';
 import { useCreatePayment } from '@/hooks/useCreatePayment';
+import { useCreateBatchPayment } from '@/hooks/useCreateBatchPayment';
 
 interface PaymentFormData {
   tokenSymbol: TokenSymbol;
@@ -22,19 +23,13 @@ export default function PaymentForm() {
   const { address, isConnected } = useAccount();
   const router = useRouter();
 
-  // Hook de création
-  const {
-    createPayment,
-    status: createStatus,
-    error: createError,
-    approveTxHash,
-    createTxHash,
-    contractAddress,
-    currentStep,
-    totalSteps,
-    progressMessage,
-    reset: resetCreate,
-  } = useCreatePayment();
+  // Hooks de création
+  const singlePayment = useCreatePayment();
+  const batchPayment = useCreateBatchPayment();
+
+  // État: paiement simple ou batch?
+  const [isBatchMode, setIsBatchMode] = useState(false);
+  const [additionalBeneficiaries, setAdditionalBeneficiaries] = useState<string[]>([]);
 
   // État du formulaire
   const [formData, setFormData] = useState<PaymentFormData>({
@@ -52,6 +47,43 @@ export default function PaymentForm() {
     formData.tokenSymbol
   );
 
+  // 🆕 CORRECTION : Restaurer TOUTES les données au retour de /create-batch
+  useEffect(() => {
+    // 1. Restaurer les données du formulaire
+    const storedFormData = localStorage.getItem('paymentFormData');
+    if (storedFormData) {
+      try {
+        const data = JSON.parse(storedFormData);
+        setFormData({
+          tokenSymbol: data.tokenSymbol || 'ETH',
+          beneficiary: data.beneficiary || '',
+          amount: data.amount || '',
+          releaseDate: data.releaseDate ? new Date(data.releaseDate) : null,
+        });
+        // Nettoyer après restauration
+        localStorage.removeItem('paymentFormData');
+      } catch (error) {
+        console.error('Erreur restauration formData:', error);
+      }
+    }
+
+    // 2. Récupérer les bénéficiaires additionnels
+    const storedBeneficiaries = localStorage.getItem('additionalBeneficiaries');
+    if (storedBeneficiaries) {
+      try {
+        const addresses = JSON.parse(storedBeneficiaries);
+        if (Array.isArray(addresses) && addresses.length > 0) {
+          setAdditionalBeneficiaries(addresses);
+          setIsBatchMode(true);
+        }
+        // Nettoyer après récupération
+        localStorage.removeItem('additionalBeneficiaries');
+      } catch (error) {
+        console.error('Erreur parsing additionalBeneficiaries:', error);
+      }
+    }
+  }, []);
+
   // Validation adresse Ethereum
   const isValidAddress = (address: string): boolean => {
     return /^0x[a-fA-F0-9]{40}$/.test(address);
@@ -68,11 +100,14 @@ export default function PaymentForm() {
       return 'Montant invalide';
     }
 
-    // Vérifier si assez de balance (conversion approximative)
+    // Vérifier si assez de balance
     if (balance) {
       const decimals = formData.tokenSymbol === 'ETH' ? 18 : 
                        formData.tokenSymbol === 'USDC' || formData.tokenSymbol === 'USDT' ? 6 : 8;
-      const amountBigInt = BigInt(Math.floor(amountNum * 10 ** decimals));
+      const totalBeneficiaries = isBatchMode ? additionalBeneficiaries.length + 1 : 1;
+      const totalAmount = amountNum * totalBeneficiaries;
+      const amountBigInt = BigInt(Math.floor(totalAmount * 10 ** decimals));
+      
       if (amountBigInt > balance) {
         return 'Balance insuffisante';
       }
@@ -88,7 +123,7 @@ export default function PaymentForm() {
     }
 
     const now = new Date();
-    const minDate = new Date(now.getTime() + 5 * 60 * 1000); // +5 min
+    const minDate = new Date(now.getTime() + 5 * 60 * 1000);
 
     if (date < minDate) {
       return 'La date doit être au moins 5 minutes dans le futur';
@@ -132,7 +167,7 @@ export default function PaymentForm() {
     setErrors((prev) => ({ ...prev, date: error || '' }));
   };
 
-  // Calculer le montant en BigInt pour FeeDisplay
+  // Calculer le montant en BigInt
   const getAmountBigInt = (): bigint | null => {
     if (!formData.amount || parseFloat(formData.amount) <= 0) return null;
 
@@ -143,6 +178,28 @@ export default function PaymentForm() {
       return BigInt(Math.floor(parseFloat(formData.amount) * 10 ** decimals));
     } catch {
       return null;
+    }
+  };
+
+  // 🆕 Handler redirection vers /create-batch
+  const handleAddMultipleBeneficiaries = () => {
+    // Sauvegarder TOUTES les données actuelles
+    localStorage.setItem('paymentFormData', JSON.stringify({
+      tokenSymbol: formData.tokenSymbol,
+      beneficiary: formData.beneficiary,
+      amount: formData.amount,
+      releaseDate: formData.releaseDate?.toISOString(),
+    }));
+
+    router.push('/create-batch');
+  };
+
+  // 🆕 Handler suppression d'un bénéficiaire additionnel
+  const handleRemoveBeneficiary = (index: number) => {
+    const updated = additionalBeneficiaries.filter((_, i) => i !== index);
+    setAdditionalBeneficiaries(updated);
+    if (updated.length === 0) {
+      setIsBatchMode(false);
     }
   };
 
@@ -172,20 +229,34 @@ export default function PaymentForm() {
       return;
     }
 
-    // Calcul du montant en BigInt
     const token = getToken(formData.tokenSymbol);
     const amountBigInt = BigInt(
       Math.floor(parseFloat(formData.amount) * 10 ** token.decimals)
     );
+    const releaseTime = Math.floor(formData.releaseDate!.getTime() / 1000);
 
-    // Appel du hook de création
     try {
-      await createPayment({
-        tokenSymbol: formData.tokenSymbol,
-        beneficiary: formData.beneficiary as `0x${string}`,
-        amount: amountBigInt,
-        releaseTime: Math.floor(formData.releaseDate!.getTime() / 1000),
-      });
+      if (isBatchMode && additionalBeneficiaries.length > 0) {
+        // Mode batch: tous les bénéficiaires reçoivent le MÊME montant
+        const allBeneficiaries = [
+          { address: formData.beneficiary, amount: formData.amount },
+          ...additionalBeneficiaries.map(addr => ({ address: addr, amount: formData.amount }))
+        ];
+
+        await batchPayment.createBatchPayment({
+          beneficiaries: allBeneficiaries,
+          releaseTime,
+          cancellable: false,
+        });
+      } else {
+        // Mode simple
+        await singlePayment.createPayment({
+          tokenSymbol: formData.tokenSymbol,
+          beneficiary: formData.beneficiary as `0x${string}`,
+          amount: amountBigInt,
+          releaseTime,
+        });
+      }
     } catch (err) {
       console.error('Erreur lors de la création:', err);
     }
@@ -193,15 +264,23 @@ export default function PaymentForm() {
 
   // Handler fermeture modal
   const handleCloseModal = () => {
-    resetCreate();
+    if (isBatchMode) {
+      batchPayment.reset();
+    } else {
+      singlePayment.reset();
+    }
   };
 
   // Handler voir le paiement
   const handleViewPayment = () => {
-    if (contractAddress) {
-      router.push(`/payment/${contractAddress}`);
+    const contractAddr = isBatchMode ? batchPayment.contractAddress : singlePayment.contractAddress;
+    if (contractAddr) {
+      router.push(`/payment/${contractAddr}`);
     }
   };
+
+  // Déterminer quel hook utiliser pour le modal
+  const activePayment = isBatchMode ? batchPayment : singlePayment;
 
   if (!isConnected) {
     return (
@@ -246,7 +325,7 @@ export default function PaymentForm() {
         </div>
       </div>
 
-      {/* Section 2 : Bénéficiaire */}
+      {/* Section 2 : Bénéficiaire(s) */}
       <div className="glass rounded-2xl p-6 space-y-4">
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
           Adresse du bénéficiaire
@@ -274,12 +353,56 @@ export default function PaymentForm() {
             {errors.beneficiary}
           </p>
         )}
+        
+        {/* 🆕 Affichage des bénéficiaires additionnels */}
+        {isBatchMode && additionalBeneficiaries.length > 0 && (
+          <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-950/30 rounded-xl">
+            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+              👥 Bénéficiaires supplémentaires ({additionalBeneficiaries.length})
+            </h4>
+            <div className="space-y-2">
+              {additionalBeneficiaries.map((addr, index) => (
+                <div key={index} className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600 dark:text-gray-400 font-mono">
+                    {addr.slice(0, 6)}...{addr.slice(-4)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveBeneficiary(index)}
+                    className="text-red-500 hover:text-red-700 text-xs"
+                  >
+                    ✕ Supprimer
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {/* 🆕 BOUTON AJOUTER BÉNÉFICIAIRES */}
+        {!isBatchMode && (
+          <button
+            type="button"
+            onClick={handleAddMultipleBeneficiaries}
+            className="flex items-center gap-2 text-sm text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 transition-colors group"
+          >
+            <svg 
+              className="w-4 h-4 transition-transform group-hover:scale-110" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            <span>Ajouter plusieurs bénéficiaires</span>
+          </button>
+        )}
       </div>
 
       {/* Section 3 : Montant */}
       <div className="glass rounded-2xl p-6 space-y-4">
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Montant à envoyer
+          Montant {isBatchMode && `(par bénéficiaire)`}
         </label>
         <div className="relative">
           <input
@@ -311,6 +434,16 @@ export default function PaymentForm() {
             {errors.amount}
           </p>
         )}
+        
+        {/* 🆕 Info total si batch */}
+        {isBatchMode && formData.amount && parseFloat(formData.amount) > 0 && (
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            Total : <span className="font-semibold">
+              {(parseFloat(formData.amount) * (additionalBeneficiaries.length + 1)).toFixed(4)} {formData.tokenSymbol}
+            </span>
+            {' '}pour {additionalBeneficiaries.length + 1} bénéficiaires
+          </div>
+        )}
       </div>
 
       {/* Section 4 : Date */}
@@ -324,29 +457,36 @@ export default function PaymentForm() {
 
       {/* Section 5 : Récapitulatif frais */}
       {getAmountBigInt() && (
-        <FeeDisplay amount={getAmountBigInt()} tokenSymbol={formData.tokenSymbol} />
+        <FeeDisplay 
+          amount={getAmountBigInt()! * BigInt(isBatchMode ? additionalBeneficiaries.length + 1 : 1)} 
+          tokenSymbol={formData.tokenSymbol} 
+        />
       )}
 
       {/* Bouton submit */}
       <button
         type="submit"
-        disabled={Object.values(errors).some((e) => e !== '') || createStatus !== 'idle'}
+        disabled={Object.values(errors).some((e) => e !== '') || activePayment.status !== 'idle'}
         className="w-full py-4 px-6 rounded-xl font-bold text-lg bg-gradient-to-r from-primary-500 via-purple-500 to-pink-500 text-white hover:shadow-xl hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
       >
-        {createStatus !== 'idle' ? 'Création en cours...' : 'Créer le paiement programmé'}
+        {activePayment.status !== 'idle' 
+          ? 'Création en cours...' 
+          : isBatchMode 
+          ? `Créer le paiement multiple (${additionalBeneficiaries.length + 1} bénéficiaires)`
+          : 'Créer le paiement programmé'}
       </button>
 
       {/* Modal de progression */}
       <PaymentProgressModal
-        isOpen={createStatus !== 'idle'}
-        status={createStatus}
-        currentStep={currentStep}
-        totalSteps={totalSteps}
-        progressMessage={progressMessage}
-        error={createError}
-        approveTxHash={approveTxHash}
-        createTxHash={createTxHash}
-        contractAddress={contractAddress}
+        isOpen={activePayment.status !== 'idle'}
+        status={activePayment.status}
+        currentStep={activePayment.currentStep || 1}
+        totalSteps={activePayment.totalSteps || 1}
+        progressMessage={activePayment.progressMessage}
+        error={activePayment.error}
+        approveTxHash={singlePayment.approveTxHash}
+        createTxHash={activePayment.createTxHash}
+        contractAddress={activePayment.contractAddress}
         tokenSymbol={formData.tokenSymbol}
         onClose={handleCloseModal}
         onViewPayment={handleViewPayment}

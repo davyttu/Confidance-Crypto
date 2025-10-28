@@ -8,7 +8,7 @@ const NETWORK = process.env.NETWORK || "base";
 const RPC_URL = process.env.RPC_URL || "https://mainnet.base.org";
 const CHECK_INTERVAL = parseInt(process.env.CHECK_INTERVAL) || 60000;
 
-// 🆕 Supabase Configuration
+// Supabase Configuration
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
 
@@ -30,11 +30,12 @@ const server = http.createServer((req, res) => {
       status: 'healthy', 
       uptime: process.uptime(),
       lastCheck: lastCheckTime,
-      activePayments: contractsToWatch.length 
+      activePayments: contractsToWatch.length,
+      version: '2.0-BATCH'
     }));
   } else {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('Confidance Crypto Keeper is running! 🚀');
+    res.end('Confidance Crypto Keeper V2 - BATCH EDITION 🚀');
   }
 });
 
@@ -43,11 +44,12 @@ server.listen(PORT, () => {
 });
 
 console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-console.log("🤖 CONFIDANCE CRYPTO KEEPER v2.0 - DATABASE EDITION");
+console.log("🤖 CONFIDANCE CRYPTO KEEPER V2.0 - BATCH EDITION");
 console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 console.log(`🌐 Network: ${NETWORK}`);
 console.log(`⏰ Check interval: ${CHECK_INTERVAL / 1000}s`);
-console.log(`🗄️  Database: Supabase`);
+console.log(`🗄️ Database: Supabase`);
+console.log(`✨ Features: Single + Batch Payments`);
 console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
 const provider = new ethers.JsonRpcProvider(RPC_URL);
@@ -55,8 +57,15 @@ const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
 
 console.log("👤 Keeper address:", wallet.address);
 
-// ABIs
+// ✅ ABI pour ScheduledPayment (single)
 const SCHEDULED_PAYMENT_ABI = [
+  "function releaseTime() view returns (uint256)",
+  "function released() view returns (bool)",
+  "function release() external"
+];
+
+// 🆕 ABI pour BatchScheduledPayment_V2 (multi)
+const BATCH_PAYMENT_ABI = [
   "function releaseTime() view returns (uint256)",
   "function released() view returns (bool)",
   "function release() external"
@@ -65,7 +74,7 @@ const SCHEDULED_PAYMENT_ABI = [
 let contractsToWatch = [];
 let lastCheckTime = null;
 
-// 🆕 Charger les contrats depuis Supabase
+// 🆕 Charger les contrats depuis Supabase (single + batch)
 async function loadContractsFromDB() {
   try {
     console.log("📡 Chargement des paiements depuis Supabase...");
@@ -78,7 +87,6 @@ async function loadContractsFromDB() {
     
     if (error) {
       console.error("❌ Erreur Supabase:", error.message);
-      // Fallback sur JSON si DB fail
       return loadContractsFromJSON();
     }
     
@@ -87,17 +95,31 @@ async function loadContractsFromDB() {
       return [];
     }
     
-    const contracts = data.map(row => ({
-      id: row.id,
-      scheduledPayment: row.contract_address,
-      resolver: row.resolver_address,
-      beneficiary: row.beneficiary,
-      releaseTime: row.release_time,
-      amount: row.amount,
-      name: `Payment #${row.id} (${row.amount} ETH)`
-    }));
+    const contracts = data.map(row => {
+      // 🆕 Détection du type de paiement
+      const isBatch = row.is_batch === true;
+      const batchCount = row.batch_count || 0;
+      
+      return {
+        id: row.id,
+        scheduledPayment: row.contract_address,
+        isBatch: isBatch,
+        batchCount: batchCount,
+        batchBeneficiaries: row.batch_beneficiaries || null,
+        releaseTime: row.release_time,
+        amount: row.amount,
+        name: isBatch 
+          ? `Batch Payment #${row.id} (${batchCount} beneficiaries, ${row.amount} ETH)`
+          : `Payment #${row.id} (${row.amount} ETH)`
+      };
+    });
     
     console.log(`✅ ${contracts.length} paiement(s) chargé(s) depuis Supabase`);
+    
+    const singleCount = contracts.filter(c => !c.isBatch).length;
+    const batchCount = contracts.filter(c => c.isBatch).length;
+    console.log(`   📦 Single: ${singleCount} | 🎁 Batch: ${batchCount}`);
+    
     return contracts;
     
   } catch (error) {
@@ -110,12 +132,12 @@ async function loadContractsFromDB() {
 function loadContractsFromJSON() {
   try {
     if (fs.existsSync("deployment-info-base.json")) {
-      console.log("⚠️  Fallback sur deployment-info-base.json");
+      console.log("⚠️ Fallback sur deployment-info-base.json");
       const info = JSON.parse(fs.readFileSync("deployment-info-base.json", "utf8"));
       return [{
         id: 'json',
         scheduledPayment: info.scheduledPayment,
-        resolver: info.resolver,
+        isBatch: false,
         releaseTime: info.releaseTime,
         name: `Payment JSON ${new Date(info.releaseTime * 1000).toLocaleString()}`
       }];
@@ -127,21 +149,24 @@ function loadContractsFromJSON() {
 }
 
 // 🆕 Marquer un paiement comme exécuté dans la DB
-async function markAsReleased(contractId, txHash) {
+async function markAsReleased(contractId, txHash, isBatch = false, batchBeneficiaries = null) {
   try {
+    const updateData = { 
+      status: 'released',
+      tx_hash: txHash,
+      executed_at: new Date().toISOString()
+    };
+    
     const { error } = await supabase
       .from('scheduled_payments')
-      .update({ 
-        status: 'released',
-        tx_hash: txHash,
-        executed_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', contractId);
     
     if (error) {
       console.error("❌ Erreur update DB:", error.message);
     } else {
-      console.log(`✅ DB mise à jour : Payment #${contractId} → released`);
+      const paymentType = isBatch ? 'Batch Payment' : 'Payment';
+      console.log(`✅ DB mise à jour : ${paymentType} #${contractId} → released`);
     }
   } catch (error) {
     console.error("❌ Erreur markAsReleased:", error.message);
@@ -155,7 +180,7 @@ async function markAsFailed(contractId, errorMsg) {
       .from('scheduled_payments')
       .update({ 
         status: 'failed',
-        error_message: errorMsg,
+        error_message: errorMsg.substring(0, 500),
         executed_at: new Date().toISOString()
       })
       .eq('id', contractId);
@@ -168,7 +193,7 @@ async function markAsFailed(contractId, errorMsg) {
   }
 }
 
-// Fonction principale de vérification
+// 🆕 Fonction principale de vérification (single + batch)
 async function checkAndRelease() {
   const now = Math.floor(Date.now() / 1000);
   lastCheckTime = new Date().toISOString();
@@ -184,39 +209,48 @@ async function checkAndRelease() {
 
   for (const contract of contractsToWatch) {
     try {
-      const scheduledPayment = new ethers.Contract(
+      // 🆕 Choisir le bon ABI selon le type
+      const abi = contract.isBatch ? BATCH_PAYMENT_ABI : SCHEDULED_PAYMENT_ABI;
+      const paymentContract = new ethers.Contract(
         contract.scheduledPayment,
-        SCHEDULED_PAYMENT_ABI,
+        abi,
         wallet
       );
 
       // Vérifier si déjà libéré
-      const released = await scheduledPayment.released();
+      const released = await paymentContract.released();
       if (released) {
         console.log(`✅ ${contract.name}: Déjà libéré`);
-        // Mettre à jour la DB si pas déjà fait
         if (contract.id !== 'json') {
-          await markAsReleased(contract.id, 'already_released');
+          await markAsReleased(contract.id, 'already_released', contract.isBatch, contract.batchBeneficiaries);
         }
         continue;
       }
 
       // Vérifier le temps
-      const releaseTime = await scheduledPayment.releaseTime();
+      const releaseTime = await paymentContract.releaseTime();
       const timeUntil = Number(releaseTime) - now;
 
       if (timeUntil > 0) {
         const minutes = Math.floor(timeUntil / 60);
         const seconds = timeUntil % 60;
-        console.log(`⏱️  ${contract.name}: Encore ${minutes}m ${seconds}s`);
+        const paymentType = contract.isBatch ? '🎁' : '💎';
+        console.log(`${paymentType} ${contract.name}: Encore ${minutes}m ${seconds}s`);
         continue;
       }
 
-      // C'est l'heure ! Exécuter release()
+      // 🎯 C'est l'heure ! Exécuter release() ou releaseBatch()
       console.log(`\n🎯 ${contract.name}: PRÊT À LIBÉRER !`);
-      console.log(`💸 Exécution de release()...`);
+      
+      if (contract.isBatch) {
+        console.log(`🎁 Exécution de release() pour ${contract.batchCount} bénéficiaires...`);
+      } else {
+        console.log(`💸 Exécution de release()...`);
+      }
 
-      const tx = await scheduledPayment.release();
+      // 🆕 Appeler la fonction release() pour tous les types de contrats
+      const tx = await paymentContract.release();
+        
       console.log(`📤 Transaction envoyée: ${tx.hash}`);
       
       const receipt = await tx.wait();
@@ -225,19 +259,19 @@ async function checkAndRelease() {
 
       // Mettre à jour la DB
       if (contract.id !== 'json') {
-        await markAsReleased(contract.id, tx.hash);
+        await markAsReleased(contract.id, tx.hash, contract.isBatch, contract.batchBeneficiaries);
       }
 
     } catch (error) {
       if (error.message.includes("Already released")) {
         console.log(`✅ ${contract.name}: Déjà libéré`);
         if (contract.id !== 'json') {
-          await markAsReleased(contract.id, 'already_released');
+          await markAsReleased(contract.id, 'already_released', contract.isBatch);
         }
       } else {
         console.error(`❌ ${contract.name}: Erreur:`, error.message);
         if (contract.id !== 'json') {
-          await markAsFailed(contract.id, error.message.substring(0, 500));
+          await markAsFailed(contract.id, error.message);
         }
       }
     }
@@ -251,13 +285,16 @@ async function healthCheck() {
     console.log(`💰 Balance keeper: ${ethers.formatEther(balance)} ETH`);
     
     if (balance === 0n) {
-      console.warn("⚠️  ATTENTION: Balance à 0 !");
+      console.warn("⚠️ ATTENTION: Balance à 0 !");
     }
     
     // Vérifier connexion Supabase
-    const { error } = await supabase.from('scheduled_payments').select('count').single();
+    const { data, error } = await supabase
+      .from('scheduled_payments')
+      .select('count', { count: 'exact', head: true });
+      
     if (error) {
-      console.warn("⚠️  ATTENTION: Problème connexion Supabase");
+      console.warn("⚠️ ATTENTION: Problème connexion Supabase");
     } else {
       console.log("✅ Connexion Supabase OK");
     }
@@ -274,13 +311,13 @@ async function selfPing() {
       console.log("🏓 Self-ping OK");
     }
   } catch (error) {
-    console.log("⚠️  Self-ping failed (normal au démarrage)");
+    console.log("⚠️ Self-ping failed (normal au démarrage)");
   }
 }
 
 // Démarrage
 async function start() {
-  console.log("🚀 Démarrage du Keeper...\n");
+  console.log("🚀 Démarrage du Keeper V2 BATCH...\n");
   
   // Health check initial
   await healthCheck();
@@ -297,7 +334,7 @@ async function start() {
   // Self-ping toutes les 5 minutes (empêche Render de dormir)
   setInterval(selfPing, 5 * 60 * 1000);
   
-  console.log("✅ Keeper opérationnel ! Surveillance active...\n");
+  console.log("✅ Keeper V2 opérationnel ! Surveillance active (Single + Batch)...\n");
 }
 
 // Gestion des erreurs
@@ -306,7 +343,7 @@ process.on("unhandledRejection", (error) => {
 });
 
 process.on("SIGTERM", () => {
-  console.log("⚠️  SIGTERM reçu, arrêt gracieux...");
+  console.log("⚠️ SIGTERM reçu, arrêt gracieux...");
   process.exit(0);
 });
 

@@ -41,26 +41,23 @@ export default function FeeDisplay({
 
       {/* Card récapitulatif */}
       <div className="glass rounded-2xl p-6 space-y-4">
-        {/* Montant envoyé */}
+        {/* Montant bénéficiaire */}
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-600 dark:text-gray-400">
-            Montant envoyé
+            Bénéficiaire recevra
           </span>
-          <span className="text-base font-medium text-gray-900 dark:text-white">
-            {formatTokenAmount(fees.totalAmount, token.decimals, tokenSymbol)}
+          <span className="text-lg font-bold text-green-600 dark:text-green-400">
+            {formatTokenAmount(fees.recipientAmount, token.decimals, tokenSymbol)}
           </span>
         </div>
 
         {showDetails && (
           <>
-            {/* Séparateur */}
-            <div className="border-t border-gray-200 dark:border-gray-700" />
-
             {/* Frais protocole */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-600 dark:text-gray-400">
-                  Frais protocole
+                  + Frais protocole ({PROTOCOL_FEE_PERCENTAGE}%)
                 </span>
                 <div className="group relative">
                   <svg
@@ -75,29 +72,28 @@ export default function FeeDisplay({
                     />
                   </svg>
                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-xl z-10">
-                    Ces frais permettent de maintenir la plateforme et le keeper
-                    automatique 24/7
+                    Ces frais maintiennent la plateforme et le keeper 24/7
                     <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900" />
                   </div>
                 </div>
               </div>
               <span className="text-sm font-medium text-orange-600 dark:text-orange-400">
-                -{formatTokenAmount(fees.protocolFee, token.decimals, tokenSymbol)}
+                {formatTokenAmount(fees.protocolFee, token.decimals, tokenSymbol)}
               </span>
             </div>
 
             {/* Séparateur */}
-            <div className="border-t border-gray-200 dark:border-gray-700" />
+            <div className="border-t-2 border-gray-300 dark:border-gray-600" />
           </>
         )}
 
-        {/* Montant reçu */}
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-            Le bénéficiaire recevra
+        {/* TOTAL à envoyer */}
+        <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-950/30 -m-6 mt-0 p-6 rounded-b-2xl">
+          <span className="text-base font-bold text-gray-900 dark:text-white">
+            TOTAL à envoyer
           </span>
-          <span className="text-lg font-bold text-green-600 dark:text-green-400">
-            {formatTokenAmount(fees.recipientAmount, token.decimals, tokenSymbol)}
+          <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
+            {formatTokenAmount(fees.totalAmount, token.decimals, tokenSymbol)}
           </span>
         </div>
       </div>

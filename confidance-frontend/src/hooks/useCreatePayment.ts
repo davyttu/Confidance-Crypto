@@ -12,7 +12,7 @@ import { useTokenApproval } from './useTokenApproval';
 import { paymentFactoryAbi } from '@/lib/contracts/paymentFactoryAbi';
 
 // ⚠️ ADRESSE DE LA FACTORY - Déployée sur Base Mainnet
-const FACTORY_ADDRESS: `0x${string}` = '0x523b378A11400F1A3E8A4482Deb9f0464c64A525';
+const FACTORY_ADDRESS: `0x${string}` = '0xFc3435c0cC56E7F9cBeb32Ea664e69fD6750B197';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 interface CreatePaymentParams {
@@ -61,6 +61,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
   const [contractAddress, setContractAddress] = useState<`0x${string}` | undefined>();
   const [currentParams, setCurrentParams] = useState<CreatePaymentParams | null>(null);
   const [progressMessage, setProgressMessage] = useState<string>('');
+  const [capturedPayerAddress, setCapturedPayerAddress] = useState<`0x${string}` | undefined>(); // 🆕 AJOUTÉ
 
   // Hook pour écrire les transactions
   const {
@@ -98,6 +99,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
     try {
       setError(null);
       setCurrentParams(params);
+      setCapturedPayerAddress(address); // 🆕 AJOUTÉ - Capture l'adresse immédiatement
       const tokenData = getToken(params.tokenSymbol);
 
       // CAS 1 : ETH NATIF (1 seule transaction)
@@ -105,16 +107,32 @@ export function useCreatePayment(): UseCreatePaymentReturn {
         setStatus('creating');
         setProgressMessage('Création du paiement ETH...');
 
+        // Le montant saisi par l'utilisateur est le montant pour le bénéficiaire
+        const amountToPayee = params.amount;
+        
+        // Calculer les fees (1.79%)
+        const protocolFee = (amountToPayee * BigInt(179)) / BigInt(10000);
+        
+        // Total à envoyer = montant bénéficiaire + fees
+        const totalRequired = amountToPayee + protocolFee;
+
+        console.log('💰 Calcul paiement:', {
+          amountToPayee: amountToPayee.toString(),
+          protocolFee: protocolFee.toString(),
+          totalRequired: totalRequired.toString()
+        });
+
         writeContract({
           abi: paymentFactoryAbi,
           address: FACTORY_ADDRESS,
           functionName: 'createPaymentETH',
           args: [
             params.beneficiary,
+            amountToPayee,
             BigInt(params.releaseTime),
             params.cancellable || false,
           ],
-          value: params.amount,
+          value: totalRequired,  // ✅ Envoyer le total calculé
         });
       }
       // CAS 2 : ERC20 (2 transactions : approve + create)
@@ -140,7 +158,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             functionName: 'createPaymentERC20',
             args: [
               params.beneficiary,
-              tokenData.address, // ✅ TypeScript sait maintenant que c'est défini
+              tokenData.address as `0x${string}`,
               params.amount,
               BigInt(params.releaseTime),
               params.cancellable || false,
@@ -182,7 +200,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
         functionName: 'createPaymentERC20',
         args: [
           currentParams.beneficiary,
-          token.address, // ✅ TypeScript sait maintenant que c'est défini
+          token.address as `0x${string}`,
           currentParams.amount,
           BigInt(currentParams.releaseTime),
           currentParams.cancellable || false,
@@ -247,11 +265,12 @@ export function useCreatePayment(): UseCreatePaymentReturn {
               
               // Capturer les valeurs actuelles
               const params = currentParams;
-              const userAddress = address;
+              const userAddress = capturedPayerAddress; // 🆕 MODIFIÉ - Utilise l'adresse capturée
               const tokenData = token;
 
               if (!params || !userAddress) {
                 console.error('❌ Paramètres manquants pour enregistrement');
+                console.error('❌ DEBUG:', { params, userAddress, capturedPayerAddress, address }); // 🆕 AJOUTÉ
                 setStatus('success');
                 setProgressMessage('Paiement créé ! (Non enregistré dans la DB)');
                 return;
@@ -272,7 +291,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
                   payer_address: userAddress,
                   payee_address: params.beneficiary,
                   token_symbol: params.tokenSymbol,
-                  token_address: tokenData?.address || null, // ✅ FIX : optional chaining
+                  token_address: tokenData?.address || null,
                   amount: params.amount.toString(),
                   release_time: params.releaseTime,
                   cancellable: params.cancellable || false,
@@ -331,6 +350,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
     setContractAddress(undefined);
     setCurrentParams(null);
     setProgressMessage('');
+    setCapturedPayerAddress(undefined); // 🆕 AJOUTÉ
     resetWrite();
     approvalHook.reset();
   };

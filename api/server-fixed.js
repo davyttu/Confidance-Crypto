@@ -27,21 +27,21 @@ app.get("/health", (req, res) => {
   res.json({ status: "healthy", timestamp: new Date().toISOString() });
 });
 
-// POST /api/payments - Créer un nouveau paiement SIMPLE
+// POST /api/payments - Créer un nouveau paiement
 app.post("/api/payments", async (req, res) => {
   try {
     const {
       contract_address,
-      payer,
-      payee,
-      currency,
+      payer,              // ✅ FIX: payer au lieu de payer_address
+      payee,              // ✅ FIX: payee au lieu de payee_address
+      currency,           // ✅ FIX: currency au lieu de token_symbol
       token_address,
       amount,
-      amount_decimals,
+      amount_decimals,    // ✅ AJOUT: decimals requis
       release_time,
-      status,
-      chain_id,
-      tx_hash,
+      status,             // ✅ AJOUT: status initial
+      chain_id,          // ✅ AJOUT: chain_id
+      tx_hash,           // ✅ FIX: tx_hash au lieu de transaction_hash
       cancellable,
       network,
     } = req.body;
@@ -54,21 +54,22 @@ app.post("/api/payments", async (req, res) => {
       });
     }
 
+    // ✅ FIX: Utiliser les bons noms de champs pour Supabase
     const { data, error } = await supabase
       .from("scheduled_payments")
       .insert([
         {
           contract_address,
-          payer,
-          payee,
-          currency: currency || "ETH",
+          payer,                    // ✅ FIX: payer
+          payee,                    // ✅ FIX: payee
+          currency: currency || "ETH",  // ✅ FIX: currency
           token_address,
           amount,
-          amount_decimals: amount_decimals || 18,
+          amount_decimals: amount_decimals || 18,  // ✅ AJOUT: decimals
           release_time,
-          status: status || "pending",
-          chain_id: chain_id || 8453,
-          tx_hash,
+          status: status || "pending",  // ✅ AJOUT: status
+          chain_id: chain_id || 8453,    // ✅ AJOUT: chain_id
+          tx_hash,                 // ✅ FIX: tx_hash
           cancellable: cancellable || false,
           network: network || "base_mainnet",
         },
@@ -82,6 +83,15 @@ app.post("/api/payments", async (req, res) => {
     }
 
     console.log("✅ Paiement enregistré:", data.id);
+    console.log("📊 Données enregistrées:", {
+      id: data.id,
+      contract_address: data.contract_address,
+      payer: data.payer,
+      payee: data.payee,
+      release_time: new Date(data.release_time * 1000).toLocaleString(),
+      status: data.status
+    });
+    
     res.json({ success: true, payment: data });
   } catch (error) {
     console.error("❌ Erreur:", error);
@@ -89,75 +99,27 @@ app.post("/api/payments", async (req, res) => {
   }
 });
 
-// 🆕 POST /api/payments/batch - Créer des paiements MULTIPLES
-app.post("/api/payments/batch", async (req, res) => {
+// GET /api/payments/:address - Paiements d'un utilisateur
+app.get("/api/payments/:address", async (req, res) => {
   try {
-    const {
-      contract_address,
-      payer_address,
-      beneficiaries,          // Array: [{ address, amount, name }]
-      total_to_beneficiaries,
-      protocol_fee,
-      total_sent,
-      release_time,
-      cancellable,
-      network,
-      transaction_hash,
-    } = req.body;
+    const { address } = req.params;
 
-    // Validation
-    if (!contract_address || !payer_address || !beneficiaries || !release_time) {
-      return res.status(400).json({ 
-        error: "Missing required fields",
-        required: ["contract_address", "payer_address", "beneficiaries", "release_time"]
-      });
-    }
-
-    if (!Array.isArray(beneficiaries) || beneficiaries.length === 0) {
-      return res.status(400).json({ error: "beneficiaries must be a non-empty array" });
-    }
-
-    // Créer UN enregistrement pour le batch avec JSON des bénéficiaires
     const { data, error } = await supabase
-  .from("scheduled_payments")
-  .insert([
-    {
-      contract_address,
-      payer_address: payer_address,                    // ✅
-      payee_address: beneficiaries[0].address,         // ✅
-      token_symbol: "ETH",                             // ✅
-      token_address: null,                             // ✅ Ajouter
-      amount: total_to_beneficiaries,
-      release_time,
-      status: "pending",
-      cancellable: cancellable || false,
-      network: network || "base_mainnet",
-      transaction_hash,
-      is_batch: true,
-      batch_beneficiaries: beneficiaries,
-      batch_count: beneficiaries.length,
-    },
-  ])
-      .select()
-      .single();
+      .from("scheduled_payments")
+      .select("*")
+      .or(`payer.eq.${address},payee.eq.${address}`)  // ✅ FIX: payer/payee
+      .order("created_at", { ascending: false });
 
-    if (error) {
-      console.error("❌ Erreur Supabase batch:", error);
-      return res.status(500).json({ error: error.message });
-    }
+    if (error) throw error;
 
-    console.log("✅ Batch payment enregistré:", data.id);
-    console.log(`   👥 ${beneficiaries.length} bénéficiaires`);
-    console.log(`   💰 Total: ${total_to_beneficiaries}`);
-    
-    res.json({ success: true, payment: data });
+    res.json({ payments: data });
   } catch (error) {
-    console.error("❌ Erreur batch:", error);
+    console.error("❌ Erreur:", error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// GET /api/payments - Tous les paiements
+// GET /api/payments - Tous les paiements (pour keeper)
 app.get("/api/payments", async (req, res) => {
   try {
     const { status } = req.query;
@@ -172,6 +134,7 @@ app.get("/api/payments", async (req, res) => {
 
     if (error) throw error;
 
+    // ✅ AJOUT: Log pour debug keeper
     console.log(`📊 Paiements trouvés: ${data?.length || 0}`);
     if (data && data.length > 0) {
       const now = Math.floor(Date.now() / 1000);
@@ -196,7 +159,7 @@ app.patch("/api/payments/:id", async (req, res) => {
     if (status) updates.status = status;
     if (executed_at) updates.executed_at = executed_at;
     if (execution_tx_hash) updates.execution_tx_hash = execution_tx_hash;
-    updates.updated_at = new Date().toISOString();
+    updates.updated_at = new Date().toISOString();  // ✅ AJOUT: timestamp
 
     const { data, error } = await supabase
       .from("scheduled_payments")
@@ -215,7 +178,7 @@ app.patch("/api/payments/:id", async (req, res) => {
   }
 });
 
-// GET /api/payments/ready - Paiements prêts pour le keeper
+// ✅ AJOUT: Endpoint spécial pour le keeper
 app.get("/api/payments/ready", async (req, res) => {
   try {
     const now = Math.floor(Date.now() / 1000);
@@ -244,9 +207,9 @@ app.listen(PORT, () => {
   console.log("Endpoints disponibles:");
   console.log("  GET  /health");
   console.log("  POST /api/payments");
-  console.log("  POST /api/payments/batch  🆕");
   console.log("  GET  /api/payments");
-  console.log("  GET  /api/payments/ready");
+  console.log("  GET  /api/payments/ready");  // ✅ AJOUT: endpoint keeper
+  console.log("  GET  /api/payments/:address");
   console.log("  PATCH /api/payments/:id");
   console.log("━━━━━━━━━━━━━━━━━━━━━━");
 });
@@ -261,3 +224,4 @@ process.on("uncaughtException", (error) => {
 });
 
 console.log("⏳ Démarrage du serveur...");
+
