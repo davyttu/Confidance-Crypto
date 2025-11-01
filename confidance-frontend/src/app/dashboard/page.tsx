@@ -3,6 +3,7 @@
 
 import { useState, useMemo } from 'react';
 import { useAccount } from 'wagmi';
+import { useAuth } from '@/hooks/useAuth'; // ← AJOUTÉ
 import { useDashboard, type Payment } from '@/hooks/useDashboard';
 import { useBeneficiaries, type Beneficiary } from '@/hooks/useBeneficiaries';
 import { useCancelPayment } from '@/hooks/useCancelPayment';
@@ -20,6 +21,7 @@ import { EmptyState } from '@/components/Dashboard/EmptyState';
 
 export default function DashboardPage() {
   const { address, isConnected } = useAccount();
+  const { isAuthenticated, isLoading: authLoading } = useAuth(); // ← AJOUTÉ
   const { payments, isLoading, refetch } = useDashboard();
   const { beneficiaries } = useBeneficiaries();
   const { cancelPayment, status: cancelStatus, error: cancelError, reset: resetCancel } = useCancelPayment();
@@ -93,6 +95,42 @@ export default function DashboardPage() {
     refetch(); // Rafraîchir les paiements
   };
 
+  // ← MODIFIÉ : Vérifier l'authentification (compte client)
+  if (!authLoading && !isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-6">
+        <div className="bg-white rounded-xl shadow-xl p-8 max-w-md w-full text-center">
+          <svg className="w-16 h-16 text-blue-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">
+            Créez un compte pour accéder au dashboard
+          </h2>
+          <p className="text-gray-600 mb-6">
+            Le dashboard affiche l'historique de tous vos paiements programmés et vous permet de les gérer facilement.
+          </p>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <p className="text-sm text-blue-900 font-medium mb-2">
+              ✨ Avantages du compte :
+            </p>
+            <ul className="text-sm text-blue-800 text-left space-y-1">
+              <li>📊 Dashboard complet</li>
+              <li>📜 Historique des paiements</li>
+              <li>✅ Annulation possible (si activée)</li>
+              <li>👥 Gestion des bénéficiaires</li>
+            </ul>
+          </div>
+          <button
+            onClick={() => window.location.href = '/'}
+            className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-purple-700"
+          >
+            Créer un compte gratuitement
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Vérifier la connexion wallet
   if (!isConnected) {
     return (
@@ -120,11 +158,18 @@ export default function DashboardPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* En-tête */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            💎 Mon Dashboard
-          </h1>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center shadow-md">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+            <h1 className="text-3xl font-bold text-gray-900">
+              Mon Dashboard
+            </h1>
+          </div>
           <p className="text-gray-600">
-            Gérez vos paiements programmés en toute simplicité
+            Gérez vos paiements programmés
           </p>
         </div>
 

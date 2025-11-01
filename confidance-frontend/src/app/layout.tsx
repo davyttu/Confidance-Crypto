@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
+import { AuthProvider } from '@/contexts/AuthContext';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 
@@ -22,11 +23,13 @@ export default function RootLayout({
     <html lang="fr" suppressHydrationWarning>
       <body className={inter.className}>
         <Providers>
-          <Navbar />
-          <main className="pt-16">
-            {children}
-          </main>
-          <Footer />
+          <AuthProvider>
+            <Navbar />
+            <main className="pt-16">
+              {children}
+            </main>
+            <Footer />
+          </AuthProvider>
         </Providers>
       </body>
     </html>

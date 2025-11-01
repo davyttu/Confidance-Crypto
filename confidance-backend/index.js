@@ -2,13 +2,17 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
-
+const cookieParser = require('cookie-parser');
+const authRoutes = require('./routes/auth');
+const usersRoutes = require('./routes/users');
+const { optionalAuth } = require('./middleware/auth');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use(cookieParser());
 
 // Supabase client
 const supabase = createClient(
@@ -20,20 +24,25 @@ console.log('━━━━━━━━━━━━━━━━━━━━━━�
 console.log('🚀 CONFIDANCE CRYPTO API - BACKEND');
 console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 console.log(`📡 Port: ${PORT}`);
-console.log(`✨ Features: Single + Batch Payments + Beneficiaries`);
+console.log(`✨ Features: Auth + Payments + Beneficiaries`);
 console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+// Routes d'authentification
+app.use('/api/auth', authRoutes);
+app.use('/api/users', usersRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
-    features: ['single-payments', 'batch-payments', 'beneficiaries', 'status-update']
+    features: ['auth', 'single-payments', 'batch-payments', 'beneficiaries', 'status-update']
   });
 });
 
 // POST /api/payments - Créer un paiement SIMPLE
-app.post('/api/payments', async (req, res) => {
+app.post('/api/payments', optionalAuth, async (req, res) => {
+  const { user } = req; // User connecté ou null
   try {
     const {
       contract_address,
@@ -71,6 +80,8 @@ app.post('/api/payments', async (req, res) => {
           network: network || 'base_mainnet',
           transaction_hash,
           status: 'pending',
+          user_id: user ? user.userId : null,
+          guest_email: !user ? req.body.guest_email : null,
         },
       ])
       .select()
@@ -90,7 +101,8 @@ app.post('/api/payments', async (req, res) => {
 });
 
 // 🆕 POST /api/payments/batch - Créer un paiement BATCH (multi-bénéficiaires)
-app.post('/api/payments/batch', async (req, res) => {
+app.post('/api/payments/batch', optionalAuth, async (req, res) => {
+  const { user } = req;
   try {
     const {
       contract_address,
@@ -151,6 +163,8 @@ app.post('/api/payments/batch', async (req, res) => {
       is_batch: true,
       batch_count: beneficiaries.length,
       batch_beneficiaries: beneficiaries, // Supabase accepte direct l'objet JS pour JSONB
+      user_id: user ? user.userId : null,
+      guest_email: !user ? req.body.guest_email : null,
     };
 
     console.log('📤 [BATCH] Données à insérer:', JSON.stringify(insertData, null, 2));
@@ -294,6 +308,10 @@ app.listen(PORT, () => {
   console.log(`\n✅ API Backend démarrée sur http://localhost:${PORT}`);
   console.log(`📍 Health check: http://localhost:${PORT}/health`);
   console.log(`📍 Endpoints disponibles:`);
+  console.log(`   POST /api/auth/register         - Inscription`);
+  console.log(`   POST /api/auth/login            - Connexion`);
+  console.log(`   POST /api/auth/verify           - Vérifier email`);
+  console.log(`   GET  /api/users/profile         - Profil utilisateur`);
   console.log(`   POST /api/payments              - Paiement simple`);
   console.log(`   POST /api/payments/batch        - Paiement batch`);
   console.log(`   GET  /api/payments/:address     - Liste paiements utilisateur`);

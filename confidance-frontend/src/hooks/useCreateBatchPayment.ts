@@ -1,5 +1,5 @@
 // src/hooks/useCreateBatchPayment.ts
-// VERSION 2 : Fees s'ajoutent au montant (pas déduites)
+// VERSION 2 : Fees s'ajoutent au montant (pas dÃ©duites)
 
 import { useState, useEffect } from 'react';
 import {
@@ -10,6 +10,7 @@ import {
 } from 'wagmi';
 import { parseEther } from 'viem';
 import { paymentFactoryAbi } from '@/lib/contracts/paymentFactoryAbi';
+import { useAuth } from '@/contexts/AuthContext';
 
 const FACTORY_ADDRESS: `0x${string}` = '0xFc3435c0cC56E7F9cBeb32Ea664e69fD6750B197';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -47,6 +48,11 @@ interface UseCreateBatchPaymentReturn {
   totalToBeneficiaries: bigint | null;
   protocolFee: bigint | null;
   totalRequired: bigint | null;
+  
+  // Guest email
+  isAuthenticated: boolean;
+  needsGuestEmail: boolean;
+  setGuestEmail: (email: string) => void;
 }
 
 function calculateTotalRequired(amounts: bigint[]): {
@@ -64,6 +70,7 @@ function calculateTotalRequired(amounts: bigint[]): {
 export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
   const { address } = useAccount();
   const publicClient = usePublicClient();
+  const { user, isAuthenticated } = useAuth();
 
   const [status, setStatus] = useState<PaymentStatus>('idle');
   const [error, setError] = useState<Error | null>(null);
@@ -74,8 +81,12 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
   const [protocolFee, setProtocolFee] = useState<bigint | null>(null);
   const [totalRequired, setTotalRequired] = useState<bigint | null>(null);
   
-  // ✅ FIX: Ajouter ce state
+  // âœ… FIX: Ajouter ce state
   const [currentParams, setCurrentParams] = useState<CreateBatchPaymentParams | null>(null);
+  
+  // Guest email
+  const [guestEmail, setGuestEmail] = useState<string>('');
+  const [needsGuestEmail, setNeedsGuestEmail] = useState(false);
 
   const {
     writeContract,
@@ -94,7 +105,7 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
 
   const createBatchPayment = async (params: CreateBatchPaymentParams) => {
     if (!address) {
-      setError(new Error('Wallet non connecté'));
+      setError(new Error('Wallet non connectÃ©'));
       return;
     }
 
@@ -102,7 +113,7 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
       setError(null);
 
       if (params.beneficiaries.length === 0 || params.beneficiaries.length > 5) {
-        throw new Error('Le nombre de bénéficiaires doit être entre 1 et 5');
+        throw new Error('Le nombre de bÃ©nÃ©ficiaires doit Ãªtre entre 1 et 5');
       }
 
       const payees: `0x${string}`[] = [];
@@ -134,15 +145,15 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
       setProtocolFee(fee);
       setTotalRequired(total);
       
-      // ✅ FIX: Stocker params avant writeContract
+      // âœ… FIX: Stocker params avant writeContract
       setCurrentParams(params);
 
       setStatus('creating');
       setProgressMessage(
-        `Création du paiement pour ${payees.length} bénéficiaire(s)...\n` +
-        `Montant bénéficiaires: ${(Number(totalBenef) / 1e18).toFixed(4)} ETH\n` +
+        `CrÃ©ation du paiement pour ${payees.length} bÃ©nÃ©ficiaire(s)...\n` +
+        `Montant bÃ©nÃ©ficiaires: ${(Number(totalBenef) / 1e18).toFixed(4)} ETH\n` +
         `Fees protocole: ${(Number(fee) / 1e18).toFixed(4)} ETH\n` +
-        `Total à envoyer: ${(Number(total) / 1e18).toFixed(4)} ETH`
+        `Total Ã  envoyer: ${(Number(total) / 1e18).toFixed(4)} ETH`
       );
 
       writeContract({
@@ -162,7 +173,7 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
       console.error('Erreur createBatchPayment:', err);
       setError(err as Error);
       setStatus('error');
-      setProgressMessage('Erreur lors de la création');
+      setProgressMessage('Erreur lors de la crÃ©ation');
     }
   };
 
@@ -171,7 +182,7 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
       if (isConfirmed && createTxHash && publicClient && !contractAddress) {
         try {
           setStatus('confirming');
-          setProgressMessage('Récupération de l\'adresse du contrat...');
+          setProgressMessage('RÃ©cupÃ©ration de l\'adresse du contrat...');
 
           const receipt = await publicClient.getTransactionReceipt({
             hash: createTxHash,
@@ -189,7 +200,7 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
           if (foundAddress) {
             setContractAddress(foundAddress);
 
-            // ✅ FIX: Vérifier que currentParams existe
+            // âœ… FIX: VÃ©rifier que currentParams existe
             if (currentParams && address) {
               try {
                 setProgressMessage('Enregistrement...');
@@ -200,8 +211,8 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
                   name: b.name || '',
                 }));
 
-                console.log('🔥 APPEL API:', `${API_URL}/api/payments/batch`);
-                console.log('📤 Body:', {
+                console.log('ðŸ”¥ APPEL API:', `${API_URL}/api/payments/batch`);
+                console.log('ðŸ“¤ Body:', {
                   contract_address: foundAddress,
                   payer_address: address,
                   beneficiaries: beneficiariesData,
@@ -221,33 +232,35 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
                     cancellable: currentParams.cancellable || false,
                     network: 'base_mainnet',
                     transaction_hash: createTxHash,
+                    // Utilisateur connecté OU invité
+                    ...(isAuthenticated && user ? { user_id: user.id } : { guest_email: guestEmail }),
                   }),
                 });
 
-                console.log('📥 Response status:', response.status);
+                console.log('ðŸ“¥ Response status:', response.status);
 
                 if (!response.ok) {
                   const errorText = await response.text();
-                  console.error('❌ Erreur enregistrement:', errorText);
+                  console.error('âŒ Erreur enregistrement:', errorText);
                 } else {
                   const result = await response.json();
-                  console.log('✅ Enregistré:', result);
+                  console.log('âœ… EnregistrÃ©:', result);
                 }
               } catch (apiError) {
-                console.error('❌ Erreur API:', apiError);
+                console.error('âŒ Erreur API:', apiError);
               }
             }
 
             setStatus('success');
-            setProgressMessage('Paiement batch créé avec succès !');
+            setProgressMessage('Paiement batch crÃ©Ã© avec succÃ¨s !');
           } else {
             setStatus('success');
-            setProgressMessage('Paiement créé ! (Vérifiez Basescan)');
+            setProgressMessage('Paiement crÃ©Ã© ! (VÃ©rifiez Basescan)');
           }
         } catch (err) {
-          console.error('❌ Erreur:', err);
+          console.error('âŒ Erreur:', err);
           setStatus('success');
-          setProgressMessage('Paiement créé !');
+          setProgressMessage('Paiement crÃ©Ã© !');
         }
       }
     };
@@ -259,7 +272,7 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
     if (writeError) {
       setError(writeError);
       setStatus('error');
-      setProgressMessage('Transaction annulée');
+      setProgressMessage('Transaction annulÃ©e');
     }
     if (confirmError) {
       setError(confirmError);
@@ -276,7 +289,9 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
     setTotalToBeneficiaries(null);
     setProtocolFee(null);
     setTotalRequired(null);
-    setCurrentParams(null); // ✅ Reset aussi currentParams
+    setCurrentParams(null); // âœ… Reset aussi currentParams
+    setGuestEmail('');
+    setNeedsGuestEmail(false);
     resetWrite();
   };
 
@@ -291,5 +306,8 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
     totalToBeneficiaries,
     protocolFee,
     totalRequired,
+    isAuthenticated,
+    needsGuestEmail,
+    setGuestEmail,
   };
 }

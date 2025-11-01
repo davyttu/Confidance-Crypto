@@ -10,8 +10,9 @@ import {
 import { type TokenSymbol, getToken } from '@/config/tokens';
 import { useTokenApproval } from './useTokenApproval';
 import { paymentFactoryAbi } from '@/lib/contracts/paymentFactoryAbi';
+import { useAuth } from '@/contexts/AuthContext';
 
-// ⚠️ ADRESSE DE LA FACTORY - Déployée sur Base Mainnet
+// âš ï¸ ADRESSE DE LA FACTORY - DÃ©ployÃ©e sur Base Mainnet
 const FACTORY_ADDRESS: `0x${string}` = '0xFc3435c0cC56E7F9cBeb32Ea664e69fD6750B197';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -20,7 +21,7 @@ interface CreatePaymentParams {
   beneficiary: `0x${string}`;
   amount: bigint;
   releaseTime: number; // Unix timestamp en secondes
-  cancellable?: boolean; // Optionnel, par défaut false
+  cancellable?: boolean; // Optionnel, par dÃ©faut false
 }
 
 type PaymentStatus = 
@@ -32,7 +33,7 @@ type PaymentStatus =
   | 'error';
 
 interface UseCreatePaymentReturn {
-  // État
+  // Ã‰tat
   status: PaymentStatus;
   error: Error | null;
   
@@ -49,21 +50,31 @@ interface UseCreatePaymentReturn {
   currentStep: number; // 0, 1 ou 2
   totalSteps: number; // 1 (ETH) ou 2 (ERC20)
   progressMessage: string;
+
+  // Guest email
+  isAuthenticated: boolean;
+  needsGuestEmail: boolean;
+  setGuestEmail: (email: string) => void;
 }
 
 export function useCreatePayment(): UseCreatePaymentReturn {
   const { address } = useAccount();
   const publicClient = usePublicClient();
+  const { user, isAuthenticated } = useAuth();
 
-  // État local
+  // Ã‰tat local
   const [status, setStatus] = useState<PaymentStatus>('idle');
   const [error, setError] = useState<Error | null>(null);
   const [contractAddress, setContractAddress] = useState<`0x${string}` | undefined>();
   const [currentParams, setCurrentParams] = useState<CreatePaymentParams | null>(null);
   const [progressMessage, setProgressMessage] = useState<string>('');
-  const [capturedPayerAddress, setCapturedPayerAddress] = useState<`0x${string}` | undefined>(); // 🆕 AJOUTÉ
+  const [capturedPayerAddress, setCapturedPayerAddress] = useState<`0x${string}` | undefined>(); // ðŸ†• AJOUTÃ‰
+  
+  // Guest email
+  const [guestEmail, setGuestEmail] = useState<string>('');
+  const [needsGuestEmail, setNeedsGuestEmail] = useState(false);
 
-  // Hook pour écrire les transactions
+  // Hook pour Ã©crire les transactions
   const {
     writeContract,
     data: createTxHash,
@@ -72,7 +83,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
     isPending: isWritePending,
   } = useWriteContract();
 
-  // Attendre confirmation de la transaction de création
+  // Attendre confirmation de la transaction de crÃ©ation
   const {
     isLoading: isConfirming,
     isSuccess: isConfirmed,
@@ -89,34 +100,34 @@ export function useCreatePayment(): UseCreatePaymentReturn {
     amount: currentParams?.amount || BigInt(0),
   });
 
-  // Fonction principale de création
+  // Fonction principale de crÃ©ation
   const createPayment = async (params: CreatePaymentParams) => {
     if (!address) {
-      setError(new Error('Wallet non connecté'));
+      setError(new Error('Wallet non connectÃ©'));
       return;
     }
 
     try {
       setError(null);
       setCurrentParams(params);
-      setCapturedPayerAddress(address); // 🆕 AJOUTÉ - Capture l'adresse immédiatement
+      setCapturedPayerAddress(address); // ðŸ†• AJOUTÃ‰ - Capture l'adresse immÃ©diatement
       const tokenData = getToken(params.tokenSymbol);
 
       // CAS 1 : ETH NATIF (1 seule transaction)
       if (tokenData.isNative) {
         setStatus('creating');
-        setProgressMessage('Création du paiement ETH...');
+        setProgressMessage('CrÃ©ation du paiement ETH...');
 
-        // Le montant saisi par l'utilisateur est le montant pour le bénéficiaire
+        // Le montant saisi par l'utilisateur est le montant pour le bÃ©nÃ©ficiaire
         const amountToPayee = params.amount;
         
         // Calculer les fees (1.79%)
         const protocolFee = (amountToPayee * BigInt(179)) / BigInt(10000);
         
-        // Total à envoyer = montant bénéficiaire + fees
+        // Total Ã  envoyer = montant bÃ©nÃ©ficiaire + fees
         const totalRequired = amountToPayee + protocolFee;
 
-        console.log('💰 Calcul paiement:', {
+        console.log('ðŸ’° Calcul paiement:', {
           amountToPayee: amountToPayee.toString(),
           protocolFee: protocolFee.toString(),
           totalRequired: totalRequired.toString()
@@ -132,22 +143,22 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             BigInt(params.releaseTime),
             params.cancellable || false,
           ],
-          value: totalRequired,  // ✅ Envoyer le total calculé
+          value: totalRequired,  // âœ… Envoyer le total calculÃ©
         });
       }
       // CAS 2 : ERC20 (2 transactions : approve + create)
       else {
-        // Vérifier si approbation nécessaire
+        // VÃ©rifier si approbation nÃ©cessaire
         if (!approvalHook.isAllowanceSufficient) {
           setStatus('approving');
           setProgressMessage(`Approbation ${tokenData.symbol}...`);
           approvalHook.approve();
         } else {
-          // Approbation déjà suffisante, passer directement à la création
+          // Approbation dÃ©jÃ  suffisante, passer directement Ã  la crÃ©ation
           setStatus('creating');
-          setProgressMessage('Création du paiement...');
+          setProgressMessage('CrÃ©ation du paiement...');
 
-          // ✅ FIX : Vérifier que tokenData.address existe
+          // âœ… FIX : VÃ©rifier que tokenData.address existe
           if (!tokenData.address) {
             throw new Error(`Token ${params.tokenSymbol} n'a pas d'adresse de contrat`);
           }
@@ -170,11 +181,11 @@ export function useCreatePayment(): UseCreatePaymentReturn {
       console.error('Erreur createPayment:', err);
       setError(err as Error);
       setStatus('error');
-      setProgressMessage('Erreur lors de la création');
+      setProgressMessage('Erreur lors de la crÃ©ation');
     }
   };
 
-  // Effect : Passer de l'approbation à la création
+  // Effect : Passer de l'approbation Ã  la crÃ©ation
   useEffect(() => {
     if (
       status === 'approving' &&
@@ -183,11 +194,11 @@ export function useCreatePayment(): UseCreatePaymentReturn {
       token &&
       !token.isNative
     ) {
-      // L'approbation est confirmée, lancer la création
+      // L'approbation est confirmÃ©e, lancer la crÃ©ation
       setStatus('creating');
-      setProgressMessage('Création du paiement...');
+      setProgressMessage('CrÃ©ation du paiement...');
 
-      // ✅ FIX : Vérifier que token.address existe
+      // âœ… FIX : VÃ©rifier que token.address existe
       if (!token.address) {
         setError(new Error(`Token ${currentParams.tokenSymbol} n'a pas d'adresse de contrat`));
         setStatus('error');
@@ -209,41 +220,41 @@ export function useCreatePayment(): UseCreatePaymentReturn {
     }
   }, [approvalHook.isApproveSuccess, status]);
 
-  // Effect : Extraction de l'adresse du contrat créé ET enregistrement Supabase
+  // Effect : Extraction de l'adresse du contrat crÃ©Ã© ET enregistrement Supabase
   useEffect(() => {
     const extractAndSave = async () => {
       if (isConfirmed && createTxHash && publicClient && !contractAddress) {
         try {
           setStatus('confirming');
-          setProgressMessage('Récupération de l\'adresse du contrat...');
+          setProgressMessage('RÃ©cupÃ©ration de l\'adresse du contrat...');
 
           const receipt = await publicClient.getTransactionReceipt({
             hash: createTxHash,
           });
 
-          console.log('📋 Receipt complet:', receipt);
-          console.log('📋 Nombre de logs:', receipt.logs.length);
+          console.log('ðŸ“‹ Receipt complet:', receipt);
+          console.log('ðŸ“‹ Nombre de logs:', receipt.logs.length);
 
           let foundAddress: `0x${string}` | undefined;
 
-          // Méthode 1 : Chercher dans les logs l'adresse qui N'EST PAS la Factory
+          // MÃ©thode 1 : Chercher dans les logs l'adresse qui N'EST PAS la Factory
           for (let i = 0; i < receipt.logs.length; i++) {
             const log = receipt.logs[i];
-            console.log(`🔍 Log ${i}:`, {
+            console.log(`ðŸ” Log ${i}:`, {
               address: log.address,
               isFactory: log.address.toLowerCase() === FACTORY_ADDRESS.toLowerCase(),
             });
 
             if (log.address.toLowerCase() !== FACTORY_ADDRESS.toLowerCase()) {
               foundAddress = log.address as `0x${string}`;
-              console.log('✅ Contrat ScheduledPayment trouvé:', foundAddress);
+              console.log('âœ… Contrat ScheduledPayment trouvÃ©:', foundAddress);
               break;
             }
           }
 
-          // Méthode 2 : Si pas trouvé, essayer de décoder les events
+          // MÃ©thode 2 : Si pas trouvÃ©, essayer de dÃ©coder les events
           if (!foundAddress) {
-            console.log('⚠️ Méthode 1 échouée, essai méthode 2...');
+            console.log('âš ï¸ MÃ©thode 1 Ã©chouÃ©e, essai mÃ©thode 2...');
             
             const factoryLog = receipt.logs.find(
               log => log.address.toLowerCase() === FACTORY_ADDRESS.toLowerCase()
@@ -252,7 +263,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             if (factoryLog && factoryLog.data && factoryLog.data.length >= 66) {
               const addressHex = `0x${factoryLog.data.slice(26, 66)}`;
               foundAddress = addressHex as `0x${string}`;
-              console.log('✅ Adresse extraite des data:', foundAddress);
+              console.log('âœ… Adresse extraite des data:', foundAddress);
             }
           }
 
@@ -261,22 +272,22 @@ export function useCreatePayment(): UseCreatePaymentReturn {
 
             // Enregistrer dans Supabase via API
             try {
-              setProgressMessage('Enregistrement dans la base de données...');
+              setProgressMessage('Enregistrement dans la base de donnÃ©es...');
               
               // Capturer les valeurs actuelles
               const params = currentParams;
-              const userAddress = capturedPayerAddress; // 🆕 MODIFIÉ - Utilise l'adresse capturée
+              const userAddress = capturedPayerAddress; // ðŸ†• MODIFIÃ‰ - Utilise l'adresse capturÃ©e
               const tokenData = token;
 
               if (!params || !userAddress) {
-                console.error('❌ Paramètres manquants pour enregistrement');
-                console.error('❌ DEBUG:', { params, userAddress, capturedPayerAddress, address }); // 🆕 AJOUTÉ
+                console.error('âŒ ParamÃ¨tres manquants pour enregistrement');
+                console.error('âŒ DEBUG:', { params, userAddress, capturedPayerAddress, address }); // ðŸ†• AJOUTÃ‰
                 setStatus('success');
-                setProgressMessage('Paiement créé ! (Non enregistré dans la DB)');
+                setProgressMessage('Paiement crÃ©Ã© ! (Non enregistrÃ© dans la DB)');
                 return;
               }
 
-              console.log('📤 Envoi à l\'API:', {
+              console.log('ðŸ“¤ Envoi Ã  l\'API:', {
                 contract_address: foundAddress,
                 payer_address: userAddress,
                 payee_address: params.beneficiary,
@@ -297,31 +308,33 @@ export function useCreatePayment(): UseCreatePaymentReturn {
                   cancellable: params.cancellable || false,
                   network: 'base_mainnet',
                   transaction_hash: createTxHash,
+                  // Utilisateur connecté OU invité
+                  ...(isAuthenticated && user ? { user_id: user.id } : { guest_email: guestEmail }),
                 }),
               });
 
               if (!response.ok) {
                 const errorText = await response.text();
-                console.error('❌ Erreur enregistrement:', errorText);
+                console.error('âŒ Erreur enregistrement:', errorText);
               } else {
                 const result = await response.json();
-                console.log('✅ Paiement enregistré dans Supabase:', result.payment.id);
+                console.log('âœ… Paiement enregistrÃ© dans Supabase:', result.payment.id);
               }
             } catch (apiError) {
-              console.error('❌ Erreur API:', apiError);
+              console.error('âŒ Erreur API:', apiError);
             }
 
             setStatus('success');
-            setProgressMessage('Paiement créé avec succès !');
+            setProgressMessage('Paiement crÃ©Ã© avec succÃ¨s !');
           } else {
-            console.error('❌ Impossible de trouver l\'adresse');
+            console.error('âŒ Impossible de trouver l\'adresse');
             setStatus('success');
-            setProgressMessage('Paiement créé ! (Vérifiez Basescan)');
+            setProgressMessage('Paiement crÃ©Ã© ! (VÃ©rifiez Basescan)');
           }
         } catch (err) {
-          console.error('❌ Erreur:', err);
+          console.error('âŒ Erreur:', err);
           setStatus('success');
-          setProgressMessage('Paiement créé !');
+          setProgressMessage('Paiement crÃ©Ã© !');
         }
       }
     };
@@ -334,7 +347,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
     if (writeError) {
       setError(writeError);
       setStatus('error');
-      setProgressMessage('Transaction annulée ou échouée');
+      setProgressMessage('Transaction annulÃ©e ou Ã©chouÃ©e');
     }
     if (confirmError) {
       setError(confirmError);
@@ -350,7 +363,9 @@ export function useCreatePayment(): UseCreatePaymentReturn {
     setContractAddress(undefined);
     setCurrentParams(null);
     setProgressMessage('');
-    setCapturedPayerAddress(undefined); // 🆕 AJOUTÉ
+    setCapturedPayerAddress(undefined); // ðŸ†• AJOUTÃ‰
+    setGuestEmail('');
+    setNeedsGuestEmail(false);
     resetWrite();
     approvalHook.reset();
   };
@@ -373,5 +388,8 @@ export function useCreatePayment(): UseCreatePaymentReturn {
     currentStep,
     totalSteps,
     progressMessage,
+    isAuthenticated,
+    needsGuestEmail,
+    setGuestEmail,
   };
 }

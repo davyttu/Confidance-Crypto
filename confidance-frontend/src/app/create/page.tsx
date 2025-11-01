@@ -1,4 +1,6 @@
+// src/app/create/page.tsx
 import PaymentForm from '@/components/payment/PaymentForm';
+import GuestBanner from '@/components/GuestBanner';
 
 export const metadata = {
   title: 'Créer un paiement | Confidance Crypto',
@@ -10,6 +12,9 @@ export default function CreatePaymentPage() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
       {/* Header */}
       <div className="container mx-auto px-4 pt-24 pb-12">
+        {/* Bandeau invité */}
+        <GuestBanner />
+
         <div className="max-w-2xl mx-auto text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold mb-4 gradient-text">
             Créer un paiement programmé
