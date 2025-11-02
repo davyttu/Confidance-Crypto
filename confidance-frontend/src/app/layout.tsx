@@ -6,6 +6,7 @@ import { Providers } from './providers';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
+import { HelpWidget } from '@/components/HelpWidget';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -29,6 +30,7 @@ export default function RootLayout({
               {children}
             </main>
             <Footer />
+            <HelpWidget />
           </AuthProvider>
         </Providers>
       </body>
