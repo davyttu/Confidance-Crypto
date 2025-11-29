@@ -44,9 +44,32 @@ export const scheduledPaymentAbi = [
     stateMutability: 'view',
     type: 'function',
   },
+  // ✅ AJOUT : Variables cancellable et cancelled
+  {
+    inputs: [],
+    name: 'cancellable',
+    outputs: [{ name: '', type: 'bool' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'cancelled',
+    outputs: [{ name: '', type: 'bool' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
   {
     inputs: [],
     name: 'release',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  // ✅ AJOUT : Fonction cancel()
+  {
+    inputs: [],
+    name: 'cancel',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
@@ -58,6 +81,16 @@ export const scheduledPaymentAbi = [
       { indexed: false, name: 'amount', type: 'uint256' },
     ],
     name: 'Released',
+    type: 'event',
+  },
+  // ✅ AJOUT : Event Cancelled
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: 'payer', type: 'address' },
+      { indexed: false, name: 'refundedAmount', type: 'uint256' },
+    ],
+    name: 'Cancelled',
     type: 'event',
   },
 ] as const;

@@ -25,6 +25,7 @@ contract ScheduledPaymentERC20 is ReentrancyGuard {
     event Cancelled(address indexed payer, uint256 refundAmount);
 
     constructor(
+        address _payer,      // ✅ AJOUTÉ
         address _payee,
         address _tokenAddress,
         uint256 _amount,
@@ -32,11 +33,12 @@ contract ScheduledPaymentERC20 is ReentrancyGuard {
         bool _cancellable
     ) {
         require(_payee != address(0), "Invalid payee");
+        require(_payer != address(0), "Invalid payer");  // ✅ AJOUTÉ
         require(_tokenAddress != address(0), "Invalid token");
         require(_amount > 0, "Amount must be > 0");
         require(_releaseTime > block.timestamp, "Release time must be in future");
 
-        payer = msg.sender;
+        payer = _payer;      // ✅ MODIFIÉ (était msg.sender)
         payee = _payee;
         tokenAddress = _tokenAddress;
         amount = _amount;
@@ -45,8 +47,7 @@ contract ScheduledPaymentERC20 is ReentrancyGuard {
         released = false;
         cancelled = false;
 
-        // Transférer les tokens du payer vers ce contrat
-        IERC20(_tokenAddress).safeTransferFrom(msg.sender, address(this), _amount);
+        IERC20(_tokenAddress).safeTransferFrom(_payer, address(this), _amount);  // ✅ MODIFIÉ (était msg.sender)
     }
 
     function release() external nonReentrant {

@@ -88,8 +88,9 @@ contract PaymentFactory {
         uint256 totalRequired = _amountToPayee + protocolFee;
         require(msg.value == totalRequired, "Incorrect amount sent");
         
-        // Déployer
+        // Déployer - ✅ MODIFIÉ : ajout msg.sender
         ScheduledPayment newPayment = new ScheduledPayment{value: msg.value}(
+            msg.sender,       // ✅ AJOUTÉ - Le vrai payer (utilisateur)
             _payee,
             _amountToPayee,
             _releaseTime,
@@ -141,8 +142,9 @@ contract PaymentFactory {
         uint256 protocolFee = (_amountToPayee * FEE_BASIS_POINTS) / BASIS_POINTS_DENOMINATOR;
         uint256 totalRequired = _amountToPayee + protocolFee;
         
-        // Déployer
+        // Déployer - ✅ MODIFIÉ : ajout msg.sender
         ScheduledPaymentERC20 newPayment = new ScheduledPaymentERC20(
+            msg.sender,       // ✅ AJOUTÉ - Le vrai payer
             _payee,
             _tokenAddress,
             totalRequired, // Le contrat gère la répartition
@@ -202,8 +204,9 @@ contract PaymentFactory {
         uint256 totalRequired = totalToBeneficiaries + protocolFee;
         require(msg.value == totalRequired, "Incorrect total sent");
         
-        // Déployer
+        // Déployer - ✅ MODIFIÉ : ajout msg.sender
         BatchScheduledPayment batchPayment = new BatchScheduledPayment{value: msg.value}(
+            msg.sender,       // ✅ AJOUTÉ - Le vrai payer
             _payees,
             _amounts,
             _releaseTime,

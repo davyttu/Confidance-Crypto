@@ -1,7 +1,7 @@
 // src/lib/contracts/addresses.ts
 
 // Adresse de la PaymentFactory déployée sur Base Mainnet
-export const FACTORY_ADDRESS = "0x0C43FDad2D0947d4b28A432125c7aB8F0c85D32A";
+export const FACTORY_ADDRESS = "0x7F80CB9c88b1993e8267dab207f33EDf8f4ef744";
 
 // (Optionnel) — si plus tard tu veux gérer plusieurs réseaux
 export const CONTRACT_ADDRESSES = {

@@ -79,6 +79,7 @@ contract BatchScheduledPayment is ReentrancyGuard {
      *      Formule : msg.value = totalToBeneficiaries * 10179 / 10000
      */
     constructor(
+        address _payer,
         address[] memory _payees,
         uint256[] memory _amounts,
         uint256 _releaseTime,
@@ -88,6 +89,7 @@ contract BatchScheduledPayment is ReentrancyGuard {
         require(_payees.length > 0, "No payees");
         require(_payees.length <= 50, "Max 50 payees");
         require(_payees.length == _amounts.length, "Arrays length mismatch");
+        require(_payer != address(0), "Invalid payer");
         require(_releaseTime > block.timestamp, "Release time must be in future");
         require(msg.value > 0, "No funds sent");
         
@@ -107,7 +109,7 @@ contract BatchScheduledPayment is ReentrancyGuard {
         require(msg.value == expectedTotal, "Incorrect total sent");
         
         // Stocker
-        payer = msg.sender;
+        payer = _payer;
         payees = _payees;
         amounts = _amounts;
         releaseTime = _releaseTime;
@@ -116,7 +118,7 @@ contract BatchScheduledPayment is ReentrancyGuard {
         cancelled = false;
         
         emit BatchPaymentCreated(
-            msg.sender,
+            _payer,
             _payees.length,
             totalToBeneficiaries,
             protocolFee,

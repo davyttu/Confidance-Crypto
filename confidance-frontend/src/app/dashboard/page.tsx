@@ -1,9 +1,9 @@
 // app/dashboard/page.tsx
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAccount } from 'wagmi';
-import { useAuth } from '@/hooks/useAuth'; // ← AJOUTÉ
+import { useAuth } from '@/hooks/useAuth';
 import { useDashboard, type Payment } from '@/hooks/useDashboard';
 import { useBeneficiaries, type Beneficiary } from '@/hooks/useBeneficiaries';
 import { useCancelPayment } from '@/hooks/useCancelPayment';
@@ -21,7 +21,7 @@ import { EmptyState } from '@/components/Dashboard/EmptyState';
 
 export default function DashboardPage() {
   const { address, isConnected } = useAccount();
-  const { isAuthenticated, isLoading: authLoading } = useAuth(); // ← AJOUTÉ
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { payments, isLoading, refetch } = useDashboard();
   const { beneficiaries } = useBeneficiaries();
   const { cancelPayment, status: cancelStatus, error: cancelError, reset: resetCancel } = useCancelPayment();
@@ -32,6 +32,24 @@ export default function DashboardPage() {
   const [selectedPaymentToCancel, setSelectedPaymentToCancel] = useState<Payment | null>(null);
   const [beneficiaryToEdit, setBeneficiaryToEdit] = useState<Beneficiary | null>(null);
   const [beneficiaryAddressToAdd, setBeneficiaryAddressToAdd] = useState<string | undefined>();
+
+  // 🆕 AJOUT : Rafraîchir automatiquement après annulation réussie
+  useEffect(() => {
+    if (cancelStatus === 'success') {
+      console.log('✅ Annulation confirmée, rafraîchissement du dashboard...');
+      
+      // Attendre 1 seconde pour que la DB soit bien à jour
+      setTimeout(async () => {
+        await refetch();
+        setSelectedPaymentToCancel(null);
+        
+        // Réinitialiser le status après 3 secondes (pour cacher la notification)
+        setTimeout(() => {
+          resetCancel();
+        }, 3000);
+      }, 1000);
+    }
+  }, [cancelStatus, refetch, resetCancel]);
 
   // Filtrer les paiements par période
   const filteredPayments = useMemo(() => {
@@ -63,7 +81,7 @@ export default function DashboardPage() {
     }
   };
 
-  // Gestionnaire d'annulation de paiement
+  // Gestionnaire d'annulation de paiement (VERSION SIMPLIFIÉE)
   const handleCancelPayment = async (payment: Payment) => {
     try {
       console.log('🚫 Annulation du paiement:', payment.contract_address);
@@ -71,17 +89,14 @@ export default function DashboardPage() {
       await cancelPayment({
         contractAddress: payment.contract_address as `0x${string}`,
         paymentId: payment.id,
+        payerAddress: payment.payer_address,
       });
 
-      // Attendre un peu pour que la blockchain se mette à jour
-      setTimeout(async () => {
-        await refetch();
-        setSelectedPaymentToCancel(null);
-      }, 2000);
-
+      // Le refetch() est maintenant géré par useEffect qui surveille cancelStatus
+      
     } catch (error) {
       console.error('❌ Erreur annulation:', error);
-      alert('Erreur lors de l\'annulation. Voir la console pour plus de détails.');
+      // L'erreur s'affiche déjà dans la notification en bas à droite
     }
   };
 
@@ -95,7 +110,7 @@ export default function DashboardPage() {
     refetch(); // Rafraîchir les paiements
   };
 
-  // ← MODIFIÉ : Vérifier l'authentification (compte client)
+  // Vérifier l'authentification (compte client)
   if (!authLoading && !isAuthenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-6">
@@ -252,7 +267,7 @@ export default function DashboardPage() {
 
       {/* Notification de succès d'annulation */}
       {cancelStatus === 'success' && (
-        <div className="fixed bottom-4 right-4 bg-green-600 text-white px-6 py-4 rounded-lg shadow-xl flex items-center gap-3">
+        <div className="fixed bottom-4 right-4 bg-green-600 text-white px-6 py-4 rounded-lg shadow-xl flex items-center gap-3 z-50">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
@@ -265,8 +280,8 @@ export default function DashboardPage() {
 
       {/* Notification d'erreur d'annulation */}
       {cancelError && (
-        <div className="fixed bottom-4 right-4 bg-red-600 text-white px-6 py-4 rounded-lg shadow-xl flex items-center gap-3">
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="fixed bottom-4 right-4 bg-red-600 text-white px-6 py-4 rounded-lg shadow-xl flex items-center gap-3 z-50 max-w-md">
+          <svg className="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
           <div>

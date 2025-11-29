@@ -1,0 +1,9 @@
+{
+  "version": "V2-FIXED-CANCELLATION",
+  "network": "base_mainnet",
+  "chainId": "8453",
+  "factoryAddress": "0x7F80CB9c88b1993e8267dab207f33EDf8f4ef744",
+  "deployedAt": "2025-11-29T13:23:11.741Z",
+  "deployedBy": "0x7A764F9dED8CA54A5514023643fE117c6eAddD90",
+  "fix": "Payer correctement enregistré (msg.sender au lieu de Factory)"
+}
