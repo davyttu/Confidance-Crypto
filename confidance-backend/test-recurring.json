@@ -1,0 +1,13 @@
+{
+  "contract_address": "0x1111111111111111111111111111111111111111",
+  "payer_address": "0x2222222222222222222222222222222222222222",
+  "payee_address": "0x3333333333333333333333333333333333333333",
+  "token_symbol": "USDC",
+  "monthly_amount": "1000000",
+  "total_months": 3,
+  "first_payment_time": 1735689600,
+  "network": "base_mainnet",
+  "transaction_hash": "0x4444444444444444444444444444444444444444444444444444444444444444",
+  "cancellable": true,
+  "guest_email": "test@confidance.crypto"
+}

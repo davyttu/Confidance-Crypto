@@ -1,0 +1,445 @@
+// routes/recurringPayments.js
+const express = require('express');
+const { createClient } = require('@supabase/supabase-js');
+
+const router = express.Router();
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+);
+
+// ============================================================
+// CONSTANTES
+// ============================================================
+
+/**
+ * Adresses des tokens supportés sur Base Mainnet
+ */
+const TOKEN_ADDRESSES = {
+  'USDC': '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+  'USDT': '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2'
+};
+
+/**
+ * Tokens autorisés pour les paiements récurrents
+ */
+const ALLOWED_TOKENS = ['USDC', 'USDT'];
+
+/**
+ * Nombre de mois min/max
+ */
+const MIN_MONTHS = 1;
+const MAX_MONTHS = 12;
+
+/**
+ * Durée d'un mois en secondes (30 jours)
+ */
+const MONTH_IN_SECONDS = 30 * 24 * 60 * 60; // 2592000
+
+// ============================================================
+// HELPERS
+// ============================================================
+
+/**
+ * Générer un ticket number unique
+ */
+function generateTicketNumber() {
+  const timestamp = Date.now().toString(36).toUpperCase();
+  const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+  return `CONF-REC-${timestamp}-${random}`;
+}
+
+/**
+ * Valider les paramètres de création
+ */
+function validateRecurringPayment(body) {
+  const errors = [];
+
+  // Champs requis
+  if (!body.contract_address) errors.push('contract_address requis');
+  if (!body.payer_address) errors.push('payer_address requis');
+  if (!body.payee_address) errors.push('payee_address requis');
+  if (!body.token_symbol) errors.push('token_symbol requis');
+  if (!body.monthly_amount) errors.push('monthly_amount requis');
+  if (!body.total_months) errors.push('total_months requis');
+  if (!body.first_payment_time) errors.push('first_payment_time requis');
+
+  // Validations métier
+  if (body.token_symbol && !ALLOWED_TOKENS.includes(body.token_symbol)) {
+    errors.push(`token_symbol doit être ${ALLOWED_TOKENS.join(' ou ')}`);
+  }
+
+  if (body.total_months && (body.total_months < MIN_MONTHS || body.total_months > MAX_MONTHS)) {
+    errors.push(`total_months doit être entre ${MIN_MONTHS} et ${MAX_MONTHS}`);
+  }
+
+  if (body.monthly_amount && parseFloat(body.monthly_amount) <= 0) {
+    errors.push('monthly_amount doit être > 0');
+  }
+
+  return errors;
+}
+
+// ============================================================
+// ROUTES
+// ============================================================
+
+/**
+ * POST /api/payments/recurring
+ * Créer un paiement récurrent
+ */
+router.post('/', async (req, res) => {
+  try {
+    const {
+      contract_address,
+      payer_address,
+      payee_address,
+      token_symbol,
+      monthly_amount,
+      total_months,
+      first_payment_time,
+      network,
+      transaction_hash,
+      cancellable,
+      user_id,
+      guest_email
+    } = req.body;
+
+    // Validations
+    const errors = validateRecurringPayment(req.body);
+    if (errors.length > 0) {
+      return res.status(400).json({ 
+        error: 'Validation échouée', 
+        details: errors 
+      });
+    }
+
+    // Déterminer si user connecté ou invité
+    let ticket_number = null;
+
+    if (!user_id) {
+      // Mode INVITÉ
+      if (!guest_email) {
+        return res.status(400).json({ 
+          error: 'Email requis pour les utilisateurs invités' 
+        });
+      }
+      ticket_number = generateTicketNumber();
+    }
+
+    // Calculer next_execution_time (= first_payment_time au départ)
+    const next_execution_time = first_payment_time;
+
+    // Récupérer l'adresse du token
+    const token_address = TOKEN_ADDRESSES[token_symbol];
+
+    // Enregistrer dans Supabase
+    const { data: recurringPayment, error } = await supabase
+      .from('recurring_payments')
+      .insert({
+        contract_address,
+        payer_address,
+        payee_address,
+        token_symbol,
+        token_address,
+        monthly_amount,
+        total_months,
+        executed_months: 0,
+        first_payment_time,
+        next_execution_time,
+        last_execution_time: null,
+        cancellable: cancellable || false,
+        network: network || 'base_mainnet',
+        transaction_hash,
+        user_id: user_id || null,
+        guest_email: guest_email || null,
+        ticket_number,
+        status: 'pending'
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ Erreur Supabase recurring:', error);
+      return res.status(500).json({ error: 'Erreur lors de l\'enregistrement' });
+    }
+
+    console.log('✅ Paiement récurrent enregistré:', recurringPayment.id);
+
+    res.status(201).json({
+      success: true,
+      recurringPayment,
+      ticket_number
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur POST /api/payments/recurring:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
+ * GET /api/payments/recurring/:walletAddress
+ * Récupérer tous les paiements récurrents d'un wallet
+ */
+router.get('/:walletAddress', async (req, res) => {
+  try {
+    const { walletAddress } = req.params;
+
+    if (!walletAddress) {
+      return res.status(400).json({ error: 'Adresse wallet requise' });
+    }
+
+    // Récupérer paiements récurrents envoyés OU reçus
+    const { data: payments, error } = await supabase
+      .from('recurring_payments')
+      .select('*')
+      .or(`payer_address.eq.${walletAddress},payee_address.eq.${walletAddress}`)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ Erreur récupération recurring:', error);
+      return res.status(500).json({ error: 'Erreur lors de la récupération' });
+    }
+
+    res.json({
+      success: true,
+      payments: payments || []
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur GET /api/payments/recurring/:wallet:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
+ * GET /api/payments/recurring/id/:id
+ * Récupérer les détails d'un paiement récurrent spécifique
+ */
+router.get('/id/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ error: 'ID requis' });
+    }
+
+    const { data: payment, error } = await supabase
+      .from('recurring_payments')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      console.error('❌ Erreur récupération recurring by ID:', error);
+      return res.status(404).json({ error: 'Paiement non trouvé' });
+    }
+
+    res.json({
+      success: true,
+      payment
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur GET /api/payments/recurring/id/:id:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
+ * PATCH /api/payments/recurring/:id
+ * Mettre à jour un paiement récurrent (utilisé par le keeper)
+ */
+router.patch('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      executed_months,
+      next_execution_time,
+      last_execution_time,
+      status,
+      last_execution_hash
+    } = req.body;
+
+    if (!id) {
+      return res.status(400).json({ error: 'ID requis' });
+    }
+
+    // Construire l'objet de mise à jour
+    const updates = {};
+    if (executed_months !== undefined) updates.executed_months = executed_months;
+    if (next_execution_time !== undefined) updates.next_execution_time = next_execution_time;
+    if (last_execution_time !== undefined) updates.last_execution_time = last_execution_time;
+    if (status !== undefined) updates.status = status;
+    if (last_execution_hash !== undefined) updates.last_execution_hash = last_execution_hash;
+
+    // Ajouter updated_at
+    updates.updated_at = new Date().toISOString();
+
+    const { data: payment, error } = await supabase
+      .from('recurring_payments')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ Erreur update recurring:', error);
+      return res.status(500).json({ error: 'Erreur lors de la mise à jour' });
+    }
+
+    console.log('✅ Paiement récurrent mis à jour:', id);
+
+    res.json({
+      success: true,
+      payment
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur PATCH /api/payments/recurring/:id:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
+ * DELETE /api/payments/recurring/:id
+ * Annuler un paiement récurrent (appelle cancel() sur le smart contract)
+ */
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { payer_address } = req.body;
+
+    if (!id) {
+      return res.status(400).json({ error: 'ID requis' });
+    }
+
+    if (!payer_address) {
+      return res.status(400).json({ error: 'payer_address requis' });
+    }
+
+    // Récupérer le paiement
+    const { data: payment, error: fetchError } = await supabase
+      .from('recurring_payments')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !payment) {
+      return res.status(404).json({ error: 'Paiement non trouvé' });
+    }
+
+    // Vérifier que c'est bien le payer
+    if (payment.payer_address.toLowerCase() !== payer_address.toLowerCase()) {
+      return res.status(403).json({ error: 'Non autorisé' });
+    }
+
+    // Vérifier qu'il est annulable
+    if (!payment.cancellable) {
+      return res.status(400).json({ error: 'Ce paiement n\'est pas annulable' });
+    }
+
+    // Vérifier le statut
+    if (payment.status === 'cancelled') {
+      return res.status(400).json({ error: 'Déjà annulé' });
+    }
+
+    if (payment.status === 'completed') {
+      return res.status(400).json({ error: 'Impossible d\'annuler un paiement complété' });
+    }
+
+    // Mettre à jour le statut (le frontend devra appeler cancel() sur la blockchain)
+    const { data: updatedPayment, error: updateError } = await supabase
+      .from('recurring_payments')
+      .update({ 
+        status: 'cancelled',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error('❌ Erreur annulation recurring:', updateError);
+      return res.status(500).json({ error: 'Erreur lors de l\'annulation' });
+    }
+
+    console.log('✅ Paiement récurrent annulé:', id);
+
+    res.json({
+      success: true,
+      payment: updatedPayment,
+      message: 'Paiement annulé avec succès'
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur DELETE /api/payments/recurring/:id:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
+ * GET /api/payments/recurring/stats/:walletAddress
+ * Statistiques des paiements récurrents pour un wallet
+ */
+router.get('/stats/:walletAddress', async (req, res) => {
+  try {
+    const { walletAddress } = req.params;
+
+    if (!walletAddress) {
+      return res.status(400).json({ error: 'Adresse wallet requise' });
+    }
+
+    // Récupérer tous les paiements du wallet
+    const { data: payments, error } = await supabase
+      .from('recurring_payments')
+      .select('*')
+      .or(`payer_address.eq.${walletAddress},payee_address.eq.${walletAddress}`);
+
+    if (error) {
+      console.error('❌ Erreur stats recurring:', error);
+      return res.status(500).json({ error: 'Erreur lors de la récupération' });
+    }
+
+    // Calculer les stats
+    const stats = {
+      total: payments.length,
+      pending: payments.filter(p => p.status === 'pending').length,
+      active: payments.filter(p => p.status === 'active').length,
+      completed: payments.filter(p => p.status === 'completed').length,
+      cancelled: payments.filter(p => p.status === 'cancelled').length,
+      totalMonthlyAmount: payments
+        .filter(p => p.status === 'active' || p.status === 'pending')
+        .reduce((sum, p) => sum + parseFloat(p.monthly_amount), 0),
+      byToken: {}
+    };
+
+    // Stats par token
+    payments.forEach(payment => {
+      if (!stats.byToken[payment.token_symbol]) {
+        stats.byToken[payment.token_symbol] = {
+          count: 0,
+          totalMonthly: 0
+        };
+      }
+      stats.byToken[payment.token_symbol].count++;
+      if (payment.status === 'active' || payment.status === 'pending') {
+        stats.byToken[payment.token_symbol].totalMonthly += parseFloat(payment.monthly_amount);
+      }
+    });
+
+    res.json({
+      success: true,
+      stats,
+      payments
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur GET /api/payments/recurring/stats/:wallet:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+module.exports = router;

@@ -5,6 +5,7 @@ const { createClient } = require('@supabase/supabase-js');
 const cookieParser = require('cookie-parser');
 const authRoutes = require('./routes/auth');
 const usersRoutes = require('./routes/users');
+const recurringPaymentsRoutes = require('./routes/recurringPayments'); // ✅ AJOUTÉ
 const { optionalAuth } = require('./middleware/auth');
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -24,7 +25,7 @@ console.log('━━━━━━━━━━━━━━━━━━━━━━�
 console.log('🚀 CONFIDANCE CRYPTO API - BACKEND');
 console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 console.log(`📡 Port: ${PORT}`);
-console.log(`✨ Features: Auth + Payments + Beneficiaries`);
+console.log(`✨ Features: Auth + Payments + Beneficiaries + Recurring`); // ✅ MODIFIÉ (ajouté "+ Recurring")
 console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
 // Routes d'authentification
@@ -36,7 +37,7 @@ app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
-    features: ['auth', 'single-payments', 'batch-payments', 'beneficiaries', 'status-update']
+    features: ['auth', 'single-payments', 'batch-payments', 'beneficiaries', 'recurring-payments', 'status-update'] // ✅ MODIFIÉ (ajouté 'recurring-payments')
   });
 });
 
@@ -197,23 +198,65 @@ app.post('/api/payments/batch', optionalAuth, async (req, res) => {
   }
 });
 
-// GET /api/payments/:address - Liste des paiements d'un utilisateur
+
+// GET /api/payments/:address - Liste des paiements d'un utilisateur (SIMPLE + RÉCURRENTS)
 app.get('/api/payments/:address', async (req, res) => {
   try {
     const { address } = req.params;
 
     console.log('📊 Liste paiements pour:', address);
 
-    const { data, error } = await supabase
+    // ✅ ÉTAPE 1 : Charger les paiements SIMPLES/BATCH
+    const { data: simplePayments, error: simpleError } = await supabase
       .from('scheduled_payments')
       .select('*')
       .or(`payer_address.eq.${address},payee_address.eq.${address}`)
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
+    if (simpleError) {
+      console.error('❌ Erreur scheduled_payments:', simpleError);
+      return res.status(500).json({ error: 'Erreur lors de la récupération' });
+    }
 
-    console.log(`✅ ${data?.length || 0} paiement(s) trouvé(s)`);
-    res.json({ payments: data || [] });
+    // ✅ ÉTAPE 2 : Charger les paiements RÉCURRENTS
+    const { data: recurringPayments, error: recurringError } = await supabase
+      .from('recurring_payments')
+      .select('*')
+      .or(`payer_address.eq.${address},payee_address.eq.${address}`)
+      .order('created_at', { ascending: false });
+
+    if (recurringError) {
+      console.error('⚠️ Erreur recurring_payments (non bloquant):', recurringError);
+      // Ne pas bloquer si recurring échoue, juste logger
+    }
+
+    // ✅ ÉTAPE 3 : COMBINER les deux types avec flag is_recurring
+    const allPayments = [
+      // Paiements simples/batch (is_recurring = false)
+      ...(simplePayments || []).map(p => ({ 
+        ...p, 
+        is_recurring: false,
+        payment_type: 'simple' 
+      })),
+      // Paiements récurrents (is_recurring = true)
+      ...(recurringPayments || []).map(p => ({ 
+        ...p, 
+        is_recurring: true,
+        payment_type: 'recurring',
+        // Mapper les champs pour compatibilité avec le frontend
+        amount: p.monthly_amount, // Le frontend attend "amount"
+        release_time: p.first_payment_time // Le frontend attend "release_time"
+      }))
+    ];
+
+    // ✅ ÉTAPE 4 : Trier par date de création (plus récent en premier)
+    allPayments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    console.log(`✅ ${simplePayments?.length || 0} paiement(s) simple(s) trouvé(s)`);
+    console.log(`✅ ${recurringPayments?.length || 0} paiement(s) récurrent(s) trouvé(s)`);
+    console.log(`📦 Total combiné: ${allPayments.length}`);
+
+    res.json({ payments: allPayments });
   } catch (error) {
     console.error('❌ Erreur liste:', error.message);
     res.status(500).json({ error: error.message });
@@ -303,6 +346,9 @@ app.put('/api/payments/:id/status', async (req, res) => {
 const beneficiariesRoutes = require('./routes/beneficiaries');
 app.use('/api/beneficiaries', beneficiariesRoutes);
 
+// 🆕 ROUTES PAIEMENTS RÉCURRENTS
+app.use('/api/payments/recurring', recurringPaymentsRoutes); // ✅ AJOUTÉ
+
 // Démarrage du serveur
 app.listen(PORT, () => {
   console.log(`\n✅ API Backend démarrée sur http://localhost:${PORT}`);
@@ -320,5 +366,12 @@ app.listen(PORT, () => {
   console.log(`   GET  /api/beneficiaries/:wallet - Liste bénéficiaires`);
   console.log(`   POST /api/beneficiaries         - Créer bénéficiaire`);
   console.log(`   PUT  /api/beneficiaries/:id     - Modifier bénéficiaire`);
-  console.log(`   DELETE /api/beneficiaries/:id   - Supprimer bénéficiaire\n`);
+  console.log(`   DELETE /api/beneficiaries/:id   - Supprimer bénéficiaire`);
+  // ✅ AJOUTÉ - Routes récurrentes
+  console.log(`   POST /api/payments/recurring              - Créer paiement récurrent`);
+  console.log(`   GET  /api/payments/recurring/:wallet      - Liste paiements récurrents`);
+  console.log(`   GET  /api/payments/recurring/id/:id       - Détails paiement récurrent`);
+  console.log(`   PATCH /api/payments/recurring/:id         - Mettre à jour récurrent`);
+  console.log(`   DELETE /api/payments/recurring/:id        - Annuler récurrent`);
+  console.log(`   GET  /api/payments/recurring/stats/:wallet - Stats récurrents\n`);
 });

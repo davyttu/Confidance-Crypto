@@ -1,0 +1,20 @@
+{
+  "version": "V2-WITH-RECURRING",
+  "network": "base_mainnet",
+  "chainId": "8453",
+  "factoryAddress": "0xd8dEfFea55D69045dA5c30FdC075702FeFDd0542",
+  "deployedAt": "2025-12-09T17:39:06.211Z",
+  "deployedBy": "0x7A764F9dED8CA54A5514023643fE117c6eAddD90",
+  "features": [
+    "Single Payment ETH",
+    "Single Payment ERC20",
+    "Batch Payment ETH",
+    "Recurring Payment ERC20 (1-12 mois)"
+  ],
+  "constants": {
+    "protocolWallet": "0xa34eDf91Cc494450000Eef08e6563062B2F115a9",
+    "feeBasisPoints": 179,
+    "feePercentage": "1.79%"
+  },
+  "oldFactoryAddress": "0xFc3435c0cC56E7F9cBeb32Ea664e69fD6750B197"
+}

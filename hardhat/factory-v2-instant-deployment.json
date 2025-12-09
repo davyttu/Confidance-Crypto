@@ -1,0 +1,23 @@
+{
+  "version": "V2-WITH-INSTANT-PAYMENTS",
+  "network": "base_mainnet",
+  "chainId": "8453",
+  "factoryAddress": "0xd8dEfFea55D69045dA5c30FdC075702FeFDd0542",
+  "deployedAt": "2025-12-09T20:15:37.708Z",
+  "deployedBy": "0x7A764F9dED8CA54A5514023643fE117c6eAddD90",
+  "features": [
+    "Single Payment ETH (1.79% fees)",
+    "Single Payment ERC20 (1.79% fees)",
+    "Batch Payment ETH (1.79% fees)",
+    "Recurring Payment ERC20 (1.79% fees)",
+    "Instant Payment ETH (0% fees) ⚡ NEW",
+    "Instant Payment ERC20 (0% fees) ⚡ NEW"
+  ],
+  "constants": {
+    "protocolWallet": "0xa34eDf91Cc494450000Eef08e6563062B2F115a9",
+    "feeBasisPoints": 179,
+    "feePercentage": "1.79%",
+    "instantPaymentFees": "0% (gratuit)"
+  },
+  "oldFactoryAddress": "0xd8e57052142b62081687137c44C54F78306547f8"
+}

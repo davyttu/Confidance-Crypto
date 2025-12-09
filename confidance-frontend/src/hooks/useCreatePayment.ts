@@ -13,7 +13,7 @@ import { paymentFactoryAbi } from '@/lib/contracts/paymentFactoryAbi';
 import { useAuth } from '@/contexts/AuthContext';
 
 // âš ï¸ ADRESSE DE LA FACTORY - DÃ©ployÃ©e sur Base Mainnet
-const FACTORY_ADDRESS: `0x${string}` = '0x7F80CB9c88b1993e8267dab207f33EDf8f4ef744';
+const FACTORY_ADDRESS: `0x${string}` = '0xd8dEfFea55D69045dA5c30FdC075702FeFDd0542';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 interface CreatePaymentParams {

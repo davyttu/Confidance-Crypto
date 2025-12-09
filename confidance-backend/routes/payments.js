@@ -178,7 +178,9 @@ router.post('/batch', async (req, res) => {
 
 /**
  * GET /api/payments/:walletAddress
- * Récupérer tous les paiements d'un wallet (envoyés + reçus)
+ * Récupérer TOUS les paiements d'un wallet (simples + récurrents)
+ * 
+ * ✅ MODIFIÉ : Combine scheduled_payments + recurring_payments
  */
 router.get('/:walletAddress', async (req, res) => {
   try {
@@ -188,21 +190,61 @@ router.get('/:walletAddress', async (req, res) => {
       return res.status(400).json({ error: 'Adresse wallet requise' });
     }
 
-    // Récupérer paiements envoyés OU reçus
-    const { data: payments, error } = await supabase
+    console.log('📊 Liste paiements pour:', walletAddress);
+
+    // ✅ ÉTAPE 1 : Charger les paiements SIMPLES/BATCH
+    const { data: simplePayments, error: simpleError } = await supabase
       .from('scheduled_payments')
       .select('*')
       .or(`payer_address.eq.${walletAddress},payee_address.eq.${walletAddress}`)
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('❌ Erreur récupération paiements:', error);
+    if (simpleError) {
+      console.error('❌ Erreur scheduled_payments:', simpleError);
       return res.status(500).json({ error: 'Erreur lors de la récupération' });
     }
 
+    // ✅ ÉTAPE 2 : Charger les paiements RÉCURRENTS
+    const { data: recurringPayments, error: recurringError } = await supabase
+      .from('recurring_payments')
+      .select('*')
+      .or(`payer_address.eq.${walletAddress},payee_address.eq.${walletAddress}`)
+      .order('created_at', { ascending: false });
+
+    if (recurringError) {
+      console.error('⚠️ Erreur recurring_payments (non bloquant):', recurringError);
+      // Ne pas bloquer si recurring échoue, juste logger
+    }
+
+    // ✅ ÉTAPE 3 : COMBINER les deux types avec flag is_recurring
+    const allPayments = [
+      // Paiements simples/batch (is_recurring = false)
+      ...(simplePayments || []).map(p => ({ 
+        ...p, 
+        is_recurring: false,
+        payment_type: 'simple' 
+      })),
+      // Paiements récurrents (is_recurring = true)
+      ...(recurringPayments || []).map(p => ({ 
+        ...p, 
+        is_recurring: true,
+        payment_type: 'recurring',
+        // Mapper les champs pour compatibilité avec le frontend
+        amount: p.monthly_amount, // Le frontend attend "amount"
+        release_time: p.first_payment_time // Le frontend attend "release_time"
+      }))
+    ];
+
+    // ✅ ÉTAPE 4 : Trier par date de création (plus récent en premier)
+    allPayments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    console.log(`✅ ${simplePayments?.length || 0} paiement(s) simple(s) trouvé(s)`);
+    console.log(`✅ ${recurringPayments?.length || 0} paiement(s) récurrent(s) trouvé(s)`);
+    console.log(`📦 Total combiné: ${allPayments.length}`);
+
     res.json({
       success: true,
-      payments: payments || []
+      payments: allPayments
     });
 
   } catch (error) {

@@ -8,6 +8,7 @@ interface DateTimePickerProps {
   minDate?: Date;
   label?: string;
   error?: string;
+  hidePresets?: boolean;
 }
 
 export default function DateTimePicker({
@@ -16,6 +17,7 @@ export default function DateTimePicker({
   minDate,
   label = 'Date et heure de libération',
   error,
+  hidePresets = false,
 }: DateTimePickerProps) {
   // Formater la date pour l'input datetime-local
   const formatDateTimeLocal = (date: Date | null): string => {
@@ -90,23 +92,27 @@ export default function DateTimePicker({
   return (
     <div className="space-y-4">
       {/* Label */}
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-        {label}
-      </label>
+      {label && (
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          {label}
+        </label>
+      )}
 
       {/* Raccourcis */}
-      <div className="flex flex-wrap gap-2">
-        {presets.map((preset) => (
-          <button
-            key={preset.label}
-            type="button"
-            onClick={() => handlePreset(preset.minutes)}
-            className="px-3 py-2 text-sm font-medium rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-primary-500 hover:text-primary-600 dark:hover:text-primary-400 transition-all"
-          >
-            {preset.label}
-          </button>
-        ))}
-      </div>
+      {!hidePresets && (
+        <div className="flex flex-wrap gap-2">
+          {presets.map((preset) => (
+            <button
+              key={preset.label}
+              type="button"
+              onClick={() => handlePreset(preset.minutes)}
+              className="px-3 py-2 text-sm font-medium rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-primary-500 hover:text-primary-600 dark:hover:text-primary-400 transition-all"
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Input datetime */}
       <div className="relative">

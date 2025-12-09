@@ -1,0 +1,292 @@
+{
+  "name": "Confidance Crypto - Security Scanner Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "name": "Schedule Every 6 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300],
+      "id": "node-001"
+    },
+    {
+      "parameters": {
+        "command": "cd /tmp && rm -rf confidance-crypto && git clone https://github.com/VOTRE-USERNAME/confidance-crypto.git",
+        "options": {}
+      },
+      "name": "Clone GitHub Repo",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [450, 300],
+      "id": "node-002"
+    },
+    {
+      "parameters": {
+        "command": "cd /tmp/confidance-crypto && slither . --json /tmp/slither-results.json --print human-summary",
+        "options": {}
+      },
+      "name": "Run Slither Analysis",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [650, 300],
+      "id": "node-003"
+    },
+    {
+      "parameters": {
+        "command": "cat /tmp/slither-results.json",
+        "options": {}
+      },
+      "name": "Read Results",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [850, 300],
+      "id": "node-004"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Slither JSON output\nconst results = JSON.parse($input.first().json.stdout);\n\nconst vulnerabilities = [];\n\n// Extract detectors that found issues\nif (results.results && results.results.detectors) {\n  for (const detector of results.results.detectors) {\n    if (detector.impact === 'High' || detector.impact === 'Medium') {\n      vulnerabilities.push({\n        type: detector.check,\n        impact: detector.impact,\n        confidence: detector.confidence,\n        description: detector.description,\n        file: detector.first_markdown_element,\n        severity: detector.impact === 'High' ? '🔴 CRITICAL' : '🟡 MEDIUM'\n      });\n    }\n  }\n}\n\nreturn {\n  timestamp: new Date().toISOString(),\n  vulnerabilities: vulnerabilities,\n  count: vulnerabilities.length,\n  hasIssues: vulnerabilities.length > 0\n};"
+      },
+      "name": "Parse Slither Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 300],
+      "id": "node-005"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.hasIssues}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "name": "IF Vulnerabilities Found",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1250, 300],
+      "id": "node-006"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "issue",
+        "operation": "create",
+        "owner": {
+          "__rl": true,
+          "value": "VOTRE-USERNAME",
+          "mode": "list"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "confidance-crypto",
+          "mode": "list"
+        },
+        "title": "=🔴 Security Alert: {{$json.vulnerabilities[0].type}}",
+        "body": "=## Security Vulnerability Detected\n\n**Type:** {{$json.vulnerabilities[0].type}}\n**Severity:** {{$json.vulnerabilities[0].severity}}\n**Impact:** {{$json.vulnerabilities[0].impact}}\n**Confidence:** {{$json.vulnerabilities[0].confidence}}\n\n### Description\n{{$json.vulnerabilities[0].description}}\n\n### Location\n{{$json.vulnerabilities[0].file}}\n\n---\n\n**Total vulnerabilities found:** {{$json.count}}\n**Scan timestamp:** {{$json.timestamp}}\n\n_Automated scan by Security Scanner Agent_",
+        "labels": {
+          "labels": [
+            {
+              "label": "security"
+            },
+            {
+              "label": "automated"
+            },
+            {
+              "label": "urgent"
+            }
+          ]
+        },
+        "additionalFields": {}
+      },
+      "name": "Create GitHub Issue",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "position": [1450, 200],
+      "id": "node-007",
+      "credentials": {
+        "githubOAuth2Api": {
+          "id": "VOTRE_GITHUB_OAUTH_ID",
+          "name": "GitHub account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "tableId": "security_scans",
+        "options": {
+          "queryName": "data"
+        },
+        "data": "={{ {\n  scan_date: $json.timestamp,\n  agent_type: 'slither',\n  vulnerabilities: JSON.stringify($json.vulnerabilities),\n  severity: $json.vulnerabilities[0]?.impact || 'Unknown',\n  status: 'detected',\n  vulnerability_count: $json.count\n} }}"
+      },
+      "name": "Log to Supabase",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1450, 400],
+      "id": "node-008",
+      "credentials": {
+        "supabaseApi": {
+          "id": "VOTRE_SUPABASE_CREDS_ID",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "channel": "#security-alerts",
+        "text": "=⚠️ **Security Alert!**\n\n{{$json.count}} vulnerabilities detected in Confidance Crypto\n\n🔴 Severity: {{$json.vulnerabilities[0].severity}}\n📝 Type: {{$json.vulnerabilities[0].type}}\n\nGitHub Issue created automatically.\nCheck <https://github.com/VOTRE-USERNAME/confidance-crypto/issues|Issues> for details.",
+        "attachments": [],
+        "otherOptions": {}
+      },
+      "name": "Alert Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [1450, 300],
+      "id": "node-009",
+      "credentials": {
+        "slackApi": {
+          "id": "VOTRE_SLACK_API_ID",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "channel": "#security-alerts",
+        "text": "=✅ Security scan complete - No critical issues found\n\nTimestamp: {{$json.timestamp}}",
+        "attachments": [],
+        "otherOptions": {}
+      },
+      "name": "Slack - All Clear",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [1450, 500],
+      "id": "node-010",
+      "credentials": {
+        "slackApi": {
+          "id": "VOTRE_SLACK_API_ID",
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Every 6 Hours": {
+      "main": [
+        [
+          {
+            "node": "Clone GitHub Repo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clone GitHub Repo": {
+      "main": [
+        [
+          {
+            "node": "Run Slither Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Slither Analysis": {
+      "main": [
+        [
+          {
+            "node": "Read Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Results": {
+      "main": [
+        [
+          {
+            "node": "Parse Slither Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Slither Results": {
+      "main": [
+        [
+          {
+            "node": "IF Vulnerabilities Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Vulnerabilities Found": {
+      "main": [
+        [
+          {
+            "node": "Create GitHub Issue",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Alert Slack",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log to Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Slack - All Clear",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2025-12-06T10:00:00.000Z",
+      "updatedAt": "2025-12-06T10:00:00.000Z",
+      "id": "1",
+      "name": "security"
+    },
+    {
+      "createdAt": "2025-12-06T10:00:00.000Z",
+      "updatedAt": "2025-12-06T10:00:00.000Z",
+      "id": "2",
+      "name": "confidance-crypto"
+    }
+  ],
+  "triggerCount": 0,
+  "updatedAt": "2025-12-06T10:00:00.000Z",
+  "versionId": "1"
+}

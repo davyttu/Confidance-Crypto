@@ -35,7 +35,7 @@ export const paymentFactoryAbi = [
   },
 
   // ============================================================
-  // 🆕 BATCH PAYMENT ETH
+  // BATCH PAYMENT ETH
   // ============================================================
   {
     inputs: [
@@ -47,6 +47,52 @@ export const paymentFactoryAbi = [
     name: 'createBatchPaymentETH',
     outputs: [{ name: '', type: 'address' }],
     stateMutability: 'payable',
+    type: 'function',
+  },
+
+  // ============================================================
+  // 🆕 RECURRING PAYMENT ERC20 - ✅ ORDRE PARAMÈTRES CORRIGÉ
+  // ============================================================
+  {
+    inputs: [
+      { name: '_payee', type: 'address' },
+      { name: '_tokenAddress', type: 'address' },
+      { name: '_monthlyAmount', type: 'uint256' },
+      { name: '_firstPaymentTime', type: 'uint256' },
+      { name: '_totalMonths', type: 'uint256' },
+      { name: '_dayOfMonth', type: 'uint256' },
+    ],
+    name: 'createRecurringPaymentERC20',
+    outputs: [{ name: '', type: 'address' }],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+
+  // ============================================================
+  // ⚡ INSTANT PAYMENT ETH - 0% FEES
+  // ============================================================
+  {
+    inputs: [
+      { name: '_payee', type: 'address' },
+    ],
+    name: 'createInstantPaymentETH',
+    outputs: [{ name: '', type: 'address' }],
+    stateMutability: 'payable',
+    type: 'function',
+  },
+
+  // ============================================================
+  // ⚡ INSTANT PAYMENT ERC20 - 0% FEES
+  // ============================================================
+  {
+    inputs: [
+      { name: '_payee', type: 'address' },
+      { name: '_tokenAddress', type: 'address' },
+      { name: '_amount', type: 'uint256' },
+    ],
+    name: 'createInstantPaymentERC20',
+    outputs: [{ name: '', type: 'address' }],
+    stateMutability: 'nonpayable',
     type: 'function',
   },
 
@@ -69,6 +115,20 @@ export const paymentFactoryAbi = [
     outputs: [
       { name: 'totalToBeneficiaries', type: 'uint256' },
       { name: 'protocolFee', type: 'uint256' },
+      { name: 'totalRequired', type: 'uint256' },
+    ],
+    stateMutability: 'pure',
+    type: 'function',
+  },
+  {
+    inputs: [
+      { name: 'monthlyAmount', type: 'uint256' },
+      { name: 'totalMonths', type: 'uint256' },
+    ],
+    name: 'calculateRecurringTotal',
+    outputs: [
+      { name: 'protocolFeePerMonth', type: 'uint256' },
+      { name: 'totalPerMonth', type: 'uint256' },
       { name: 'totalRequired', type: 'uint256' },
     ],
     stateMutability: 'pure',
@@ -128,6 +188,50 @@ export const paymentFactoryAbi = [
       { indexed: false, name: 'cancellable', type: 'bool' },
     ],
     name: 'BatchPaymentCreatedETH',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: 'payer', type: 'address' },
+      { indexed: true, name: 'payee', type: 'address' },
+      { indexed: true, name: 'tokenAddress', type: 'address' },
+      { indexed: false, name: 'paymentContract', type: 'address' },
+      { indexed: false, name: 'monthlyAmount', type: 'uint256' },
+      { indexed: false, name: 'protocolFeePerMonth', type: 'uint256' },
+      { indexed: false, name: 'startDate', type: 'uint256' },
+      { indexed: false, name: 'totalMonths', type: 'uint256' },
+    ],
+    name: 'RecurringPaymentCreatedERC20',
+    type: 'event',
+  },
+
+  // ============================================================
+  // ⚡ INSTANT PAYMENT EVENTS
+  // ============================================================
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: 'payer', type: 'address' },
+      { indexed: true, name: 'payee', type: 'address' },
+      { indexed: false, name: 'paymentContract', type: 'address' },
+      { indexed: false, name: 'amount', type: 'uint256' },
+      { indexed: false, name: 'timestamp', type: 'uint256' },
+    ],
+    name: 'InstantPaymentCreatedETH',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: 'payer', type: 'address' },
+      { indexed: true, name: 'payee', type: 'address' },
+      { indexed: true, name: 'tokenAddress', type: 'address' },
+      { indexed: false, name: 'paymentContract', type: 'address' },
+      { indexed: false, name: 'amount', type: 'uint256' },
+      { indexed: false, name: 'timestamp', type: 'uint256' },
+    ],
+    name: 'InstantPaymentCreatedERC20',
     type: 'event',
   },
 

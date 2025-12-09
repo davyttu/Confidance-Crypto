@@ -50,7 +50,7 @@ async function main() {
     console.log("   👤 Payer :", payer);
     
     // ⚠️ Avertissement si payer = Factory
-    const FACTORY_ADDRESS = "0x7F80CB9c88b1993e8267dab207f33EDf8f4ef744";
+    const FACTORY_ADDRESS = "0xd8e57052142b62081687137c44C54F78306547f8";
     if (payer.toLowerCase() === FACTORY_ADDRESS.toLowerCase()) {
       console.log("\n⚠️  ATTENTION : Le payer du contrat est la Factory !");
       console.log("   Cela signifie que ce contrat a été créé par une ancienne version");
