@@ -10,11 +10,14 @@ import {
   VideoCameraIcon,
   ChatBubbleLeftIcon,
   DocumentTextIcon,
+  SparklesIcon, // ✅ AJOUTÉ
 } from '@heroicons/react/24/outline';
+import ChatModal from '@/components/Chat/ChatModal'; // ✅ AJOUTÉ
 
 export function HelpWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false); // ✅ AJOUTÉ
 
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 500);
@@ -23,11 +26,18 @@ export function HelpWidget() {
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) setIsOpen(false);
+      // ✅ MODIFIÉ : Gestion Escape pour chat aussi
+      if (e.key === 'Escape') {
+        if (isChatOpen) {
+          setIsChatOpen(false);
+        } else if (isOpen) {
+          setIsOpen(false);
+        }
+      }
     };
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
-  }, [isOpen]);
+  }, [isOpen, isChatOpen]); // ✅ MODIFIÉ : Ajout isChatOpen en dépendance
 
   const helpLinks = [
     {
@@ -57,6 +67,17 @@ export function HelpWidget() {
   ];
 
   const supportLinks = [
+    // ✅ AJOUTÉ : Bouton Marilyn en premier
+    {
+      icon: SparklesIcon,
+      label: '💬 Chat avec Marilyn',
+      onClick: () => {
+        setIsOpen(false);
+        setIsChatOpen(true);
+      },
+      isButton: true,
+      description: 'Assistance instantanée par IA'
+    },
     {
       icon: ChatBubbleLeftIcon,
       label: 'Contacter le support',
@@ -115,17 +136,43 @@ export function HelpWidget() {
               <div className="my-3 border-t border-gray-200" />
 
               <div className="space-y-1">
-                {supportLinks.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    onClick={() => setIsOpen(false)}
-                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors text-sm text-gray-700 hover:text-blue-600"
-                  >
-                    <link.icon className="w-5 h-5" />
-                    {link.label}
-                  </Link>
-                ))}
+                {supportLinks.map((link, index) => {
+                  {/* ✅ AJOUTÉ : Gestion spéciale pour boutons */}
+                  if (link.isButton) {
+                    return (
+                      <button
+                        key={index}
+                        onClick={link.onClick}
+                        className="w-full flex items-start gap-3 p-3 rounded-lg bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-purple-200 hover:border-purple-400 transition-all group"
+                      >
+                        <link.icon className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1 text-left">
+                          <div className="font-semibold text-purple-900 text-sm group-hover:text-purple-700">
+                            {link.label}
+                          </div>
+                          <div className="text-xs text-purple-600 mt-0.5">
+                            {link.description}
+                          </div>
+                        </div>
+                        <div className="text-purple-400 group-hover:text-purple-600 transition-colors text-lg">
+                          →
+                        </div>
+                      </button>
+                    );
+                  }
+
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors text-sm text-gray-700 hover:text-blue-600"
+                    >
+                      <link.icon className="w-5 h-5" />
+                      {link.label}
+                    </Link>
+                  );
+                })}
               </div>
             </div>
 
@@ -164,6 +211,12 @@ export function HelpWidget() {
           )}
         </button>
       </div>
+
+      {/* ✅ AJOUTÉ : ChatModal */}
+      <ChatModal 
+        isOpen={isChatOpen} 
+        onClose={() => setIsChatOpen(false)} 
+      />
     </>
   );
 }

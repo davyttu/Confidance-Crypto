@@ -6,6 +6,7 @@ const cookieParser = require('cookie-parser');
 const authRoutes = require('./routes/auth');
 const usersRoutes = require('./routes/users');
 const recurringPaymentsRoutes = require('./routes/recurringPayments'); // ✅ AJOUTÉ
+const chatRoutes = require('./routes/chat'); // ✅ Chat Agent
 const { optionalAuth } = require('./middleware/auth');
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -31,6 +32,7 @@ console.log('━━━━━━━━━━━━━━━━━━━━━━�
 // Routes d'authentification
 app.use('/api/auth', authRoutes);
 app.use('/api/users', usersRoutes);
+app.use('/api/chat', chatRoutes); // ✅ Chat Agent
 
 // Health check
 app.get('/health', (req, res) => {
@@ -66,6 +68,33 @@ app.post('/api/payments', optionalAuth, async (req, res) => {
       return res.status(400).json({ error: 'transaction_hash is required' });
     }
 
+    // ✅ FIX : Vérifier si le paiement existe déjà (protection contre doublons)
+    // Utiliser une transaction pour éviter les race conditions
+    try {
+      const { data: existingPayment, error: checkError } = await supabase
+        .from('scheduled_payments')
+        .select('*')
+        .eq('contract_address', contract_address)
+        .maybeSingle();
+
+      // PGRST116 = no rows returned (normal, pas d'erreur)
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error('❌ Erreur vérification doublon:', checkError);
+        // Ne pas retourner d'erreur, continuer avec l'insertion
+      } else if (existingPayment) {
+        console.log('ℹ️ [SIMPLE] Paiement déjà existant:', existingPayment.id);
+        // Retourner le paiement existant au lieu d'erreur
+        return res.json({ 
+          success: true, 
+          payment: existingPayment,
+          alreadyExists: true 
+        });
+      }
+    } catch (checkErr) {
+      console.warn('⚠️ Erreur lors de la vérification (non bloquant):', checkErr.message);
+      // Continuer avec l'insertion même si la vérification échoue
+    }
+
     const { data, error } = await supabase
       .from('scheduled_payments')
       .insert([
@@ -89,6 +118,39 @@ app.post('/api/payments', optionalAuth, async (req, res) => {
       .single();
 
     if (error) {
+      // ✅ FIX : Gérer l'erreur de doublon de manière gracieuse (priorité)
+      if (error.code === '23505' || 
+          error.message?.includes('duplicate key') || 
+          error.message?.includes('contract_address') ||
+          error.message?.includes('unique constraint')) {
+        console.log('ℹ️ [SIMPLE] Doublon détecté après insertion, récupération du paiement existant...');
+        
+        // Récupérer le paiement existant
+        const { data: existing, error: fetchError } = await supabase
+          .from('scheduled_payments')
+          .select('*')
+          .eq('contract_address', contract_address)
+          .single();
+        
+        if (fetchError) {
+          console.warn('⚠️ Erreur récupération paiement existant (non bloquant):', fetchError.message);
+          // Retourner quand même un succès car le paiement existe sur la blockchain
+          return res.json({ 
+            success: true, 
+            payment: { contract_address, transaction_hash },
+            alreadyExists: true,
+            warning: 'Paiement créé mais enregistrement DB partiel'
+          });
+        }
+        
+        return res.json({ 
+          success: true, 
+          payment: existing,
+          alreadyExists: true 
+        });
+      }
+      
+      // Pour les autres erreurs, logger et retourner l'erreur
       console.error('❌ Erreur Supabase:', error);
       throw error;
     }
@@ -358,6 +420,8 @@ app.listen(PORT, () => {
   console.log(`   POST /api/auth/login            - Connexion`);
   console.log(`   POST /api/auth/verify           - Vérifier email`);
   console.log(`   GET  /api/users/profile         - Profil utilisateur`);
+  console.log(`   POST /api/chat                  - Envoyer message au Chat Agent`);
+  console.log(`   GET  /api/chat/health           - Vérifier disponibilité Chat Agent`);
   console.log(`   POST /api/payments              - Paiement simple`);
   console.log(`   POST /api/payments/batch        - Paiement batch`);
   console.log(`   GET  /api/payments/:address     - Liste paiements utilisateur`);

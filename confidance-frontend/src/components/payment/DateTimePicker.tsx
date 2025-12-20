@@ -9,6 +9,7 @@ interface DateTimePickerProps {
   label?: string;
   error?: string;
   hidePresets?: boolean;
+  disabled?: boolean;
 }
 
 export default function DateTimePicker({
@@ -18,6 +19,7 @@ export default function DateTimePicker({
   label = 'Date et heure de libération',
   error,
   hidePresets = false,
+  disabled = false,
 }: DateTimePickerProps) {
   // Formater la date pour l'input datetime-local
   const formatDateTimeLocal = (date: Date | null): string => {
@@ -70,7 +72,7 @@ export default function DateTimePicker({
 
   // Raccourcis temps
   const presets = [
-    { label: '1 heure', minutes: 60 },
+    { label: '⚡Instantané', minutes: 0.5 }, // 30 secondes
     { label: '6 heures', minutes: 360 },
     { label: '1 jour', minutes: 1440 },
     { label: '1 semaine', minutes: 10080 },
@@ -121,11 +123,13 @@ export default function DateTimePicker({
           value={formatDateTimeLocal(value)}
           onChange={handleInputChange}
           min={minDateTimeString}
+          disabled={disabled}
           className={`
-            w-full px-4 py-3 rounded-xl border-2 
+            w-full px-4 py-3 rounded-xl border-2
             bg-white dark:bg-gray-800
             text-gray-900 dark:text-white
             transition-all
+            ${disabled ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-900' : ''}
             ${
               error
                 ? 'border-red-500 focus:border-red-600'

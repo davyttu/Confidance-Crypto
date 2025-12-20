@@ -1,0 +1,43 @@
+{
+  "version": "V2-ERC20-ALLOWANCE-FIX",
+  "network": "base_mainnet",
+  "chainId": "8453",
+  "factoryAddress": "0x0BD36382637312095a93354b2e5c71B68f570881",
+  "deployedAt": "2025-12-17T22:13:32.105Z",
+  "deployedBy": "0x7A764F9dED8CA54A5514023643fE117c6eAddD90",
+  "fix": "Factory-Intermediary Pattern: Factory reçoit tokens puis transfère au contrat",
+  "problem": "User ne pouvait pas approve un contrat qui n'existe pas encore",
+  "solution": [
+    "1. User approve Factory (adresse connue)",
+    "2. Factory reçoit tokens via safeTransferFrom(user → Factory)",
+    "3. Factory crée le contrat ScheduledPaymentERC20",
+    "4. Factory transfère tokens au contrat via safeTransfer(Factory → Contrat)"
+  ],
+  "changes": [
+    "PaymentFactory.sol: Ajout imports IERC20 et SafeERC20",
+    "PaymentFactory.sol: Ajout 'using SafeERC20 for IERC20'",
+    "PaymentFactory.sol createPaymentERC20: 3 étapes (receive → deploy → transfer)",
+    "ScheduledPaymentERC20.sol: Vérifie balanceOf() au lieu de transferFrom()",
+    "User approve maintenant Factory (pas le contrat final)"
+  ],
+  "features": [
+    "✅ Single Payment ETH (inchangé)",
+    "✅ Single Payment ERC20 (FIXÉ - Factory Intermediary)",
+    "✅ Batch Payment ETH (inchangé)",
+    "✅ Recurring Payment ERC20 (inchangé)",
+    "✅ Instant Payment ETH (inchangé)",
+    "✅ Instant Payment ERC20 (inchangé)"
+  ],
+  "constants": {
+    "protocolWallet": "0xa34eDf91Cc494450000Eef08e6563062B2F115a9",
+    "feeBasisPoints": 179,
+    "feePercentage": "1.79%"
+  },
+  "oldFactoryAddress": "0x523b378A11400F1A3E8A4482Deb9f0464c64A525",
+  "testPlan": {
+    "step1": "Tester ETH (0.001 ETH) - doit marcher comme avant",
+    "step2": "Tester USDC (1 USDC) - vérifier approve Factory puis createPaymentERC20",
+    "step3": "Vérifier bénéficiaire reçoit 1 USDC exact (pas 0.9821)",
+    "step4": "Vérifier protocole reçoit 0.0179 USDC"
+  }
+}

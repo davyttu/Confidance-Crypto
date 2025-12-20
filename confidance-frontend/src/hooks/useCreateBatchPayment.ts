@@ -12,7 +12,7 @@ import { parseEther } from 'viem';
 import { paymentFactoryAbi } from '@/lib/contracts/paymentFactoryAbi';
 import { useAuth } from '@/contexts/AuthContext';
 
-const FACTORY_ADDRESS: `0x${string}` = '0xd8dEfFea55D69045dA5c30FdC075702FeFDd0542';
+const FACTORY_ADDRESS: `0x${string}` = '0x0BD36382637312095a93354b2e5c71B68f570881';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 const FEE_PERCENTAGE = 179;

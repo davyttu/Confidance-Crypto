@@ -130,6 +130,12 @@ export default function PaymentForm() {
     }
 
     const now = new Date();
+    // Si c'est un paiement instantané (moins d'1 minute), on ne valide pas
+    const diffInSeconds = (date.getTime() - now.getTime()) / 1000;
+    if (diffInSeconds < 60) {
+      return null; // Paiement instantané, pas d'erreur
+    }
+
     const minDate = new Date(now.getTime() + 5 * 60 * 1000);
 
     if (date < minDate) {
@@ -493,12 +499,12 @@ export default function PaymentForm() {
             type="button"
             onClick={() => {
               const date = new Date();
-              date.setHours(date.getHours() + 1);
+              date.setSeconds(date.getSeconds() + 30);
               handleDateChange(date);
             }}
             className="px-4 py-2 rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-primary-500 dark:hover:border-primary-400 transition-colors text-sm font-medium"
           >
-            1 heure
+            ⚡Instantané
           </button>
 
           <button
@@ -618,6 +624,11 @@ export default function PaymentForm() {
           error={errors.date}
           label=""
           hidePresets={true}
+          disabled={
+            formData.releaseDate
+              ? (formData.releaseDate.getTime() - Date.now()) / 1000 < 60
+              : false
+          }
         />
 
         {/* Info jour du mois si mensualisation */}
@@ -640,12 +651,28 @@ export default function PaymentForm() {
             🔒 Type de paiement
           </label>
           
+          {/* ✅ Message si paiement instantané */}
+          {formData.releaseDate && (formData.releaseDate.getTime() - Date.now()) / 1000 < 60 && (
+            <div className="p-3 bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+              <div className="flex items-center gap-2 text-sm text-yellow-800 dark:text-yellow-200">
+                <span className="text-lg">⚡</span>
+                <span className="font-medium">Paiement instantané détecté</span>
+              </div>
+              <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1 ml-7">
+                Les options d'annulation sont désactivées car le paiement sera exécuté immédiatement.
+              </p>
+            </div>
+          )}
+          
           <div className="space-y-3">
+            {/* ✅ Option Annulable - grisée si instantané */}
             <label
-              className={`flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                cancellable
-                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30'
-                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+              className={`flex items-start gap-4 p-4 rounded-xl border-2 transition-all ${
+                formData.releaseDate && (formData.releaseDate.getTime() - Date.now()) / 1000 < 60
+                  ? 'opacity-50 cursor-not-allowed border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900'
+                  : cancellable
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30 cursor-pointer'
+                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 cursor-pointer'
               }`}
             >
               <input
@@ -653,7 +680,8 @@ export default function PaymentForm() {
                 name="paymentType"
                 checked={cancellable}
                 onChange={() => setCancellable(true)}
-                className="mt-1 w-5 h-5 text-blue-600"
+                disabled={formData.releaseDate && (formData.releaseDate.getTime() - Date.now()) / 1000 < 60}
+                className="mt-1 w-5 h-5 text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
@@ -668,11 +696,14 @@ export default function PaymentForm() {
               </div>
             </label>
 
+            {/* ✅ Option Définitif - grisée si instantané */}
             <label
-              className={`flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                !cancellable
-                  ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/30'
-                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+              className={`flex items-start gap-4 p-4 rounded-xl border-2 transition-all ${
+                formData.releaseDate && (formData.releaseDate.getTime() - Date.now()) / 1000 < 60
+                  ? 'opacity-50 cursor-not-allowed border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900'
+                  : !cancellable
+                    ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/30 cursor-pointer'
+                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 cursor-pointer'
               }`}
             >
               <input
@@ -680,7 +711,8 @@ export default function PaymentForm() {
                 name="paymentType"
                 checked={!cancellable}
                 onChange={() => setCancellable(false)}
-                className="mt-1 w-5 h-5 text-purple-600"
+                disabled={formData.releaseDate && (formData.releaseDate.getTime() - Date.now()) / 1000 < 60}
+                className="mt-1 w-5 h-5 text-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">

@@ -1,0 +1,89 @@
+{
+  "version": "V2-CONSTRUCTOR-BALANCE-CHECK-FIX",
+  "network": "base_mainnet",
+  "chainId": "8453",
+  "factoryAddress": "0x0BD36382637312095a93354b2e5c71B68f570881",
+  "deployedAt": "2025-12-18T09:54:48.721Z",
+  "deployedBy": "0x7A764F9dED8CA54A5514023643fE117c6eAddD90",
+  "fix": "Suppression vérification balanceOf dans constructor ScheduledPaymentERC20",
+  "problem": "Constructor vérifiait balanceOf AVANT que Factory transfère les tokens",
+  "bugTimeline": [
+    "1. Factory: transferFrom(user → factory, 10179 USDC) ✅",
+    "2. Factory: new ScheduledPaymentERC20(...) ← Constructor vérifie balance",
+    "   └─ Constructor: balanceOf(this) = 0 ❌ require(0 >= 10179) FAIL",
+    "3. [N'arrive jamais] Factory: transfer(factory → contract, 10179)"
+  ],
+  "solution": [
+    "1. User approve Factory pour totalRequired (10179 USDC)",
+    "2. Factory reçoit tokens via safeTransferFrom(user → Factory, 10179)",
+    "3. Factory crée ScheduledPaymentERC20 (constructor SANS vérification balance)",
+    "4. Factory transfère tokens via safeTransfer(Factory → Contract, 10179)",
+    "5. Contract possède maintenant 10179 USDC ✅"
+  ],
+  "changes": [
+    "ScheduledPaymentERC20.sol ligne 104-106: SUPPRIMÉ balanceOf check",
+    "Commentaire ajouté: 'Tokens transférés par Factory APRÈS création'",
+    "PaymentFactory.sol ligne 180-193: Pattern Factory-Intermediary (inchangé)",
+    "Frontend useCreatePayment.ts: Approval totalRequired déjà implémenté ✅"
+  ],
+  "patternComparison": {
+    "eth": {
+      "name": "Pattern Direct",
+      "flow": [
+        "Factory: new ScheduledPayment{value: msg.value}(...)",
+        "Constructor: require(msg.value == expected) ✅ ETH déjà reçu"
+      ],
+      "note": "ETH arrive PENDANT création via {value: msg.value}"
+    },
+    "erc20": {
+      "name": "Pattern Factory-Intermediary",
+      "flow": [
+        "Factory: transferFrom(user → factory)",
+        "Factory: new ScheduledPaymentERC20(...) ← balance = 0",
+        "Factory: transfer(factory → contract)"
+      ],
+      "note": "Tokens arrivent APRÈS création, constructor NE DOIT PAS vérifier"
+    }
+  },
+  "features": [
+    "✅ Single Payment ETH (Pattern Direct - inchangé)",
+    "✅ Single Payment ERC20 (Pattern Factory-Intermediary - FIXÉ)",
+    "✅ Batch Payment ETH (Pattern Direct - inchangé)",
+    "✅ Recurring Payment ERC20 (Pattern paiements mensuels - inchangé)",
+    "✅ Instant Payment ETH (Pattern Direct - inchangé)",
+    "✅ Instant Payment ERC20 (Pattern Factory-Intermediary - inchangé)"
+  ],
+  "constants": {
+    "protocolWallet": "0xa34eDf91Cc494450000Eef08e6563062B2F115a9",
+    "feeBasisPoints": 179,
+    "feePercentage": "1.79%"
+  },
+  "previousDeployments": {
+    "v1": "0x523b378A11400F1A3E8A4482Deb9f0464c64A525",
+    "v2WithBug": "0x0BD36382637312095a93354b2e5c71B68f570881"
+  },
+  "testPlan": {
+    "step1": "✅ Tester ETH (0.001 ETH) - doit marcher comme avant",
+    "step2": "✅ Tester USDC (10 USDC)",
+    "step2a": "   - Frontend approve Factory pour 10.179 USDC",
+    "step2b": "   - createPaymentERC20(10 USDC) doit PASSER",
+    "step2c": "   - Vérifier balanceOf(contract) = 10.179 USDC",
+    "step3": "✅ Attendre releaseTime puis release()",
+    "step3a": "   - Bénéficiaire reçoit EXACTEMENT 10 USDC",
+    "step3b": "   - Protocole reçoit EXACTEMENT 0.179 USDC",
+    "step4": "✅ Tester USDT (1 USDT) - vérifier même logique"
+  },
+  "validation": {
+    "beforeRelease": [
+      "getAmounts() retourne (10000000, 179000, 10179000) pour 10 USDC",
+      "balanceOf(contract) = 10179000 (10.179 USDC)",
+      "getPaymentDetails() affiche toutes les infos"
+    ],
+    "afterRelease": [
+      "Bénéficiaire balance += 10000000 (10 USDC exact)",
+      "Protocole balance += 179000 (0.179 USDC exact)",
+      "Contract balance = 0",
+      "released = true"
+    ]
+  }
+}

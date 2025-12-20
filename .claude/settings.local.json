@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run dev:*)",
+      "WebFetch(domain:basescan.org)",
+      "Bash(git checkout:*)",
+      "Bash(git stash:*)"
+    ]
+  }
+}

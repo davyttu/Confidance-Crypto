@@ -43,11 +43,11 @@ const server = http.createServer((req, res) => {
       scheduledPayments: scheduledPayments.length,
       recurringPayments: recurringPayments.length,
       totalActive: scheduledPayments.length + recurringPayments.length,
-      version: '3.1-UNIFIED-INSTANT'
+      version: '3.2-USDC-FIX'
     }));
   } else {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('Confidance Crypto Keeper V3.1 - UNIFIED + INSTANT 🚀⚡');
+    res.end('Confidance Crypto Keeper V3.2 - USDC FIX 🚀💰');
   }
 });
 
@@ -60,12 +60,12 @@ server.listen(PORT, () => {
 // ============================================================
 
 console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-console.log("🚀 CONFIDANCE CRYPTO KEEPER V3.1 - UNIFIED + INSTANT");
+console.log("🚀 CONFIDANCE CRYPTO KEEPER V3.2 - USDC FIX");
 console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 console.log(`🌐 Network: ${NETWORK}`);
 console.log(`⏰ Check interval: ${CHECK_INTERVAL / 1000}s`);
 console.log(`🗄️ Database: Supabase`);
-console.log(`✨ Features: Scheduled + Batch + Recurring (Instant ignored)`);
+console.log(`✨ Features: ETH + ERC20 (USDC/USDT) + Batch + Recurring`);
 console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
 // ============================================================
@@ -109,6 +109,26 @@ const RECURRING_PAYMENT_ABI = [
 const MONTH_IN_SECONDS = 2592000;
 
 // ============================================================
+// HELPER : FORMATER MONTANT AVEC SYMBOLE
+// ============================================================
+
+function formatAmount(amountWei, tokenSymbol) {
+  const decimals = getTokenDecimals(tokenSymbol);
+  const formatted = ethers.formatUnits(amountWei, decimals);
+  return `${parseFloat(formatted).toFixed(4)} ${tokenSymbol}`;
+}
+
+function getTokenDecimals(symbol) {
+  const decimalsMap = {
+    'ETH': 18,
+    'USDC': 6,
+    'USDT': 6,
+    'DAI': 18
+  };
+  return decimalsMap[symbol] || 18;
+}
+
+// ============================================================
 // CHARGEMENT PAIEMENTS PROGRAMMÉS (SINGLE + BATCH)
 // ⚡ MODIFICATION V3.1: Les paiements instantanés sont IGNORÉS
 //    car ils sont déjà exécutés dans le constructor (0 délai)
@@ -135,19 +155,27 @@ async function loadScheduledPayments() {
     const payments = data.map(row => {
       const isBatch = row.is_batch === true;
       const batchCount = row.batch_count || 0;
+      const tokenSymbol = row.token_symbol || 'ETH';
+      const isERC20 = tokenSymbol !== 'ETH';
+      
+      // ✅ FIX : Formater correctement le montant selon le token
+      const formattedAmount = formatAmount(row.amount, tokenSymbol);
       
       return {
         type: 'scheduled',
-        subType: isBatch ? 'batch' : 'single',
+        subType: isBatch ? 'batch' : (isERC20 ? 'single_erc20' : 'single_eth'),
         id: row.id,
         contractAddress: row.contract_address,
         releaseTime: row.release_time,
         amount: row.amount,
+        tokenSymbol: tokenSymbol,
+        tokenAddress: row.token_address,
+        isERC20: isERC20,
         isBatch: isBatch,
         batchCount: batchCount,
         name: isBatch 
-          ? `📦 Batch #${row.id.substring(0, 8)} (${batchCount} benef, ${row.amount} ETH)`
-          : `💎 Payment #${row.id.substring(0, 8)} (${row.amount} ETH)`
+          ? `📦 Batch #${row.id.substring(0, 8)} (${batchCount} benef, ${formattedAmount})`
+          : `💎 Payment #${row.id.substring(0, 8)} (${formattedAmount})`
       };
     });
     
@@ -236,12 +264,13 @@ async function markScheduledAsFailed(paymentId, errorMsg) {
       .update({ 
         status: 'failed',
         error_message: errorMsg.substring(0, 500),
-        executed_at: new Date().toISOString()
+        executed_at: new Date().toISOString(), // ✅ FIX : Utiliser executed_at au lieu de failed_at
+        updated_at: new Date().toISOString()
       })
       .eq('id', paymentId);
     
     if (error) {
-      console.error("❌ Erreur update scheduled:", error.message);
+      console.error("❌ Erreur update failed:", error.message);
     }
   } catch (error) {
     console.error("❌ Erreur markScheduledAsFailed:", error.message);
@@ -252,35 +281,46 @@ async function markScheduledAsFailed(paymentId, errorMsg) {
 // MISE À JOUR DATABASE - RECURRING
 // ============================================================
 
+async function markRecurringAsCancelled(paymentId) {
+  try {
+    const { error } = await supabase
+      .from('recurring_payments')
+      .update({ 
+        status: 'cancelled',
+        cancelled_at: new Date().toISOString()
+      })
+      .eq('id', paymentId);
+    
+    if (error) {
+      console.error("❌ Erreur update cancelled:", error.message);
+    }
+  } catch (error) {
+    console.error("❌ Erreur markRecurringAsCancelled:", error.message);
+  }
+}
+
 async function updateRecurringAfterExecution(paymentId, txHash, executedMonths, totalMonths) {
   try {
-    const nextExecutionTime = Math.floor(Date.now() / 1000) + MONTH_IN_SECONDS;
+    const now = Math.floor(Date.now() / 1000);
     const isCompleted = executedMonths >= totalMonths;
-    
-    const updateData = {
-      executed_months: executedMonths,
-      last_execution_time: Math.floor(Date.now() / 1000),
-      last_execution_hash: txHash,
-      status: isCompleted ? 'completed' : 'active',
-      updated_at: new Date().toISOString()
-    };
-    
-    if (!isCompleted) {
-      updateData.next_execution_time = nextExecutionTime;
-    }
+    const nextExecutionTime = isCompleted ? null : now + MONTH_IN_SECONDS;
+    const newStatus = isCompleted ? 'completed' : 'active';
     
     const { error } = await supabase
       .from('recurring_payments')
-      .update(updateData)
+      .update({
+        executed_months: executedMonths,
+        next_execution_time: nextExecutionTime,
+        last_execution_hash: txHash,
+        last_execution_at: new Date().toISOString(),
+        status: newStatus
+      })
       .eq('id', paymentId);
     
     if (error) {
       console.error("❌ Erreur update recurring:", error.message);
     } else {
-      const statusMsg = isCompleted 
-        ? `✅ COMPLETED (${executedMonths}/${totalMonths})`
-        : `✅ Updated (${executedMonths}/${totalMonths}, next: ${new Date(nextExecutionTime * 1000).toLocaleDateString()})`;
-      console.log(`   ${statusMsg}`);
+      console.log(`   ✅ DB updated: executed_months = ${executedMonths}/${totalMonths}, status = ${newStatus}`);
     }
   } catch (error) {
     console.error("❌ Erreur updateRecurringAfterExecution:", error.message);
@@ -291,37 +331,19 @@ async function markRecurringAsFailed(paymentId, errorMsg) {
   try {
     const { error } = await supabase
       .from('recurring_payments')
-      .update({ 
+      .update({
         status: 'failed',
+        error_message: errorMsg.substring(0, 500),
+        last_execution_at: new Date().toISOString(), // ✅ FIX : Utiliser last_execution_at au lieu de failed_at
         updated_at: new Date().toISOString()
       })
       .eq('id', paymentId);
     
     if (error) {
-      console.error("❌ Erreur update recurring:", error.message);
+      console.error("❌ Erreur update failed:", error.message);
     }
   } catch (error) {
     console.error("❌ Erreur markRecurringAsFailed:", error.message);
-  }
-}
-
-async function markRecurringAsCancelled(paymentId) {
-  try {
-    const { error } = await supabase
-      .from('recurring_payments')
-      .update({ 
-        status: 'cancelled',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', paymentId);
-    
-    if (error) {
-      console.error("❌ Erreur markRecurringAsCancelled:", error.message);
-    } else {
-      console.log(`   🚫 Marked as cancelled`);
-    }
-  } catch (error) {
-    console.error("❌ Erreur markRecurringAsCancelled:", error.message);
   }
 }
 
@@ -332,6 +354,11 @@ async function markRecurringAsCancelled(paymentId) {
 async function executeScheduledPayment(payment) {
   try {
     const now = Math.floor(Date.now() / 1000);
+    
+    // ✅ Afficher les détails du paiement
+    console.log(`   🔧 Type: ${payment.subType}`);
+    console.log(`   💰 Token: ${payment.tokenSymbol}`);
+    console.log(`   📍 Contract: ${payment.contractAddress}`);
     
     // Choisir le bon ABI
     const abi = payment.isBatch ? BATCH_PAYMENT_ABI : SCHEDULED_PAYMENT_ABI;
@@ -348,6 +375,9 @@ async function executeScheduledPayment(payment) {
     // Vérifier le temps
     const releaseTime = await contract.releaseTime();
     const timeUntil = Number(releaseTime) - now;
+    
+    console.log(`   ⏰ Release time: ${new Date(Number(releaseTime) * 1000).toLocaleString()}`);
+    console.log(`   ⏰ Current time: ${new Date(now * 1000).toLocaleString()}`);
 
     if (timeUntil > 0) {
       const minutes = Math.floor(timeUntil / 60);
@@ -370,11 +400,20 @@ async function executeScheduledPayment(payment) {
   } catch (error) {
     const errorMsg = error.message || error.toString();
     
+    console.error(`   ❌ Error:`, errorMsg.substring(0, 300));
+    
+    // ✅ Afficher détails supplémentaires
+    if (error.data) {
+      console.error(`   📋 Error data:`, error.data);
+    }
+    if (error.reason) {
+      console.error(`   📋 Error reason:`, error.reason);
+    }
+    
     if (errorMsg.includes("Already released")) {
       console.log(`   ✅ Already released`);
       await markScheduledAsReleased(payment.id, 'already_released');
     } else {
-      console.error(`   ❌ Error:`, errorMsg.substring(0, 200));
       await markScheduledAsFailed(payment.id, errorMsg);
     }
   }
@@ -535,7 +574,7 @@ async function selfPing() {
 // ============================================================
 
 async function start() {
-  console.log("🚀 Starting Unified Keeper V3...\n");
+  console.log("🚀 Starting Keeper V3.2 (USDC Fix)...\n");
   
   await healthCheck();
   await checkAndExecuteAll();
@@ -544,7 +583,7 @@ async function start() {
   setInterval(healthCheck, 5 * 60 * 1000);
   setInterval(selfPing, 5 * 60 * 1000);
   
-  console.log("\n✅ Unified Keeper V3 operational! Monitoring all payment types...\n");
+  console.log("\n✅ Keeper V3.2 operational! Monitoring ETH + ERC20 + Batch + Recurring...\n");
 }
 
 // ============================================================

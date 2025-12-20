@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./ScheduledPayment_V2.sol";
 import "./ScheduledPaymentERC20.sol";
 import "./BatchScheduledPayment_V2.sol";
@@ -15,6 +17,7 @@ import "./InstantPaymentERC20.sol";
  *      Nouvelle logique : bénéficiaires reçoivent montants EXACTS
  */
 contract PaymentFactory {
+    using SafeERC20 for IERC20;
     
     // ============================================================
     // CONSTANTS
@@ -173,15 +176,21 @@ contract PaymentFactory {
         uint256 protocolFee = (_amountToPayee * FEE_BASIS_POINTS) / BASIS_POINTS_DENOMINATOR;
         uint256 totalRequired = _amountToPayee + protocolFee;
         
-        // Déployer
+        // ✅ ÉTAPE 1 : Factory reçoit les tokens de l'utilisateur
+        IERC20(_tokenAddress).safeTransferFrom(msg.sender, address(this), totalRequired);
+        
+        // ✅ ÉTAPE 2 : Créer le contrat (SANS transferFrom dans le constructor)
         ScheduledPaymentERC20 newPayment = new ScheduledPaymentERC20(
             msg.sender,
             _payee,
             _tokenAddress,
-            totalRequired,
+            _amountToPayee,
             _releaseTime,
             _cancellable
         );
+        
+        // ✅ ÉTAPE 3 : Factory transfère les tokens au nouveau contrat
+        IERC20(_tokenAddress).safeTransfer(address(newPayment), totalRequired);
         
         emit PaymentCreatedERC20(
             msg.sender,

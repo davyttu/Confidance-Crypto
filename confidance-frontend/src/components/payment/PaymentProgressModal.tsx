@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { type TokenSymbol } from '@/config/tokens';
 
 interface PaymentProgressModalProps {
@@ -32,6 +32,47 @@ export default function PaymentProgressModal({
   onClose,
   onViewPayment,
 }: PaymentProgressModalProps) {
+  // 🔔 EVENTBUS: éviter les envois multiples si le composant re-render en success
+  const eventSentRef = useRef(false);
+
+  // 🔔 EVENTBUS: envoyer l'événement à l'EventBus quand la tx de création est confirmée
+  useEffect(() => {
+    if (status !== 'success') return;
+    if (!createTxHash) return;
+    if (eventSentRef.current) return;
+
+    eventSentRef.current = true;
+
+    const sendPaymentRegisteredEvent = async () => {
+      try {
+        await fetch('https://davyvittu.app.n8n.cloud/webhook/payment-protocol', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Event-API-Key': 'a6e1f0d4-93cb-4cf8-9b56-1c0fa5cd52be',
+          },
+          body: JSON.stringify({
+            event_id: crypto.randomUUID(),
+            timestamp: new Date().toISOString(),
+            agent_emetteur: 'confidance_frontend',
+            type: 'payment_registered',
+            importance: 'haute',
+            payload: {
+              tx_hash: createTxHash,
+              contract_address: contractAddress || null,
+              chain: 'base',
+              token: tokenSymbol,
+            },
+          }),
+        });
+      } catch (err) {
+        console.error('[EventBus] payment_registered failed:', err);
+      }
+    };
+
+    sendPaymentRegisteredEvent();
+  }, [status, createTxHash, contractAddress, tokenSymbol]);
+
   // Empêcher le scroll du body quand la modal est ouverte
   useEffect(() => {
     if (isOpen) {

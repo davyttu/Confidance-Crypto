@@ -2,7 +2,7 @@
   "version": "V2-WITH-INSTANT-PAYMENTS",
   "network": "base_mainnet",
   "chainId": "8453",
-  "factoryAddress": "0xd8dEfFea55D69045dA5c30FdC075702FeFDd0542",
+  "factoryAddress": "0x0BD36382637312095a93354b2e5c71B68f570881",
   "deployedAt": "2025-12-09T20:15:37.708Z",
   "deployedBy": "0x7A764F9dED8CA54A5514023643fE117c6eAddD90",
   "features": [

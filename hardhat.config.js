@@ -16,9 +16,9 @@ module.exports = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 200,
+        runs: 1,        // ← SEUL CHANGEMENT : 200 → 1 (optimisé taille)
       },
-      viaIR: true,
+      viaIR: true,      // ← Tu as déjà ça, on le garde !
     },
   },
   networks: {
