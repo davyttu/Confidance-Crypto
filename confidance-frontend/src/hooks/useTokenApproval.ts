@@ -17,7 +17,7 @@ interface UseTokenApprovalProps {
   releaseTime?: number; // ✅ NOUVEAU : pour détecter paiement instantané
 }
 
-interface UseTokenApprovalReturn {
+export interface UseTokenApprovalReturn {
   currentAllowance: bigint | undefined;
   isAllowanceSufficient: boolean;
   isCheckingAllowance: boolean;
@@ -26,7 +26,9 @@ interface UseTokenApprovalReturn {
   isApproveSuccess: boolean;
   approveError: Error | null;
   approveTxHash: `0x${string}` | undefined;
+  approveReceipt: any; // ✅ FIX USDT : Exposer le receipt pour vérifier la confirmation
   reset: () => void;
+  refetchAllowance: () => Promise<any>; // ✅ FIX USDT : Exposer refetchAllowance (retourne une promesse)
 }
 
 export function useTokenApproval({
@@ -154,16 +156,21 @@ export function useTokenApproval({
 
   // ETH natif n'a pas besoin d'approbation
   if (token.isNative) {
+    console.log('ℹ️ Token natif (ETH) détecté, pas besoin d\'approbation', { tokenSymbol });
     return {
       currentAllowance: BigInt(0),
       isAllowanceSufficient: true,
       isCheckingAllowance: false,
-      approve: () => {},
+      approve: () => {
+        console.warn('⚠️ Tentative d\'approbation pour token natif (ETH), ignorée');
+      },
       isApproving: false,
       isApproveSuccess: true,
       approveError: null,
       approveTxHash: undefined,
+      approveReceipt: undefined, // ✅ FIX USDT : Exposer approveReceipt même pour ETH
       reset: () => {},
+      refetchAllowance: async () => {}, // ✅ FIX USDT : Exposer refetchAllowance même pour ETH
     };
   }
 
@@ -175,12 +182,28 @@ export function useTokenApproval({
 
   // ✅ MODIFIÉ : Approuver le montant TOTAL (avec possibilité d'override)
   const approve = (amountOverride?: bigint) => {
-    console.log('🔍 Fonction approve() appelée', { amountOverride: amountOverride?.toString() });
+    console.log('🔍 Fonction approve() appelée', { 
+      amountOverride: amountOverride?.toString(),
+      tokenSymbol,
+      tokenAddress: token.address,
+      isNative: token.isNative,
+    });
     
-    if (!spenderAddress || !token.address) {
-      console.error('❌ Approbation impossible: spenderAddress ou token.address manquant', {
+    // ✅ FIX CRITIQUE : Vérifier que ce n'est pas un token natif (ETH)
+    if (token.isNative) {
+      console.error('❌ Approbation impossible: token natif (ETH) n\'a pas besoin d\'approbation', {
+        tokenSymbol,
+        tokenAddress: token.address,
+      });
+      return;
+    }
+    
+    if (!spenderAddress || !token.address || token.address === 'NATIVE') {
+      console.error('❌ Approbation impossible: spenderAddress ou token.address manquant/invalide', {
         spenderAddress,
         tokenAddress: token.address,
+        tokenSymbol,
+        isNative: token.isNative,
       });
       return;
     }
@@ -219,8 +242,21 @@ export function useTokenApproval({
       });
     }
 
+    // ✅ FIX CRITIQUE : Vérifier que le token.address correspond bien au tokenSymbol
+    const expectedToken = getToken(tokenSymbol);
+    if (token.address !== expectedToken.address) {
+      console.error('❌ ERREUR CRITIQUE: Mismatch entre tokenSymbol et token.address !', {
+        tokenSymbol,
+        tokenAddress: token.address,
+        expectedTokenAddress: expectedToken.address,
+        expectedTokenSymbol: expectedToken.symbol,
+      });
+      throw new Error(`Mismatch token: tokenSymbol=${tokenSymbol} mais token.address=${token.address} (attendu: ${expectedToken.address})`);
+    }
+
     console.log('🔍 Lancement approbation:', {
       token: tokenSymbol,
+      tokenAddress: token.address,
       baseAmount: amount.toString(),
       amountOverride: amountOverride?.toString(),
       isInstant: isInstantPayment,
@@ -228,13 +264,13 @@ export function useTokenApproval({
       totalToApprove: amountToApprove.toString(),
       totalToApproveFormatted: `${(Number(amountToApprove) / (10 ** token.decimals)).toFixed(6)} ${tokenSymbol}`,
       spenderAddress,
-      tokenAddress: token.address,
       decimals: token.decimals,
     });
 
     try {
       console.log('📤 Appel writeContract pour approbation...');
       console.log('📋 Paramètres approve:', {
+        tokenSymbol,
         tokenAddress: token.address,
         spenderAddress,
         amount: amountToApprove.toString(),
@@ -265,6 +301,8 @@ export function useTokenApproval({
     isApproveSuccess,
     approveError,
     approveTxHash,
+    approveReceipt: receipt, // ✅ FIX USDT : Exposer le receipt
     reset,
+    refetchAllowance, // ✅ FIX USDT : Exposer refetchAllowance
   };
 }

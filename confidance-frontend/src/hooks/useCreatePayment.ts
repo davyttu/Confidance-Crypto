@@ -9,8 +9,9 @@ import {
 } from 'wagmi';
 import { decodeEventLog } from 'viem';
 import { type TokenSymbol, getToken } from '@/config/tokens';
-import { useTokenApproval } from './useTokenApproval';
+import { useTokenApproval, type UseTokenApprovalReturn } from './useTokenApproval';
 import { paymentFactoryAbi } from '@/lib/contracts/paymentFactoryAbi';
+import { erc20Abi } from '@/lib/contracts/erc20Abi';
 
 // ⚠️ ADRESSE DE LA FACTORY - Déployée sur Base Mainnet
 const FACTORY_ADDRESS: `0x${string}` = '0x0BD36382637312095a93354b2e5c71B68f570881';
@@ -96,6 +97,8 @@ export function useCreatePayment(): UseCreatePaymentReturn {
   // ✅ FIX : Flag pour éviter les enregistrements multiples
   const isSavingRef = useRef<boolean>(false);
   const savedContractAddressRef = useRef<`0x${string}` | undefined>(undefined);
+  // ✅ FIX CRITIQUE : Ref pour toujours avoir la dernière instance du hook d'approbation
+  const approvalHookRef = useRef<UseTokenApprovalReturn | null>(null);
 
   // Hook pour écrire les transactions
   const {
@@ -147,17 +150,26 @@ export function useCreatePayment(): UseCreatePaymentReturn {
     ? currentParams.amount + (currentParams.amount * BigInt(179)) / BigInt(10000)
     : BigInt(1);
   
-  // ✅ FIX : Ne créer le hook que si currentParams existe, sinon utiliser des valeurs par défaut
+  // ✅ FIX CRITIQUE : Utiliser le tokenSymbol de currentParams SANS valeur par défaut
+  // Si currentParams n'existe pas, utiliser 'ETH' (qui n'a pas besoin d'approbation)
+  // Cela évite d'approuver le mauvais token (ex: USDC au lieu de USDT)
+  const approvalTokenSymbol: TokenSymbol = currentParams?.tokenSymbol || 'ETH';
+  
+  // ✅ FIX : Ne créer le hook qu'avec le bon tokenSymbol
   const approvalHook = useTokenApproval({
-    tokenSymbol: currentParams?.tokenSymbol || 'USDC', // ✅ FIX : Utiliser USDC par défaut au lieu de ETH
+    tokenSymbol: approvalTokenSymbol, // ✅ FIX : Utiliser le tokenSymbol réel, pas de valeur par défaut USDC
     spenderAddress: FACTORY_ADDRESS,
     amount: amountForApproval, // 🔧 FIX : Approve totalRequired (amountToPayee + fees)
     releaseTime: currentParams?.releaseTime,
   });
   
-  // ✅ FIX : Log pour vérifier que le hook est bien créé
+  // ✅ FIX CRITIQUE : Mettre à jour la ref à chaque render pour toujours avoir la dernière instance
+  approvalHookRef.current = approvalHook;
+
+  // ✅ FIX : Log pour vérifier que le hook est bien créé avec le bon token
   console.log('🔧 approvalHook créé:', {
-    tokenSymbol: currentParams?.tokenSymbol || 'USDC',
+    tokenSymbol: approvalTokenSymbol,
+    currentParamsTokenSymbol: currentParams?.tokenSymbol || 'null',
     amount: currentParams?.amount?.toString() || '0',
     isNative: token?.isNative,
     hasApproveFunction: typeof approvalHook.approve === 'function',
@@ -172,11 +184,35 @@ export function useCreatePayment(): UseCreatePaymentReturn {
 
     try {
       setError(null);
-      setCurrentParams(params);
-      setCapturedPayerAddress(address);
       // ✅ FIX : Réinitialiser le hash d'approbation pour cette nouvelle tentative
       currentApproveTxHash.current = undefined;
       const tokenData = getToken(params.tokenSymbol);
+
+      // ✅ FIX CRITIQUE : Mettre à jour currentParams AVANT tout pour que le hook se mette à jour
+      setCurrentParams(params);
+      setCapturedPayerAddress(address);
+
+      // ✅ FIX CRITIQUE : Attendre que le hook useTokenApproval soit bien mis à jour avec le nouveau tokenSymbol
+      // On force React à re-rendre en attendant et en utilisant une ref qui est mise à jour à chaque render
+      console.log('⏳ Attente que le hook useTokenApproval se mette à jour avec le bon token...');
+
+      // Forcer React à re-rendre avec le nouveau currentParams
+      // On attend plusieurs renders en utilisant requestAnimationFrame
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      await new Promise(resolve => setTimeout(resolve, 50)); // Sécurité supplémentaire
+
+      // ✅ FIX CRITIQUE : Utiliser la ref pour avoir la dernière instance du hook
+      const currentApprovalHook = approvalHookRef.current;
+
+      if (!currentApprovalHook) {
+        console.error('❌ Hook d\'approbation non disponible');
+        setError(new Error('Erreur interne: hook d\'approbation non disponible'));
+        setStatus('error');
+        return;
+      }
+
+      console.log('✅ Hook d\'approbation récupéré depuis la ref');
 
       // ✅ NOUVEAU : Détecter si c'est un paiement instantané
       const now = Math.floor(Date.now() / 1000);
@@ -246,22 +282,22 @@ export function useCreatePayment(): UseCreatePaymentReturn {
           
           console.log('⚡ Paiement instantané ERC20:', {
             amount: params.amount.toString(),
-            currentAllowance: approvalHook.currentAllowance?.toString() || '0',
-            isAllowanceSufficient: approvalHook.isAllowanceSufficient,
-            isCheckingAllowance: approvalHook.isCheckingAllowance,
+            currentAllowance: currentApprovalHook.currentAllowance?.toString() || '0',
+            isAllowanceSufficient: currentApprovalHook.isAllowanceSufficient,
+            isCheckingAllowance: currentApprovalHook.isCheckingAllowance,
           });
-          
+
           // ✅ FIX : Vérifier manuellement l'allowance avec le bon montant
-          const allowanceIsSufficient = approvalHook.currentAllowance !== undefined 
-            && approvalHook.currentAllowance >= params.amount;
-          
+          const allowanceIsSufficient = currentApprovalHook.currentAllowance !== undefined
+            && currentApprovalHook.currentAllowance >= params.amount;
+
           // Vérifier si approbation nécessaire
-          if (!allowanceIsSufficient || approvalHook.isCheckingAllowance) {
+          if (!allowanceIsSufficient || currentApprovalHook.isCheckingAllowance) {
             console.log('🔐 Approbation nécessaire pour paiement instantané');
             setStatus('approving');
             setProgressMessage(`⚡ Approbation ${tokenData.symbol} instantané (0% fees)...`);
             // ✅ FIX : Passer le montant directement (pas de fees pour instantané)
-            approvalHook.approve(params.amount);
+            currentApprovalHook.approve(params.amount);
           } else {
             // Approbation déjà suffisante, passer directement à la création
             console.log('✅ Allowance suffisante, création instantanée directe');
@@ -300,8 +336,8 @@ export function useCreatePayment(): UseCreatePaymentReturn {
           const tokenDecimals = tokenData.decimals || 6;
           const amountFormatted = (Number(params.amount) / (10 ** tokenDecimals)).toFixed(6);
           const totalRequiredFormatted = (Number(totalRequired) / (10 ** tokenDecimals)).toFixed(6);
-          const currentAllowanceFormatted = approvalHook.currentAllowance 
-            ? (Number(approvalHook.currentAllowance) / (10 ** tokenDecimals)).toFixed(6)
+          const currentAllowanceFormatted = currentApprovalHook.currentAllowance
+            ? (Number(currentApprovalHook.currentAllowance) / (10 ** tokenDecimals)).toFixed(6)
             : 'en cours de vérification...';
           
           console.log('💰 Calcul paiement programmé ERC20:', {
@@ -311,17 +347,17 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             protocolFeeFormatted: `${(Number(protocolFee) / (10 ** tokenDecimals)).toFixed(6)} ${tokenData.symbol}`,
             totalRequired: totalRequired.toString(),
             totalRequiredFormatted: `${totalRequiredFormatted} ${tokenData.symbol}`,
-            currentAllowance: approvalHook.currentAllowance?.toString() || 'en cours de vérification...',
+            currentAllowance: currentApprovalHook.currentAllowance?.toString() || 'en cours de vérification...',
             currentAllowanceFormatted: `${currentAllowanceFormatted} ${tokenData.symbol}`,
-            isAllowanceSufficient: approvalHook.isAllowanceSufficient,
-            isCheckingAllowance: approvalHook.isCheckingAllowance,
+            isAllowanceSufficient: currentApprovalHook.isAllowanceSufficient,
+            isCheckingAllowance: currentApprovalHook.isCheckingAllowance,
           });
-          
+
           // ✅ FIX : Vérifier manuellement l'allowance avec le bon montant
           // (car le hook peut ne pas être à jour immédiatement après setCurrentParams)
           // IMPORTANT : Par sécurité, on approuve toujours sauf si l'allowance est clairement supérieure
-          const currentAllowance = approvalHook.currentAllowance;
-          const isChecking = approvalHook.isCheckingAllowance;
+          const currentAllowance = currentApprovalHook.currentAllowance;
+          const isChecking = currentApprovalHook.isCheckingAllowance;
           
           // ✅ FIX : Calculer avec une marge de sécurité (10% de plus) pour éviter les problèmes d'arrondi
           // et permettre une marge confortable pour les fees supplémentaires et les erreurs de timing
@@ -366,20 +402,56 @@ export function useCreatePayment(): UseCreatePaymentReturn {
           // Le contrat créé pourra utiliser cette allowance via un mécanisme de délégation
           // OU on approuve toujours pour éviter les problèmes de timing
           console.log('🔐 Approbation nécessaire (toujours approuver pour paiement programmé ERC20):', {
-            currentAllowance: approvalHook.currentAllowance?.toString() || 'non disponible',
+            currentAllowance: currentApprovalHook.currentAllowance?.toString() || 'non disponible',
             totalRequired: totalRequired.toString(),
             safetyMargin: safetyMargin.toString(),
             needsApproval: true,
           });
+          
+          // ✅ FIX : Vérifier que tokenData correspond bien à params.tokenSymbol (c'est le plus important)
+          // Le hook se mettra à jour automatiquement quand currentParams change
+          console.log('🔍 Vérification tokenSymbol avant approbation:', {
+            paramsTokenSymbol: params.tokenSymbol,
+            currentParamsTokenSymbol: currentParams?.tokenSymbol,
+            approvalTokenSymbol: approvalTokenSymbol,
+            tokenDataSymbol: tokenData.symbol,
+            tokenDataAddress: tokenData.address,
+          });
+          
+          // ✅ FIX : Vérifier uniquement que tokenData correspond (pas de vérification stricte sur approvalTokenSymbol)
+          // car approvalTokenSymbol peut être 'ETH' si currentParams n'est pas encore mis à jour
+          // Le hook se mettra à jour automatiquement au prochain render
+          if (params.tokenSymbol !== tokenData.symbol) {
+            console.error('❌ ERREUR: Le token du paiement ne correspond pas !', {
+              paramsTokenSymbol: params.tokenSymbol,
+              tokenDataSymbol: tokenData.symbol,
+            });
+            setError(new Error(`Erreur: le token du paiement (${params.tokenSymbol}) ne correspond pas. Veuillez rafraîchir la page.`));
+            setStatus('error');
+            setProgressMessage('Erreur de token - veuillez rafraîchir');
+            return;
+          }
+          
+          // ✅ FIX : Si approvalTokenSymbol ne correspond pas encore, c'est normal car currentParams vient d'être mis à jour
+          // Le hook se mettra à jour automatiquement au prochain render de React
+          if (params.tokenSymbol !== approvalTokenSymbol && approvalTokenSymbol !== 'ETH') {
+            console.warn('⚠️ Le hook utilise un tokenSymbol différent, mais il se mettra à jour automatiquement:', {
+              paramsTokenSymbol: params.tokenSymbol,
+              approvalTokenSymbol,
+              note: 'Le hook devrait se mettre à jour au prochain render. On continue...',
+            });
+          }
+          
           setStatus('approving');
           setProgressMessage(`Approbation ${tokenData.symbol}...`);
           
-          console.log('📞 Appel de approvalHook.approve() avec montant override...');
-          console.log('🔍 Vérification approvalHook:', {
-            hasApproveFunction: typeof approvalHook.approve === 'function',
-            approveFunction: approvalHook.approve.toString().substring(0, 100),
+          console.log('📞 Appel de currentApprovalHook.approve() avec montant override...');
+          console.log('🔍 Vérification currentApprovalHook:', {
+            hasApproveFunction: typeof currentApprovalHook.approve === 'function',
+            approveFunction: currentApprovalHook.approve.toString().substring(0, 100),
             isNative: tokenData.isNative,
             tokenSymbol: tokenData.symbol,
+            tokenAddress: tokenData.address,
           });
           
           try {
@@ -390,6 +462,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             
             console.log('🔐 Montants approbation:', {
               token: tokenData.symbol,
+              tokenAddress: tokenData.address,
               totalRequired: totalRequired.toString(),
               totalRequiredFormatted: totalRequiredFormatted,
               approvalAmount: approvalAmount.toString(),
@@ -397,11 +470,22 @@ export function useCreatePayment(): UseCreatePaymentReturn {
               margin: '10%',
             });
             
+            // ✅ FIX CRITIQUE : Vérifier que le hook utilise le bon token AVANT d'appeler approve()
+            // Le hook devrait se mettre à jour automatiquement, mais vérifions quand même
+            console.log('🔍 État avant appel approve():', {
+              paramsTokenSymbol: params.tokenSymbol,
+              approvalTokenSymbol,
+              currentParamsTokenSymbol: currentParams?.tokenSymbol,
+              tokenDataSymbol: tokenData.symbol,
+              tokenDataAddress: tokenData.address,
+              hookIsNative: token?.isNative,
+            });
+            
             // ✅ FIX : Passer le montant avec marge de sécurité
-            const approveResult = approvalHook.approve(approvalAmount);
-            console.log('✅ approvalHook.approve() appelé avec succès avec montant:', approvalAmount.toString(), 'Résultat:', approveResult);
+            console.log('📞 Appel de currentApprovalHook.approve()...');
+            currentApprovalHook.approve(approvalAmount);
           } catch (err) {
-            console.error('❌ Erreur lors de l\'appel approvalHook.approve():', err);
+            console.error('❌ Erreur lors de l\'appel currentApprovalHook.approve():', err);
             setError(err as Error);
             setStatus('error');
             setProgressMessage('Erreur lors de l\'approbation');
@@ -476,11 +560,27 @@ export function useCreatePayment(): UseCreatePaymentReturn {
       token &&
       !token.isNative
     ) {
+      // ✅ FIX CRITIQUE : Vérifier s'il y a une erreur d'approbation
+      if (approvalHook.approveError) {
+        console.error('❌ ERREUR D\'APPROBATION DÉTECTÉE:', {
+          error: approvalHook.approveError,
+          message: approvalHook.approveError.message,
+          name: approvalHook.approveError.name,
+        });
+        setError(approvalHook.approveError);
+        setStatus('error');
+        setProgressMessage('Erreur lors de l\'approbation - ' + approvalHook.approveError.message);
+        return;
+      }
+
       console.log('✅ Conditions remplies, passage à la création...');
       console.log('📋 Détails approbation confirmée:', {
-        approveTxHash: approvalHook.approveTxHash,
+        approveTxHash: approvalHook.approveTxHash || 'NON DISPONIBLE',
         isApproveSuccess: approvalHook.isApproveSuccess,
         isApproving: approvalHook.isApproving,
+        hasReceipt: !!approvalHook.approveReceipt,
+        receiptStatus: approvalHook.approveReceipt?.status || 'NON DISPONIBLE',
+        approveError: approvalHook.approveError?.message || 'Aucune erreur',
       });
       
       // ✅ NOUVEAU : Détecter à nouveau si instantané
@@ -491,8 +591,8 @@ export function useCreatePayment(): UseCreatePaymentReturn {
       const protocolFee = (currentParams.amount * BigInt(179)) / BigInt(10000);
       const totalRequired = currentParams.amount + protocolFee;
       
-      // ✅ FIX : Calculer la marge de sécurité attendue (5%)
-      const expectedAllowance = (totalRequired * BigInt(105)) / BigInt(100);
+      // ✅ FIX : Calculer la marge de sécurité attendue (10%)
+      const expectedAllowance = (totalRequired * BigInt(110)) / BigInt(100);
       const currentAllowanceCheck = approvalHook.currentAllowance;
       
       console.log('🔍 Vérification allowance avant création (après approbation):', {
@@ -512,12 +612,140 @@ export function useCreatePayment(): UseCreatePaymentReturn {
           return;
         }
 
+        // ✅ FIX CRITIQUE USDT : Vérifier que le receipt de la transaction d'approbation est bien confirmé
+        const isUSDT = currentParams?.tokenSymbol === 'USDT';
+        
+        console.log('🔍 DÉBUT checkAndCreate - État de l\'approbation:', {
+          token: currentParams?.tokenSymbol,
+          approveTxHash: approvalHook.approveTxHash || 'NON DISPONIBLE',
+          isApproveSuccess: approvalHook.isApproveSuccess,
+          isApproving: approvalHook.isApproving,
+          approveError: approvalHook.approveError?.message || 'Aucune erreur',
+          hasReceipt: !!approvalHook.approveReceipt,
+          receiptStatus: approvalHook.approveReceipt?.status || 'NON DISPONIBLE',
+        });
+        
+        if (!approvalHook.approveTxHash) {
+          console.error('❌ Hash de transaction d\'approbation non disponible');
+          console.error('❌ État complet:', {
+            isApproveSuccess: approvalHook.isApproveSuccess,
+            isApproving: approvalHook.isApproving,
+            approveError: approvalHook.approveError,
+            approveTxHash: approvalHook.approveTxHash,
+          });
+          
+          // ✅ FIX : Si pas de hash mais qu'il y a une erreur, l'afficher
+          if (approvalHook.approveError) {
+            setError(new Error(`Transaction d'approbation échouée: ${approvalHook.approveError.message}`));
+          } else {
+            setError(new Error('Hash de transaction d\'approbation non disponible. La transaction n\'a peut-être pas été envoyée. Vérifiez MetaMask.'));
+          }
+          setStatus('error');
+          setProgressMessage('Transaction d\'approbation non trouvée');
+          return;
+        }
+
+        // ✅ FIX : Si le receipt n'est pas disponible, le récupérer directement depuis la blockchain
+        let approveReceipt = approvalHook.approveReceipt;
+        if (!approveReceipt && approvalHook.approveTxHash && publicClient) {
+          console.log('🔄 Récupération du receipt depuis la blockchain...');
+          try {
+            approveReceipt = await publicClient.getTransactionReceipt({
+              hash: approvalHook.approveTxHash,
+            });
+            console.log('✅ Receipt récupéré depuis blockchain:', {
+              status: approveReceipt.status,
+              blockNumber: approveReceipt.blockNumber,
+            });
+          } catch (receiptErr) {
+            console.warn('⚠️ Impossible de récupérer le receipt, la transaction est peut-être encore en attente:', receiptErr);
+            // Attendre jusqu'à 15 secondes pour que le receipt soit disponible
+            let receiptWaitTime = 0;
+            while (!approveReceipt && receiptWaitTime < 15000) {
+              await new Promise(resolve => setTimeout(resolve, 2000));
+              receiptWaitTime += 2000;
+              try {
+                approveReceipt = await publicClient.getTransactionReceipt({
+                  hash: approvalHook.approveTxHash,
+                });
+                if (approveReceipt) {
+                  console.log('✅ Receipt récupéré après attente:', {
+                    status: approveReceipt.status,
+                    blockNumber: approveReceipt.blockNumber,
+                  });
+                  break;
+                }
+              } catch (err) {
+                // Continue d'attendre
+              }
+            }
+          }
+        }
+
+        if (!approveReceipt) {
+          console.error('❌ Impossible de récupérer le receipt de la transaction d\'approbation');
+          setError(new Error('Impossible de confirmer la transaction d\'approbation. Vérifiez Basescan.'));
+          setStatus('error');
+          setProgressMessage('Transaction d\'approbation non confirmée');
+          return;
+        }
+
+        if (approveReceipt.status !== 'success') {
+          console.error('❌ Transaction d\'approbation échouée:', {
+            receiptStatus: approveReceipt.status,
+            receipt: approveReceipt,
+          });
+          setError(new Error('La transaction d\'approbation a échoué. Veuillez réessayer.'));
+          setStatus('error');
+          setProgressMessage('Transaction d\'approbation échouée');
+          return;
+        }
+
+        console.log('✅ Receipt d\'approbation confirmé:', {
+          receiptStatus: approveReceipt.status,
+          blockNumber: approveReceipt.blockNumber,
+          transactionHash: approveReceipt.transactionHash,
+          logs: approveReceipt.logs?.length || 0,
+        });
+
+        // ✅ FIX USDT : Vérifier les logs de la transaction pour confirmer que l'approbation a bien été effectuée
+        if (approveReceipt.logs && approveReceipt.logs.length > 0) {
+          console.log('📋 Logs de la transaction d\'approbation:', {
+            numberOfLogs: approveReceipt.logs.length,
+            firstLogAddress: approveReceipt.logs[0]?.address,
+            tokenAddress: token.address,
+            match: approveReceipt.logs[0]?.address?.toLowerCase() === token.address?.toLowerCase(),
+          });
+        } else {
+          console.warn('⚠️ Aucun log dans la transaction d\'approbation - cela peut indiquer un problème');
+        }
+
+        // ✅ FIX USDT : Attendre un délai supplémentaire après confirmation du receipt pour USDT
+        if (isUSDT) {
+          console.log('⏳ USDT: Attente supplémentaire après confirmation du receipt...');
+          await new Promise(resolve => setTimeout(resolve, 3000)); // 3 secondes supplémentaires pour USDT
+        }
+
+        // ✅ FIX USDT : Forcer un refetch de l'allowance via le hook avant de vérifier
+        console.log('🔄 Refetch allowance via hook avant vérification...');
+        try {
+          if (approvalHook.refetchAllowance) {
+            await approvalHook.refetchAllowance();
+            // Attendre un peu après le refetch
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          }
+        } catch (err) {
+          console.warn('⚠️ Impossible de refetch via hook, on continue avec lecture directe');
+        }
+
         // ✅ FIX CRITIQUE : Attendre que la transaction d'approbation soit vraiment confirmée sur la blockchain
-        // On attend jusqu'à 20 secondes maximum, en vérifiant toutes les 3 secondes (pour éviter rate limit)
+        // On attend jusqu'à 30 secondes maximum pour USDT (plus long que les autres tokens)
+        // en vérifiant toutes les 3 secondes (pour éviter rate limit)
         let latestAllowance: bigint | undefined;
-        const maxWaitTime = 20000; // 20 secondes
+        // ✅ FIX : isUSDT est déjà déclaré plus haut, on le réutilise
+        const maxWaitTime = isUSDT ? 30000 : 20000; // 30 secondes pour USDT, 20 pour les autres
         const checkInterval = 3000; // 3 secondes (réduit pour éviter rate limit 429)
-        const maxChecks = 6; // Maximum 6 vérifications
+        const maxChecks = isUSDT ? 10 : 6; // Plus de vérifications pour USDT
         let waited = 0;
         let checkCount = 0;
         
@@ -526,37 +754,57 @@ export function useCreatePayment(): UseCreatePaymentReturn {
         
         console.log('⏳ Attente confirmation allowance sur la blockchain...');
         console.log('📋 Paramètres vérification:', {
+          token: currentParams?.tokenSymbol,
+          isUSDT,
           totalRequired: totalRequired.toString(),
           expectedAllowance: expectedAllowance.toString(),
           checkInterval: `${checkInterval}ms`,
+          maxWaitTime: `${maxWaitTime}ms`,
           maxChecks,
         });
         
-        // ✅ FIX : Attendre d'abord 5 secondes avant la première vérification (laisser le temps à la transaction d'être confirmée)
-        await new Promise(resolve => setTimeout(resolve, 5000));
-        waited += 5000;
+        // ✅ FIX USDT : Attendre plus longtemps pour USDT (8 secondes au lieu de 5)
+        // car USDT peut prendre plus de temps à mettre à jour l'allowance
+        const initialWaitTime = isUSDT ? 8000 : 5000;
+        await new Promise(resolve => setTimeout(resolve, initialWaitTime));
+        waited += initialWaitTime;
         
         while (waited < maxWaitTime && checkCount < maxChecks) {
           checkCount++;
           
           try {
-            latestAllowance = await publicClient.readContract({
-              address: token.address as `0x${string}`,
-              abi: [
-                {
-                  inputs: [
-                    { name: 'owner', type: 'address' },
-                    { name: 'spender', type: 'address' },
-                  ],
-                  name: 'allowance',
-                  outputs: [{ name: '', type: 'uint256' }],
-                  stateMutability: 'view',
-                  type: 'function',
-                },
-              ],
-              functionName: 'allowance',
-              args: [address, FACTORY_ADDRESS],
-            }) as bigint;
+            // ✅ FIX USDT : Pour USDT, essayer aussi de lire depuis le hook avant de lire directement
+            if (isUSDT && checkCount === 1 && approvalHook.currentAllowance !== undefined) {
+              console.log('🔍 USDT: Utilisation allowance du hook:', approvalHook.currentAllowance.toString());
+              latestAllowance = approvalHook.currentAllowance;
+            } else {
+              // Lecture directe depuis la blockchain
+              console.log('🔍 Lecture allowance depuis blockchain:', {
+                tokenAddress: token.address,
+                owner: address,
+                spender: FACTORY_ADDRESS,
+              });
+              
+              latestAllowance = await publicClient.readContract({
+                address: token.address as `0x${string}`,
+                abi: [
+                  {
+                    inputs: [
+                      { name: 'owner', type: 'address' },
+                      { name: 'spender', type: 'address' },
+                    ],
+                    name: 'allowance',
+                    outputs: [{ name: '', type: 'uint256' }],
+                    stateMutability: 'view',
+                    type: 'function',
+                  },
+                ],
+                functionName: 'allowance',
+                args: [address, FACTORY_ADDRESS],
+              }) as bigint;
+              
+              console.log('✅ Allowance lue depuis blockchain:', latestAllowance.toString());
+            }
             
             // ✅ FIX : Vérifier si l'allowance est suffisante (>= totalRequired avec marge de 10%)
             // On accepte si l'allowance est >= totalRequired (sans marge stricte au moment de la vérification)
@@ -564,6 +812,8 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             const isSufficient = latestAllowance !== undefined && latestAllowance >= totalRequired;
             
             console.log(`🔍 Allowance après ${waited}ms (vérification ${checkCount}/${maxChecks}):`, {
+              token: currentParams?.tokenSymbol,
+              isUSDT,
               latestAllowance: latestAllowance?.toString() || 'undefined',
               totalRequired: totalRequired.toString(),
               expectedAllowance: expectedAllowance.toString(),
@@ -577,6 +827,18 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             if (isSufficient) {
               console.log('✅ Allowance suffisante, on peut créer la transaction');
               break;
+            }
+            
+            // ✅ FIX USDT : Pour USDT, forcer un refetch du hook après chaque vérification
+            if (isUSDT && approvalHook.refetchAllowance) {
+              console.log('🔄 USDT: Refetch allowance via hook...');
+              try {
+                await approvalHook.refetchAllowance();
+                // Attendre un peu après le refetch
+                await new Promise(resolve => setTimeout(resolve, 1000));
+              } catch (refetchErr) {
+                console.warn('⚠️ Erreur refetch allowance:', refetchErr);
+              }
             }
           } catch (err: any) {
             // ✅ FIX : Gérer les erreurs de rate limit
@@ -600,15 +862,88 @@ export function useCreatePayment(): UseCreatePaymentReturn {
         const finalIsSufficient = latestAllowance !== undefined && latestAllowance >= totalRequired;
         
         if (!finalIsSufficient) {
+          // ✅ FIX USDT : Dernière tentative de lecture directe de l'allowance pour diagnostiquer
+          let diagnosticAllowance: bigint | undefined;
+          try {
+            console.log('🔍 DERNIÈRE TENTATIVE: Lecture directe allowance pour diagnostic...');
+            diagnosticAllowance = await publicClient.readContract({
+              address: token.address as `0x${string}`,
+              abi: [
+                {
+                  inputs: [
+                    { name: 'owner', type: 'address' },
+                    { name: 'spender', type: 'address' },
+                  ],
+                  name: 'allowance',
+                  outputs: [{ name: '', type: 'uint256' }],
+                  stateMutability: 'view',
+                  type: 'function',
+                },
+              ],
+              functionName: 'allowance',
+              args: [address, FACTORY_ADDRESS],
+            }) as bigint;
+            console.log('📊 Diagnostic allowance:', diagnosticAllowance.toString());
+          } catch (diagErr) {
+            console.error('❌ Erreur diagnostic allowance:', diagErr);
+          }
+
+          // ✅ FIX : Vérifier si la transaction d'approbation a vraiment été envoyée
+          const hasApproveTx = !!approvalHook.approveTxHash;
+          const hasReceipt = !!approvalHook.approveReceipt;
+          const receiptStatus = approvalHook.approveReceipt?.status;
+          
           console.error('❌ Allowance insuffisante après attente:', {
+            token: currentParams?.tokenSymbol,
             latestAllowance: latestAllowance?.toString() || 'undefined',
+            diagnosticAllowance: diagnosticAllowance?.toString() || 'undefined',
             totalRequired: totalRequired.toString(),
             expectedAllowance: expectedAllowance.toString(),
             waited: `${waited}ms`,
             expected: totalRequired.toString(),
+            approveTxHash: approvalHook.approveTxHash || 'NON DISPONIBLE',
+            hasApproveTx,
+            hasReceipt,
+            receiptStatus: receiptStatus || 'NON DISPONIBLE',
+            receiptBlockNumber: approvalHook.approveReceipt?.blockNumber || 'NON DISPONIBLE',
+            owner: address,
+            spender: FACTORY_ADDRESS,
+            tokenAddress: token.address,
+            isApproveSuccess: approvalHook.isApproveSuccess,
+            approveError: approvalHook.approveError?.message || 'Aucune erreur',
           });
+
+          // ✅ FIX : Si la transaction n'a pas été envoyée, donner un message d'erreur plus clair
+          if (!hasApproveTx) {
+            console.error('❌ PROBLÈME CRITIQUE: La transaction d\'approbation n\'a jamais été envoyée !');
+            setError(new Error(
+              'La transaction d\'approbation n\'a pas été envoyée. Veuillez réessayer en approuvant manuellement le token.'
+            ));
+            setStatus('error');
+            setProgressMessage('Transaction d\'approbation non envoyée');
+            return;
+          }
+
+          if (!hasReceipt || receiptStatus !== 'success') {
+            console.error('❌ PROBLÈME CRITIQUE: La transaction d\'approbation n\'est pas confirmée ou a échoué !');
+            const basescanLink = approvalHook.approveTxHash 
+              ? `https://basescan.org/tx/${approvalHook.approveTxHash}`
+              : 'N/A';
+            setError(new Error(
+              `La transaction d'approbation n'est pas confirmée ou a échoué. Vérifiez sur Basescan: ${basescanLink}`
+            ));
+            setStatus('error');
+            setProgressMessage('Transaction d\'approbation non confirmée');
+            return;
+          }
+          
+          // ✅ FIX USDT : Message d'erreur plus détaillé avec lien vers Basescan
+          const basescanLink = approvalHook.approveTxHash 
+            ? `https://basescan.org/tx/${approvalHook.approveTxHash}`
+            : 'N/A';
+          
           setError(new Error(
-            `Allowance insuffisante après approbation. Attendu: >= ${totalRequired.toString()}, Reçu: ${latestAllowance?.toString() || 'undefined'}. Vérifiez que la transaction d'approbation a bien été confirmée.`
+            `Allowance insuffisante après approbation. Attendu: >= ${totalRequired.toString()}, Reçu: ${latestAllowance?.toString() || diagnosticAllowance?.toString() || 'undefined'}. Vérifiez la transaction: ${basescanLink}`
           ));
           setStatus('error');
           setProgressMessage('Allowance insuffisante après approbation');
@@ -757,6 +1092,12 @@ export function useCreatePayment(): UseCreatePaymentReturn {
           return;
         }
 
+        // ✅ FIX : S'assurer que le statut est bien 'creating' avant d'appeler writeContract
+        if (status !== 'creating') {
+          console.log('⚠️ Statut n\'est pas "creating", passage à "creating"...');
+          setStatus('creating');
+        }
+        
         if (isInstantPayment) {
           // ⚡ INSTANTANÉ
           console.log('⚡ Création paiement instantané ERC20:', {
@@ -764,6 +1105,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             tokenAddress: token.address,
             amount: currentParams.amount.toString(),
           });
+          console.log('📤 Appel writeContract pour créer le paiement instantané...');
           writeContract({
             abi: paymentFactoryAbi,
             address: FACTORY_ADDRESS,
@@ -774,6 +1116,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
               currentParams.amount,
             ],
           });
+          console.log('✅ writeContract appelé pour paiement instantané');
         } else {
           // PROGRAMMÉ
           console.log('📋 Création paiement programmé ERC20:', {
@@ -784,6 +1127,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             releaseTimeDate: new Date(currentParams.releaseTime * 1000).toISOString(),
             cancellable: currentParams.cancellable || false,
           });
+          console.log('📤 Appel writeContract pour créer le paiement programmé...');
           writeContract({
             abi: paymentFactoryAbi,
             address: FACTORY_ADDRESS,
@@ -796,6 +1140,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
               currentParams.cancellable || false,
             ],
           });
+          console.log('✅ writeContract appelé pour paiement programmé');
         }
       };
 
@@ -821,9 +1166,31 @@ export function useCreatePayment(): UseCreatePaymentReturn {
       // ✅ FIX : Utiliser le receipt de useWaitForTransactionReceipt si disponible, sinon le récupérer
       if (isConfirmed && createTxHash && publicClient && !contractAddress) {
         console.log('🔍 Début extraction adresse contrat...');
+        console.log('📋 Hash transaction de création:', createTxHash);
+        console.log('📋 Hash transaction d\'approbation:', approvalHook.approveTxHash);
+        
+        // ✅ FIX CRITIQUE : Vérifier que createTxHash n'est pas le hash d'approbation
+        if (createTxHash === approvalHook.approveTxHash) {
+          console.warn('⚠️ createTxHash est identique à approveTxHash - attente de la transaction de création...');
+          return;
+        }
+        
         try {
           setStatus('confirming');
           setProgressMessage('Récupération de l\'adresse du contrat...');
+
+          // ✅ FIX : Vérifier que la transaction est bien vers la factory
+          const tx = await publicClient.getTransaction({ hash: createTxHash });
+          
+          if (tx.to?.toLowerCase() !== FACTORY_ADDRESS.toLowerCase()) {
+            console.warn('⚠️ La transaction analysée n\'est pas vers la factory.');
+            console.warn('⚠️ Transaction "to":', tx.to);
+            console.warn('⚠️ Factory attendue:', FACTORY_ADDRESS);
+            console.warn('⚠️ Cela signifie que createTxHash pointe vers la transaction d\'approbation, pas la création.');
+            console.warn('⚠️ Attente de la transaction de création...');
+            // Ne pas bloquer, juste attendre que la bonne transaction arrive
+            return;
+          }
 
           // ✅ FIX : Utiliser le receipt de useWaitForTransactionReceipt si disponible
           const receiptToUse = receipt || await publicClient.getTransactionReceipt({
@@ -831,9 +1198,6 @@ export function useCreatePayment(): UseCreatePaymentReturn {
           });
 
           console.log('📋 Receipt complet:', receiptToUse);
-          console.log('📋 Receipt status:', receiptToUse.status);
-          console.log('📋 Nombre de logs:', receiptToUse.logs.length);
-
           let foundAddress: `0x${string}` | undefined;
 
           // ✅ FIX CRITIQUE : Décoder les events PaymentCreated correctement
@@ -845,9 +1209,25 @@ export function useCreatePayment(): UseCreatePaymentReturn {
           );
 
           console.log(`🔍 ${factoryLogs.length} log(s) trouvé(s) depuis la factory`);
+          console.log('📋 Factory address attendue:', FACTORY_ADDRESS);
+          console.log('📋 Tous les logs (adresses):', receiptToUse.logs.map(l => ({
+            address: l.address,
+            isFactory: l.address.toLowerCase() === FACTORY_ADDRESS.toLowerCase(),
+            topicsCount: l.topics.length,
+            firstTopic: l.topics[0],
+          })));
+          
+
+          // ✅ FIX CRITIQUE : Si aucun log de la factory, essayer de décoder tous les logs
+          // Car il se peut que l'event soit émis mais que l'adresse ne corresponde pas exactement
+          const logsToDecode = factoryLogs.length > 0 ? factoryLogs : receiptToUse.logs;
+          
+          if (factoryLogs.length === 0) {
+            console.warn('⚠️ Aucun log trouvé depuis la factory, tentative de décodage de tous les logs...');
+          }
 
           // Essayer de décoder chaque event de création de paiement
-          for (const log of factoryLogs) {
+          for (const log of logsToDecode) {
             try {
               // Essayer PaymentCreatedETH
               try {
@@ -876,13 +1256,18 @@ export function useCreatePayment(): UseCreatePaymentReturn {
                   eventName: 'PaymentCreatedERC20',
                 }) as any;
                 
+                console.log('📋 PaymentCreatedERC20 décodé:', decoded);
+                
                 if (decoded?.args?.paymentContract) {
                   foundAddress = decoded.args.paymentContract as `0x${string}`;
                   console.log('✅ Contrat trouvé via PaymentCreatedERC20 event:', foundAddress);
                   break;
+                } else {
+                  console.warn('⚠️ PaymentCreatedERC20 décodé mais paymentContract manquant');
                 }
               } catch (e) {
                 // Ce n'est pas PaymentCreatedERC20, continuer
+                console.log('   ⚠️ Pas PaymentCreatedERC20:', (e as Error).message);
               }
 
               // Essayer InstantPaymentCreatedETH
@@ -926,32 +1311,36 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             }
           }
 
+          // ✅ FIX : Définir knownTokens une seule fois pour être accessible partout
+          const knownTokens = [
+            '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913', // USDC Base
+            '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2', // USDT Base
+            '0x50c5725949a6f0c72e6c4a641f24049a917db0cb', // DAI Base (si utilisé)
+            '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf', // cbBTC Base
+            '0x0555E30da8f98308EdB960aa94C0Db47230d2B9c', // WBTC Base
+          ];
+
           // Méthode de fallback : Si pas trouvé via décodage, chercher dans les logs
+          // ✅ FIX : Méthode simple comme useCreateBatchPayment - prendre la première adresse qui n'est pas la factory
           if (!foundAddress) {
-            console.log('⚠️ Décodage events échoué, essai méthode fallback...');
-            
-            // Ignorer les adresses de tokens connus
-            const knownTokens = [
-              '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913', // USDC Base
-              '0x50c5725949a6f0c72e6c4a641f24049a917db0cb', // DAI Base (si utilisé)
-            ];
+            console.log('⚠️ Décodage events échoué, essai méthode fallback simple...');
             
             for (const log of receiptToUse.logs) {
-              const isKnownToken = knownTokens.some(
-                token => log.address.toLowerCase() === token.toLowerCase()
-              );
-              
-              const isFactory = log.address.toLowerCase() === FACTORY_ADDRESS.toLowerCase();
-              const isPayerAddress = log.address.toLowerCase() === capturedPayerAddress?.toLowerCase();
-
-              // Prendre la première adresse qui n'est ni la factory, ni un token connu, ni le payer
-              if (!isFactory && !isKnownToken && !isPayerAddress) {
-                foundAddress = log.address as `0x${string}`;
-                console.log('✅ Contrat trouvé via méthode fallback:', foundAddress);
-                break;
+              if (log.address.toLowerCase() !== FACTORY_ADDRESS.toLowerCase()) {
+                // ✅ FIX : Vérifier que ce n'est pas un token connu (pour éviter de prendre l'adresse du token)
+                const isKnownToken = knownTokens.some(
+                  token => log.address.toLowerCase() === token.toLowerCase()
+                );
+                
+                if (!isKnownToken) {
+                  foundAddress = log.address as `0x${string}`;
+                  console.log('✅ Contrat trouvé via méthode fallback simple:', foundAddress);
+                  break;
+                }
               }
             }
           }
+
 
           if (foundAddress) {
             // ✅ FIX : Vérifier si on a déjà enregistré cette adresse
@@ -1078,10 +1467,80 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             setStatus('success');
             setProgressMessage('Paiement créé avec succès !');
           } else {
-            console.error('❌ Impossible de trouver l\'adresse');
+            console.error('❌ Impossible de trouver l\'adresse du contrat');
+            
+            // ✅ FIX : Vérifier que receiptToUse et factoryLogs existent avant de les utiliser
+            try {
+              const receiptToUse = receipt || (publicClient && createTxHash ? await publicClient.getTransactionReceipt({ hash: createTxHash }) : null);
+              const factoryLogs = receiptToUse ? receiptToUse.logs.filter(
+                log => log.address.toLowerCase() === FACTORY_ADDRESS.toLowerCase()
+              ) : [];
+              
+              console.error('📋 Détails de diagnostic:', {
+                receiptStatus: receiptToUse?.status,
+                logsCount: receiptToUse?.logs?.length || 0,
+                factoryLogsCount: factoryLogs.length,
+                transactionHash: createTxHash,
+                basescanLink: createTxHash ? `https://basescan.org/tx/${createTxHash}` : 'N/A',
+                allLogAddresses: receiptToUse?.logs?.map(l => l.address) || [],
+              });
+            } catch (diagError) {
+              console.error('📋 Détails de diagnostic (erreur lors de la récupération):', {
+                transactionHash: createTxHash,
+                basescanLink: createTxHash ? `https://basescan.org/tx/${createTxHash}` : 'N/A',
+                error: diagError,
+              });
+            }
+            
+            // ✅ FIX : Essayer de récupérer l'adresse depuis Basescan ou depuis la transaction
+            // Pour l'instant, on passe à success mais on affiche un message d'avertissement
+            console.warn('⚠️ L\'adresse du contrat n\'a pas pu être extraite automatiquement.');
+            console.warn('⚠️ Vous devrez peut-être l\'ajouter manuellement dans la base de données.');
+            console.warn(`⚠️ Vérifiez la transaction sur Basescan: https://basescan.org/tx/${createTxHash}`);
+            console.warn('⚠️ Dans les logs de la transaction, cherchez l\'adresse du contrat créé (généralement la première adresse inconnue).');
+            
             // ✅ FIX : Même si on ne trouve pas l'adresse, on passe à success avec le hash
+            // L'utilisateur pourra vérifier sur Basescan et ajouter l'adresse manuellement si nécessaire
             setStatus('success');
-            setProgressMessage('Paiement créé ! (Vérifiez Basescan)');
+            setProgressMessage('Transaction confirmée ! (Adresse contrat non trouvée - vérifiez Basescan)');
+            
+            // ✅ FIX : Essayer d'enregistrer quand même dans Supabase avec contract_address = null
+            // Le backend pourra peut-être récupérer l'adresse depuis la transaction
+            if (currentParams && capturedPayerAddress) {
+              try {
+                console.log('📤 Tentative d\'enregistrement dans Supabase sans adresse de contrat...');
+                const tokenData = getToken(currentParams.tokenSymbol);
+                
+                const response = await fetch(`${API_URL}/api/payments`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    contract_address: null, // ✅ FIX : null au lieu de l'adresse manquante
+                    payer_address: capturedPayerAddress,
+                    payee_address: currentParams.beneficiary,
+                    token_symbol: currentParams.tokenSymbol,
+                    token_address: tokenData?.address || null,
+                    amount: currentParams.amount.toString(),
+                    release_time: currentParams.releaseTime,
+                    cancellable: currentParams.cancellable || false,
+                    network: 'base_mainnet',
+                    transaction_hash: createTxHash,
+                    needs_manual_address: true, // ✅ FIX : Flag pour indiquer que l'adresse doit être ajoutée manuellement
+                  }),
+                });
+                
+                if (response.ok) {
+                  const result = await response.json();
+                  console.log('✅ Paiement enregistré dans Supabase (sans adresse de contrat):', result.payment?.id);
+                  console.warn('⚠️ IMPORTANT: Vous devrez ajouter l\'adresse du contrat manuellement dans Supabase pour que le keeper puisse l\'exécuter.');
+                } else {
+                  const errorText = await response.text();
+                  console.warn('⚠️ Erreur lors de l\'enregistrement (non bloquant):', errorText);
+                }
+              } catch (apiErr) {
+                console.warn('⚠️ Erreur API lors de l\'enregistrement (non bloquant):', apiErr);
+              }
+            }
           }
         } catch (err) {
           console.error('❌ Erreur:', err);
