@@ -9,10 +9,15 @@ import { useAuth } from '@/hooks/useAuth';
 import { RegisterModal } from '@/components/Auth/RegisterModal';
 import { LoginModal } from '@/components/Auth/LoginModal';
 import { VerifyEmailModal } from '@/components/Auth/VerifyEmailModal';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { useTranslation } from 'react-i18next';
+import { useEffect, useState as useStateReact } from 'react';
 
 export function Navbar() {
+  const { t, ready: translationsReady } = useTranslation();
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isMounted, setIsMounted] = useStateReact(false);
 
   const { user, isAuthenticated, logout, isLoading } = useAuth();
   const [showRegisterModal, setShowRegisterModal] = useState(false);
@@ -22,7 +27,17 @@ export function Navbar() {
   const [verifyCode, setVerifyCode] = useState('');
   const [showUserDropdown, setShowUserDropdown] = useState(false);
 
-  const links = [
+  // ✅ FIX : Éviter le mismatch d'hydratation en attendant que les traductions soient chargées
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // ✅ FIX : Utiliser des valeurs par défaut pendant l'hydratation
+  const links = isMounted && translationsReady ? [
+    { href: '/', label: t('nav.home') },
+    { href: '/create', label: t('nav.create') },
+    { href: '/dashboard', label: t('nav.dashboard') },
+  ] : [
     { href: '/', label: 'Accueil' },
     { href: '/create', label: 'Créer' },
     { href: '/dashboard', label: 'Dashboard' },
@@ -51,9 +66,9 @@ export function Navbar() {
     <>
       <nav className="fixed top-0 left-0 right-0 z-50 glass border-b">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex-1">
-              {/* Logo */}
+          <div className="flex items-center justify-between h-16 gap-8">
+            {/* Logo - Left side */}
+            <div className="flex-shrink-0">
               <Link href="/" className="flex items-center gap-3 group">
                 <div className="relative">
                   <div className="absolute inset-0 gradient-primary rounded-xl blur-lg opacity-50 group-hover:opacity-75 transition-opacity" />
@@ -67,8 +82,13 @@ export function Navbar() {
               </Link>
             </div>
 
-            {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center gap-1">
+            {/* Language Switcher - Between logo and nav */}
+            <div className="hidden md:block flex-shrink-0">
+              <LanguageSwitcher />
+            </div>
+
+            {/* Desktop Navigation - Center */}
+            <div className="hidden md:flex items-center gap-1 flex-1 justify-center">
               {links.map((link) => (
                 <Link
                   key={link.href}
@@ -84,8 +104,8 @@ export function Navbar() {
               ))}
             </div>
 
-            {/* Right side - BOUTON UNIQUE */}
-            <div className="flex-1 flex justify-end items-center gap-3">
+            {/* Right side - Auth + Wallet */}
+            <div className="flex items-center gap-3 flex-shrink-0">
               {!isLoading && (
                 <>
                   {!isAuthenticated ? (
@@ -128,7 +148,7 @@ export function Navbar() {
                               {user?.email.split('@')[0]}
                             </p>
                             <p className="text-xs text-gray-500 dark:text-gray-400">
-                              {user?.accountType === 'professional' ? 'Pro' : 'Particulier'}
+                              {isMounted && translationsReady ? (user?.accountType === 'professional' ? t('common.accountType.professional') : t('common.accountType.individual')) : (user?.accountType === 'professional' ? 'Pro' : 'Particulier')}
                             </p>
                           </div>
                           <svg 
@@ -180,7 +200,7 @@ export function Navbar() {
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                                 </svg>
-                                Dashboard
+                                {isMounted && translationsReady ? t('nav.dashboard') : 'Dashboard'}
                               </Link>
 
                               <Link
@@ -191,7 +211,7 @@ export function Navbar() {
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                                 </svg>
-                                Créer un paiement
+                                {isMounted && ready ? t('payment.create') : 'Créer un paiement'}
                               </Link>
 
                               <div className="border-t border-gray-200 dark:border-gray-700 my-1.5"></div>
@@ -203,7 +223,7 @@ export function Navbar() {
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                                 </svg>
-                                Déconnexion
+                                {isMounted && translationsReady ? t('common.disconnect') : 'Déconnexion'}
                               </button>
                             </div>
                           </div>
@@ -216,7 +236,99 @@ export function Navbar() {
 
               {/* ConnectButton */}
               <div className="hidden sm:block">
-                <ConnectButton />
+                <ConnectButton.Custom>
+                  {({
+                    account,
+                    chain,
+                    openAccountModal,
+                    openChainModal,
+                    openConnectModal,
+                    authenticationStatus,
+                    mounted,
+                  }) => {
+                    const ready = mounted && authenticationStatus !== 'loading';
+                    const connected =
+                      ready &&
+                      account &&
+                      chain &&
+                      (!authenticationStatus ||
+                        authenticationStatus === 'authenticated');
+
+                    return (
+                      <div
+                        {...(!ready && {
+                          'aria-hidden': true,
+                          'style': {
+                            opacity: 0,
+                            pointerEvents: 'none',
+                            userSelect: 'none',
+                          },
+                        })}
+                      >
+                        {(() => {
+                          if (!connected) {
+                            return (
+                              <button
+                                onClick={openConnectModal}
+                                type="button"
+                                className="px-4 py-2 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-lg hover:shadow-lg hover:shadow-primary-500/30 transition-all font-medium"
+                              >
+                                {isMounted && translationsReady ? t('common.connect') : 'Connecter le portefeuille'}
+                              </button>
+                            );
+                          }
+
+                          if (chain.unsupported) {
+                            return (
+                              <button onClick={openChainModal} type="button">
+                                Wrong network
+                              </button>
+                            );
+                          }
+
+                          return (
+                            <div style={{ display: 'flex', gap: 12 }}>
+                              <button
+                                onClick={openChainModal}
+                                style={{ display: 'flex', alignItems: 'center' }}
+                                type="button"
+                              >
+                                {chain.hasIcon && (
+                                  <div
+                                    style={{
+                                      background: chain.iconBackground,
+                                      width: 12,
+                                      height: 12,
+                                      borderRadius: 999,
+                                      overflow: 'hidden',
+                                      marginRight: 4,
+                                    }}
+                                  >
+                                    {chain.iconUrl && (
+                                      <img
+                                        alt={chain.name ?? 'Chain icon'}
+                                        src={chain.iconUrl}
+                                        style={{ width: 12, height: 12 }}
+                                      />
+                                    )}
+                                  </div>
+                                )}
+                                {chain.name}
+                              </button>
+
+                              <button onClick={openAccountModal} type="button">
+                                {account.displayName}
+                                {account.displayBalance
+                                  ? ` (${account.displayBalance})`
+                                  : ''}
+                              </button>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    );
+                  }}
+                </ConnectButton.Custom>
               </div>
 
               {/* Mobile menu button */}
@@ -236,20 +348,27 @@ export function Navbar() {
           {/* Mobile menu */}
           {mobileMenuOpen && (
             <div className="md:hidden py-4 space-y-2 animate-fade-in">
-              {links.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`block px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                    pathname === link.href
-                      ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/50'
-                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              ))}
+              {/* Language Switcher Mobile */}
+              <div className="px-4 py-2">
+                <LanguageSwitcher />
+              </div>
+              
+              <div className="border-t border-gray-200 dark:border-gray-800 pt-2">
+                {links.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`block px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                      pathname === link.href
+                        ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/50'
+                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                    }`}
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
 
               <div className="pt-4 border-t border-gray-200 dark:border-gray-800 space-y-2">
                 {!isAuthenticated ? (
@@ -261,7 +380,7 @@ export function Navbar() {
                       }}
                       className="w-full px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-left"
                     >
-                      Connexion
+                      {isMounted && translationsReady ? t('common.connect') : 'Connexion'}
                     </button>
                     <button
                       onClick={() => {
@@ -270,7 +389,7 @@ export function Navbar() {
                       }}
                       className="w-full px-4 py-2.5 text-sm font-medium bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-lg shadow-lg text-left"
                     >
-                      Créer un compte
+                      {isMounted && ready ? t('common.register') : 'Créer un compte'}
                     </button>
                   </>
                 ) : (
@@ -278,7 +397,7 @@ export function Navbar() {
                     <div className="px-4 py-2.5 bg-gradient-to-r from-primary-50 to-purple-50 dark:from-primary-900/20 dark:to-purple-900/20 rounded-lg">
                       <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{user?.email}</p>
                       <span className="text-xs text-gray-600 dark:text-gray-400">
-                        {user?.accountType === 'professional' ? '💼 Professionnel' : '👤 Particulier'}
+                        {isMounted && translationsReady ? (user?.accountType === 'professional' ? `💼 ${t('common.accountType.professional')}` : `👤 ${t('common.accountType.individual')}`) : (user?.accountType === 'professional' ? '💼 Professionnel' : '👤 Particulier')}
                       </span>
                     </div>
                     <button
@@ -288,11 +407,98 @@ export function Navbar() {
                       }}
                       className="w-full px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors text-left"
                     >
-                      Déconnexion
+                      {isMounted && ready ? t('common.disconnect') : 'Déconnexion'}
                     </button>
                   </div>
                 )}
-                <ConnectButton />
+                <ConnectButton.Custom>
+                  {({
+                    account,
+                    chain,
+                    openAccountModal,
+                    openChainModal,
+                    openConnectModal,
+                    authenticationStatus,
+                    mounted,
+                  }) => {
+                    const ready = mounted && authenticationStatus !== 'loading';
+                    const connected =
+                      ready &&
+                      account &&
+                      chain &&
+                      (!authenticationStatus ||
+                        authenticationStatus === 'authenticated');
+
+                    return (
+                      <div
+                        {...(!ready && {
+                          'aria-hidden': true,
+                          'style': {
+                            opacity: 0,
+                            pointerEvents: 'none',
+                            userSelect: 'none',
+                          },
+                        })}
+                      >
+                        {(() => {
+                          if (!connected) {
+                            return (
+                              <button
+                                onClick={openConnectModal}
+                                type="button"
+                                className="w-full px-4 py-2.5 text-sm font-medium bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-lg shadow-lg text-left"
+                              >
+                                {isMounted && translationsReady ? t('common.connect') : 'Connecter le portefeuille'}
+                              </button>
+                            );
+                          }
+
+                          if (chain.unsupported) {
+                            return (
+                              <button onClick={openChainModal} type="button" className="w-full px-4 py-2.5 text-sm font-medium text-red-600 rounded-lg text-left">
+                                Wrong network
+                              </button>
+                            );
+                          }
+
+                          return (
+                            <div className="space-y-2">
+                              <button
+                                onClick={openChainModal}
+                                type="button"
+                                className="w-full px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 rounded-lg text-left flex items-center gap-2"
+                              >
+                                {chain.hasIcon && (
+                                  <div className="w-4 h-4 rounded-full overflow-hidden">
+                                    {chain.iconUrl && (
+                                      <img
+                                        alt={chain.name ?? 'Chain icon'}
+                                        src={chain.iconUrl}
+                                        className="w-4 h-4"
+                                      />
+                                    )}
+                                  </div>
+                                )}
+                                {chain.name}
+                              </button>
+
+                              <button 
+                                onClick={openAccountModal} 
+                                type="button"
+                                className="w-full px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 rounded-lg text-left"
+                              >
+                                {account.displayName}
+                                {account.displayBalance
+                                  ? ` (${account.displayBalance})`
+                                  : ''}
+                              </button>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    );
+                  }}
+                </ConnectButton.Custom>
               </div>
             </div>
           )}

@@ -1,7 +1,8 @@
 // components/Dashboard/TransactionTable.tsx
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Payment } from '@/hooks/useDashboard';
 import { TransactionRow } from './TransactionRow';
 import { useBeneficiaries } from '@/hooks/useBeneficiaries';
@@ -16,12 +17,18 @@ type SortField = 'beneficiary' | 'amount' | 'date' | 'status';
 type SortDirection = 'asc' | 'desc';
 
 export function TransactionTable({ payments, onRename, onCancel }: TransactionTableProps) {
+  const { t, ready: translationsReady } = useTranslation();
+  const [isMounted, setIsMounted] = useState(false);
   const { getBeneficiaryName } = useBeneficiaries();
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Filtrer et trier les paiements
   const processedPayments = useMemo(() => {
@@ -117,7 +124,7 @@ export function TransactionTable({ payments, onRename, onCancel }: TransactionTa
         <div className="relative">
           <input
             type="text"
-            placeholder="Rechercher par nom ou adresse..."
+            placeholder={isMounted && translationsReady ? t('dashboard.table.search') : 'Rechercher par nom ou adresse...'}
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
@@ -141,7 +148,7 @@ export function TransactionTable({ payments, onRename, onCancel }: TransactionTa
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
               >
                 <div className="flex items-center gap-2">
-                  Bénéficiaire
+                  {isMounted && translationsReady ? t('dashboard.table.beneficiary') : 'Bénéficiaire'}
                   <SortIcon field="beneficiary" />
                 </div>
               </th>
@@ -151,7 +158,7 @@ export function TransactionTable({ payments, onRename, onCancel }: TransactionTa
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
               >
                 <div className="flex items-center gap-2">
-                  Montant
+                  {isMounted && translationsReady ? t('dashboard.table.amount') : 'Montant'}
                   <SortIcon field="amount" />
                 </div>
               </th>
@@ -161,7 +168,7 @@ export function TransactionTable({ payments, onRename, onCancel }: TransactionTa
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
               >
                 <div className="flex items-center gap-2">
-                  Date de libération
+                  {isMounted && translationsReady ? t('dashboard.table.releaseDate') : 'Date de libération'}
                   <SortIcon field="date" />
                 </div>
               </th>
@@ -171,13 +178,13 @@ export function TransactionTable({ payments, onRename, onCancel }: TransactionTa
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
               >
                 <div className="flex items-center gap-2">
-                  Statut
+                  {isMounted && translationsReady ? t('dashboard.table.status') : 'Statut'}
                   <SortIcon field="status" />
                 </div>
               </th>
               
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Contrat
+                {isMounted && translationsReady ? t('dashboard.table.contract') : 'Contrat'}
               </th>
               
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -203,7 +210,7 @@ export function TransactionTable({ payments, onRename, onCancel }: TransactionTa
       {totalPages > 1 && (
         <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
           <div className="text-sm text-gray-700">
-            Affichage de {startIndex + 1} à {Math.min(endIndex, processedPayments.length)} sur {processedPayments.length} paiements
+            {isMounted && translationsReady ? t('dashboard.table.pagination', { start: startIndex + 1, end: Math.min(endIndex, processedPayments.length), total: processedPayments.length }) : `Affichage de ${startIndex + 1} à ${Math.min(endIndex, processedPayments.length)} sur ${processedPayments.length} paiements`}
           </div>
 
           <div className="flex items-center gap-2">
@@ -212,7 +219,7 @@ export function TransactionTable({ payments, onRename, onCancel }: TransactionTa
               disabled={currentPage === 1}
               className="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Précédent
+              {isMounted && translationsReady ? t('dashboard.table.previous') : 'Précédent'}
             </button>
 
             <div className="flex gap-1">
@@ -236,7 +243,7 @@ export function TransactionTable({ payments, onRename, onCancel }: TransactionTa
               disabled={currentPage === totalPages}
               className="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Suivant
+              {isMounted && translationsReady ? t('dashboard.table.next') : 'Suivant'}
             </button>
           </div>
         </div>

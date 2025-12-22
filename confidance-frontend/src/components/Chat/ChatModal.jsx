@@ -2,12 +2,20 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { sendToMarilynSafe } from '@/services/marilyn';
 import { useAccount } from 'wagmi';
 import { truncateAddress } from '@/lib/utils/addressFormatter';
 
 export default function ChatModal({ isOpen, onClose }) {
+  const { t, ready: translationsReady } = useTranslation();
+  const [isMounted, setIsMounted] = useState(false);
   const { address } = useAccount();
+  
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
@@ -15,6 +23,18 @@ export default function ChatModal({ isOpen, onClose }) {
       timestamp: Date.now()
     }
   ]);
+
+  // Mettre à jour le message initial quand les traductions sont prêtes (une seule fois)
+  useEffect(() => {
+    if (isMounted && translationsReady && messages.length === 1 && messages[0].role === 'assistant' && !messages[0].translated) {
+      setMessages([{
+        role: 'assistant',
+        content: t('help.chat.initialMessage'),
+        timestamp: Date.now(),
+        translated: true
+      }]);
+    }
+  }, [isMounted, translationsReady, t]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -67,7 +87,10 @@ export default function ChatModal({ isOpen, onClose }) {
       );
 
       // Afficher la réponse de Marilyn
-      const marilynResponse = result.marilyn_response || result.message || "✅ Message reçu ! Je vous répondrai très bientôt.";
+      const defaultSuccess = isMounted && translationsReady 
+        ? t('help.chat.success')
+        : "✅ Message reçu ! Je vous répondrai très bientôt.";
+      const marilynResponse = result.marilyn_response || result.message || defaultSuccess;
 
       setMessages(prev => [...prev, {
         role: 'assistant',
@@ -81,9 +104,13 @@ export default function ChatModal({ isOpen, onClose }) {
       console.error('Erreur chat:', err);
       setError(err.message);
       
+      const errorMessage = isMounted && translationsReady
+        ? t('help.chat.error', { message: err.message })
+        : `❌ ${err.message}. Veuillez réessayer dans quelques instants.`;
+      
       setMessages(prev => [...prev, {
         role: 'error',
-        content: `❌ ${err.message}. Veuillez réessayer dans quelques instants.`,
+        content: errorMessage,
         timestamp: Date.now()
       }]);
     } finally {
@@ -118,8 +145,8 @@ export default function ChatModal({ isOpen, onClose }) {
               <span className="text-2xl">👑</span>
             </div>
             <div>
-              <h3 className="font-bold text-white">Marilyn</h3>
-              <p className="text-xs text-blue-100">Assistante Communication</p>
+              <h3 className="font-bold text-white">{isMounted && translationsReady ? t('help.chat.title') : 'Marilyn'}</h3>
+              <p className="text-xs text-blue-100">{isMounted && translationsReady ? t('help.chat.subtitle') : 'Assistante Communication'}</p>
             </div>
           </div>
 
@@ -136,7 +163,7 @@ export default function ChatModal({ isOpen, onClose }) {
         {/* Info wallet */}
         {address && (
           <div className="px-6 py-2 bg-blue-50 dark:bg-blue-950/30 text-sm text-blue-800 dark:text-blue-200 border-b border-blue-100 dark:border-blue-900">
-            🔗 Connecté: {truncateAddress(address)}
+            🔗 {isMounted && translationsReady ? t('help.chat.connected') : 'Connecté:'} {truncateAddress(address)}
           </div>
         )}
 
@@ -191,7 +218,7 @@ export default function ChatModal({ isOpen, onClose }) {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Tapez votre message..."
+              placeholder={isMounted && translationsReady ? t('help.chat.placeholder') : 'Tapez votre message...'}
               disabled={isLoading}
               className="flex-1 px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none disabled:opacity-50"
               maxLength={500}
@@ -215,7 +242,7 @@ export default function ChatModal({ isOpen, onClose }) {
           </div>
 
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
-            💬 Vos messages sont transmis à Marilyn qui vous répondra rapidement
+            {isMounted && translationsReady ? t('help.chat.footer') : '💬 Vos messages sont transmis à Marilyn qui vous répondra rapidement'}
           </p>
         </div>
       </div>

@@ -1,25 +1,45 @@
 // src/app/aide/videos/page.tsx
+'use client';
+
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useTranslation } from 'react-i18next';
 import { PlayCircleIcon } from '@heroicons/react/24/outline';
 
 export default function VideosPage() {
+  const { t, ready: translationsReady } = useTranslation();
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const videos = [
     {
-      title: 'Créer un paiement de A à Z',
-      description: 'Tutoriel complet pour créer votre premier paiement programmé',
-      duration: '5:30',
+      titleKey: 'help.videos.items.createPayment.title',
+      titleFallback: 'Créer un paiement de A à Z',
+      descriptionKey: 'help.videos.items.createPayment.description',
+      descriptionFallback: 'Tutoriel complet pour créer votre premier paiement programmé',
+      durationKey: 'help.videos.items.createPayment.duration',
+      durationFallback: '5:30',
       thumbnail: '🎥',
     },
     {
-      title: 'Connecter son wallet MetaMask',
-      description: 'Comment connecter et configurer votre wallet sur Base',
-      duration: '3:15',
+      titleKey: 'help.videos.items.connectWallet.title',
+      titleFallback: 'Connecter son wallet MetaMask',
+      descriptionKey: 'help.videos.items.connectWallet.description',
+      descriptionFallback: 'Comment connecter et configurer votre wallet sur Base',
+      durationKey: 'help.videos.items.connectWallet.duration',
+      durationFallback: '3:15',
       thumbnail: '🦊',
     },
     {
-      title: 'Comprendre les frais et la sécurité',
-      description: 'Explication détaillée du système de fees et de sécurité',
-      duration: '4:45',
+      titleKey: 'help.videos.items.feesSecurity.title',
+      titleFallback: 'Comprendre les frais et la sécurité',
+      descriptionKey: 'help.videos.items.feesSecurity.description',
+      descriptionFallback: 'Explication détaillée du système de fees et de sécurité',
+      durationKey: 'help.videos.items.feesSecurity.duration',
+      durationFallback: '4:45',
       thumbnail: '🔐',
     },
   ];
@@ -28,14 +48,14 @@ export default function VideosPage() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
       <div className="max-w-4xl mx-auto px-4 py-16">
         <Link href="/aide" className="text-blue-600 hover:text-blue-700 mb-8 inline-block">
-          ← Retour au centre d'aide
+          {isMounted && translationsReady ? t('help.videos.back') : '← Retour au centre d\'aide'}
         </Link>
 
         <h1 className="text-4xl font-bold text-gray-900 mb-4">
-          📹 Tutoriels Vidéo
+          {isMounted && translationsReady ? t('help.videos.title') : '📹 Tutoriels Vidéo'}
         </h1>
         <p className="text-gray-600 mb-12">
-          Apprenez en vidéo avec nos tutoriels pas-à-pas
+          {isMounted && translationsReady ? t('help.videos.subtitle') : 'Apprenez en vidéo avec nos tutoriels pas-à-pas'}
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -55,10 +75,10 @@ export default function VideosPage() {
               </div>
               <div className="p-4">
                 <h3 className="font-bold text-gray-900 mb-1 group-hover:text-blue-600 transition-colors">
-                  {video.title}
+                  {isMounted && translationsReady ? t(video.titleKey) : video.titleFallback}
                 </h3>
                 <p className="text-sm text-gray-600">
-                  {video.description}
+                  {isMounted && translationsReady ? t(video.descriptionKey) : video.descriptionFallback}
                 </p>
               </div>
             </div>
@@ -67,10 +87,10 @@ export default function VideosPage() {
 
         <div className="mt-12 bg-yellow-50 border-2 border-yellow-200 rounded-2xl p-6 text-center">
           <p className="text-yellow-800 font-medium">
-            🎬 Les vidéos tutoriels arrivent bientôt !
+            {isMounted && translationsReady ? t('help.videos.comingSoon.title') : '🎬 Les vidéos tutoriels arrivent bientôt !'}
           </p>
           <p className="text-yellow-700 text-sm mt-2">
-            En attendant, consultez nos guides écrits détaillés
+            {isMounted && translationsReady ? t('help.videos.comingSoon.description') : 'En attendant, consultez nos guides écrits détaillés'}
           </p>
         </div>
       </div>

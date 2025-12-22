@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { TOKEN_LIST, type TokenSymbol } from '@/config/tokens';
 
 interface CurrencySelectorProps {
@@ -12,14 +13,21 @@ export default function CurrencySelector({
   selectedToken,
   onSelectToken,
 }: CurrencySelectorProps) {
+  const { t, ready } = useTranslation();
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          Choisissez la crypto à envoyer
+          {isMounted && ready ? t('create.currency.select') : 'Choisissez la crypto à envoyer'}
         </label>
         <span className="text-xs text-gray-500">
-          {TOKEN_LIST.length} disponibles
+          {TOKEN_LIST.length} {isMounted && ready ? t('create.currency.available') : 'disponibles'}
         </span>
       </div>
 
@@ -117,12 +125,11 @@ export default function CurrencySelector({
         <div className="text-sm text-blue-900 dark:text-blue-300">
           {TOKEN_LIST.find((t) => t.symbol === selectedToken)?.isNative ? (
             <p>
-              <strong>ETH natif :</strong> 1 seule transaction nécessaire
+              <strong>{isMounted && ready ? t('create.currency.native') : 'ETH natif : 1 seule transaction nécessaire'}</strong>
             </p>
           ) : (
             <p>
-              <strong>Token ERC20 :</strong> 2 transactions nécessaires
-              (approbation + création)
+              <strong>{isMounted && ready ? t('create.currency.erc20') : 'Token ERC20 : 2 transactions nécessaires (approbation + création)'}</strong>
             </p>
           )}
         </div>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { useRouter } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 import { type TokenSymbol, getToken } from '@/config/tokens';
 import CurrencySelector from './CurrencySelector';
 import DateTimePicker from './DateTimePicker';
@@ -21,8 +22,14 @@ interface PaymentFormData {
 }
 
 export default function PaymentForm() {
+  const { t, ready: translationsReady } = useTranslation();
+  const [isMounted, setIsMounted] = useState(false);
   const { address, isConnected } = useAccount();
   const router = useRouter();
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Hooks de création
   const singlePayment = useCreatePayment();
@@ -358,14 +365,14 @@ export default function PaymentForm() {
         />
         
         <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
-          Balance disponible : <span className="font-medium">{balanceFormatted}</span>
+          {isMounted && translationsReady ? t('create.summary.balance') : 'Balance disponible'} : <span className="font-medium">{balanceFormatted}</span>
         </div>
       </div>
 
       {/* Section 2 : Bénéficiaire(s) */}
       <div className="glass rounded-2xl p-6 space-y-4">
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Adresse du bénéficiaire
+          {isMounted && translationsReady ? t('create.beneficiary.address') : 'Adresse du bénéficiaire'}
         </label>
         <input
           type="text"
@@ -407,7 +414,7 @@ export default function PaymentForm() {
                     onClick={() => handleRemoveBeneficiary(index)}
                     className="text-red-500 hover:text-red-700 text-xs"
                   >
-                    ✕ Supprimer
+                    ✕ {isMounted && translationsReady ? t('create.beneficiary.remove') : 'Supprimer'}
                   </button>
                 </div>
               ))}
@@ -429,7 +436,7 @@ export default function PaymentForm() {
             >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            <span>Ajouter plusieurs bénéficiaires</span>
+            <span>{isMounted && translationsReady ? t('create.beneficiary.addMultiple') : 'Ajouter plusieurs bénéficiaires'}</span>
           </button>
         )}
       </div>
@@ -437,7 +444,7 @@ export default function PaymentForm() {
       {/* Section 3 : Montant */}
       <div className="glass rounded-2xl p-6 space-y-4">
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Montant {isBatchMode && `(par bénéficiaire)`} {isRecurringMode && `(mensuel)`}
+          {isMounted && translationsReady ? t('create.amount.label') : 'Montant'} {isBatchMode && (isMounted && translationsReady ? t('create.amount.perBeneficiary') : '(par bénéficiaire)')} {isRecurringMode && (isMounted && translationsReady ? t('create.amount.monthly') : '(mensuel)')}
         </label>
         <div className="relative">
           <input
@@ -472,10 +479,10 @@ export default function PaymentForm() {
         
         {isBatchMode && formData.amount && parseFloat(formData.amount) > 0 && (
           <div className="text-sm text-gray-600 dark:text-gray-400">
-            Total : <span className="font-semibold">
+            {isMounted && translationsReady ? t('create.amount.total') : 'Total'} : <span className="font-semibold">
               {(parseFloat(formData.amount) * (additionalBeneficiaries.length + 1)).toFixed(4)} {formData.tokenSymbol}
             </span>
-            {' '}pour {additionalBeneficiaries.length + 1} bénéficiaires
+            {' '}{isMounted && translationsReady ? t('create.amount.forBeneficiaries', { count: additionalBeneficiaries.length + 1 }) : `pour ${additionalBeneficiaries.length + 1} bénéficiaires`}
           </div>
         )}
 
@@ -491,7 +498,9 @@ export default function PaymentForm() {
       {/* Section 4 : Date */}
       <div className="glass rounded-2xl p-6">
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
-          {isRecurringMode ? 'Date et heure de libération (première échéance)' : 'Date et heure de libération'}
+          {isRecurringMode 
+            ? (isMounted && translationsReady ? t('create.date.firstDue') : 'Date et heure de libération (première échéance)')
+            : (isMounted && translationsReady ? t('create.date.label') : 'Date et heure de libération')}
         </label>
 
         <div className="flex flex-wrap gap-2 mb-4">
@@ -516,7 +525,7 @@ export default function PaymentForm() {
             }}
             className="px-4 py-2 rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-primary-500 dark:hover:border-primary-400 transition-colors text-sm font-medium"
           >
-            6 heures
+            {isMounted && translationsReady ? t('create.date.6hours') : '6 heures'}
           </button>
 
           <button
@@ -528,7 +537,7 @@ export default function PaymentForm() {
             }}
             className="px-4 py-2 rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-primary-500 dark:hover:border-primary-400 transition-colors text-sm font-medium"
           >
-            1 jour
+            {isMounted && translationsReady ? t('create.date.1day') : '1 jour'}
           </button>
 
           <button
@@ -552,7 +561,7 @@ export default function PaymentForm() {
             }}
             className="px-4 py-2 rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-primary-500 dark:hover:border-primary-400 transition-colors text-sm font-medium"
           >
-            1 mois
+            {isMounted && translationsReady ? t('create.date.1month') : '1 mois'}
           </button>
 
           {/* Bouton Mensualisation */}
@@ -581,7 +590,7 @@ export default function PaymentForm() {
             {/* Tooltip si ETH sélectionné */}
             {!isRecurringAvailable && (
               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                ⚠️ Fonction uniquement disponible pour USDT/USDC
+                {isMounted && translationsReady ? t('create.date.recurringTooltip') : '⚠️ Fonction uniquement disponible pour USDT/USDC'}
                 <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900"></div>
               </div>
             )}
@@ -592,7 +601,7 @@ export default function PaymentForm() {
         {isRecurringMode && (
           <div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-xl space-y-3 mb-4">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Nombre de mensualités
+              {isMounted && translationsReady ? t('create.date.monthsLabel') : 'Nombre de mensualités'}
             </label>
             <div className="grid grid-cols-6 gap-2">
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((month) => (
@@ -613,7 +622,7 @@ export default function PaymentForm() {
               ))}
             </div>
             <p className="text-xs text-gray-600 dark:text-gray-400">
-              💡 Le montant sera prélevé chaque mois pendant {recurringMonths} mois. Votre trésorerie reste disponible.
+              {isMounted && translationsReady ? t('create.date.monthsInfo', { months: recurringMonths }) : `💡 Le montant sera prélevé chaque mois pendant ${recurringMonths} mois. Votre trésorerie reste disponible.`}
             </p>
           </div>
         )}
@@ -648,7 +657,7 @@ export default function PaymentForm() {
       <div className="glass rounded-2xl p-6">
         <div className="space-y-3">
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            🔒 Type de paiement
+            {isMounted && translationsReady ? t('create.paymentType.label') : '🔒 Type de paiement'}
           </label>
           
           {/* ✅ Message si paiement instantané */}
@@ -687,11 +696,11 @@ export default function PaymentForm() {
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-lg">🔓</span>
                   <span className="font-semibold text-gray-900 dark:text-white">
-                    Annulable (avant la date)
+                    {isMounted && translationsReady ? t('create.paymentType.cancellable.title') : 'Annulable (avant la date)'}
                   </span>
                 </div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Vous pourrez annuler le paiement depuis le dashboard avant la date de libération
+                  {isMounted && translationsReady ? t('create.paymentType.cancellable.description') : 'Vous pourrez annuler le paiement depuis le dashboard avant la date de libération'}
                 </p>
               </div>
             </label>
@@ -718,11 +727,11 @@ export default function PaymentForm() {
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-lg">🔒</span>
                   <span className="font-semibold text-gray-900 dark:text-white">
-                    Définitif (non annulable)
+                    {isMounted && translationsReady ? t('create.paymentType.definitive.title') : 'Définitif (non annulable)'}
                   </span>
                 </div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Une fois créé, impossible d'annuler. Les fonds seront automatiquement libérés à la date choisie
+                  {isMounted && translationsReady ? t('create.paymentType.definitive.description') : 'Une fois créé, impossible d\'annuler. Les fonds seront automatiquement libérés à la date choisie'}
                 </p>
               </div>
             </label>
@@ -735,7 +744,7 @@ export default function PaymentForm() {
         <div className="glass rounded-2xl p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              💰 Récapitulatif
+              {isMounted && translationsReady ? t('create.summary.title') : '💰 Récapitulatif'}
             </h3>
             <span className="text-xs text-gray-500 dark:text-gray-400">
               Frais : 1.79%
@@ -908,12 +917,12 @@ export default function PaymentForm() {
         className="w-full py-4 px-6 rounded-xl font-bold text-lg bg-gradient-to-r from-primary-500 via-purple-500 to-pink-500 text-white hover:shadow-xl hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
       >
         {activePayment.status !== 'idle' 
-          ? 'Création en cours...' 
+          ? (isMounted && translationsReady ? t('common.loading') : 'Création en cours...')
           : isRecurringMode
-          ? `Créer le paiement récurrent (${recurringMonths} mois)`
+          ? (isMounted && translationsReady ? t('create.submit') + ` (${recurringMonths} ${isMounted && translationsReady ? t('create.date.monthsLabel').toLowerCase() : 'mois'})` : `Créer le paiement récurrent (${recurringMonths} mois)`)
           : isBatchMode 
-          ? `Créer le paiement multiple (${additionalBeneficiaries.length + 1} bénéficiaires)`
-          : 'Créer le paiement programmé'}
+          ? (isMounted && translationsReady ? t('create.submit') + ` (${additionalBeneficiaries.length + 1} ${isMounted && translationsReady ? t('create.beneficiary.additional').toLowerCase() : 'bénéficiaires'})` : `Créer le paiement multiple (${additionalBeneficiaries.length + 1} bénéficiaires)`)
+          : (isMounted && translationsReady ? t('create.submit') : 'Créer le paiement programmé')}
       </button>
 
       {/* Modal de progression */}

@@ -1,0 +1,547 @@
+{
+  "nav": {
+    "home": "Accueil",
+    "create": "Créer",
+    "dashboard": "Dashboard",
+    "help": "Aide"
+  },
+  "common": {
+    "connect": "Connecter le portefeuille",
+    "disconnect": "Déconnecter",
+    "cancel": "Annuler",
+    "confirm": "Confirmer",
+    "save": "Enregistrer",
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "success": "Succès",
+    "register": "Créer un compte",
+    "accountType": {
+      "professional": "Pro",
+      "individual": "Particulier"
+    }
+  },
+  "home": {
+    "title": "Programmez vos paiements crypto en toute confiance",
+    "subtitle": "Verrouillez vos cryptos et libérez-les automatiquement à une date précise.",
+    "tagline": "Sans intermédiaire. 100% on-chain.",
+    "cta": "Créer un paiement",
+    "features": {
+      "automatic": {
+        "title": "Automatique",
+        "description": "Un keeper 24/7 surveille et exécute vos paiements à la seconde près"
+      },
+      "secure": {
+        "title": "Sécurisé",
+        "description": "Smart contracts audités. Vos fonds sont verrouillés on-chain"
+      },
+      "flexible": {
+        "title": "Flexible",
+        "description": "ETH, USDC, USDT, WBTC. Programmez de 5 minutes à plusieurs années"
+      }
+    },
+    "useCases": {
+      "salaries": {
+        "title": "Salaires automatiques",
+        "desc": "Payez vos équipes à date fixe"
+      },
+      "rent": {
+        "title": "Loyers programmés",
+        "desc": "Plus besoin de penser à payer chaque mois"
+      },
+      "gifts": {
+        "title": "Cadeaux futurs",
+        "desc": "Surprise garantie pour un anniversaire"
+      },
+      "subscriptions": {
+        "title": "Abonnements",
+        "desc": "Versements récurrents automatiques"
+      }
+    },
+    "stats": {
+      "executed": "Paiements exécutés",
+      "success": "Taux de succès",
+      "users": "Utilisateurs actifs"
+    },
+    "ctaSection": {
+      "title": "Prêt à commencer ?",
+      "description": "Connectez votre wallet et créez votre premier paiement programmé en moins de 2 minutes",
+      "button": "Créer mon premier paiement"
+    }
+  },
+  "payment": {
+    "create": "Créer un paiement",
+    "beneficiary": "Bénéficiaire",
+    "amount": "Montant",
+    "date": "Date de libération",
+    "token": "Token",
+    "fees": "Frais protocole",
+    "total": "Total à envoyer",
+    "status": {
+      "pending": "En attente",
+      "released": "Exécuté",
+      "cancelled": "Annulé",
+      "failed": "Échoué"
+    }
+  },
+  "dashboard": {
+    "title": "Mon Dashboard",
+    "subtitle": "Gérez vos paiements programmés",
+    "loading": "Chargement de votre dashboard...",
+    "stats": {
+      "total": "Total envoyé",
+      "pending": "En cours",
+      "released": "Exécutés",
+      "totalPayments": "{{count}} paiement{{plural}} au total",
+      "scheduledPayments": "Paiement{{plural}} programmé{{plural}}",
+      "releasedPayments": "Paiement{{plural}} libéré{{plural}}"
+    },
+    "table": {
+      "search": "Rechercher par nom ou adresse...",
+      "beneficiary": "Bénéficiaire",
+      "amount": "Montant",
+      "releaseDate": "Date de libération",
+      "status": "Statut",
+      "contract": "Contrat",
+      "actions": "Actions",
+      "pagination": "Affichage de {{start}} à {{end}} sur {{total}} paiements",
+      "previous": "Précédent",
+      "next": "Suivant",
+      "releasedOn": "Libéré le {{date}}",
+      "clickToRename": "Cliquer pour renommer",
+      "copyAddress": "Copier l'adresse",
+      "viewOnBasescan": "Voir sur Basescan",
+      "cancelPayment": "Annuler le paiement"
+    },
+    "status": {
+      "pending": "En cours",
+      "released": "Exécuté",
+      "cancelled": "Annulé",
+      "failed": "Échoué"
+    },
+    "period": {
+      "all": "Tout",
+      "byMonth": "Par mois",
+      "byYear": "Par année",
+      "selectMonth": "Sélectionner un mois",
+      "selectYear": "Sélectionner une année",
+      "allPayments": "Tous les paiements",
+      "year": "Année {{year}}"
+    },
+    "export": {
+      "button": "Exporter",
+      "exporting": "Export...",
+      "csv": {
+        "title": "Export CSV",
+        "description": "Pour Excel/comptabilité"
+      },
+      "pdf": {
+        "title": "Export PDF",
+        "description": "Pour impression/justificatif"
+      }
+    },
+    "beneficiaries": {
+      "title": "Mes bénéficiaires",
+      "empty": "Aucun bénéficiaire",
+      "emptyDescription": "Créez des paiements pour ajouter des bénéficiaires à votre liste.",
+      "edit": "Modifier",
+      "delete": "Supprimer",
+      "deleteConfirm": "Supprimer \"{{name}}\" de vos bénéficiaires ?",
+      "deleteError": "Erreur lors de la suppression",
+      "categories": {
+        "family": "Famille",
+        "work": "Travail",
+        "personal": "Perso",
+        "other": "Autre"
+      }
+    },
+    "empty": {
+      "title": "Aucun paiement programmé",
+      "description": "Vous n'avez pas encore créé de paiement programmé. Commencez dès maintenant à automatiser vos transferts crypto !",
+      "cta": "Créer mon premier paiement",
+      "features": {
+        "secure": {
+          "title": "Sécurisé",
+          "description": "Vos fonds sont protégés par la blockchain"
+        },
+        "automatic": {
+          "title": "Automatique",
+          "description": "Exécution automatique à la date programmée"
+        },
+        "transparent": {
+          "title": "Transparent",
+          "description": "Suivez vos paiements en temps réel"
+        }
+      }
+    },
+    "cancel": {
+      "title": "Annuler le paiement",
+      "warning": "⚠️ Vous êtes sur le point d'annuler ce paiement programmé :",
+      "beneficiary": "Bénéficiaire :",
+      "amount": "Montant :",
+      "releaseDate": "Libération prévue :",
+      "important": "Important :",
+      "refund": "Les fonds seront remboursés sur votre wallet",
+      "irreversible": "Cette action est irréversible",
+      "noFees": "Aucun frais ne sera prélevé",
+      "confirmText": "Je comprends que cette action est irréversible et je souhaite annuler ce paiement programmé.",
+      "close": "Fermer",
+      "processing": "Annulation...",
+      "confirm": "Confirmer l'annulation",
+      "confirmError": "Veuillez confirmer en cochant la case",
+      "error": "Erreur lors de l'annulation",
+      "success": {
+        "title": "Paiement annulé !",
+        "message": "Les fonds ont été remboursés"
+      },
+      "errorTitle": "Erreur d'annulation"
+    },
+    "auth": {
+      "title": "Créez un compte pour accéder au dashboard",
+      "description": "Le dashboard affiche l'historique de tous vos paiements programmés et vous permet de les gérer facilement.",
+      "advantages": "✨ Avantages du compte :",
+      "advantagesList": {
+        "dashboard": "📊 Dashboard complet",
+        "history": "📜 Historique des paiements",
+        "cancel": "✅ Annulation possible (si activée)",
+        "beneficiaries": "👥 Gestion des bénéficiaires"
+      },
+      "cta": "Créer un compte gratuitement",
+      "walletNotConnected": {
+        "title": "Wallet non connecté",
+        "description": "Veuillez connecter votre wallet pour accéder à votre dashboard.",
+        "hint": "Utilisez le bouton \"Connect Wallet\" en haut à droite"
+      }
+    },
+    "nopayments": "Aucun paiement programmé"
+  },
+  "create": {
+    "title": "Créer un paiement programmé",
+    "subtitle": "Envoyez de la crypto qui sera automatiquement libérée à la date choisie",
+    "currency": {
+      "select": "Choisissez la crypto à envoyer",
+      "available": "disponibles",
+      "native": "ETH natif : 1 seule transaction nécessaire",
+      "erc20": "Token ERC20 : 2 transactions nécessaires (approbation + création)",
+      "nativeLabel": "Natif"
+    },
+    "beneficiary": {
+      "address": "Adresse du bénéficiaire",
+      "addMultiple": "Ajouter plusieurs bénéficiaires",
+      "additional": "Bénéficiaires supplémentaires",
+      "remove": "Supprimer"
+    },
+    "amount": {
+      "label": "Montant",
+      "perBeneficiary": "(par bénéficiaire)",
+      "monthly": "(mensuel)",
+      "total": "Total",
+      "forBeneficiaries": "pour {{count}} bénéficiaires",
+      "totalMonths": "Total sur {{months}} mois"
+    },
+    "date": {
+      "label": "Date et heure de libération",
+      "firstDue": "Date et heure de libération (première échéance)",
+      "instant": "⚡Instantané",
+      "6hours": "6 heures",
+      "1day": "1 jour",
+      "1week": "1 semaine",
+      "1month": "1 mois",
+      "recurring": "🔄 Mensualisation",
+      "recurringTooltip": "⚠️ Fonction uniquement disponible pour USDT/USDC",
+      "monthsLabel": "Nombre de mensualités",
+      "monthsInfo": "💡 Le montant sera prélevé chaque mois pendant {{months}} mois. Votre trésorerie reste disponible.",
+      "dayOfMonth": "Les prélèvements auront lieu le {{day}} de chaque mois",
+      "autoRelease": "💡 Le paiement sera automatiquement libéré à cette date",
+      "timeUntil": {
+        "past": "Dans le passé",
+        "days": "Dans {{days}}j {{hours}}h {{minutes}}min",
+        "hours": "Dans {{hours}}h {{minutes}}min",
+        "minutes": "Dans {{minutes}}min"
+      }
+    },
+    "paymentType": {
+      "label": "🔒 Type de paiement",
+      "instantDetected": "Paiement instantané détecté",
+      "instantDisabled": "Les options d'annulation sont désactivées car le paiement sera exécuté immédiatement.",
+      "cancellable": {
+        "title": "Annulable (avant la date)",
+        "description": "Vous pourrez annuler le paiement depuis le dashboard avant la date de libération"
+      },
+      "definitive": {
+        "title": "Définitif (non annulable)",
+        "description": "Une fois créé, impossible d'annuler. Les fonds seront automatiquement libérés à la date choisie"
+      }
+    },
+    "summary": {
+      "title": "💰 Récapitulatif",
+      "balance": "Balance disponible"
+    },
+    "submit": "Créer le paiement programmé",
+    "features": {
+      "secure": {
+        "title": "100% Sécurisé",
+        "description": "Vos fonds sont verrouillés dans un smart contract vérifié"
+      },
+      "automatic": {
+        "title": "Automatique",
+        "description": "Le paiement est libéré automatiquement à la date choisie"
+      },
+      "transparent": {
+        "title": "Transparent",
+        "description": "Suivez votre paiement en temps réel sur Basescan"
+      }
+    }
+  },
+  "help": {
+    "title": "Centre d'Aide",
+    "subtitle": "Trouvez rapidement les réponses à vos questions sur Confidance Crypto",
+    "search": "Rechercher dans l'aide...",
+    "sections": {
+      "getStarted": {
+        "title": "Débuter",
+        "description": "Premiers pas avec Confidance Crypto"
+      },
+      "guides": {
+        "title": "Guides",
+        "description": "Tutoriels détaillés pas-à-pas"
+      },
+      "faq": {
+        "title": "FAQ",
+        "description": "Questions fréquentes"
+      },
+      "videos": {
+        "title": "Vidéos",
+        "description": "Tutoriels vidéo"
+      }
+    },
+    "widget": {
+      "title": "Besoin d'aide ?",
+      "subtitle": "Trouvez rapidement les réponses à vos questions",
+      "getStarted": {
+        "title": "Débuter avec Confidance",
+        "description": "Guide pour nouveaux utilisateurs"
+      },
+      "practicalGuides": {
+        "title": "Guides pratiques",
+        "description": "Tutoriels pas-à-pas"
+      },
+      "faq": {
+        "title": "Questions fréquentes",
+        "description": "FAQ complète"
+      },
+      "videoTutorials": {
+        "title": "Tutoriels vidéo",
+        "description": "Apprenez en vidéo"
+      },
+      "chatMarilyn": {
+        "title": "Chat avec Marilyn",
+        "description": "Assistance instantanée par IA"
+      },
+      "contactSupport": "Contacter le support",
+      "openFullCenter": "Ouvrir le centre d'aide complet"
+    },
+    "cta": {
+      "title": "Besoin d'aide personnalisée ?",
+      "description": "Notre équipe est là pour vous accompagner",
+      "button": "Contacter le support"
+    },
+    "contact": {
+      "back": "Retour au centre d'aide",
+      "title": "Contacter le Support",
+      "subtitle": "Notre équipe est là pour vous aider",
+      "email": {
+        "title": "Email",
+        "description": "Réponse sous 24h en moyenne"
+      },
+      "discord": {
+        "title": "Discord",
+        "description": "Rejoignez la communauté",
+        "comingSoon": "Bientôt disponible"
+      },
+      "form": {
+        "title": "Formulaire de contact",
+        "email": "Votre email",
+        "emailPlaceholder": "votre@email.com",
+        "subject": "Sujet",
+        "subjectPlaceholder": "Sujet de votre demande",
+        "message": "Message",
+        "messagePlaceholder": "Votre message...",
+        "submit": "Envoyer"
+      }
+    },
+    "chat": {
+      "title": "Marilyn",
+      "subtitle": "Assistante Communication",
+      "connected": "Connecté:",
+      "placeholder": "Tapez votre message...",
+      "footer": "💬 Vos messages sont transmis à Marilyn qui vous répondra rapidement",
+      "initialMessage": "👋 Bonjour ! Je suis Marilyn, l'assistante de Confidance Crypto. Comment puis-je vous aider aujourd'hui ?",
+      "error": "❌ {{message}}. Veuillez réessayer dans quelques instants.",
+      "success": "✅ Message reçu ! Je vous répondrai très bientôt."
+    },
+    "getStarted": {
+      "back": "← Retour au centre d'aide",
+      "title": "🚀 Débuter avec Confidance Crypto",
+      "whatIs": {
+        "title": "Qu'est-ce que Confidance Crypto ?",
+        "description": "Confidance Crypto est une plateforme DeFi qui permet de programmer des paiements crypto automatiques. Envoyez de l'ETH ou des tokens qui seront libérés automatiquement à une date précise."
+      },
+      "requirements": {
+        "title": "✅ Ce dont vous avez besoin",
+        "wallet": {
+          "title": "Un wallet crypto",
+          "description": "MetaMask, Coinbase Wallet, Rainbow, etc."
+        },
+        "eth": {
+          "title": "Des ETH sur Base Mainnet",
+          "description": "Minimum ~0.01 ETH pour les frais + montant à envoyer"
+        },
+        "address": {
+          "title": "L'adresse du destinataire",
+          "description": "Adresse Ethereum (0x...)"
+        }
+      },
+      "nextSteps": {
+        "title": "📚 Prochaines étapes",
+        "createPayment": {
+          "title": "1. Créer votre premier paiement",
+          "description": "Tutoriel pas-à-pas pour envoyer votre premier paiement programmé"
+        },
+        "faq": {
+          "title": "2. Questions fréquentes",
+          "description": "Sécurité, frais, délais... toutes les réponses"
+        }
+      }
+    },
+    "guides": {
+      "back": "← Retour au centre d'aide",
+      "title": "📚 Guides Pratiques",
+      "subtitle": "Tutoriels détaillés pour maîtriser Confidance Crypto",
+      "items": {
+        "createPayment": {
+          "title": "Créer votre premier paiement",
+          "description": "Guide complet pour envoyer votre premier paiement programmé",
+          "duration": "5 min",
+          "level": "Débutant"
+        },
+        "fees": {
+          "title": "Comprendre les frais",
+          "description": "Calculez précisément les coûts de vos paiements",
+          "duration": "3 min",
+          "level": "Débutant"
+        },
+        "cancel": {
+          "title": "Annuler un paiement",
+          "description": "Comment annuler un paiement avant sa libération",
+          "duration": "2 min",
+          "level": "Intermédiaire"
+        }
+      },
+      "tip": {
+        "title": "💡 Astuce",
+        "description": "Commencez par créer un paiement test avec un petit montant (0.001 ETH) pour vous familiariser avec le processus !"
+      }
+    },
+    "faq": {
+      "back": "← Retour au centre d'aide",
+      "title": "❓ Questions Fréquentes (FAQ)",
+      "subtitle": "Trouvez rapidement les réponses aux questions les plus courantes",
+      "categories": {
+        "security": {
+          "title": "🔐 Sécurité",
+          "questions": {
+            "fundsSafe": {
+              "q": "Mes fonds sont-ils en sécurité ?",
+              "a": "Oui ! Vos fonds sont verrouillés dans un smart contract audité sur la blockchain Base. Personne (même pas nous) ne peut y toucher avant la date programmée. Vous gardez le contrôle à 100%."
+            },
+            "ifConfidanceDisappears": {
+              "q": "Que se passe-t-il si Confidance disparaît ?",
+              "a": "Vos paiements continueront de fonctionner ! Les smart contracts sont sur la blockchain et fonctionnent de manière autonome. Même si notre site est hors ligne, les paiements seront libérés automatiquement."
+            }
+          }
+        },
+        "fees": {
+          "title": "💰 Frais",
+          "questions": {
+            "whatFees": {
+              "q": "Quels sont les frais ?",
+              "a": "Il y a 2 types de frais : 1) Frais blockchain (gas) : ~0.002 ETH à la création. 2) Frais protocole : 1.79% du montant, prélevés automatiquement lors de la libération."
+            },
+            "feeExample": {
+              "q": "Exemple de calcul de frais",
+              "a": "Pour envoyer 0.1 ETH : Frais gas (création) : 0.002 ETH. Frais protocole (1.79%) : 0.00179 ETH. Le bénéficiaire reçoit : 0.09821 ETH."
+            }
+          }
+        },
+        "dates": {
+          "title": "📅 Dates et Délais",
+          "questions": {
+            "canCancel": {
+              "q": "Puis-je annuler un paiement ?",
+              "a": "Oui, si vous avez coché \"Permettre l'annulation\" lors de la création. L'annulation doit être faite AVANT la date prévue. Vous récupérez 100% du montant (pas de frais)."
+            },
+            "minDate": {
+              "q": "Quelle est la date minimale ?",
+              "a": "Vous pouvez programmer un paiement dans quelques minutes ou dans plusieurs années. Il n'y a pas de limite."
+            }
+          }
+        },
+        "technical": {
+          "title": "⚙️ Technique",
+          "questions": {
+            "blockchain": {
+              "q": "Quelle blockchain utilisez-vous ?",
+              "a": "Nous utilisons Base Mainnet (Layer 2 d'Ethereum). C'est rapide, sécurisé et avec des frais très bas."
+            },
+            "tokens": {
+              "q": "Puis-je envoyer des tokens (USDC, DAI) ?",
+              "a": "Support ERC20 à venir prochainement ! Pour l'instant, seul l'ETH natif est disponible."
+            }
+          }
+        }
+      },
+      "notFound": {
+        "title": "Vous ne trouvez pas votre réponse ?",
+        "description": "Notre équipe de support est là pour vous aider",
+        "button": "💬 Contacter le support"
+      }
+    },
+    "videos": {
+      "back": "← Retour au centre d'aide",
+      "title": "📹 Tutoriels Vidéo",
+      "subtitle": "Apprenez en vidéo avec nos tutoriels pas-à-pas",
+      "items": {
+        "createPayment": {
+          "title": "Créer un paiement de A à Z",
+          "description": "Tutoriel complet pour créer votre premier paiement programmé",
+          "duration": "5:30"
+        },
+        "connectWallet": {
+          "title": "Connecter son wallet MetaMask",
+          "description": "Comment connecter et configurer votre wallet sur Base",
+          "duration": "3:15"
+        },
+        "feesSecurity": {
+          "title": "Comprendre les frais et la sécurité",
+          "description": "Explication détaillée du système de fees et de sécurité",
+          "duration": "4:45"
+        }
+      },
+      "comingSoon": {
+        "title": "🎬 Les vidéos tutoriels arrivent bientôt !",
+        "description": "En attendant, consultez nos guides écrits détaillés"
+      }
+    }
+  },
+  "footer": {
+    "description": "Paiements programmés décentralisés sur Base Mainnet. Simple, sécurisé, automatique.",
+    "product": "Produit",
+    "resources": "Ressources",
+    "legal": "Légal",
+    "documentation": "Documentation",
+    "support": "Support",
+    "terms": "Conditions",
+    "privacy": "Confidentialité",
+    "copyright": "© {{year}} Confidance Crypto. Tous droits réservés."
+  }
+}

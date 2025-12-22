@@ -1,7 +1,8 @@
 // hooks/useTransactionExport.ts
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Payment } from './useDashboard';
 import { formatAmount } from '@/lib/utils/amountFormatter';
 import { formatDate } from '@/lib/utils/dateFormatter';
@@ -16,8 +17,34 @@ interface UseTransactionExportReturn {
 }
 
 export function useTransactionExport(): UseTransactionExportReturn {
+  const { t, ready: translationsReady } = useTranslation();
+  const [isMounted, setIsMounted] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  const getStatusLabel = (status: string): string => {
+    if (isMounted && translationsReady) {
+      switch (status) {
+        case 'pending': return t('dashboard.status.pending');
+        case 'released': return t('dashboard.status.released');
+        case 'cancelled': return t('dashboard.status.cancelled');
+        case 'failed': return t('dashboard.status.failed');
+        default: return status;
+      }
+    }
+    // Fallback en français pendant l'hydratation
+    switch (status) {
+      case 'pending': return 'En cours';
+      case 'released': return 'Exécuté';
+      case 'cancelled': return 'Annulé';
+      case 'failed': return 'Échoué';
+      default: return status;
+    }
+  };
 
   const prepareTransactionsForExport = (payments: Payment[]) => {
     return payments.map(payment => ({
@@ -30,16 +57,6 @@ export function useTransactionExport(): UseTransactionExportReturn {
       contractAddress: payment.contract_address,
       txHash: payment.tx_hash || payment.transaction_hash || undefined,
     }));
-  };
-
-  const getStatusLabel = (status: string): string => {
-    switch (status) {
-      case 'pending': return 'En cours';
-      case 'released': return 'Exécuté';
-      case 'cancelled': return 'Annulé';
-      case 'failed': return 'Échoué';
-      default: return status;
-    }
   };
 
   const exportToCSV = (payments: Payment[], filename?: string) => {

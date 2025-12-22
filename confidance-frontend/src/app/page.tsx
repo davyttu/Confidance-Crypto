@@ -16,17 +16,41 @@ import {
   Wallet,
   CheckCircle2
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export default function Home() {
+  const { t, ready } = useTranslation();
+  const [isMounted, setIsMounted] = useState(false);
   const { isConnected } = useAccount();
   const chainId = useChainId();
   const [supabaseOk, setSupabaseOk] = useState(false);
 
   useEffect(() => {
+    setIsMounted(true);
     testSupabaseConnection().then(setSupabaseOk);
   }, []);
 
-  const features = [
+  // ✅ FIX : Utiliser des valeurs par défaut pendant l'hydratation
+  const features = isMounted && ready ? [
+    {
+      icon: Zap,
+      title: t('home.features.automatic.title'),
+      description: t('home.features.automatic.description'),
+      gradient: 'from-yellow-400 to-orange-500',
+    },
+    {
+      icon: Shield,
+      title: t('home.features.secure.title'),
+      description: t('home.features.secure.description'),
+      gradient: 'from-green-400 to-emerald-500',
+    },
+    {
+      icon: Clock,
+      title: t('home.features.flexible.title'),
+      description: t('home.features.flexible.description'),
+      gradient: 'from-purple-400 to-pink-500',
+    },
+  ] : [
     {
       icon: Zap,
       title: 'Automatique',
@@ -47,14 +71,23 @@ export default function Home() {
     },
   ];
 
-  const useCases = [
+  const useCases = isMounted && ready ? [
+    { icon: '💼', title: t('home.useCases.salaries.title'), desc: t('home.useCases.salaries.desc') },
+    { icon: '🏠', title: t('home.useCases.rent.title'), desc: t('home.useCases.rent.desc') },
+    { icon: '🎁', title: t('home.useCases.gifts.title'), desc: t('home.useCases.gifts.desc') },
+    { icon: '💳', title: t('home.useCases.subscriptions.title'), desc: t('home.useCases.subscriptions.desc') },
+  ] : [
     { icon: '💼', title: 'Salaires automatiques', desc: 'Payez vos équipes à date fixe' },
     { icon: '🏠', title: 'Loyers programmés', desc: 'Plus besoin de penser à payer chaque mois' },
     { icon: '🎁', title: 'Cadeaux futurs', desc: 'Surprise garantie pour un anniversaire' },
     { icon: '💳', title: 'Abonnements', desc: 'Versements récurrents automatiques' },
   ];
 
-  const stats = [
+  const stats = isMounted && ready ? [
+    { label: t('home.stats.executed'), value: '15+', icon: TrendingUp },
+    { label: t('home.stats.success'), value: '100%', icon: CheckCircle2 },
+    { label: t('home.stats.users'), value: '50+', icon: Users },
+  ] : [
     { label: 'Paiements exécutés', value: '15+', icon: TrendingUp },
     { label: 'Taux de succès', value: '100%', icon: CheckCircle2 },
     { label: 'Utilisateurs actifs', value: '50+', icon: Users },
@@ -75,21 +108,19 @@ export default function Home() {
               {/* Badge */}
               <div className="inline-flex items-center gap-2 px-4 py-2 glass rounded-full">
                 <Sparkles className="h-4 w-4 text-primary-500" />
-                <span className="text-sm font-medium">Paiements programmés DeFi</span>
+                <span className="text-sm font-medium">{isMounted && ready ? t('home.tagline') : 'Paiements programmés DeFi'}</span>
               </div>
 
               {/* Title */}
               <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight">
-                <span className="block text-gray-900 dark:text-white">Programmez vos</span>
-                <span className="block gradient-text">paiements crypto</span>
-                <span className="block text-gray-900 dark:text-white">en toute confiance</span>
+                <span className="block text-gray-900 dark:text-white">{isMounted && ready ? t('home.title') : 'Programmez vos paiements crypto en toute confiance'}</span>
               </h1>
 
               {/* Description */}
               <p className="max-w-2xl mx-auto text-lg sm:text-xl text-gray-600 dark:text-gray-400 text-balance">
-                Verrouillez vos cryptos et libérez-les automatiquement à une date précise.
+                {isMounted && ready ? t('home.subtitle') : 'Verrouillez vos cryptos et libérez-les automatiquement à une date précise.'}
                 <br />
-                <strong className="text-gray-900 dark:text-white">Sans intermédiaire. 100% on-chain.</strong>
+                <strong className="text-gray-900 dark:text-white">{isMounted && ready ? t('home.tagline') : 'Sans intermédiaire. 100% on-chain.'}</strong>
               </p>
 
               {/* Status Badges */}
@@ -100,7 +131,7 @@ export default function Home() {
                     : 'text-red-600 dark:text-red-400'
                 }`}>
                   <span className="inline-block w-2 h-2 rounded-full mr-2 bg-current animate-pulse" />
-                  {supabaseOk ? 'Système opérationnel' : 'Maintenance'}
+                  {isMounted && ready ? (supabaseOk ? t('home.status.operational') : t('home.status.maintenance')) : (supabaseOk ? 'Système opérationnel' : 'Maintenance')}
                 </div>
                 
                 {isConnected && chainId === 8453 && (
@@ -118,7 +149,7 @@ export default function Home() {
                   className="group relative px-8 py-4 bg-gradient-to-r from-primary-500 via-purple-500 to-pink-500 text-white rounded-xl font-semibold shadow-2xl shadow-primary-500/50 hover:shadow-primary-500/70 transition-all hover:scale-105"
                 >
                   <span className="flex items-center gap-2">
-                    Créer un paiement
+                    {isMounted && ready ? t('home.cta') : 'Créer un paiement'}
                     <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
                   </span>
                 </Link>
@@ -128,7 +159,7 @@ export default function Home() {
                     href="/dashboard"
                     className="px-8 py-4 glass rounded-xl font-semibold hover:scale-105 transition-all"
                   >
-                    Mon Dashboard
+                    {isMounted && ready ? t('dashboard.title') : 'Mon Dashboard'}
                   </Link>
                 )}
               </div>
@@ -156,10 +187,10 @@ export default function Home() {
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-16 space-y-4">
               <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white">
-                Pourquoi Confidance ?
+                {isMounted && ready ? t('home.why.title') : 'Pourquoi Confidance ?'}
               </h2>
               <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-                La plateforme la plus simple et sécurisée pour programmer vos paiements crypto
+                {isMounted && ready ? t('home.why.description') : 'La plateforme la plus simple et sécurisée pour programmer vos paiements crypto'}
               </p>
             </div>
 
@@ -193,10 +224,10 @@ export default function Home() {
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl">
             <div className="text-center mb-16 space-y-4">
               <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white">
-                Cas d'usage
+                {isMounted && ready ? t('home.useCases.title') : 'Cas d\'usage'}
               </h2>
               <p className="text-xl text-gray-600 dark:text-gray-400">
-                Des solutions pour tous vos besoins de paiements programmés
+                {isMounted && ready ? t('home.useCases.subtitle') : 'Des solutions pour tous vos besoins de paiements programmés'}
               </p>
             </div>
 
@@ -231,18 +262,18 @@ export default function Home() {
                 <Wallet className="h-16 w-16 mx-auto text-primary-500" />
                 
                 <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white">
-                  Prêt à commencer ?
+                  {isMounted && ready ? t('home.ctaSection.title') : 'Prêt à commencer ?'}
                 </h2>
                 
                 <p className="text-xl text-gray-600 dark:text-gray-400">
-                  Connectez votre wallet et créez votre premier paiement programmé en moins de 2 minutes
+                  {isMounted && ready ? t('home.ctaSection.description') : 'Connectez votre wallet et créez votre premier paiement programmé en moins de 2 minutes'}
                 </p>
 
                 <Link
                   href="/create"
                   className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-primary-500 via-purple-500 to-pink-500 text-white rounded-xl font-semibold shadow-2xl shadow-primary-500/50 hover:shadow-primary-500/70 transition-all hover:scale-105"
                 >
-                  Créer mon premier paiement
+                  {isMounted && ready ? t('home.ctaSection.button') : 'Créer mon premier paiement'}
                   <ArrowRight className="h-5 w-5" />
                 </Link>
               </div>

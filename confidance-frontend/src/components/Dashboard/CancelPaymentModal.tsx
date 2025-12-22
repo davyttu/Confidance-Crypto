@@ -1,7 +1,8 @@
 // components/Dashboard/CancelPaymentModal.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Payment } from '@/hooks/useDashboard';
 import { formatAmount } from '@/lib/utils/amountFormatter';
 import { formatDateTime } from '@/lib/utils/dateFormatter';
@@ -15,10 +16,16 @@ interface CancelPaymentModalProps {
 }
 
 export function CancelPaymentModal({ payment, onClose, onConfirm }: CancelPaymentModalProps) {
+  const { t, ready: translationsReady } = useTranslation();
+  const [isMounted, setIsMounted] = useState(false);
   const { getBeneficiaryName } = useBeneficiaries();
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   if (!payment) return null;
 
@@ -27,7 +34,7 @@ export function CancelPaymentModal({ payment, onClose, onConfirm }: CancelPaymen
 
   const handleConfirm = async () => {
     if (!isConfirmed) {
-      setError('Veuillez confirmer en cochant la case');
+      setError(isMounted && translationsReady ? t('dashboard.cancel.confirmError') : 'Veuillez confirmer en cochant la case');
       return;
     }
 
@@ -37,7 +44,7 @@ export function CancelPaymentModal({ payment, onClose, onConfirm }: CancelPaymen
       await onConfirm(payment);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de l\'annulation');
+      setError(err instanceof Error ? err.message : (isMounted && translationsReady ? t('dashboard.cancel.error') : 'Erreur lors de l\'annulation'));
     } finally {
       setIsProcessing(false);
     }
@@ -66,7 +73,7 @@ export function CancelPaymentModal({ payment, onClose, onConfirm }: CancelPaymen
           {/* Détails du paiement */}
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
             <p className="text-sm text-red-800 font-medium mb-3">
-              ⚠️ Vous êtes sur le point d'annuler ce paiement programmé :
+              {isMounted && translationsReady ? t('dashboard.cancel.warning') : '⚠️ Vous êtes sur le point d\'annuler ce paiement programmé :'}
             </p>
             
             <div className="space-y-2 text-sm">
@@ -76,7 +83,7 @@ export function CancelPaymentModal({ payment, onClose, onConfirm }: CancelPaymen
               </div>
               
               <div className="flex justify-between">
-                <span className="text-gray-600">Montant :</span>
+                <span className="text-gray-600">{isMounted && translationsReady ? t('dashboard.cancel.amount') : 'Montant :'}</span>
                 <span className="font-medium text-gray-900">
                   {formatAmount(payment.amount)} {payment.token_symbol}
                 </span>
@@ -98,11 +105,11 @@ export function CancelPaymentModal({ payment, onClose, onConfirm }: CancelPaymen
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
               <div className="text-sm text-yellow-800">
-                <p className="font-medium mb-1">Important :</p>
+                <p className="font-medium mb-1">{isMounted && translationsReady ? t('dashboard.cancel.important') : 'Important :'}</p>
                 <ul className="list-disc list-inside space-y-1">
-                  <li>Les fonds seront remboursés sur votre wallet</li>
-                  <li>Cette action est irréversible</li>
-                  <li>Aucun frais ne sera prélevé</li>
+                  <li>{isMounted && translationsReady ? t('dashboard.cancel.refund') : 'Les fonds seront remboursés sur votre wallet'}</li>
+                  <li>{isMounted && translationsReady ? t('dashboard.cancel.irreversible') : 'Cette action est irréversible'}</li>
+                  <li>{isMounted && translationsReady ? t('dashboard.cancel.noFees') : 'Aucun frais ne sera prélevé'}</li>
                 </ul>
               </div>
             </div>
@@ -139,7 +146,7 @@ export function CancelPaymentModal({ payment, onClose, onConfirm }: CancelPaymen
             disabled={isProcessing}
             className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
           >
-            Fermer
+            {isMounted && translationsReady ? t('dashboard.cancel.close') : 'Fermer'}
           </button>
           
           <button
@@ -152,10 +159,10 @@ export function CancelPaymentModal({ payment, onClose, onConfirm }: CancelPaymen
                 <svg className="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-                Annulation...
+                {isMounted && translationsReady ? t('dashboard.cancel.processing') : 'Annulation...'}
               </span>
             ) : (
-              'Confirmer l\'annulation'
+              (isMounted && translationsReady ? t('dashboard.cancel.confirm') : 'Confirmer l\'annulation')
             )}
           </button>
         </div>

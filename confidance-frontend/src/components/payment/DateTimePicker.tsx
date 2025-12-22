@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface DateTimePickerProps {
   value: Date | null;
@@ -16,11 +17,20 @@ export default function DateTimePicker({
   value,
   onChange,
   minDate,
-  label = 'Date et heure de libération',
+  label,
   error,
   hidePresets = false,
   disabled = false,
 }: DateTimePickerProps) {
+  const { t, ready } = useTranslation();
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  const defaultLabel = isMounted && ready ? t('create.date.label') : 'Date et heure de libération';
+  const displayLabel = label || defaultLabel;
   // Formater la date pour l'input datetime-local
   const formatDateTimeLocal = (date: Date | null): string => {
     if (!date) return '';
@@ -47,7 +57,7 @@ export default function DateTimePicker({
       const diff = value.getTime() - now.getTime();
 
       if (diff < 0) {
-        setTimeUntil('Dans le passé');
+        setTimeUntil(isMounted && ready ? t('create.date.timeUntil.past') : 'Dans le passé');
         return;
       }
 
@@ -56,11 +66,17 @@ export default function DateTimePicker({
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
       if (days > 0) {
-        setTimeUntil(`Dans ${days}j ${hours}h ${minutes}min`);
+        setTimeUntil(isMounted && ready 
+          ? t('create.date.timeUntil.days', { days, hours, minutes })
+          : `Dans ${days}j ${hours}h ${minutes}min`);
       } else if (hours > 0) {
-        setTimeUntil(`Dans ${hours}h ${minutes}min`);
+        setTimeUntil(isMounted && ready
+          ? t('create.date.timeUntil.hours', { hours, minutes })
+          : `Dans ${hours}h ${minutes}min`);
       } else {
-        setTimeUntil(`Dans ${minutes}min`);
+        setTimeUntil(isMounted && ready
+          ? t('create.date.timeUntil.minutes', { minutes })
+          : `Dans ${minutes}min`);
       }
     };
 
@@ -68,15 +84,15 @@ export default function DateTimePicker({
     const interval = setInterval(updateTimeUntil, 60000); // Update chaque minute
 
     return () => clearInterval(interval);
-  }, [value]);
+  }, [value, isMounted, ready, t]);
 
   // Raccourcis temps
   const presets = [
-    { label: '⚡Instantané', minutes: 0.5 }, // 30 secondes
-    { label: '6 heures', minutes: 360 },
-    { label: '1 jour', minutes: 1440 },
-    { label: '1 semaine', minutes: 10080 },
-    { label: '1 mois', minutes: 43200 },
+    { label: isMounted && ready ? t('create.date.instant') : '⚡Instantané', minutes: 0.5 }, // 30 secondes
+    { label: isMounted && ready ? t('create.date.6hours') : '6 heures', minutes: 360 },
+    { label: isMounted && ready ? t('create.date.1day') : '1 jour', minutes: 1440 },
+    { label: isMounted && ready ? t('create.date.1week') : '1 semaine', minutes: 10080 },
+    { label: isMounted && ready ? t('create.date.1month') : '1 mois', minutes: 43200 },
   ];
 
   const handlePreset = (minutes: number) => {
@@ -94,9 +110,9 @@ export default function DateTimePicker({
   return (
     <div className="space-y-4">
       {/* Label */}
-      {label && (
+      {displayLabel && (
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          {label}
+          {displayLabel}
         </label>
       )}
 
@@ -195,7 +211,7 @@ export default function DateTimePicker({
 
       {/* Aide */}
       <div className="text-xs text-gray-500 dark:text-gray-400">
-        💡 Le paiement sera automatiquement libéré à cette date
+        {isMounted && ready ? t('create.date.autoRelease') : '💡 Le paiement sera automatiquement libéré à cette date'}
       </div>
     </div>
   );

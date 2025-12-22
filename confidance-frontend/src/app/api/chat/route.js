@@ -41,14 +41,15 @@ export async function POST(request) {
       );
     }
 
-    // Préparer le payload pour le Chat Protocol
+    // Préparer le payload pour le Chat Protocol (format attendu par N8N workflow)
     const payload = {
-      user_id: body.context?.walletAddress || 'anonymous',
+      user_id: body.context?.walletAddress || body.context?.wallet_address || 'anonymous',
       message: body.message.trim(),
       context: {
-        page: body.context?.page || (typeof window !== 'undefined' ? window.location.pathname : '/'),
+        page: body.context?.page || '/',
         network: body.context?.network || 'BASE',
-        walletConnected: !!body.context?.walletAddress,
+        walletConnected: !!body.context?.walletAddress || !!body.context?.wallet_address,
+        walletAddress: body.context?.walletAddress || body.context?.wallet_address,
         ...body.context
       },
       session_id: body.session_id || null,
@@ -56,10 +57,13 @@ export async function POST(request) {
       ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || null
     };
 
-    console.log('🚀 [Next.js API] Payload préparé:', {
-      user_id: payload.user_id.substring(0, 10) + '...',
+    console.log('🚀 [Next.js API] Payload préparé pour Chat Protocol:', {
+      user_id: payload.user_id?.substring(0, 10) + '...' || 'anonymous',
       messageLength: payload.message.length,
-      page: payload.context.page
+      page: payload.context.page,
+      network: payload.context.network,
+      walletConnected: payload.context.walletConnected,
+      hasSessionId: !!payload.session_id
     });
 
     // Appeler le Chat Protocol
@@ -74,8 +78,30 @@ export async function POST(request) {
     console.log('📥 [Next.js API] Response status:', response.status, response.statusText);
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ [Next.js API] Erreur Chat Protocol:', response.status, errorText);
+      let errorText;
+      try {
+        errorText = await response.text();
+        // Essayer de parser comme JSON si possible
+        try {
+          const errorJson = JSON.parse(errorText);
+          console.error('❌ [Next.js API] Erreur Chat Protocol (JSON):', response.status, errorJson);
+          
+          return NextResponse.json(
+            { 
+              success: false,
+              error: errorJson.error || `Chat Protocol error: ${response.status}`,
+              fallback: errorJson.fallback || 'Une erreur s\'est produite. Veuillez réessayer.'
+            },
+            { status: response.status }
+          );
+        } catch {
+          // Ce n'est pas du JSON, utiliser le texte brut
+          console.error('❌ [Next.js API] Erreur Chat Protocol (texte):', response.status, errorText);
+        }
+      } catch (e) {
+        errorText = 'Erreur lors de la lecture de la réponse';
+        console.error('❌ [Next.js API] Erreur lecture réponse:', e);
+      }
       
       // Service temporairement indisponible
       if (response.status === 503) {
@@ -101,24 +127,56 @@ export async function POST(request) {
         );
       }
 
+      // Erreur 500 - Format invalide du workflow N8N
+      if (response.status === 500) {
+        return NextResponse.json(
+          { 
+            success: false,
+            error: errorText || 'Format invalide',
+            fallback: 'Le workflow de chat a rencontré une erreur. Veuillez réessayer dans quelques instants.'
+          },
+          { status: 500 }
+        );
+      }
+
       // Autres erreurs serveur
       return NextResponse.json(
         { 
           success: false,
           error: `Chat Protocol error: ${response.status}`,
-          fallback: 'Une erreur s\'est produite. Veuillez réessayer.'
+          fallback: errorText || 'Une erreur s\'est produite. Veuillez réessayer.'
         },
         { status: response.status }
       );
     }
 
-    const data = await response.json();
+    let data;
+    try {
+      const responseText = await response.text();
+      if (!responseText || responseText.trim().length === 0) {
+        throw new Error('Réponse vide du Chat Protocol');
+      }
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('❌ [Next.js API] Erreur parsing JSON:', parseError);
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Format invalide',
+          fallback: 'La réponse du serveur est invalide. Le workflow N8N a peut-être renvoyé un format incorrect.'
+        },
+        { status: 500 }
+      );
+    }
     
     console.log('✅ [Next.js API] Réponse Chat Protocol reçue:', {
       success: data.success,
       hasMarilynResponse: !!data.marilyn_response,
+      hasMessage: !!data.message,
+      hasAnswer: !!data.answer,
       event_id: data.event_id,
-      intent: data.intent
+      intent: data.intent,
+      responseKeys: Object.keys(data)
     });
 
     // Vérifier que nous avons bien une réponse de Marilyn

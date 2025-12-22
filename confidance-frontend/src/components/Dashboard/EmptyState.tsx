@@ -1,9 +1,17 @@
 // components/Dashboard/EmptyState.tsx
 'use client';
 
+import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import Link from 'next/link';
 
 export function EmptyState() {
+  const { t, ready: translationsReady } = useTranslation();
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
   return (
     <div className="bg-white rounded-lg shadow-lg p-12 text-center">
       {/* Illustration */}
@@ -25,13 +33,12 @@ export function EmptyState() {
 
       {/* Titre */}
       <h2 className="text-2xl font-bold text-gray-900 mb-3">
-        Aucun paiement programmé
+        {isMounted && translationsReady ? t('dashboard.empty.title') : 'Aucun paiement programmé'}
       </h2>
 
       {/* Description */}
       <p className="text-gray-600 mb-8 max-w-md mx-auto">
-        Vous n'avez pas encore créé de paiement programmé. 
-        Commencez dès maintenant à automatiser vos transferts crypto !
+        {isMounted && translationsReady ? t('dashboard.empty.description') : 'Vous n\'avez pas encore créé de paiement programmé. Commencez dès maintenant à automatiser vos transferts crypto !'}
       </p>
 
       {/* Call-to-action principal */}
@@ -53,9 +60,9 @@ export function EmptyState() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
           </div>
-          <h3 className="font-semibold text-gray-900 mb-2">Sécurisé</h3>
+          <h3 className="font-semibold text-gray-900 mb-2">{isMounted && translationsReady ? t('dashboard.empty.features.secure.title') : 'Sécurisé'}</h3>
           <p className="text-sm text-gray-600">
-            Vos fonds sont protégés par la blockchain
+            {isMounted && translationsReady ? t('dashboard.empty.features.secure.description') : 'Vos fonds sont protégés par la blockchain'}
           </p>
         </div>
 
@@ -77,9 +84,9 @@ export function EmptyState() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h3 className="font-semibold text-gray-900 mb-2">Transparent</h3>
+          <h3 className="font-semibold text-gray-900 mb-2">{isMounted && translationsReady ? t('dashboard.empty.features.transparent.title') : 'Transparent'}</h3>
           <p className="text-sm text-gray-600">
-            Suivez vos paiements en temps réel
+            {isMounted && translationsReady ? t('dashboard.empty.features.transparent.description') : 'Suivez vos paiements en temps réel'}
           </p>
         </div>
       </div>

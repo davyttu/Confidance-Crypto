@@ -1,24 +1,34 @@
 // src/components/layout/Footer.tsx
+'use client';
+
 import Link from 'next/link';
 import { Github, Twitter, Send } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { useEffect, useState } from 'react';
 
 export function Footer() {
+  const { t, ready } = useTranslation();
+  const [isMounted, setIsMounted] = useState(false);
   const currentYear = new Date().getFullYear();
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const links = {
     product: [
-      { label: 'Dashboard', href: '/dashboard' },
-      { label: 'Créer un paiement', href: '/create' },
-      { label: 'Documentation', href: '/docs' },
+      { label: isMounted && ready ? t('nav.dashboard') : 'Dashboard', href: '/dashboard' },
+      { label: isMounted && ready ? t('payment.create') : 'Créer un paiement', href: '/create' },
+      { label: isMounted && ready ? t('footer.documentation') : 'Documentation', href: '/docs' },
     ],
     resources: [
       { label: 'Base Mainnet', href: 'https://base.org', external: true },
       { label: 'Basescan', href: 'https://basescan.org', external: true },
-      { label: 'Support', href: '/support' },
+      { label: isMounted && ready ? t('footer.support') : 'Support', href: '/support' },
     ],
     legal: [
-      { label: 'Conditions', href: '/terms' },
-      { label: 'Confidentialité', href: '/privacy' },
+      { label: isMounted && ready ? t('footer.terms') : 'Conditions', href: '/terms' },
+      { label: isMounted && ready ? t('footer.privacy') : 'Confidentialité', href: '/privacy' },
     ],
   };
 
@@ -41,7 +51,7 @@ export function Footer() {
               <span className="font-bold text-xl gradient-text">Confidance</span>
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-400 max-w-xs">
-              Paiements programmés décentralisés sur Base Mainnet. Simple, sécurisé, automatique.
+              {isMounted && ready ? t('footer.description') : 'Paiements programmés décentralisés sur Base Mainnet. Simple, sécurisé, automatique.'}
             </p>
             <div className="flex items-center gap-3">
               {socials.map((social) => (
@@ -61,7 +71,7 @@ export function Footer() {
 
           {/* Product Links */}
           <div>
-            <h3 className="font-semibold mb-4 text-gray-900 dark:text-white">Produit</h3>
+            <h3 className="font-semibold mb-4 text-gray-900 dark:text-white">{isMounted && ready ? t('footer.product') : 'Produit'}</h3>
             <ul className="space-y-3">
               {links.product.map((link) => (
                 <li key={link.label}>
@@ -78,7 +88,7 @@ export function Footer() {
 
           {/* Resources Links */}
           <div>
-            <h3 className="font-semibold mb-4 text-gray-900 dark:text-white">Ressources</h3>
+            <h3 className="font-semibold mb-4 text-gray-900 dark:text-white">{isMounted && ready ? t('footer.resources') : 'Ressources'}</h3>
             <ul className="space-y-3">
               {links.resources.map((link) => (
                 <li key={link.label}>
@@ -106,7 +116,7 @@ export function Footer() {
 
           {/* Legal Links */}
           <div>
-            <h3 className="font-semibold mb-4 text-gray-900 dark:text-white">Légal</h3>
+            <h3 className="font-semibold mb-4 text-gray-900 dark:text-white">{isMounted && ready ? t('footer.legal') : 'Légal'}</h3>
             <ul className="space-y-3">
               {links.legal.map((link) => (
                 <li key={link.label}>
@@ -125,7 +135,7 @@ export function Footer() {
         {/* Bottom */}
         <div className="pt-8 border-t border-gray-200 dark:border-gray-800 flex flex-col sm:flex-row justify-between items-center gap-4">
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            © {currentYear} Confidance Crypto. Tous droits réservés.
+            {isMounted && ready ? t('footer.copyright', { year: currentYear }) : `© ${currentYear} Confidance Crypto. Tous droits réservés.`}
           </p>
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-500">Made with</span>

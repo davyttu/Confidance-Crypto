@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useTranslation } from 'react-i18next';
 import { 
   QuestionMarkCircleIcon, 
   XMarkIcon,
@@ -15,9 +16,15 @@ import {
 import ChatModal from '@/components/Chat/ChatModal'; // ✅ AJOUTÉ
 
 export function HelpWidget() {
+  const { t, ready: translationsReady } = useTranslation();
+  const [isMounted, setIsMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false); // ✅ AJOUTÉ
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 500);
@@ -42,27 +49,35 @@ export function HelpWidget() {
   const helpLinks = [
     {
       icon: RocketLaunchIcon,
-      label: 'Débuter avec Confidance',
+      labelKey: 'help.widget.getStarted.title',
+      fallbackLabel: 'Débuter avec Confidance',
       href: '/aide/debuter',
-      description: 'Guide pour nouveaux utilisateurs'
+      descriptionKey: 'help.widget.getStarted.description',
+      fallbackDescription: 'Guide pour nouveaux utilisateurs'
     },
     {
       icon: BookOpenIcon,
-      label: 'Guides pratiques',
+      labelKey: 'help.widget.practicalGuides.title',
+      fallbackLabel: 'Guides pratiques',
       href: '/aide/guides',
-      description: 'Tutoriels pas-à-pas'
+      descriptionKey: 'help.widget.practicalGuides.description',
+      fallbackDescription: 'Tutoriels pas-à-pas'
     },
     {
       icon: QuestionMarkCircleIcon,
-      label: 'Questions fréquentes',
+      labelKey: 'help.widget.faq.title',
+      fallbackLabel: 'Questions fréquentes',
       href: '/aide/faq',
-      description: 'FAQ complète'
+      descriptionKey: 'help.widget.faq.description',
+      fallbackDescription: 'FAQ complète'
     },
     {
       icon: VideoCameraIcon,
-      label: 'Tutoriels vidéo',
+      labelKey: 'help.widget.videoTutorials.title',
+      fallbackLabel: 'Tutoriels vidéo',
       href: '/aide/videos',
-      description: 'Apprenez en vidéo'
+      descriptionKey: 'help.widget.videoTutorials.description',
+      fallbackDescription: 'Apprenez en vidéo'
     },
   ];
 
@@ -70,24 +85,23 @@ export function HelpWidget() {
     // ✅ AJOUTÉ : Bouton Marilyn en premier
     {
       icon: SparklesIcon,
-      label: '💬 Chat avec Marilyn',
+      labelKey: 'help.widget.chatMarilyn.title',
+      fallbackLabel: '💬 Chat avec Marilyn',
       onClick: () => {
         setIsOpen(false);
         setIsChatOpen(true);
       },
       isButton: true,
-      description: 'Assistance instantanée par IA'
+      descriptionKey: 'help.widget.chatMarilyn.description',
+      fallbackDescription: 'Assistance instantanée par IA'
     },
     {
       icon: ChatBubbleLeftIcon,
-      label: 'Contacter le support',
+      labelKey: 'help.widget.contactSupport',
+      fallbackLabel: 'Contacter le support',
       href: '/aide/contact',
     },
-    {
-      icon: DocumentTextIcon,
-      label: 'Documentation complète',
-      href: '/aide',
-    },
+    // 🗑️ SUPPRIMÉ : Documentation complète
   ];
 
   if (!isVisible) return null;
@@ -105,9 +119,9 @@ export function HelpWidget() {
         {isOpen && (
           <div className="w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden animate-slideUp">
             <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-4 text-white">
-              <h3 className="font-semibold text-lg">💬 Besoin d'aide ?</h3>
+              <h3 className="font-semibold text-lg">💬 {isMounted && translationsReady ? t('help.widget.title') : 'Besoin d\'aide ?'}</h3>
               <p className="text-sm text-white/80 mt-1">
-                Trouvez rapidement les réponses à vos questions
+                {isMounted && translationsReady ? t('help.widget.subtitle') : 'Trouvez rapidement les réponses à vos questions'}
               </p>
             </div>
 
@@ -123,10 +137,10 @@ export function HelpWidget() {
                     <link.icon className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                     <div className="flex-1">
                       <div className="font-medium text-gray-900 text-sm group-hover:text-blue-600">
-                        {link.label}
+                        {isMounted && translationsReady ? t(link.labelKey) : link.fallbackLabel}
                       </div>
                       <div className="text-xs text-gray-500 mt-0.5">
-                        {link.description}
+                        {isMounted && translationsReady ? t(link.descriptionKey) : link.fallbackDescription}
                       </div>
                     </div>
                   </Link>
@@ -148,10 +162,10 @@ export function HelpWidget() {
                         <link.icon className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
                         <div className="flex-1 text-left">
                           <div className="font-semibold text-purple-900 text-sm group-hover:text-purple-700">
-                            {link.label}
+                            {isMounted && translationsReady ? t(link.labelKey) : link.fallbackLabel}
                           </div>
                           <div className="text-xs text-purple-600 mt-0.5">
-                            {link.description}
+                            {isMounted && translationsReady ? t(link.descriptionKey) : link.fallbackDescription}
                           </div>
                         </div>
                         <div className="text-purple-400 group-hover:text-purple-600 transition-colors text-lg">
@@ -169,7 +183,7 @@ export function HelpWidget() {
                       className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors text-sm text-gray-700 hover:text-blue-600"
                     >
                       <link.icon className="w-5 h-5" />
-                      {link.label}
+                      {isMounted && translationsReady ? t(link.labelKey) : link.fallbackLabel}
                     </Link>
                   );
                 })}
@@ -182,7 +196,7 @@ export function HelpWidget() {
                 onClick={() => setIsOpen(false)}
                 className="text-sm font-medium text-blue-600 hover:text-blue-700 inline-flex items-center gap-1"
               >
-                Ouvrir le centre d'aide complet
+                {isMounted && translationsReady ? t('help.widget.openFullCenter') : 'Ouvrir le centre d\'aide complet'}
                 <span className="text-lg">→</span>
               </Link>
             </div>
@@ -206,7 +220,7 @@ export function HelpWidget() {
           ) : (
             <div className="flex flex-col items-center">
               <QuestionMarkCircleIcon className="w-7 h-7" />
-              <span className="text-xs mt-0.5 font-medium">Aide</span>
+              <span className="text-xs mt-0.5 font-medium">{isMounted && translationsReady ? t('nav.help') : 'Aide'}</span>
             </div>
           )}
         </button>

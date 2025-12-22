@@ -359,6 +359,28 @@ async function executeScheduledPayment(payment) {
     console.log(`   🔧 Type: ${payment.subType}`);
     console.log(`   💰 Token: ${payment.tokenSymbol}`);
     console.log(`   📍 Contract: ${payment.contractAddress}`);
+    console.log(`   📍 Token Address: ${payment.tokenAddress}`);
+    
+    // ✅ FIX CRITIQUE : Vérifier que contractAddress n'est pas l'adresse du token
+    const knownTokenAddresses = [
+      '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913', // USDC Base
+      '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2', // USDT Base
+      '0x50c5725949a6f0c72e6c4a641f24049a917db0cb', // DAI Base
+      '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf', // cbBTC Base
+      '0x0555E30da8f98308EdB960aa94C0Db47230d2B9c', // WBTC Base
+    ];
+    
+    const isTokenAddress = knownTokenAddresses.some(
+      addr => addr.toLowerCase() === payment.contractAddress?.toLowerCase()
+    );
+    
+    if (isTokenAddress) {
+      console.error(`   ❌ ERREUR CRITIQUE: contract_address contient l'adresse du token au lieu du contrat de paiement !`);
+      console.error(`   📍 Contract Address (ERREUR): ${payment.contractAddress}`);
+      console.error(`   📍 Token Address: ${payment.tokenAddress}`);
+      await markScheduledAsFailed(payment.id, `ERREUR: contract_address contient l'adresse du token (${payment.contractAddress}) au lieu du contrat de paiement. Veuillez corriger manuellement dans la base de données.`);
+      return;
+    }
     
     // Choisir le bon ABI
     const abi = payment.isBatch ? BATCH_PAYMENT_ABI : SCHEDULED_PAYMENT_ABI;

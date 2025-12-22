@@ -3,6 +3,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useAccount } from 'wagmi';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { useDashboard, type Payment } from '@/hooks/useDashboard';
 import { useBeneficiaries, type Beneficiary } from '@/hooks/useBeneficiaries';
@@ -20,11 +21,17 @@ import { CancelPaymentModal } from '@/components/Dashboard/CancelPaymentModal';
 import { EmptyState } from '@/components/Dashboard/EmptyState';
 
 export default function DashboardPage() {
+  const { t, ready: translationsReady } = useTranslation();
+  const [isMounted, setIsMounted] = useState(false);
   const { address, isConnected } = useAccount();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { payments, isLoading, refetch } = useDashboard();
   const { beneficiaries } = useBeneficiaries();
   const { cancelPayment, status: cancelStatus, error: cancelError, reset: resetCancel } = useCancelPayment();
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // États locaux
   const [periodType, setPeriodType] = useState<'all' | 'month' | 'year'>('all');
@@ -119,27 +126,27 @@ export default function DashboardPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
           </svg>
           <h2 className="text-2xl font-bold text-gray-900 mb-3">
-            Créez un compte pour accéder au dashboard
+            {isMounted && translationsReady ? t('dashboard.auth.title') : 'Créez un compte pour accéder au dashboard'}
           </h2>
           <p className="text-gray-600 mb-6">
-            Le dashboard affiche l'historique de tous vos paiements programmés et vous permet de les gérer facilement.
+            {isMounted && translationsReady ? t('dashboard.auth.description') : 'Le dashboard affiche l\'historique de tous vos paiements programmés et vous permet de les gérer facilement.'}
           </p>
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
             <p className="text-sm text-blue-900 font-medium mb-2">
-              ✨ Avantages du compte :
+              {isMounted && translationsReady ? t('dashboard.auth.advantages') : '✨ Avantages du compte :'}
             </p>
             <ul className="text-sm text-blue-800 text-left space-y-1">
-              <li>📊 Dashboard complet</li>
-              <li>📜 Historique des paiements</li>
-              <li>✅ Annulation possible (si activée)</li>
-              <li>👥 Gestion des bénéficiaires</li>
+              <li>{isMounted && translationsReady ? t('dashboard.auth.advantagesList.dashboard') : '📊 Dashboard complet'}</li>
+              <li>{isMounted && translationsReady ? t('dashboard.auth.advantagesList.history') : '📜 Historique des paiements'}</li>
+              <li>{isMounted && translationsReady ? t('dashboard.auth.advantagesList.cancel') : '✅ Annulation possible (si activée)'}</li>
+              <li>{isMounted && translationsReady ? t('dashboard.auth.advantagesList.beneficiaries') : '👥 Gestion des bénéficiaires'}</li>
             </ul>
           </div>
           <button
             onClick={() => window.location.href = '/'}
             className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-purple-700"
           >
-            Créer un compte gratuitement
+            {isMounted && translationsReady ? t('dashboard.auth.cta') : 'Créer un compte gratuitement'}
           </button>
         </div>
       </div>
@@ -180,11 +187,11 @@ export default function DashboardPage() {
               </svg>
             </div>
             <h1 className="text-3xl font-bold text-gray-900">
-              Mon Dashboard
+              {isMounted && translationsReady ? t('dashboard.title') : 'Mon Dashboard'}
             </h1>
           </div>
           <p className="text-gray-600">
-            Gérez vos paiements programmés
+            {isMounted && translationsReady ? t('dashboard.subtitle') : 'Gérez vos paiements programmés'}
           </p>
         </div>
 
@@ -214,8 +221,8 @@ export default function DashboardPage() {
                 payments={filteredPayments}
                 userAddress={address || ''}
                 period={periodType === 'month' ? (periodValue as string) : 
-                       periodType === 'year' ? `Année ${periodValue}` : 
-                       'Tous les paiements'}
+                       periodType === 'year' ? (isMounted && translationsReady ? t('dashboard.period.year', { year: periodValue }) : `Année ${periodValue}`) : 
+                       (isMounted && translationsReady ? t('dashboard.period.allPayments') : 'Tous les paiements')}
               />
             </div>
 
@@ -232,7 +239,7 @@ export default function DashboardPage() {
             {beneficiaries.length > 0 && (
               <div className="mb-8">
                 <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                  👥 Mes bénéficiaires
+                  👥 {isMounted && translationsReady ? t('dashboard.beneficiaries.title') : 'Mes bénéficiaires'}
                 </h2>
                 <BeneficiaryList 
                   onEdit={setBeneficiaryToEdit}
@@ -285,7 +292,7 @@ export default function DashboardPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
           <div>
-            <p className="font-semibold">Erreur d'annulation</p>
+            <p className="font-semibold">{isMounted && translationsReady ? t('dashboard.cancel.errorTitle') : 'Erreur d\'annulation'}</p>
             <p className="text-sm">{cancelError.message}</p>
           </div>
         </div>

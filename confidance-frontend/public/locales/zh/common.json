@@ -1,0 +1,85 @@
+{
+  "nav": {
+    "home": "首页",
+    "create": "创建",
+    "dashboard": "仪表板",
+    "help": "帮助"
+  },
+  "common": {
+    "connect": "连接钱包",
+    "disconnect": "断开连接",
+    "cancel": "取消",
+    "confirm": "确认",
+    "save": "保存",
+    "loading": "加载中...",
+    "error": "错误",
+    "success": "成功"
+  },
+  "home": {
+    "title": "安心安排您的加密货币支付",
+    "subtitle": "锁定您的加密货币并在指定日期自动释放。",
+    "tagline": "无中介。100% 链上。",
+    "cta": "创建支付",
+    "features": {
+      "automatic": {
+        "title": "自动化",
+        "description": "全天候守护者监控并精确执行您的支付"
+      },
+      "secure": {
+        "title": "安全",
+        "description": "经过审计的智能合约。您的资金锁定在链上"
+      },
+      "flexible": {
+        "title": "灵活",
+        "description": "支持 ETH、USDC、USDT、WBTC。可安排从 5 分钟到数年"
+      }
+    },
+    "useCases": {
+      "salaries": {
+        "title": "自动工资",
+        "desc": "在固定日期向您的团队支付"
+      },
+      "rent": {
+        "title": "预定租金",
+        "desc": "无需每月记得支付"
+      },
+      "gifts": {
+        "title": "未来礼物",
+        "desc": "生日惊喜有保证"
+      },
+      "subscriptions": {
+        "title": "订阅",
+        "desc": "自动定期付款"
+      }
+    },
+    "stats": {
+      "executed": "已执行支付",
+      "success": "成功率",
+      "users": "活跃用户"
+    }
+  },
+  "payment": {
+    "create": "创建支付",
+    "beneficiary": "受益人",
+    "amount": "金额",
+    "date": "释放日期",
+    "token": "代币",
+    "fees": "协议费用",
+    "total": "总发送额",
+    "status": {
+      "pending": "待处理",
+      "released": "已释放",
+      "cancelled": "已取消",
+      "failed": "失败"
+    }
+  },
+  "dashboard": {
+    "title": "我的仪表板",
+    "stats": {
+      "total": "总发送额",
+      "pending": "待处理",
+      "released": "已释放"
+    },
+    "nopayments": "没有预定支付"
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "nav": {
+    "home": "Inicio",
+    "create": "Crear",
+    "dashboard": "Panel",
+    "help": "Ayuda"
+  },
+  "common": {
+    "connect": "Conectar cartera",
+    "disconnect": "Desconectar",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "save": "Guardar",
+    "loading": "Cargando...",
+    "error": "Error",
+    "success": "Éxito"
+  },
+  "home": {
+    "title": "Programa tus pagos cripto con confianza",
+    "subtitle": "Bloquea tus criptomonedas y libéralas automáticamente en una fecha específica.",
+    "tagline": "Sin intermediarios. 100% on-chain.",
+    "cta": "Crear un pago",
+    "features": {
+      "automatic": {
+        "title": "Automático",
+        "description": "Un keeper 24/7 monitorea y ejecuta tus pagos al segundo"
+      },
+      "secure": {
+        "title": "Seguro",
+        "description": "Contratos inteligentes auditados. Tus fondos están bloqueados on-chain"
+      },
+      "flexible": {
+        "title": "Flexible",
+        "description": "ETH, USDC, USDT, WBTC. Programa desde 5 minutos hasta varios años"
+      }
+    },
+    "useCases": {
+      "salaries": {
+        "title": "Salarios automáticos",
+        "desc": "Paga a tus equipos en una fecha fija"
+      },
+      "rent": {
+        "title": "Alquileres programados",
+        "desc": "No necesitas pensar en pagar cada mes"
+      },
+      "gifts": {
+        "title": "Regalos futuros",
+        "desc": "Sorpresa garantizada para un cumpleaños"
+      },
+      "subscriptions": {
+        "title": "Suscripciones",
+        "desc": "Pagos recurrentes automáticos"
+      }
+    },
+    "stats": {
+      "executed": "Pagos ejecutados",
+      "success": "Tasa de éxito",
+      "users": "Usuarios activos"
+    }
+  },
+  "payment": {
+    "create": "Crear pago",
+    "beneficiary": "Beneficiario",
+    "amount": "Cantidad",
+    "date": "Fecha de liberación",
+    "token": "Token",
+    "fees": "Tarifas del protocolo",
+    "total": "Total a enviar",
+    "status": {
+      "pending": "Pendiente",
+      "released": "Liberado",
+      "cancelled": "Cancelado",
+      "failed": "Fallido"
+    }
+  },
+  "dashboard": {
+    "title": "Mi Panel",
+    "stats": {
+      "total": "Total enviado",
+      "pending": "Pendientes",
+      "released": "Ejecutados"
+    },
+    "nopayments": "Sin pagos programados"
+  }
+}

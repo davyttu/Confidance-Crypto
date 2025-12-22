@@ -1,7 +1,8 @@
 // components/Dashboard/TransactionRow.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Payment } from '@/hooks/useDashboard';
 import { useBeneficiaries } from '@/hooks/useBeneficiaries';
 import { formatAmount } from '@/lib/utils/amountFormatter';
@@ -15,26 +16,33 @@ interface TransactionRowProps {
 }
 
 export function TransactionRow({ payment, onRename, onCancel }: TransactionRowProps) {
+  const { t, ready: translationsReady } = useTranslation();
+  const [isMounted, setIsMounted] = useState(false);
   const { getBeneficiaryName } = useBeneficiaries();
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const beneficiaryName = getBeneficiaryName(payment.payee_address);
   const displayName = beneficiaryName || truncateAddress(payment.payee_address);
 
   // Badge de statut
   const getStatusBadge = (status: string) => {
-    const badges = {
-      pending: { label: 'En cours', color: 'bg-orange-100 text-orange-800' },
-      released: { label: 'Exécuté', color: 'bg-green-100 text-green-800' },
-      cancelled: { label: 'Annulé', color: 'bg-gray-100 text-gray-800' },
-      failed: { label: 'Échoué', color: 'bg-red-100 text-red-800' },
+    const badgeConfig = {
+      pending: { color: 'bg-orange-100 text-orange-800', key: 'dashboard.status.pending', fallback: 'En cours' },
+      released: { color: 'bg-green-100 text-green-800', key: 'dashboard.status.released', fallback: 'Exécuté' },
+      cancelled: { color: 'bg-gray-100 text-gray-800', key: 'dashboard.status.cancelled', fallback: 'Annulé' },
+      failed: { color: 'bg-red-100 text-red-800', key: 'dashboard.status.failed', fallback: 'Échoué' },
     };
 
-    const badge = badges[status as keyof typeof badges] || badges.pending;
+    const config = badgeConfig[status as keyof typeof badgeConfig] || badgeConfig.pending;
+    const label = isMounted && translationsReady ? t(config.key) : config.fallback;
     
     return (
-      <span className={`px-3 py-1 rounded-full text-xs font-medium ${badge.color}`}>
-        {badge.label}
+      <span className={`px-3 py-1 rounded-full text-xs font-medium ${config.color}`}>
+        {label}
       </span>
     );
   };
@@ -67,7 +75,7 @@ export function TransactionRow({ payment, onRename, onCancel }: TransactionRowPr
             <button
               onClick={() => onRename(payment.payee_address)}
               className="font-medium text-gray-900 hover:text-blue-600 transition-colors text-left"
-              title="Cliquer pour renommer"
+              title={isMounted && translationsReady ? t('dashboard.table.clickToRename') : 'Cliquer pour renommer'}
             >
               {displayName}
             </button>
@@ -92,7 +100,9 @@ export function TransactionRow({ payment, onRename, onCancel }: TransactionRowPr
         </div>
         {payment.released_at && (
           <div className="text-xs text-gray-500">
-            Libéré le {new Date(payment.released_at).toLocaleDateString('fr-FR')}
+            {isMounted && translationsReady 
+              ? t('dashboard.table.releasedOn', { date: new Date(payment.released_at).toLocaleDateString() })
+              : `Libéré le ${new Date(payment.released_at).toLocaleDateString('fr-FR')}`}
           </div>
         )}
       </td>
@@ -107,7 +117,7 @@ export function TransactionRow({ payment, onRename, onCancel }: TransactionRowPr
         <button
           onClick={handleCopyContract}
           className="flex items-center gap-1 text-sm text-gray-600 hover:text-blue-600 transition-colors group"
-          title="Copier l'adresse"
+          title={isMounted && translationsReady ? t('dashboard.table.copyAddress') : 'Copier l\'adresse'}
         >
           <span className="font-mono">{truncateAddress(payment.contract_address, 8, 6)}</span>
           {copied ? (
@@ -131,7 +141,7 @@ export function TransactionRow({ payment, onRename, onCancel }: TransactionRowPr
             target="_blank"
             rel="noopener noreferrer"
             className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-            title="Voir sur Basescan"
+            title={isMounted && translationsReady ? t('dashboard.table.viewOnBasescan') : 'Voir sur Basescan'}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -143,7 +153,7 @@ export function TransactionRow({ payment, onRename, onCancel }: TransactionRowPr
             <button
               onClick={() => onCancel(payment)}
               className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
-              title="Annuler le paiement"
+              title={isMounted && translationsReady ? t('dashboard.table.cancelPayment') : 'Annuler le paiement'}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

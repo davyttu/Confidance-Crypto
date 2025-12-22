@@ -1,7 +1,8 @@
 // components/Dashboard/PeriodSelector.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getCurrentYearMonths, getAvailableYears } from '@/lib/utils/dateFormatter';
 
 interface PeriodSelectorProps {
@@ -10,8 +11,14 @@ interface PeriodSelectorProps {
 }
 
 export function PeriodSelector({ onChange, oldestTimestamp }: PeriodSelectorProps) {
+  const { t, ready: translationsReady } = useTranslation();
+  const [isMounted, setIsMounted] = useState(false);
   const [periodType, setPeriodType] = useState<'all' | 'month' | 'year'>('all');
   const [selectedPeriod, setSelectedPeriod] = useState<string>('');
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const currentYearMonths = getCurrentYearMonths();
   const availableYears = oldestTimestamp ? getAvailableYears(oldestTimestamp) : [];
@@ -48,7 +55,7 @@ export function PeriodSelector({ onChange, oldestTimestamp }: PeriodSelectorProp
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
-            Tout
+            {isMounted && translationsReady ? t('dashboard.period.all') : 'Tout'}
           </button>
           
           <button
@@ -59,7 +66,7 @@ export function PeriodSelector({ onChange, oldestTimestamp }: PeriodSelectorProp
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
-            Par mois
+            {isMounted && translationsReady ? t('dashboard.period.byMonth') : 'Par mois'}
           </button>
           
           <button
@@ -70,7 +77,7 @@ export function PeriodSelector({ onChange, oldestTimestamp }: PeriodSelectorProp
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
-            Par année
+            {isMounted && translationsReady ? t('dashboard.period.byYear') : 'Par année'}
           </button>
         </div>
 
@@ -81,7 +88,7 @@ export function PeriodSelector({ onChange, oldestTimestamp }: PeriodSelectorProp
             onChange={(e) => handleMonthChange(e.target.value)}
             className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
-            <option value="">Sélectionner un mois</option>
+            <option value="">{isMounted && translationsReady ? t('dashboard.period.selectMonth') : 'Sélectionner un mois'}</option>
             {currentYearMonths.map((month) => (
               <option key={month.value} value={month.value}>
                 {month.label}
@@ -97,7 +104,7 @@ export function PeriodSelector({ onChange, oldestTimestamp }: PeriodSelectorProp
             onChange={(e) => handleYearChange(parseInt(e.target.value))}
             className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
-            <option value="">Sélectionner une année</option>
+            <option value="">{isMounted && translationsReady ? t('dashboard.period.selectYear') : 'Sélectionner une année'}</option>
             {availableYears.map((year) => (
               <option key={year} value={year}>
                 {year}

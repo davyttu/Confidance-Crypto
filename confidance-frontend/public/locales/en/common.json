@@ -1,0 +1,557 @@
+{
+  "nav": {
+    "home": "Home",
+    "create": "Create",
+    "dashboard": "Dashboard",
+    "help": "Help"
+  },
+  "common": {
+    "connect": "Connect Wallet",
+    "disconnect": "Disconnect",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "save": "Save",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "register": "Create account",
+    "accountType": {
+      "professional": "Pro",
+      "individual": "Individual"
+    }
+  },
+  "home": {
+    "title": "Schedule your crypto payments with confidence",
+    "subtitle": "Lock your cryptos and release them automatically at a specific date.",
+    "tagline": "No intermediaries. 100% on-chain.",
+    "cta": "Create a payment",
+    "features": {
+      "automatic": {
+        "title": "Automatic",
+        "description": "A 24/7 keeper monitors and executes your payments to the second"
+      },
+      "secure": {
+        "title": "Secure",
+        "description": "Audited smart contracts. Your funds are locked on-chain"
+      },
+      "flexible": {
+        "title": "Flexible",
+        "description": "ETH, USDC, USDT, WBTC. Schedule from 5 minutes to several years"
+      }
+    },
+    "why": {
+      "title": "Why Confidance?",
+      "description": "The simplest and most secure platform for scheduling your crypto payments"
+    },
+    "useCases": {
+      "title": "Use Cases",
+      "subtitle": "Solutions for all your scheduled payment needs",
+      "salaries": {
+        "title": "Automatic salaries",
+        "desc": "Pay your teams on a fixed date"
+      },
+      "rent": {
+        "title": "Scheduled rent",
+        "desc": "No need to think about paying every month"
+      },
+      "gifts": {
+        "title": "Future gifts",
+        "desc": "Guaranteed surprise for a birthday"
+      },
+      "subscriptions": {
+        "title": "Subscriptions",
+        "desc": "Automatic recurring payments"
+      }
+    },
+    "status": {
+      "operational": "System operational",
+      "maintenance": "Maintenance"
+    },
+    "stats": {
+      "executed": "Payments executed",
+      "success": "Success rate",
+      "users": "Active users"
+    },
+    "ctaSection": {
+      "title": "Ready to get started?",
+      "description": "Connect your wallet and create your first scheduled payment in less than 2 minutes",
+      "button": "Create my first payment"
+    }
+  },
+  "payment": {
+    "create": "Create payment",
+    "beneficiary": "Beneficiary",
+    "amount": "Amount",
+    "date": "Release date",
+    "token": "Token",
+    "fees": "Protocol fees",
+    "total": "Total to send",
+    "status": {
+      "pending": "Pending",
+      "released": "Released",
+      "cancelled": "Cancelled",
+      "failed": "Failed"
+    }
+  },
+  "dashboard": {
+    "title": "My Dashboard",
+    "subtitle": "Manage your scheduled payments",
+    "loading": "Loading your dashboard...",
+    "stats": {
+      "total": "Total sent",
+      "pending": "Pending",
+      "released": "Released",
+      "totalPayments": "{{count}} payment{{plural}} in total",
+      "scheduledPayments": "Scheduled payment{{plural}}",
+      "releasedPayments": "Released payment{{plural}}"
+    },
+    "table": {
+      "search": "Search by name or address...",
+      "beneficiary": "Beneficiary",
+      "amount": "Amount",
+      "releaseDate": "Release date",
+      "status": "Status",
+      "contract": "Contract",
+      "actions": "Actions",
+      "pagination": "Displaying {{start}} to {{end}} of {{total}} payments",
+      "previous": "Previous",
+      "next": "Next",
+      "releasedOn": "Released on {{date}}",
+      "clickToRename": "Click to rename",
+      "copyAddress": "Copy address",
+      "viewOnBasescan": "View on Basescan",
+      "cancelPayment": "Cancel payment"
+    },
+    "status": {
+      "pending": "Pending",
+      "released": "Released",
+      "cancelled": "Cancelled",
+      "failed": "Failed"
+    },
+    "period": {
+      "all": "All",
+      "byMonth": "By month",
+      "byYear": "By year",
+      "selectMonth": "Select a month",
+      "selectYear": "Select a year",
+      "allPayments": "All payments",
+      "year": "Year {{year}}"
+    },
+    "export": {
+      "button": "Export",
+      "exporting": "Exporting...",
+      "csv": {
+        "title": "Export CSV",
+        "description": "For Excel/accounting"
+      },
+      "pdf": {
+        "title": "Export PDF",
+        "description": "For printing/proof"
+      }
+    },
+    "beneficiaries": {
+      "title": "My beneficiaries",
+      "empty": "No beneficiaries",
+      "emptyDescription": "Create payments to add beneficiaries to your list.",
+      "edit": "Edit",
+      "delete": "Delete",
+      "deleteConfirm": "Delete \"{{name}}\" from your beneficiaries?",
+      "deleteError": "Error deleting",
+      "categories": {
+        "family": "Family",
+        "work": "Work",
+        "personal": "Personal",
+        "other": "Other"
+      }
+    },
+    "empty": {
+      "title": "No scheduled payments",
+      "description": "You haven't created any scheduled payments yet. Start automating your crypto transfers now!",
+      "cta": "Create my first payment",
+      "features": {
+        "secure": {
+          "title": "Secure",
+          "description": "Your funds are protected by the blockchain"
+        },
+        "automatic": {
+          "title": "Automatic",
+          "description": "Automatic execution on the scheduled date"
+        },
+        "transparent": {
+          "title": "Transparent",
+          "description": "Track your payments in real-time"
+        }
+      }
+    },
+    "cancel": {
+      "title": "Cancel payment",
+      "warning": "⚠️ You are about to cancel this scheduled payment:",
+      "beneficiary": "Beneficiary:",
+      "amount": "Amount:",
+      "releaseDate": "Scheduled release:",
+      "important": "Important:",
+      "refund": "Funds will be refunded to your wallet",
+      "irreversible": "This action is irreversible",
+      "noFees": "No fees will be charged",
+      "confirmText": "I understand that this action is irreversible and I wish to cancel this scheduled payment.",
+      "close": "Close",
+      "processing": "Cancelling...",
+      "confirm": "Confirm cancellation",
+      "confirmError": "Please confirm by checking the box",
+      "error": "Error cancelling",
+      "success": {
+        "title": "Payment cancelled!",
+        "message": "Funds have been refunded"
+      },
+      "errorTitle": "Cancellation error"
+    },
+    "auth": {
+      "title": "Create an account to access the dashboard",
+      "description": "The dashboard displays the history of all your scheduled payments and allows you to manage them easily.",
+      "advantages": "✨ Account benefits:",
+      "advantagesList": {
+        "dashboard": "📊 Complete dashboard",
+        "history": "📜 Payment history",
+        "cancel": "✅ Cancellation possible (if enabled)",
+        "beneficiaries": "👥 Beneficiary management"
+      },
+      "cta": "Create a free account",
+      "walletNotConnected": {
+        "title": "Wallet not connected",
+        "description": "Please connect your wallet to access your dashboard.",
+        "hint": "Use the \"Connect Wallet\" button at the top right"
+      }
+    },
+    "nopayments": "No scheduled payments"
+  },
+  "create": {
+    "title": "Create a scheduled payment",
+    "subtitle": "Send crypto that will be automatically released on the chosen date",
+    "currency": {
+      "select": "Choose the crypto to send",
+      "available": "available",
+      "native": "Native ETH: 1 transaction required",
+      "erc20": "ERC20 Token: 2 transactions required (approval + creation)",
+      "nativeLabel": "Native"
+    },
+    "beneficiary": {
+      "address": "Beneficiary address",
+      "addMultiple": "Add multiple beneficiaries",
+      "additional": "Additional beneficiaries",
+      "remove": "Remove"
+    },
+    "amount": {
+      "label": "Amount",
+      "perBeneficiary": "(per beneficiary)",
+      "monthly": "(monthly)",
+      "total": "Total",
+      "forBeneficiaries": "for {{count}} beneficiaries",
+      "totalMonths": "Total over {{months}} months"
+    },
+    "date": {
+      "label": "Release date and time",
+      "firstDue": "Release date and time (first due date)",
+      "instant": "⚡Instant",
+      "6hours": "6 hours",
+      "1day": "1 day",
+      "1week": "1 week",
+      "1month": "1 month",
+      "recurring": "🔄 Monthly",
+      "recurringTooltip": "⚠️ Feature only available for USDT/USDC",
+      "monthsLabel": "Number of monthly payments",
+      "monthsInfo": "💡 The amount will be debited each month for {{months}} months. Your treasury remains available.",
+      "dayOfMonth": "Debits will occur on the {{day}} of each month",
+      "autoRelease": "💡 The payment will be automatically released on this date",
+      "timeUntil": {
+        "past": "In the past",
+        "days": "In {{days}}d {{hours}}h {{minutes}}min",
+        "hours": "In {{hours}}h {{minutes}}min",
+        "minutes": "In {{minutes}}min"
+      }
+    },
+    "paymentType": {
+      "label": "🔒 Payment type",
+      "instantDetected": "Instant payment detected",
+      "instantDisabled": "Cancellation options are disabled because the payment will be executed immediately.",
+      "cancellable": {
+        "title": "Cancellable (before the date)",
+        "description": "You will be able to cancel the payment from the dashboard before the release date"
+      },
+      "definitive": {
+        "title": "Definitive (non-cancellable)",
+        "description": "Once created, impossible to cancel. Funds will be automatically released on the chosen date"
+      }
+    },
+    "summary": {
+      "title": "💰 Summary",
+      "balance": "Available balance"
+    },
+    "submit": "Create scheduled payment",
+    "features": {
+      "secure": {
+        "title": "100% Secure",
+        "description": "Your funds are locked in a verified smart contract"
+      },
+      "automatic": {
+        "title": "Automatic",
+        "description": "The payment is released automatically on the chosen date"
+      },
+      "transparent": {
+        "title": "Transparent",
+        "description": "Follow your payment in real-time on Basescan"
+      }
+    }
+  },
+  "help": {
+    "title": "Help Center",
+    "subtitle": "Quickly find answers to your questions about Confidance Crypto",
+    "search": "Search in help...",
+    "sections": {
+      "getStarted": {
+        "title": "Get Started",
+        "description": "First steps with Confidance Crypto"
+      },
+      "guides": {
+        "title": "Guides",
+        "description": "Detailed step-by-step tutorials"
+      },
+      "faq": {
+        "title": "FAQ",
+        "description": "Frequently asked questions"
+      },
+      "videos": {
+        "title": "Videos",
+        "description": "Video tutorials"
+      }
+    },
+    "widget": {
+      "title": "Need help?",
+      "subtitle": "Quickly find answers to your questions",
+      "getStarted": {
+        "title": "Get Started with Confidance",
+        "description": "Guide for new users"
+      },
+      "practicalGuides": {
+        "title": "Practical Guides",
+        "description": "Step-by-step tutorials"
+      },
+      "faq": {
+        "title": "Frequently Asked Questions",
+        "description": "Complete FAQ"
+      },
+      "videoTutorials": {
+        "title": "Video Tutorials",
+        "description": "Learn by video"
+      },
+      "chatMarilyn": {
+        "title": "Chat with Marilyn",
+        "description": "Instant AI assistance"
+      },
+      "contactSupport": "Contact support",
+      "openFullCenter": "Open the full help center"
+    },
+    "cta": {
+      "title": "Need personalized help?",
+      "description": "Our team is here to assist you",
+      "button": "Contact support"
+    },
+    "contact": {
+      "back": "Back to help center",
+      "title": "Contact Support",
+      "subtitle": "Our team is here to help you",
+      "email": {
+        "title": "Email",
+        "description": "Response within 24 hours on average"
+      },
+      "discord": {
+        "title": "Discord",
+        "description": "Join the community",
+        "comingSoon": "Coming soon"
+      },
+      "form": {
+        "title": "Contact form",
+        "email": "Your email",
+        "emailPlaceholder": "your@email.com",
+        "subject": "Subject",
+        "subjectPlaceholder": "Subject of your request",
+        "message": "Message",
+        "messagePlaceholder": "Your message...",
+        "submit": "Send"
+      }
+    },
+    "chat": {
+      "title": "Marilyn",
+      "subtitle": "Communication Assistant",
+      "connected": "Connected:",
+      "placeholder": "Type your message...",
+      "footer": "💬 Your messages are sent to Marilyn who will respond quickly",
+      "initialMessage": "👋 Hello! I'm Marilyn, Confidance Crypto's assistant. How can I help you today?",
+      "error": "❌ {{message}}. Please try again in a few moments.",
+      "success": "✅ Message received! I'll get back to you very soon."
+    },
+    "getStarted": {
+      "back": "← Back to help center",
+      "title": "🚀 Get Started with Confidance Crypto",
+      "whatIs": {
+        "title": "What is Confidance Crypto?",
+        "description": "Confidance Crypto is a DeFi platform that allows you to schedule automatic crypto payments. Send ETH or tokens that will be automatically released on a specific date."
+      },
+      "requirements": {
+        "title": "✅ What you need",
+        "wallet": {
+          "title": "A crypto wallet",
+          "description": "MetaMask, Coinbase Wallet, Rainbow, etc."
+        },
+        "eth": {
+          "title": "ETH on Base Mainnet",
+          "description": "Minimum ~0.01 ETH for fees + amount to send"
+        },
+        "address": {
+          "title": "The recipient's address",
+          "description": "Ethereum address (0x...)"
+        }
+      },
+      "nextSteps": {
+        "title": "📚 Next steps",
+        "createPayment": {
+          "title": "1. Create your first payment",
+          "description": "Step-by-step tutorial to send your first scheduled payment"
+        },
+        "faq": {
+          "title": "2. Frequently asked questions",
+          "description": "Security, fees, delays... all answers"
+        }
+      }
+    },
+    "guides": {
+      "back": "← Back to help center",
+      "title": "📚 Practical Guides",
+      "subtitle": "Detailed tutorials to master Confidance Crypto",
+      "items": {
+        "createPayment": {
+          "title": "Create your first payment",
+          "description": "Complete guide to send your first scheduled payment",
+          "duration": "5 min",
+          "level": "Beginner"
+        },
+        "fees": {
+          "title": "Understand fees",
+          "description": "Calculate the exact costs of your payments",
+          "duration": "3 min",
+          "level": "Beginner"
+        },
+        "cancel": {
+          "title": "Cancel a payment",
+          "description": "How to cancel a payment before its release",
+          "duration": "2 min",
+          "level": "Intermediate"
+        }
+      },
+      "tip": {
+        "title": "💡 Tip",
+        "description": "Start by creating a test payment with a small amount (0.001 ETH) to familiarize yourself with the process!"
+      }
+    },
+    "faq": {
+      "back": "← Back to help center",
+      "title": "❓ Frequently Asked Questions (FAQ)",
+      "subtitle": "Quickly find answers to the most common questions",
+      "categories": {
+        "security": {
+          "title": "🔐 Security",
+          "questions": {
+            "fundsSafe": {
+              "q": "Are my funds safe?",
+              "a": "Yes! Your funds are locked in an audited smart contract on the Base blockchain. No one (not even us) can touch them before the scheduled date. You keep 100% control."
+            },
+            "ifConfidanceDisappears": {
+              "q": "What happens if Confidance disappears?",
+              "a": "Your payments will continue to work! Smart contracts are on the blockchain and operate autonomously. Even if our site is offline, payments will be automatically released."
+            }
+          }
+        },
+        "fees": {
+          "title": "💰 Fees",
+          "questions": {
+            "whatFees": {
+              "q": "What are the fees?",
+              "a": "There are 2 types of fees: 1) Blockchain fees (gas): ~0.002 ETH at creation. 2) Protocol fees: 1.79% of the amount, automatically deducted upon release."
+            },
+            "feeExample": {
+              "q": "Fee calculation example",
+              "a": "To send 0.1 ETH: Gas fees (creation): 0.002 ETH. Protocol fees (1.79%): 0.00179 ETH. Recipient receives: 0.09821 ETH."
+            }
+          }
+        },
+        "dates": {
+          "title": "📅 Dates and Deadlines",
+          "questions": {
+            "canCancel": {
+              "q": "Can I cancel a payment?",
+              "a": "Yes, if you checked \"Allow cancellation\" when creating it. Cancellation must be done BEFORE the scheduled date. You recover 100% of the amount (no fees)."
+            },
+            "minDate": {
+              "q": "What is the minimum date?",
+              "a": "You can schedule a payment in a few minutes or in several years. There is no limit."
+            }
+          }
+        },
+        "technical": {
+          "title": "⚙️ Technical",
+          "questions": {
+            "blockchain": {
+              "q": "Which blockchain do you use?",
+              "a": "We use Base Mainnet (Ethereum Layer 2). It's fast, secure and with very low fees."
+            },
+            "tokens": {
+              "q": "Can I send tokens (USDC, DAI)?",
+              "a": "ERC20 support coming soon! For now, only native ETH is available."
+            }
+          }
+        }
+      },
+      "notFound": {
+        "title": "Can't find your answer?",
+        "description": "Our support team is here to help you",
+        "button": "💬 Contact support"
+      }
+    },
+    "videos": {
+      "back": "← Back to help center",
+      "title": "📹 Video Tutorials",
+      "subtitle": "Learn by video with our step-by-step tutorials",
+      "items": {
+        "createPayment": {
+          "title": "Create a payment from A to Z",
+          "description": "Complete tutorial to create your first scheduled payment",
+          "duration": "5:30"
+        },
+        "connectWallet": {
+          "title": "Connect your MetaMask wallet",
+          "description": "How to connect and configure your wallet on Base",
+          "duration": "3:15"
+        },
+        "feesSecurity": {
+          "title": "Understand fees and security",
+          "description": "Detailed explanation of the fee and security system",
+          "duration": "4:45"
+        }
+      },
+      "comingSoon": {
+        "title": "🎬 Video tutorials coming soon!",
+        "description": "In the meantime, check out our detailed written guides"
+      }
+    }
+  },
+  "footer": {
+    "description": "Decentralized scheduled payments on Base Mainnet. Simple, secure, automatic.",
+    "product": "Product",
+    "resources": "Resources",
+    "legal": "Legal",
+    "documentation": "Documentation",
+    "support": "Support",
+    "terms": "Terms",
+    "privacy": "Privacy",
+    "copyright": "© {{year}} Confidance Crypto. All rights reserved."
+  }
+}

@@ -1,27 +1,32 @@
 // src/app/create/page.tsx
+'use client';
+
 import PaymentForm from '@/components/payment/PaymentForm';
 import GuestBanner from '@/components/GuestBanner';
-
-export const metadata = {
-  title: 'Créer un paiement | Confidance Crypto',
-  description: 'Créez un paiement programmé sécurisé sur Base Mainnet',
-};
+import { useTranslation } from 'react-i18next';
+import { useEffect, useState } from 'react';
 
 export default function CreatePaymentPage() {
+  const { t, ready } = useTranslation();
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
       {/* Header */}
-      <div className="container mx-auto px-4 pt-24 pb-12">
+      <div className="container mx-auto px-4 pt-32 pb-12">
         {/* Bandeau invité */}
         <GuestBanner />
 
         <div className="max-w-2xl mx-auto text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 gradient-text">
-            Créer un paiement programmé
+        <h1 className="text-4xl md:text-5xl font-bold mb-8 gradient-text leading-relaxed pb-2">
+            {isMounted && ready ? t('create.title') : 'Créer un paiement programmé'}
           </h1>
           <p className="text-lg text-gray-600 dark:text-gray-400">
-            Envoyez de la crypto qui sera automatiquement libérée à la date
-            choisie
+            {isMounted && ready ? t('create.subtitle') : 'Envoyez de la crypto qui sera automatiquement libérée à la date choisie'}
           </p>
         </div>
 
@@ -50,10 +55,10 @@ export default function CreatePaymentPage() {
               </svg>
             </div>
             <h3 className="font-bold text-gray-900 dark:text-white mb-2">
-              100% Sécurisé
+              {isMounted && ready ? t('create.features.secure.title') : '100% Sécurisé'}
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Vos fonds sont verrouillés dans un smart contract vérifié
+              {isMounted && ready ? t('create.features.secure.description') : 'Vos fonds sont verrouillés dans un smart contract vérifié'}
             </p>
           </div>
 
@@ -75,10 +80,10 @@ export default function CreatePaymentPage() {
               </svg>
             </div>
             <h3 className="font-bold text-gray-900 dark:text-white mb-2">
-              Automatique
+              {isMounted && ready ? t('create.features.automatic.title') : 'Automatique'}
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Le paiement est libéré automatiquement à la date choisie
+              {isMounted && ready ? t('create.features.automatic.description') : 'Le paiement est libéré automatiquement à la date choisie'}
             </p>
           </div>
 
@@ -106,10 +111,10 @@ export default function CreatePaymentPage() {
               </svg>
             </div>
             <h3 className="font-bold text-gray-900 dark:text-white mb-2">
-              Transparent
+              {isMounted && ready ? t('create.features.transparent.title') : 'Transparent'}
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Suivez votre paiement en temps réel sur Basescan
+              {isMounted && ready ? t('create.features.transparent.description') : 'Suivez votre paiement en temps réel sur Basescan'}
             </p>
           </div>
         </div>
