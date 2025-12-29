@@ -1,7 +1,17 @@
-require("dotenv").config();
+const fs = require("fs");
+
+
+const networkArg = process.argv[2]; // ex: polygon | arbitrum | avalanche
+const envFile = networkArg ? `.env.${networkArg}` : ".env";
+
+if (fs.existsSync(envFile)) {
+  require("dotenv").config({ path: envFile });
+} else {
+  require("dotenv").config();
+}
+
 const { ethers } = require("ethers");
 const { createClient } = require('@supabase/supabase-js');
-const fs = require("fs");
 
 // ============================================================
 // CONFIGURATION

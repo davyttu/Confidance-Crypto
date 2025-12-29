@@ -8,6 +8,10 @@ const {
   BASE_RPC,
   BASE_SEPOLIA_RPC,
   SEPOLIA_RPC,
+
+  // 👇 AJOUT (Polygon)
+  POLYGON_RPC,
+  POLYGONSCAN_API_KEY,
 } = process.env;
 
 module.exports = {
@@ -16,11 +20,12 @@ module.exports = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 1,        // ← SEUL CHANGEMENT : 200 → 1 (optimisé taille)
+        runs: 1,
       },
-      viaIR: true,      // ← Tu as déjà ça, on le garde !
+      viaIR: true,
     },
   },
+
   networks: {
     core_mainnet: {
       url: CORE_MAINNET_RPC,
@@ -46,18 +51,40 @@ module.exports = {
       chainId: 11155111,
       accounts: [PRIVATE_KEY],
     },
+
+    // ===============================
+    // 🟣 POLYGON MAINNET (AJOUT)
+    // ===============================
+    polygon_mainnet: {
+      url: POLYGON_RPC || "https://polygon-rpc.com",
+      chainId: 137,
+      accounts: [PRIVATE_KEY],
+      timeout: 60000,
+    },
   },
+
   etherscan: {
-    apiKey: process.env.BASESCAN_API_KEY || "",
+    apiKey: {
+      base_mainnet: process.env.BASESCAN_API_KEY || "",
+      polygon_mainnet: POLYGONSCAN_API_KEY || "",
+    },
     customChains: [
       {
         network: "base_mainnet",
         chainId: 8453,
         urls: {
           apiURL: "https://api.basescan.org/api",
-          browserURL: "https://basescan.org"
-        }
-      }
-    ]
+          browserURL: "https://basescan.org",
+        },
+      },
+      {
+        network: "polygon_mainnet",
+        chainId: 137,
+        urls: {
+          apiURL: "https://api.polygonscan.com/api",
+          browserURL: "https://polygonscan.com",
+        },
+      },
+    ],
   },
 };

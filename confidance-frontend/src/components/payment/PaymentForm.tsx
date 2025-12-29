@@ -346,10 +346,10 @@ export default function PaymentForm() {
           </svg>
         </div>
         <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-          Connectez votre wallet
+          {isMounted && translationsReady ? t('common.connectWallet') : 'Connectez votre wallet'}
         </h3>
         <p className="text-gray-600 dark:text-gray-400">
-          Pour créer un paiement programmé, connectez d'abord votre wallet
+          {isMounted && translationsReady ? t('create.wallet.connectFirst') : 'Pour créer un paiement programmé, connectez d\'abord votre wallet'}
         </p>
       </div>
     );
@@ -513,7 +513,7 @@ export default function PaymentForm() {
             }}
             className="px-4 py-2 rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-primary-500 dark:hover:border-primary-400 transition-colors text-sm font-medium"
           >
-            ⚡Instantané
+            {isMounted && translationsReady ? t('create.date.instant') : '⚡Instantané'}
           </button>
 
           <button
@@ -549,7 +549,7 @@ export default function PaymentForm() {
             }}
             className="px-4 py-2 rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-primary-500 dark:hover:border-primary-400 transition-colors text-sm font-medium"
           >
-            1 semaine
+            {isMounted && translationsReady ? t('create.date.1week') : '1 semaine'}
           </button>
 
           <button
@@ -584,7 +584,7 @@ export default function PaymentForm() {
                 }
               `}
             >
-              🔄 Mensualisation
+              {isMounted && translationsReady ? t('create.date.recurring') : '🔄 Mensualisation'}
             </button>
 
             {/* Tooltip si ETH sélectionné */}
@@ -758,7 +758,7 @@ export default function PaymentForm() {
               <div className="bg-blue-50 dark:bg-blue-950/30 rounded-xl p-4 space-y-3">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-700 dark:text-gray-300">
-                    Bénéficiaire recevra (par mois)
+                    {isMounted && translationsReady ? t('create.date.beneficiaryWillReceive') : 'Bénéficiaire recevra (par mois)'}
                   </span>
                   <span className="font-semibold text-gray-900 dark:text-white">
                     {parseFloat(formData.amount).toFixed(2)} {formData.tokenSymbol}
@@ -776,7 +776,7 @@ export default function PaymentForm() {
 
                 <div className="border-t border-blue-200 dark:border-blue-800 pt-3 flex justify-between">
                   <span className="font-semibold text-gray-900 dark:text-white">
-                    TOTAL par mensualité
+                    {isMounted && translationsReady ? t('create.date.totalPerMonth') : 'TOTAL par mensualité'}
                   </span>
                   <span className="font-bold text-blue-600 dark:text-blue-400">
                     {(parseFloat(formData.amount) * 1.0179).toFixed(2)} {formData.tokenSymbol}
@@ -797,7 +797,7 @@ export default function PaymentForm() {
 
                 <div className="border-t-2 border-gray-300 dark:border-gray-600 pt-3 flex justify-between items-center">
                   <span className="text-lg font-bold text-gray-900 dark:text-white">
-                    TOTAL à approuver
+                    {isMounted && translationsReady ? t('create.date.totalToApprove') : 'TOTAL à approuver'}
                   </span>
                   <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                     {(parseFloat(formData.amount) * 1.0179 * recurringMonths).toFixed(2)} {formData.tokenSymbol}
@@ -891,8 +891,9 @@ export default function PaymentForm() {
                       <li className="flex items-start gap-2">
                         <span className="text-orange-600 dark:text-orange-400 flex-shrink-0">•</span>
                         <span>
-                          Seule l'option <strong className="text-blue-600 dark:text-blue-400">"Annulable"</strong> dans 
-                          le type de paiement permet de stopper définitivement la suite des mensualités via le dashboard
+                          {isMounted && translationsReady 
+                            ? t('create.date.cancellableStopsPayments')
+                            : <>Seule l'option <strong className="text-blue-600 dark:text-blue-400">"Annulable"</strong> dans le type de paiement permet de stopper définitivement la suite des mensualités via le dashboard</>}
                         </span>
                       </li>
                     </ul>

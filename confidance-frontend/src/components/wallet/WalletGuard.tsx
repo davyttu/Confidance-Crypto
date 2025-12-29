@@ -4,7 +4,8 @@
 import { useAccount, useChainId } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { AlertCircle, Wifi } from 'lucide-react';
-import { ReactNode } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface WalletGuardProps {
   children: ReactNode;
@@ -13,6 +14,12 @@ interface WalletGuardProps {
 export function WalletGuard({ children }: WalletGuardProps) {
   const { isConnected } = useAccount();
   const chainId = useChainId();
+  const { t, ready: translationsReady } = useTranslation();
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Not connected
   if (!isConnected) {
@@ -24,9 +31,11 @@ export function WalletGuard({ children }: WalletGuardProps) {
           </div>
           
           <div className="space-y-2">
-            <h2 className="text-2xl font-bold">Connexion requise</h2>
+            <h2 className="text-2xl font-bold">
+              {isMounted && translationsReady ? t('wallet.connectionRequired') : 'Connexion requise'}
+            </h2>
             <p className="text-muted-foreground">
-              Connectez votre wallet pour accéder à cette page
+              {isMounted && translationsReady ? t('wallet.connectToAccess') : 'Connectez votre wallet pour accéder à cette page'}
             </p>
           </div>
 
@@ -46,18 +55,22 @@ export function WalletGuard({ children }: WalletGuardProps) {
           </div>
           
           <div className="space-y-2">
-            <h2 className="text-2xl font-bold">Mauvais réseau</h2>
+            <h2 className="text-2xl font-bold">
+              {isMounted && translationsReady ? t('wallet.wrongNetwork') : 'Mauvais réseau'}
+            </h2>
             <p className="text-muted-foreground">
-              Vous devez être sur <strong>Base Mainnet</strong> pour utiliser cette application
+              {isMounted && translationsReady 
+                ? <>{t('wallet.mustBeOnBase')} <strong>Base Mainnet</strong> {t('wallet.toUseApp')}</>
+                : <>Vous devez être sur <strong>Base Mainnet</strong> pour utiliser cette application</>}
             </p>
             <p className="text-sm text-muted-foreground">
-              Réseau actuel : ChainID {chainId}
+              {isMounted && translationsReady ? t('wallet.currentNetwork', { chainId }) : `Réseau actuel : ChainID ${chainId}`}
             </p>
           </div>
 
           <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
             <p className="text-sm text-blue-400">
-              💡 Cliquez sur votre wallet et changez de réseau vers Base Mainnet
+              {isMounted && translationsReady ? t('wallet.switchNetworkHint') : '💡 Cliquez sur votre wallet et changez de réseau vers Base Mainnet'}
             </p>
           </div>
         </div>

@@ -227,6 +227,9 @@
   "create": {
     "title": "Create a scheduled payment",
     "subtitle": "Send crypto that will be automatically released on the chosen date",
+    "wallet": {
+      "connectFirst": "To create a scheduled payment, first connect your wallet"
+    },
     "currency": {
       "select": "Choose the crypto to send",
       "available": "available",
@@ -262,6 +265,12 @@
       "monthsInfo": "💡 The amount will be debited each month for {{months}} months. Your treasury remains available.",
       "dayOfMonth": "Debits will occur on the {{day}} of each month",
       "autoRelease": "💡 The payment will be automatically released on this date",
+      "beneficiaryWillReceive": "Beneficiary will receive (per month)",
+      "totalPerMonth": "TOTAL per monthly payment",
+      "numberOfMonths": "Number of months",
+      "totalToApprove": "TOTAL to approve",
+      "nextPaymentsContinue": "The <strong>next monthly payments will continue normally</strong> even if one month failed",
+      "cancellableStopsPayments": "Only the \"Cancellable\" option in the payment type allows you to permanently stop the remaining monthly payments via the dashboard",
       "timeUntil": {
         "past": "In the past",
         "days": "In {{days}}d {{hours}}h {{minutes}}min",
@@ -542,6 +551,15 @@
         "description": "In the meantime, check out our detailed written guides"
       }
     }
+  },
+  "wallet": {
+    "connectionRequired": "Connection required",
+    "connectToAccess": "Connect your wallet to access this page",
+    "wrongNetwork": "Wrong network",
+    "mustBeOnBase": "You must be on",
+    "toUseApp": "to use this application",
+    "currentNetwork": "Current network: ChainID {{chainId}}",
+    "switchNetworkHint": "💡 Click on your wallet and switch network to Base Mainnet"
   },
   "footer": {
     "description": "Decentralized scheduled payments on Base Mainnet. Simple, secure, automatic.",

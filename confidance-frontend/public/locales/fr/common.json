@@ -7,6 +7,7 @@
   },
   "common": {
     "connect": "Connecter le portefeuille",
+    "connectWallet": "Connectez votre wallet",
     "disconnect": "Déconnecter",
     "cancel": "Annuler",
     "confirm": "Confirmer",
@@ -217,6 +218,9 @@
   "create": {
     "title": "Créer un paiement programmé",
     "subtitle": "Envoyez de la crypto qui sera automatiquement libérée à la date choisie",
+    "wallet": {
+      "connectFirst": "Pour créer un paiement programmé, connectez d'abord votre wallet"
+    },
     "currency": {
       "select": "Choisissez la crypto à envoyer",
       "available": "disponibles",
@@ -252,6 +256,12 @@
       "monthsInfo": "💡 Le montant sera prélevé chaque mois pendant {{months}} mois. Votre trésorerie reste disponible.",
       "dayOfMonth": "Les prélèvements auront lieu le {{day}} de chaque mois",
       "autoRelease": "💡 Le paiement sera automatiquement libéré à cette date",
+      "beneficiaryWillReceive": "Bénéficiaire recevra (par mois)",
+      "totalPerMonth": "TOTAL par mensualité",
+      "numberOfMonths": "Nombre de mois",
+      "totalToApprove": "TOTAL à approuver",
+      "nextPaymentsContinue": "Les <strong>prochaines mensualités continueront normalement</strong> même si un mois a échoué",
+      "cancellableStopsPayments": "Seule l'option \"Annulable\" dans le type de paiement permet de stopper définitivement la suite des mensualités via le dashboard",
       "timeUntil": {
         "past": "Dans le passé",
         "days": "Dans {{days}}j {{hours}}h {{minutes}}min",
@@ -532,6 +542,15 @@
         "description": "En attendant, consultez nos guides écrits détaillés"
       }
     }
+  },
+  "wallet": {
+    "connectionRequired": "Connexion requise",
+    "connectToAccess": "Connectez votre wallet pour accéder à cette page",
+    "wrongNetwork": "Mauvais réseau",
+    "mustBeOnBase": "Vous devez être sur",
+    "toUseApp": "pour utiliser cette application",
+    "currentNetwork": "Réseau actuel : ChainID {{chainId}}",
+    "switchNetworkHint": "💡 Cliquez sur votre wallet et changez de réseau vers Base Mainnet"
   },
   "footer": {
     "description": "Paiements programmés décentralisés sur Base Mainnet. Simple, sécurisé, automatique.",

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   useAccount,
+  useChainId,
   useWriteContract,
   useWaitForTransactionReceipt,
   usePublicClient,
@@ -16,6 +17,22 @@ import { erc20Abi } from '@/lib/contracts/erc20Abi';
 // ⚠️ ADRESSE DE LA FACTORY - Déployée sur Base Mainnet
 const FACTORY_ADDRESS: `0x${string}` = '0x0BD36382637312095a93354b2e5c71B68f570881';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+// ✅ Multi-chain : réseau courant (utilisé par l'API / DB)
+const getNetworkFromChainId = (chainId: number): string => {
+  switch (chainId) {
+    case 8453:
+      return 'base_mainnet';
+    case 137:
+      return 'polygon_mainnet';
+    case 42161:
+      return 'arbitrum_mainnet';
+    case 43114:
+      return 'avalanche_mainnet';
+    default:
+      return `chain_${chainId}`;
+  }
+};
+
 
 interface CreatePaymentParams {
   tokenSymbol: TokenSymbol;
@@ -55,6 +72,7 @@ interface UseCreatePaymentReturn {
 
 export function useCreatePayment(): UseCreatePaymentReturn {
   const { address } = useAccount();
+  const chainId = useChainId();
   const publicClient = usePublicClient();
   
   // ✅ FIX : Helper pour lire la balance d'un token
@@ -1410,7 +1428,8 @@ export function useCreatePayment(): UseCreatePaymentReturn {
                   amount: params.amount.toString(),
                   release_time: params.releaseTime,
                   cancellable: params.cancellable || false,
-                  network: 'base_mainnet',
+                  network: getNetworkFromChainId(chainId),
+                  chain_id: chainId,
                   transaction_hash: createTxHash,
                 }),
               });
@@ -1523,7 +1542,8 @@ export function useCreatePayment(): UseCreatePaymentReturn {
                     amount: currentParams.amount.toString(),
                     release_time: currentParams.releaseTime,
                     cancellable: currentParams.cancellable || false,
-                    network: 'base_mainnet',
+                    network: getNetworkFromChainId(chainId),
+                    chain_id: chainId,
                     transaction_hash: createTxHash,
                     needs_manual_address: true, // ✅ FIX : Flag pour indiquer que l'adresse doit être ajoutée manuellement
                   }),

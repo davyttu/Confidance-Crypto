@@ -6,6 +6,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   useAccount,
+  useChainId,
   useWriteContract,
   useWaitForTransactionReceipt,
   usePublicClient,
@@ -18,6 +19,22 @@ import { useAuth } from '@/contexts/AuthContext';
 // Factory V2 avec support récurrent (avec dayOfMonth + InstantPayment)
 const FACTORY_ADDRESS: `0x${string}` = '0x0BD36382637312095a93354b2e5c71B68f570881';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+// ✅ Multi-chain : réseau courant
+const getNetworkFromChainId = (chainId: number): string => {
+  switch (chainId) {
+    case 8453:
+      return 'base_mainnet';
+    case 137:
+      return 'polygon_mainnet';
+    case 42161:
+      return 'arbitrum_mainnet';
+    case 43114:
+      return 'avalanche_mainnet';
+    default:
+      return `chain_${chainId}`;
+  }
+};
+
 
 // Fees protocole
 const FEE_BASIS_POINTS = 179;
@@ -88,6 +105,7 @@ function calculateRecurringTotal(monthlyAmount: bigint, totalMonths: number): {
 
 export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
   const { address } = useAccount();
+  const chainId = useChainId();
   const publicClient = usePublicClient();
   const { user, isAuthenticated } = useAuth();
 
@@ -415,7 +433,8 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
               total_months: params.totalMonths,
               day_of_month: params.dayOfMonth,
               cancellable: params.cancellable || false,
-              network: 'base_mainnet',
+              network: getNetworkFromChainId(chainId),
+                    chain_id: chainId,
               transaction_hash: createTxHash,
               ...(isAuthenticated && user ? { user_id: user.id } : { guest_email: guestEmail }),
             }),
