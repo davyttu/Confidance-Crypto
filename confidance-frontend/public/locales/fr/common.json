@@ -232,7 +232,14 @@
       "address": "Adresse du bénéficiaire",
       "addMultiple": "Ajouter plusieurs bénéficiaires",
       "additional": "Bénéficiaires supplémentaires",
-      "remove": "Supprimer"
+      "remove": "Supprimer",
+      "addTitle": "➕ Ajouter des bénéficiaires",
+      "addDescription": "Ajoutez jusqu'à 4 bénéficiaires supplémentaires (ils recevront le même montant)",
+      "beneficiaryLabel": "Bénéficiaire {{number}} (optionnel)",
+      "invalidAddress": "Adresse invalide",
+      "addAtLeastOne": "Ajoutez au moins une adresse valide",
+      "cancel": "Annuler",
+      "validate": "✅ Valider"
     },
     "amount": {
       "label": "Montant",
@@ -284,9 +291,42 @@
     },
     "summary": {
       "title": "💰 Récapitulatif",
-      "balance": "Balance disponible"
+      "balance": "Balance disponible",
+      "beneficiaryWillReceive": "Bénéficiaire recevra",
+      "protocolFees": "Frais protocole ({{percentage}}%)",
+      "totalToSend": "TOTAL à envoyer",
+      "secureTitle": "🔒 Paiement sécurisé et automatique",
+      "secureDescription": "Vos fonds sont verrouillés dans un smart contract et seront automatiquement libérés à la date choisie. Aucune action manuelle nécessaire.",
+      "feesTooltip": "Ces frais maintiennent la plateforme et le keeper 24/7"
     },
     "submit": "Créer le paiement programmé",
+    "modal": {
+      "paymentCreated": "Paiement créé !",
+      "transactionConfirmed": "Transaction confirmée !",
+      "paymentDeployedSuccess": "Votre paiement programmé a été déployé avec succès",
+      "viewOnBasescanDetails": "Consultez Basescan pour voir les détails",
+      "contractAddress": "Adresse du contrat",
+      "transactionHash": "Transaction Hash",
+      "viewOnBasescan": "Voir sur Basescan",
+      "viewPayment": "Voir le paiement",
+      "close": "Fermer",
+      "step": "Étape {{current}} sur {{total}}",
+      "dontCloseWindow": "⚠️ Ne fermez pas cette fenêtre",
+      "approval": "1. Approbation",
+      "creation": "2. Création",
+      "creationSingle": "Création",
+      "viewApproval": "Voir l'approbation",
+      "viewCreation": "Voir la création",
+      "error": "Erreur",
+      "errorOccurred": "Une erreur est survenue",
+      "loading": "Chargement...",
+      "creatingPaymentETH": "Création du paiement ETH...",
+      "creatingPayment": "Création du paiement...",
+      "paymentCreatedSuccess": "Paiement créé avec succès !",
+      "paymentCreatedNotSaved": "Paiement créé ! (Non enregistré dans la DB)",
+      "savingToDatabase": "Enregistrement dans la base de données...",
+      "creatingRecurringPayment": "Création du paiement récurrent {{token}}..."
+    },
     "features": {
       "secure": {
         "title": "100% Sécurisé",

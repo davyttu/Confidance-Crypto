@@ -1,5 +1,7 @@
 'use client';
 
+import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   type TokenSymbol,
   getToken,
@@ -19,7 +21,13 @@ export default function FeeDisplay({
   tokenSymbol,
   showDetails = true,
 }: FeeDisplayProps) {
+  const { t, ready: translationsReady } = useTranslation();
+  const [isMounted, setIsMounted] = useState(false);
   const token = getToken(tokenSymbol);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   if (!amount || amount === BigInt(0)) {
     return null;
@@ -32,11 +40,8 @@ export default function FeeDisplay({
       {/* Titre */}
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          Récapitulatif
+          {isMounted && translationsReady ? t('create.summary.title') : '💰 Récapitulatif'}
         </h3>
-        <span className="text-xs text-gray-500">
-          Frais : {PROTOCOL_FEE_PERCENTAGE}%
-        </span>
       </div>
 
       {/* Card récapitulatif */}
@@ -44,7 +49,7 @@ export default function FeeDisplay({
         {/* Montant bénéficiaire */}
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-600 dark:text-gray-400">
-            Bénéficiaire recevra
+            {isMounted && translationsReady ? t('create.summary.beneficiaryWillReceive') : 'Bénéficiaire recevra'}
           </span>
           <span className="text-lg font-bold text-green-600 dark:text-green-400">
             {formatTokenAmount(fees.recipientAmount, token.decimals, tokenSymbol)}
@@ -57,7 +62,9 @@ export default function FeeDisplay({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-600 dark:text-gray-400">
-                  + Frais protocole ({PROTOCOL_FEE_PERCENTAGE}%)
+                  + {isMounted && translationsReady 
+                    ? t('create.summary.protocolFees', { percentage: PROTOCOL_FEE_PERCENTAGE })
+                    : `Frais protocole (${PROTOCOL_FEE_PERCENTAGE}%)`}
                 </span>
                 <div className="group relative">
                   <svg
@@ -72,7 +79,7 @@ export default function FeeDisplay({
                     />
                   </svg>
                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-xl z-10">
-                    Ces frais maintiennent la plateforme et le keeper 24/7
+                    {isMounted && translationsReady ? t('create.summary.feesTooltip') : 'Ces frais maintiennent la plateforme et le keeper 24/7'}
                     <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900" />
                   </div>
                 </div>
@@ -90,7 +97,7 @@ export default function FeeDisplay({
         {/* TOTAL à envoyer */}
         <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-950/30 -m-6 mt-0 p-6 rounded-b-2xl">
           <span className="text-base font-bold text-gray-900 dark:text-white">
-            TOTAL à envoyer
+            {isMounted && translationsReady ? t('create.summary.totalToSend') : 'TOTAL à envoyer'}
           </span>
           <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
             {formatTokenAmount(fees.totalAmount, token.decimals, tokenSymbol)}
@@ -113,12 +120,10 @@ export default function FeeDisplay({
         </svg>
         <div className="text-sm text-blue-900 dark:text-blue-300">
           <p className="font-medium mb-1">
-            🔒 Paiement sécurisé et automatique
+            {isMounted && translationsReady ? t('create.summary.secureTitle') : '🔒 Paiement sécurisé et automatique'}
           </p>
           <p className="text-xs">
-            Vos fonds sont verrouillés dans un smart contract et seront
-            automatiquement libérés à la date choisie. Aucune action manuelle
-            nécessaire.
+            {isMounted && translationsReady ? t('create.summary.secureDescription') : 'Vos fonds sont verrouillés dans un smart contract et seront automatiquement libérés à la date choisie. Aucune action manuelle nécessaire.'}
           </p>
         </div>
       </div>

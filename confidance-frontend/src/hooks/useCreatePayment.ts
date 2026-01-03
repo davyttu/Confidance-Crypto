@@ -1,6 +1,7 @@
 // src/hooks/useCreatePayment.ts
 
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   useAccount,
   useChainId,
@@ -14,8 +15,8 @@ import { useTokenApproval, type UseTokenApprovalReturn } from './useTokenApprova
 import { paymentFactoryAbi } from '@/lib/contracts/paymentFactoryAbi';
 import { erc20Abi } from '@/lib/contracts/erc20Abi';
 
-// ⚠️ ADRESSE DE LA FACTORY - Déployée sur Base Mainnet
-const FACTORY_ADDRESS: `0x${string}` = '0x0BD36382637312095a93354b2e5c71B68f570881';
+// ⚠️ ADRESSE DE LA FACTORY - Déployée sur Base Mainnet (V2 avec Instant Payments)
+const FACTORY_ADDRESS: `0x${string}` = '0x88Da5f28c4d5b7392812dB67355d72D21516bCaf';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 // ✅ Multi-chain : réseau courant (utilisé par l'API / DB)
 const getNetworkFromChainId = (chainId: number): string => {
@@ -71,6 +72,7 @@ interface UseCreatePaymentReturn {
 }
 
 export function useCreatePayment(): UseCreatePaymentReturn {
+  const { t } = useTranslation();
   const { address } = useAccount();
   const chainId = useChainId();
   const publicClient = usePublicClient();
@@ -267,7 +269,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
         } else {
           // PAIEMENT PROGRAMMÉ ETH (1.79% fees)
           setStatus('creating');
-          setProgressMessage('Création du paiement ETH...');
+          setProgressMessage(t('create.modal.creatingPaymentETH', { defaultValue: 'Création du paiement ETH...' }));
 
           const amountToPayee = params.amount;
           const protocolFee = (amountToPayee * BigInt(179)) / BigInt(10000);
@@ -605,9 +607,17 @@ export function useCreatePayment(): UseCreatePaymentReturn {
       const now = Math.floor(Date.now() / 1000);
       const isInstantPayment = (currentParams.releaseTime - now) < 60;
 
-      // ✅ FIX : Calculer le montant total requis
-      const protocolFee = (currentParams.amount * BigInt(179)) / BigInt(10000);
-      const totalRequired = currentParams.amount + protocolFee;
+      // ✅ FIX : Calculer le montant total requis (sans fees pour paiements instantanés)
+      const totalRequired = isInstantPayment 
+        ? currentParams.amount  // Paiement instantané : pas de fees
+        : currentParams.amount + ((currentParams.amount * BigInt(179)) / BigInt(10000)); // Paiement programmé : + 1.79%
+      
+      console.log('💰 Calcul totalRequired:', {
+        isInstantPayment,
+        amount: currentParams.amount.toString(),
+        totalRequired: totalRequired.toString(),
+        fees: isInstantPayment ? '0% (instantané)' : '1.79% (programmé)',
+      });
       
       // ✅ FIX : Calculer la marge de sécurité attendue (10%)
       const expectedAllowance = (totalRequired * BigInt(110)) / BigInt(100);
@@ -973,7 +983,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
         setProgressMessage(
           isInstantPayment 
             ? '⚡ Paiement instantané...' 
-            : 'Création du paiement...'
+            : t('create.modal.creatingPayment', { defaultValue: 'Création du paiement...' })
         );
 
         if (!token.address) {
@@ -1366,7 +1376,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
               console.log('✅ Paiement déjà enregistré pour ce contrat:', foundAddress);
               setContractAddress(foundAddress);
               setStatus('success');
-              setProgressMessage('Paiement créé avec succès !');
+              setProgressMessage(t('create.modal.paymentCreatedSuccess', { defaultValue: 'Paiement créé avec succès !' }));
               return;
             }
             
@@ -1382,7 +1392,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
 
             // Enregistrer dans Supabase via API
             try {
-              setProgressMessage('Enregistrement dans la base de données...');
+              setProgressMessage(t('create.modal.savingToDatabase', { defaultValue: 'Enregistrement dans la base de données...' }));
               
               // Capturer les valeurs actuelles
               const params = currentParams;
@@ -1396,7 +1406,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
                 console.error('❌ DEBUG:', { params, userAddress, capturedPayerAddress, address });
                 isSavingRef.current = false;
                 setStatus('success');
-                setProgressMessage('Paiement créé ! (Non enregistré dans la DB)');
+                setProgressMessage(t('create.modal.paymentCreatedNotSaved', { defaultValue: 'Paiement créé ! (Non enregistré dans la DB)' }));
                 return;
               }
 
@@ -1442,7 +1452,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
                   console.log('ℹ️ Paiement déjà enregistré (doublon détecté), on continue...');
                   savedContractAddressRef.current = foundAddress;
                   setStatus('success');
-                  setProgressMessage('Paiement créé avec succès !');
+                  setProgressMessage(t('create.modal.paymentCreatedSuccess', { defaultValue: 'Paiement créé avec succès !' }));
                   isSavingRef.current = false;
                   return;
                 }
@@ -1452,7 +1462,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
                 // Ne pas bloquer l'utilisateur, le paiement est créé sur la blockchain
                 savedContractAddressRef.current = foundAddress;
                 setStatus('success');
-                setProgressMessage('Paiement créé avec succès !');
+                setProgressMessage(t('create.modal.paymentCreatedSuccess', { defaultValue: 'Paiement créé avec succès !' }));
                 isSavingRef.current = false;
                 return;
               } else {

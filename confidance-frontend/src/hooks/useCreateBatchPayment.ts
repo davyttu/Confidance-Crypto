@@ -13,7 +13,7 @@ import { parseEther } from 'viem';
 import { paymentFactoryAbi } from '@/lib/contracts/paymentFactoryAbi';
 import { useAuth } from '@/contexts/AuthContext';
 
-const FACTORY_ADDRESS: `0x${string}` = '0x0BD36382637312095a93354b2e5c71B68f570881';
+const FACTORY_ADDRESS: `0x${string}` = '0x88Da5f28c4d5b7392812dB67355d72D21516bCaf';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 // ✅ Multi-chain : réseau courant
 const getNetworkFromChainId = (chainId: number): string => {

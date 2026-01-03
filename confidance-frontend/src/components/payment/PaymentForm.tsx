@@ -742,18 +742,14 @@ export default function PaymentForm() {
       {/* Section 5 : Récapitulatif frais */}
       {getAmountBigInt() && (
         <div className="glass rounded-2xl p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              {isMounted && translationsReady ? t('create.summary.title') : '💰 Récapitulatif'}
-            </h3>
-            <span className="text-xs text-gray-500 dark:text-gray-400">
-              Frais : 1.79%
-            </span>
-          </div>
-
           {/* Affichage spécifique pour paiement récurrent */}
           {isRecurringMode ? (
             <div className="space-y-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {isMounted && translationsReady ? t('create.summary.title') : '💰 Récapitulatif'}
+                </h3>
+              </div>
               {/* Détails par mensualité */}
               <div className="bg-blue-50 dark:bg-blue-950/30 rounded-xl p-4 space-y-3">
                 <div className="flex justify-between text-sm">
@@ -767,7 +763,9 @@ export default function PaymentForm() {
 
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600 dark:text-gray-400">
-                    + Frais protocole (1.79%)
+                    + {isMounted && translationsReady 
+                      ? t('create.summary.protocolFees', { percentage: '1.79' })
+                      : 'Frais protocole (1.79%)'}
                   </span>
                   <span className="font-medium text-orange-600 dark:text-orange-400">
                     {(parseFloat(formData.amount) * 0.0179).toFixed(2)} {formData.tokenSymbol}
@@ -788,7 +786,7 @@ export default function PaymentForm() {
               <div className="space-y-3">
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-gray-700 dark:text-gray-300">
-                    Nombre de mois
+                    {isMounted && translationsReady ? t('create.date.numberOfMonths') : 'Nombre de mois'}
                   </span>
                   <span className="font-semibold text-gray-900 dark:text-white">
                     × {recurringMonths}
@@ -811,7 +809,7 @@ export default function PaymentForm() {
                   <div className="flex items-center gap-2 text-sm">
                     <span className="text-lg">🗓️</span>
                     <span className="text-gray-700 dark:text-gray-300">
-                      Première échéance :
+                      {isMounted && translationsReady ? t('create.date.firstDueDate') : 'Première échéance :'}
                     </span>
                     <span className="font-semibold text-gray-900 dark:text-white">
                       {formData.releaseDate.toLocaleDateString('fr-FR', {
@@ -825,7 +823,7 @@ export default function PaymentForm() {
                   <div className="flex items-center gap-2 text-sm">
                     <span className="text-lg">📅</span>
                     <span className="text-gray-700 dark:text-gray-300">
-                      Dernière échéance :
+                      {isMounted && translationsReady ? t('create.date.lastDueDate') : 'Dernière échéance :'}
                     </span>
                     <span className="font-semibold text-gray-900 dark:text-white">
                       {(() => {

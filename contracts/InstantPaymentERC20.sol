@@ -33,6 +33,9 @@ contract InstantPaymentERC20 {
      * @param _payee Adresse du bénéficiaire
      * @param _tokenAddress Adresse du token (USDC/USDT)
      * @param _amount Montant à transférer
+     * 
+     * @dev Les tokens doivent être transférés à ce contrat AVANT l'appel du constructor
+     *      La Factory transfère les tokens à ce contrat, puis ce contrat les transfère au bénéficiaire
      */
     constructor(
         address _payer,
@@ -51,12 +54,28 @@ contract InstantPaymentERC20 {
         amount = _amount;
         timestamp = block.timestamp;
         
-        // Transfert immédiat depuis payer vers payee (0% fees)
-        IERC20(_tokenAddress).safeTransferFrom(_payer, _payee, _amount);
+        // ✅ FIX : Les tokens seront transférés par la Factory APRÈS la création du contrat
+        // Le transfert au bénéficiaire se fera via la fonction execute() appelée par la Factory
+        executed = false;
+    }
+    
+    /**
+     * @notice Exécute le transfert vers le bénéficiaire
+     * @dev Doit être appelé par la Factory après avoir transféré les tokens à ce contrat
+     */
+    function execute() external {
+        require(!executed, "Already executed");
+        
+        // Vérifier que ce contrat a reçu les tokens (de la Factory)
+        uint256 balance = IERC20(tokenAddress).balanceOf(address(this));
+        require(balance >= amount, "Insufficient tokens received");
+        
+        // Transfert immédiat vers payee (0% fees)
+        IERC20(tokenAddress).safeTransfer(payee, amount);
         
         executed = true;
         
-        emit InstantPaymentExecuted(_payer, _payee, _tokenAddress, _amount, block.timestamp);
+        emit InstantPaymentExecuted(payer, payee, tokenAddress, amount, block.timestamp);
     }
     
     /**

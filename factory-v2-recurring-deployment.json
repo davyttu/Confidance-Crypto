@@ -4,7 +4,7 @@
   "chainId": "8453",
   "factoryAddress": "0x0BD36382637312095a93354b2e5c71B68f570881",
   "deployedAt": "2025-12-09T17:39:06.211Z",
-  "deployedBy": "0x7A764F9dED8CA54A5514023643fE117c6eAddD90",
+  "deployedBy": "0xdbA6ABe2aBd4B9E007D102533Be76c460E06A833",
   "features": [
     "Single Payment ETH",
     "Single Payment ERC20",

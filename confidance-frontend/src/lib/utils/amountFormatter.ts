@@ -7,7 +7,7 @@ import { formatEther, formatUnits } from 'viem';
 export function formatAmount(
   amountWei: string | bigint,
   decimals: number = 18,
-  maxDecimals: number = 4
+  maxDecimals: number = 8
 ): string {
   try {
     const formatted = decimals === 18 
@@ -16,8 +16,35 @@ export function formatAmount(
     
     const num = parseFloat(formatted);
     
-    // Arrondir au nombre de décimales souhaité
-    return num.toFixed(maxDecimals).replace(/\.?0+$/, '');
+    // Si le montant est 0, retourner "0"
+    if (num === 0) return '0';
+    
+    // Déterminer le nombre de décimales nécessaires
+    let effectiveDecimals = maxDecimals;
+    
+    // Pour les stablecoins (6 décimales) comme USDC/USDT, utiliser moins de décimales
+    if (decimals === 6) {
+      // USDC/USDT : toujours afficher 2-4 décimales max
+      if (num < 0.01 && num > 0) {
+        effectiveDecimals = 4;
+      } else {
+        effectiveDecimals = 2;
+      }
+    } else {
+      // Pour ETH et autres tokens (18 décimales)
+      if (num < 0.0001 && num > 0) {
+        effectiveDecimals = 8;
+      } else if (num < 0.01 && num > 0) {
+        effectiveDecimals = 6;
+      } else if (num < 1 && num > 0) {
+        effectiveDecimals = 4;
+      } else {
+        effectiveDecimals = 2;
+      }
+    }
+    
+    // Formater avec le bon nombre de décimales et supprimer les zéros inutiles
+    return num.toFixed(effectiveDecimals).replace(/\.?0+$/, '');
   } catch (error) {
     console.error('Erreur formatAmount:', error);
     return '0';

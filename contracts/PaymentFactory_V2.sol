@@ -373,8 +373,7 @@ contract PaymentFactory {
      * @param _amount Montant
      * @return Adresse du contrat créé
      * 
-     * @dev Le transfert s'exécute immédiatement dans le constructor
-     *      L'utilisateur doit avoir approuvé le montant au préalable
+     * @dev L'utilisateur doit avoir approuvé le montant à la Factory au préalable
      *      Pas de fees, transfert direct au bénéficiaire
      */
     function createInstantPaymentERC20(
@@ -386,12 +385,22 @@ contract PaymentFactory {
         require(_tokenAddress != address(0), "Invalid token");
         require(_amount > 0, "Amount must be > 0");
         
+        // ✅ ÉTAPE 1 : Factory reçoit les tokens de l'utilisateur
+        IERC20(_tokenAddress).safeTransferFrom(msg.sender, address(this), _amount);
+        
+        // ✅ ÉTAPE 2 : Créer le contrat
         InstantPaymentERC20 newPayment = new InstantPaymentERC20(
             msg.sender,
             _payee,
             _tokenAddress,
             _amount
         );
+        
+        // ✅ ÉTAPE 3 : Factory transfère les tokens au nouveau contrat
+        IERC20(_tokenAddress).safeTransfer(address(newPayment), _amount);
+        
+        // ✅ ÉTAPE 4 : Exécuter le transfert vers le bénéficiaire
+        newPayment.execute();
         
         emit InstantPaymentCreatedERC20(
             msg.sender,
@@ -406,15 +415,12 @@ contract PaymentFactory {
     }
     
     // ============================================================
-    // HELPERS
+    // HELPERS (TEMPORAIREMENT DÉSACTIVÉES POUR RÉDUIRE LA TAILLE)
     // ============================================================
+    // Ces fonctions peuvent être réintroduites plus tard via un upgrade
+    // Le frontend peut calculer les fees lui-même : fee = amount * 179 / 10000
     
-    /**
-     * @notice Calcule le total à envoyer pour un single payment
-     * @param amountToPayee Montant pour le bénéficiaire
-     * @return protocolFee Fees
-     * @return totalRequired Total à envoyer
-     */
+    /*
     function calculateSingleTotal(uint256 amountToPayee) 
         external 
         pure 
@@ -427,13 +433,6 @@ contract PaymentFactory {
         totalRequired = amountToPayee + protocolFee;
     }
     
-    /**
-     * @notice Calcule le total pour un batch payment
-     * @param amounts Liste des montants pour bénéficiaires
-     * @return totalToBeneficiaries Somme des montants
-     * @return protocolFee Fees
-     * @return totalRequired Total à envoyer
-     */
     function calculateBatchTotal(uint256[] memory amounts)
         external
         pure
@@ -450,14 +449,6 @@ contract PaymentFactory {
         totalRequired = totalToBeneficiaries + protocolFee;
     }
     
-    /**
-     * @notice Calcule le total à approuver pour un paiement récurrent
-     * @param monthlyAmount Montant mensuel pour le bénéficiaire
-     * @param totalMonths Nombre de mensualités
-     * @return protocolFeePerMonth Fees par mois
-     * @return totalPerMonth Total par mois (montant + fees)
-     * @return totalRequired Total à approuver
-     */
     function calculateRecurringTotal(uint256 monthlyAmount, uint256 totalMonths)
         external
         pure
@@ -472,12 +463,8 @@ contract PaymentFactory {
         totalRequired = totalPerMonth * totalMonths;
     }
     
-    /**
-     * @notice Prévisualise les fees
-     * @param amount Montant de base
-     * @return fee Montant des fees
-     */
     function previewFee(uint256 amount) external pure returns (uint256 fee) {
         return (amount * FEE_BASIS_POINTS) / BASIS_POINTS_DENOMINATOR;
     }
+    */
 }

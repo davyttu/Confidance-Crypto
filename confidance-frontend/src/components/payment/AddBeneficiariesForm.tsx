@@ -1,11 +1,18 @@
 // src/components/payment/AddBeneficiariesForm.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 
 export default function AddBeneficiariesForm() {
   const router = useRouter();
+  const { t, ready: translationsReady } = useTranslation();
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
   
   const [beneficiaries, setBeneficiaries] = useState<string[]>(['', '', '', '']);
   const [errors, setErrors] = useState<string[]>(['', '', '', '']);
@@ -22,7 +29,7 @@ export default function AddBeneficiariesForm() {
     // Validation
     const updatedErrors = [...errors];
     if (value && !isValidAddress(value)) {
-      updatedErrors[index] = 'Adresse invalide';
+      updatedErrors[index] = isMounted && translationsReady ? t('create.beneficiary.invalidAddress') : 'Adresse invalide';
     } else {
       updatedErrors[index] = '';
     }
@@ -36,7 +43,7 @@ export default function AddBeneficiariesForm() {
     const validAddresses = beneficiaries.filter(addr => addr && isValidAddress(addr));
 
     if (validAddresses.length === 0) {
-      alert('Ajoutez au moins une adresse valide');
+      alert(isMounted && translationsReady ? t('create.beneficiary.addAtLeastOne') : 'Ajoutez au moins une adresse valide');
       return;
     }
 
@@ -54,18 +61,20 @@ export default function AddBeneficiariesForm() {
   return (
     <div className="max-w-2xl mx-auto p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-lg">
       <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">
-        ➕ Ajouter des bénéficiaires
+        {isMounted && translationsReady ? t('create.beneficiary.addTitle') : '➕ Ajouter des bénéficiaires'}
       </h2>
       
       <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-        Ajoutez jusqu'à 4 bénéficiaires supplémentaires (ils recevront le même montant)
+        {isMounted && translationsReady ? t('create.beneficiary.addDescription') : 'Ajoutez jusqu\'à 4 bénéficiaires supplémentaires (ils recevront le même montant)'}
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {beneficiaries.map((address, index) => (
           <div key={index}>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Bénéficiaire {index + 2} (optionnel)
+              {isMounted && translationsReady 
+                ? t('create.beneficiary.beneficiaryLabel', { number: index + 2 })
+                : `Bénéficiaire ${index + 2} (optionnel)`}
             </label>
             <input
               type="text"
@@ -99,14 +108,14 @@ export default function AddBeneficiariesForm() {
             onClick={handleCancel}
             className="flex-1 py-3 px-6 rounded-xl font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all"
           >
-            Annuler
+            {isMounted && translationsReady ? t('create.beneficiary.cancel') : 'Annuler'}
           </button>
           
           <button
             type="submit"
             className="flex-1 py-3 px-6 rounded-xl font-bold text-white bg-gradient-to-r from-primary-500 via-purple-500 to-pink-500 hover:shadow-xl hover:scale-105 transition-all"
           >
-            ✅ Valider
+            {isMounted && translationsReady ? t('create.beneficiary.validate') : '✅ Valider'}
           </button>
         </div>
       </form>

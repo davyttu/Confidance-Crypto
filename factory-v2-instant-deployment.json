@@ -3,7 +3,7 @@
   "network": "base_mainnet",
   "chainId": "8453",
   "factoryAddress": "0x88Da5f28c4d5b7392812dB67355d72D21516bCaf",
-  "deployedAt": "2025-12-09T20:15:37.708Z",
+  "deployedAt": "2026-01-03T02:08:12.070Z",
   "deployedBy": "0xdbA6ABe2aBd4B9E007D102533Be76c460E06A833",
   "features": [
     "Single Payment ETH (1.79% fees)",

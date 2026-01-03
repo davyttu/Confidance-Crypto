@@ -6,7 +6,7 @@ async function main() {
 
   console.log("🧾 Création d’un paiement test sur la factory :", FACTORY_ADDRESS);
 
-  const recipient = "0x7A764F9dED8CA54A5514023643fE117c6eAddD90"; // adresse de test
+  const recipient = "0xdbA6ABe2aBd4B9E007D102533Be76c460E06A833"; // adresse de test
   const releaseTime = Math.floor(Date.now() / 1000) + 60 * 2; // +2 min
   const isCancelable = true;
   const isDefinitive = false;

@@ -4,6 +4,7 @@
 // Workflow: create → extract address → approve contract → save DB
 
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   useAccount,
   useChainId,
@@ -17,7 +18,7 @@ import { paymentFactoryAbi } from '@/lib/contracts/paymentFactoryAbi';
 import { useAuth } from '@/contexts/AuthContext';
 
 // Factory V2 avec support récurrent (avec dayOfMonth + InstantPayment)
-const FACTORY_ADDRESS: `0x${string}` = '0x0BD36382637312095a93354b2e5c71B68f570881';
+const FACTORY_ADDRESS: `0x${string}` = '0x88Da5f28c4d5b7392812dB67355d72D21516bCaf';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 // ✅ Multi-chain : réseau courant
 const getNetworkFromChainId = (chainId: number): string => {
@@ -104,6 +105,7 @@ function calculateRecurringTotal(monthlyAmount: bigint, totalMonths: number): {
 }
 
 export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
+  const { t } = useTranslation();
   const { address } = useAccount();
   const chainId = useChainId();
   const publicClient = usePublicClient();
@@ -223,7 +225,10 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
 
       // ✅ CHANGEMENT: Directement créer le contrat (pas d'approve de la Factory)
       setStatus('creating');
-      setProgressMessage(`Création du paiement récurrent ${tokenData.symbol}...`);
+      setProgressMessage(t('create.modal.creatingRecurringPayment', { 
+        token: tokenData.symbol,
+        defaultValue: `Création du paiement récurrent ${tokenData.symbol}...`
+      }));
       
       // 🔍 DEBUG: Afficher timestamp actuel et valeurs
       const now = Math.floor(Date.now() / 1000);
@@ -404,7 +409,9 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
           if (!params || !userAddress) {
             console.error('❌ Paramètres manquants pour enregistrement');
             setStatus('success');
-            setProgressMessage('Paiement créé ! (Non enregistré dans la DB)');
+            setProgressMessage(t('create.modal.paymentCreatedNotSaved', { 
+              defaultValue: 'Paiement créé ! (Non enregistré dans la DB)'
+            }));
             return;
           }
 

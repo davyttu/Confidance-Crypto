@@ -20,7 +20,7 @@ module.exports = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 1,
+        runs: 1, // Optimisé pour la taille du bytecode (minimum)
       },
       viaIR: true,
     },
@@ -64,6 +64,7 @@ module.exports = {
   },
 
   etherscan: {
+    // ✅ API V2 - Utilise une seule clé API pour tous les réseaux
     apiKey: {
       base_mainnet: process.env.BASESCAN_API_KEY || "",
       polygon_mainnet: POLYGONSCAN_API_KEY || "",
@@ -73,6 +74,7 @@ module.exports = {
         network: "base_mainnet",
         chainId: 8453,
         urls: {
+          // ✅ API V2 endpoint
           apiURL: "https://api.basescan.org/api",
           browserURL: "https://basescan.org",
         },

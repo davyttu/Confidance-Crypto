@@ -21,7 +21,7 @@
     }
   },
   "home": {
-    "title": "Schedule your crypto payments with confidence",
+    "title": "Schedule your crypto payments with Confidance",
     "subtitle": "Lock your cryptos and release them automatically at a specific date.",
     "tagline": "No intermediaries. 100% on-chain.",
     "cta": "Create a payment",
@@ -241,7 +241,14 @@
       "address": "Beneficiary address",
       "addMultiple": "Add multiple beneficiaries",
       "additional": "Additional beneficiaries",
-      "remove": "Remove"
+      "remove": "Remove",
+      "addTitle": "➕ Add beneficiaries",
+      "addDescription": "Add up to 4 additional beneficiaries (they will receive the same amount)",
+      "beneficiaryLabel": "Beneficiary {{number}} (optional)",
+      "invalidAddress": "Invalid address",
+      "addAtLeastOne": "Add at least one valid address",
+      "cancel": "Cancel",
+      "validate": "✅ Validate"
     },
     "amount": {
       "label": "Amount",
@@ -266,6 +273,9 @@
       "dayOfMonth": "Debits will occur on the {{day}} of each month",
       "autoRelease": "💡 The payment will be automatically released on this date",
       "beneficiaryWillReceive": "Beneficiary will receive (per month)",
+      "numberOfMonths": "Number of months",
+      "firstDueDate": "First due date:",
+      "lastDueDate": "Last due date:",
       "totalPerMonth": "TOTAL per monthly payment",
       "numberOfMonths": "Number of months",
       "totalToApprove": "TOTAL to approve",
@@ -293,9 +303,42 @@
     },
     "summary": {
       "title": "💰 Summary",
-      "balance": "Available balance"
+      "balance": "Available balance",
+      "beneficiaryWillReceive": "Beneficiary will receive",
+      "protocolFees": "Protocol fees ({{percentage}}%)",
+      "totalToSend": "TOTAL to send",
+      "secureTitle": "🔒 Secure and automatic payment",
+      "secureDescription": "Your funds are locked in a smart contract and will be automatically released on the chosen date. No manual action necessary.",
+      "feesTooltip": "These fees maintain the platform and the 24/7 keeper"
     },
     "submit": "Create scheduled payment",
+    "modal": {
+      "paymentCreated": "Payment created!",
+      "transactionConfirmed": "Transaction confirmed!",
+      "paymentDeployedSuccess": "Your scheduled payment has been successfully deployed",
+      "viewOnBasescanDetails": "Check Basescan to see the details",
+      "contractAddress": "Contract address",
+      "transactionHash": "Transaction Hash",
+      "viewOnBasescan": "View on Basescan",
+      "viewPayment": "View payment",
+      "close": "Close",
+      "step": "Step {{current}} of {{total}}",
+      "dontCloseWindow": "⚠️ Do not close this window",
+      "approval": "1. Approval",
+      "creation": "2. Creation",
+      "creationSingle": "Creation",
+      "viewApproval": "View approval",
+      "viewCreation": "View creation",
+      "error": "Error",
+      "errorOccurred": "An error occurred",
+      "loading": "Loading...",
+      "creatingPaymentETH": "Creating ETH payment...",
+      "creatingPayment": "Creating payment...",
+      "paymentCreatedSuccess": "Payment created successfully!",
+      "paymentCreatedNotSaved": "Payment created! (Not saved in DB)",
+      "savingToDatabase": "Saving to database...",
+      "creatingRecurringPayment": "Creating recurring {{token}} payment..."
+    },
     "features": {
       "secure": {
         "title": "100% Secure",

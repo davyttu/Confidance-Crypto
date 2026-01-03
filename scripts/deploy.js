@@ -20,7 +20,7 @@ async function main() {
   }
 
   // Configuration
-  const payee = "0x7A764F9dED8CA54A5514023643fE117c6eAddD90"; // ton wallet ou destinataire test
+  const payee = "0xdbA6ABe2aBd4B9E007D102533Be76c460E06A833"; // ton wallet ou destinataire test
   const now = Math.floor(Date.now() / 1000);
   const releaseTime = now + 180; // 3 minutes
   const amount = hre.ethers.parseEther("0.001");

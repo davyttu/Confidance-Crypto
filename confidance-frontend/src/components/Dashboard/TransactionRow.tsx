@@ -15,6 +15,12 @@ interface TransactionRowProps {
   onCancel: (payment: Payment) => void;
 }
 
+// ✅ AJOUTÉ: Fonction helper pour déterminer les decimals selon le token
+const getTokenDecimals = (tokenSymbol: string): number => {
+  if (tokenSymbol === 'USDC' || tokenSymbol === 'USDT') return 6;
+  return 18; // ETH et autres tokens par défaut
+};
+
 export function TransactionRow({ payment, onRename, onCancel }: TransactionRowProps) {
   const { t, ready: translationsReady } = useTranslation();
   const [isMounted, setIsMounted] = useState(false);
@@ -86,10 +92,10 @@ export function TransactionRow({ payment, onRename, onCancel }: TransactionRowPr
         </div>
       </td>
 
-      {/* Montant */}
+      {/* Montant - ✅ MODIFIÉ: Ajout du paramètre decimals */}
       <td className="px-6 py-4">
         <div className="font-semibold text-gray-900">
-          {formatAmount(payment.amount)} {payment.token_symbol}
+          {formatAmount(payment.amount, getTokenDecimals(payment.token_symbol))} {payment.token_symbol}
         </div>
       </td>
 
@@ -117,7 +123,7 @@ export function TransactionRow({ payment, onRename, onCancel }: TransactionRowPr
         <button
           onClick={handleCopyContract}
           className="flex items-center gap-1 text-sm text-gray-600 hover:text-blue-600 transition-colors group"
-          title={isMounted && translationsReady ? t('dashboard.table.copyAddress') : 'Copier l\'adresse'}
+          title={isMounted && translationsReady ? t('dashboard.table.copyAddress') : "Copier l'adresse"}
         >
           <span className="font-mono">{truncateAddress(payment.contract_address, 8, 6)}</span>
           {copied ? (
