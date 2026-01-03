@@ -58,9 +58,19 @@ app.post('/api/payments', optionalAuth, async (req, res) => {
       cancellable,
       network,
       transaction_hash,
+      is_instant,
+      payment_type,
     } = req.body;
 
-    console.log('📥 [SIMPLE] Nouvelle demande:', { contract_address, payer_address });
+    console.log('📥 [SIMPLE] Nouvelle demande - BODY COMPLET:', JSON.stringify(req.body, null, 2));
+    console.log('📥 [SIMPLE] Extractions:', { 
+      contract_address, 
+      payer_address,
+      is_instant_extracted: is_instant,
+      payment_type_extracted: payment_type,
+      token_symbol,
+      amount
+    });
 
     // Validation
     if (!transaction_hash) {
@@ -95,29 +105,94 @@ app.post('/api/payments', optionalAuth, async (req, res) => {
       // Continuer avec l'insertion même si la vérification échoue
     }
 
+    // Pour les paiements instantanés, le statut est "released" car ils sont exécutés immédiatement
+    // ✅ FIX : S'assurer que payment_type n'est jamais null (contrainte NOT NULL dans Supabase)
+    
+    // Déterminer si c'est un paiement instantané
+    const isInstant = is_instant === true || is_instant === 'true' || String(is_instant) === 'true';
+    
+    // ✅ CRITIQUE : Toujours définir payment_type, jamais null ou undefined
+    // Vérifier d'abord si payment_type est valide et non vide
+    let finalPaymentType = 'scheduled'; // Valeur par défaut garantie
+    
+    if (payment_type && typeof payment_type === 'string' && payment_type.trim() !== '') {
+      // Si payment_type est fourni et valide, l'utiliser
+      if (payment_type === 'instant' || payment_type === 'scheduled' || payment_type === 'recurring') {
+        finalPaymentType = payment_type;
+      }
+    } else if (isInstant) {
+      // Si is_instant est true, c'est un paiement instantané
+      finalPaymentType = 'instant';
+    }
+    // Sinon, on garde 'scheduled' par défaut
+    
+    const finalStatus = isInstant ? 'released' : 'pending';
+    
+    // ✅ SÉCURITÉ FINALE : Garantir que payment_type n'est jamais null/undefined
+    if (!finalPaymentType || finalPaymentType === null || finalPaymentType === undefined) {
+      console.error('❌ [SIMPLE] ERREUR CRITIQUE: payment_type est null/undefined, utilisation de "scheduled"');
+      finalPaymentType = 'scheduled';
+    }
+    
+    console.log('🔍 [SIMPLE] Détermination type paiement:', {
+      is_instant_received: is_instant,
+      is_instant_type: typeof is_instant,
+      payment_type_received: payment_type,
+      payment_type_type: typeof payment_type,
+      isInstant_calculated: isInstant,
+      finalPaymentType,
+      finalStatus
+    });
+
+    // ✅ SÉCURITÉ : Vérifier une dernière fois avant insertion
+    if (!finalPaymentType || finalPaymentType === null || finalPaymentType === undefined) {
+      console.error('❌ [SIMPLE] ERREUR CRITIQUE AVANT INSERTION: payment_type est null/undefined');
+      finalPaymentType = 'scheduled';
+    }
+
+    const insertData = {
+      contract_address,
+      payer_address,
+      payee_address,
+      token_symbol,
+      token_address,
+      amount,
+      release_time,
+      cancellable: cancellable || false,
+      network: network || 'base_mainnet',
+      transaction_hash,
+      status: finalStatus,
+      user_id: user ? user.userId : null,
+      guest_email: !user ? req.body.guest_email : null,
+      is_instant: isInstant,
+      payment_type: finalPaymentType, // ✅ GARANTI non-null
+      // Colonnes par défaut pour éviter les erreurs si elles n'existent pas
+      is_batch: false,
+      batch_count: null,
+      batch_beneficiaries: null,
+    };
+    
+    // ✅ VÉRIFICATION FINALE avant insertion
+    if (insertData.payment_type === null || insertData.payment_type === undefined) {
+      console.error('❌ [SIMPLE] ERREUR CRITIQUE: payment_type est null dans insertData !');
+      insertData.payment_type = 'scheduled';
+    }
+
+    console.log('📤 [SIMPLE] Données à insérer:', JSON.stringify(insertData, null, 2));
+
     const { data, error } = await supabase
       .from('scheduled_payments')
-      .insert([
-        {
-          contract_address,
-          payer_address,
-          payee_address,
-          token_symbol,
-          token_address,
-          amount,
-          release_time,
-          cancellable: cancellable || false,
-          network: network || 'base_mainnet',
-          transaction_hash,
-          status: 'pending',
-          user_id: user ? user.userId : null,
-          guest_email: !user ? req.body.guest_email : null,
-        },
-      ])
+      .insert([insertData])
       .select()
       .single();
 
     if (error) {
+      console.error('❌ [SIMPLE] Erreur Supabase détaillée:', JSON.stringify(error, null, 2));
+      console.error('❌ [SIMPLE] Code erreur:', error.code);
+      console.error('❌ [SIMPLE] Message:', error.message);
+      console.error('❌ [SIMPLE] Détails:', error.details);
+      console.error('❌ [SIMPLE] Hint:', error.hint);
+      
       // ✅ FIX : Gérer l'erreur de doublon de manière gracieuse (priorité)
       if (error.code === '23505' || 
           error.message?.includes('duplicate key') || 
@@ -150,9 +225,15 @@ app.post('/api/payments', optionalAuth, async (req, res) => {
         });
       }
       
-      // Pour les autres erreurs, logger et retourner l'erreur
-      console.error('❌ Erreur Supabase:', error);
-      throw error;
+      // Pour les autres erreurs, logger et retourner l'erreur avec plus de détails
+      console.error('❌ [SIMPLE] Erreur non gérée, retour erreur au client');
+      return res.status(500).json({ 
+        error: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        insertData: insertData // Retourner les données pour debug
+      });
     }
 
     console.log('✅ [SIMPLE] Paiement enregistré:', data.id);
@@ -295,11 +376,20 @@ app.get('/api/payments/:address', async (req, res) => {
     // ✅ ÉTAPE 3 : COMBINER les deux types avec flag is_recurring
     const allPayments = [
       // Paiements simples/batch (is_recurring = false)
-      ...(simplePayments || []).map(p => ({ 
-        ...p, 
-        is_recurring: false,
-        payment_type: 'simple' 
-      })),
+      ...(simplePayments || []).map(p => {
+        // ✅ FIX : Utiliser le payment_type de la DB, ou déterminer depuis is_instant
+        let paymentType = p.payment_type;
+        if (!paymentType || paymentType === null) {
+          // Si payment_type n'est pas défini, le déterminer depuis is_instant
+          paymentType = (p.is_instant === true || p.is_instant === 'true') ? 'instant' : 'scheduled';
+        }
+        
+        return {
+          ...p, 
+          is_recurring: false,
+          payment_type: paymentType // ✅ Utiliser le payment_type réel de la DB
+        };
+      }),
       // Paiements récurrents (is_recurring = true)
       ...(recurringPayments || []).map(p => ({ 
         ...p, 

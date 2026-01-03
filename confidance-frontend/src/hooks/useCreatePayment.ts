@@ -1426,29 +1426,64 @@ export function useCreatePayment(): UseCreatePaymentReturn {
                 'foundAddress (contract)': foundAddress
               });
 
+              // Déterminer si c'est un paiement instantané
+              const now = Math.floor(Date.now() / 1000);
+              const isInstantPayment = (params.releaseTime - now) < 60;
+              
+              // Déterminer le type de paiement
+              const paymentType = isInstantPayment ? 'instant' : 'scheduled';
+
+              const requestBody = {
+                contract_address: foundAddress,
+                payer_address: userAddress,
+                payee_address: params.beneficiary,
+                token_symbol: params.tokenSymbol,
+                token_address: tokenData?.address || null,
+                amount: params.amount.toString(),
+                release_time: params.releaseTime,
+                cancellable: params.cancellable || false,
+                network: getNetworkFromChainId(chainId),
+                chain_id: chainId,
+                transaction_hash: createTxHash,
+                is_instant: isInstantPayment,
+                payment_type: paymentType,
+              };
+
+              console.log('📤 [FRONTEND] Envoi à l\'API avec is_instant et payment_type:', {
+                is_instant: isInstantPayment,
+                payment_type: paymentType,
+                release_time: params.releaseTime,
+                now,
+                diff: params.releaseTime - now
+              });
+
               const response = await fetch(`${API_URL}/api/payments`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  contract_address: foundAddress,
-                  payer_address: userAddress,
-                  payee_address: params.beneficiary,
-                  token_symbol: params.tokenSymbol,
-                  token_address: tokenData?.address || null,
-                  amount: params.amount.toString(),
-                  release_time: params.releaseTime,
-                  cancellable: params.cancellable || false,
-                  network: getNetworkFromChainId(chainId),
-                  chain_id: chainId,
-                  transaction_hash: createTxHash,
-                }),
+                body: JSON.stringify(requestBody),
               });
 
               if (!response.ok) {
                 const errorText = await response.text();
+                let errorData;
+                try {
+                  errorData = JSON.parse(errorText);
+                } catch {
+                  errorData = { message: errorText };
+                }
+                
+                console.error('❌ [FRONTEND] Erreur API lors de l\'enregistrement:', {
+                  status: response.status,
+                  statusText: response.statusText,
+                  error: errorData,
+                  isInstant: isInstantPayment,
+                  paymentType: paymentType
+                });
                 
                 // ✅ FIX : Gérer l'erreur de doublon de manière gracieuse (ne pas logger comme erreur)
-                if (errorText.includes('duplicate key') || errorText.includes('contract_address')) {
+                if (errorText.includes('duplicate key') || 
+                    errorText.includes('contract_address') ||
+                    errorData?.code === '23505') {
                   console.log('ℹ️ Paiement déjà enregistré (doublon détecté), on continue...');
                   savedContractAddressRef.current = foundAddress;
                   setStatus('success');
@@ -1457,8 +1492,14 @@ export function useCreatePayment(): UseCreatePaymentReturn {
                   return;
                 }
                 
-                // ✅ FIX : Pour les autres erreurs, logger mais ne pas bloquer l'utilisateur
-                console.warn('⚠️ Erreur serveur lors de l\'enregistrement (non bloquant):', errorText);
+                // ✅ FIX : Pour les autres erreurs, logger avec plus de détails
+                console.error('❌ [FRONTEND] Erreur serveur détaillée:', {
+                  error: errorData,
+                  hint: errorData?.hint,
+                  details: errorData?.details,
+                  code: errorData?.code
+                });
+                
                 // Ne pas bloquer l'utilisateur, le paiement est créé sur la blockchain
                 savedContractAddressRef.current = foundAddress;
                 setStatus('success');
