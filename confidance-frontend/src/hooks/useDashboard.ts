@@ -6,6 +6,13 @@ import { useAccount } from 'wagmi';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
+// 🆕 Interface pour les bénéficiaires batch
+export interface BatchBeneficiary {
+  address: string;
+  amount: string;
+  name?: string;
+}
+
 export interface Payment {
   id: string;
   contract_address: string;
@@ -22,6 +29,13 @@ export interface Payment {
   transaction_hash: string | null;
   tx_hash: string | null;
   network: string;
+  
+  // 🆕 Nouvelles propriétés pour les colonnes COUNT et TYPE
+  is_batch: boolean;
+  batch_count: number | null;
+  batch_beneficiaries: BatchBeneficiary[] | null;
+  payment_type: 'instant' | 'scheduled' | 'recurring';
+  is_instant: boolean;
 }
 
 interface UseDashboardReturn {
