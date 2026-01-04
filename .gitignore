@@ -4,9 +4,11 @@
 
 # ⚠️ CRITICAL : Fichiers avec clés privées
 .env
+.env.*
 .env.local
 .env.production
 keeper-cloud/.env
+keeper-cloud/.env.*
 *.pem
 *.key
 
