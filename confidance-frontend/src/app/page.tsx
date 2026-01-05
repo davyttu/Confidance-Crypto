@@ -66,7 +66,7 @@ export default function Home() {
     {
       icon: Clock,
       title: 'Flexible',
-      description: 'ETH, USDC, USDT, WBTC. Programmez de 5 minutes à plusieurs années',
+      description: 'ETH, USDC, USDT. Programmez de 5 minutes à plusieurs années',
       gradient: 'from-purple-400 to-pink-500',
     },
   ];

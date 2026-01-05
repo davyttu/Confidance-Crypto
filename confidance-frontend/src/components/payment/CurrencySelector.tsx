@@ -2,11 +2,37 @@
 
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { TOKEN_LIST, type TokenSymbol } from '@/config/tokens';
+import { TOKEN_LIST, type TokenSymbol, type Token } from '@/config/tokens';
 
 interface CurrencySelectorProps {
   selectedToken: TokenSymbol;
   onSelectToken: (token: TokenSymbol) => void;
+}
+
+// Composant pour afficher l'icône du token avec fallback
+function TokenIcon({ token }: { token: Token }) {
+  const [imageError, setImageError] = useState(false);
+
+  if (imageError) {
+    // Fallback : afficher la première lettre avec la couleur du token
+    return (
+      <div
+        className="w-full h-full flex items-center justify-center text-white font-bold text-lg"
+        style={{ backgroundColor: token.color }}
+      >
+        {token.symbol.charAt(0)}
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={token.icon}
+      alt={token.name}
+      className="w-full h-full object-contain p-2"
+      onError={() => setImageError(true)}
+    />
+  );
 }
 
 export default function CurrencySelector({
@@ -79,12 +105,9 @@ export default function CurrencySelector({
 
               {/* Contenu */}
               <div className="relative space-y-3">
-                {/* Icône - Placeholder temporaire */}
-                <div
-                  className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg"
-                  style={{ backgroundColor: token.color }}
-                >
-                  {token.symbol.charAt(0)}
+                {/* Icône - Logo du token */}
+                <div className="w-12 h-12 rounded-full flex items-center justify-center overflow-hidden bg-white dark:bg-gray-700">
+                  <TokenIcon token={token} />
                 </div>
 
                 {/* Infos */}

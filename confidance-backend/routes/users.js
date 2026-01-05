@@ -265,4 +265,59 @@ router.get('/profile', authenticateToken, async (req, res) => {
   }
 });
 
+/**
+ * GET /api/users/payments
+ * Récupérer TOUS les paiements de TOUS les wallets de l'utilisateur
+ * ✅ NOUVELLE ROUTE POUR LE MULTI-WALLETS
+ */
+router.get('/payments', authenticateToken, async (req, res) => {
+  try {
+    const { userId } = req.user;
+
+    // 1. Récupérer tous les wallets de l'utilisateur
+    const { data: wallets, error: walletsError } = await supabase
+      .from('user_wallets')
+      .select('wallet_address')
+      .eq('user_id', userId);
+
+    if (walletsError) {
+      console.error('Error fetching wallets:', walletsError);
+      return res.status(500).json({ error: 'Erreur serveur' });
+    }
+
+    if (!wallets || wallets.length === 0) {
+      console.log('ℹ️ Aucun wallet associé à cet utilisateur');
+      return res.json({ payments: [] });
+    }
+
+    const addresses = wallets.map(w => w.wallet_address.toLowerCase());
+    console.log(`📊 Récupération paiements pour ${addresses.length} wallet(s):`, addresses);
+
+    // 2. Récupérer tous les paiements où l'utilisateur est payer OU payee
+    // Construction de la query OR pour Supabase
+    const orConditions = addresses.map(addr => 
+      `payer_address.eq.${addr},payee_address.eq.${addr}`
+    ).join(',');
+
+    const { data: payments, error: paymentsError } = await supabase
+      .from('scheduled_payments')
+      .select('*')
+      .or(orConditions)
+      .order('created_at', { ascending: false });
+
+    if (paymentsError) {
+      console.error('Error fetching payments:', paymentsError);
+      return res.status(500).json({ error: 'Erreur lors du chargement des paiements' });
+    }
+
+    console.log(`✅ ${payments?.length || 0} paiement(s) récupéré(s)`);
+
+    res.json({ payments: payments || [] });
+
+  } catch (error) {
+    console.error('Get user payments error:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 module.exports = router;

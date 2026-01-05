@@ -163,10 +163,12 @@ router.post('/verify', async (req, res) => {
     const token = generateToken(user.id, user.email, user.account_type);
 
     // Envoyer le token en cookie httpOnly
+    // ⚠️ sameSite: 'none' requiert secure: true (localhost est une exception autorisée)
+    const isProduction = process.env.NODE_ENV === 'production';
     res.cookie('token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: !isProduction ? true : true, // Toujours true pour sameSite: none
+      sameSite: isProduction ? 'strict' : 'none', // 'none' en dev pour cross-origin
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 jours
     });
 
@@ -230,10 +232,12 @@ router.post('/login', async (req, res) => {
     const token = generateToken(user.id, user.email, user.account_type);
 
     // Envoyer le token en cookie
+    // ⚠️ sameSite: 'none' requiert secure: true (localhost est une exception autorisée)
+    const isProduction = process.env.NODE_ENV === 'production';
     res.cookie('token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: !isProduction ? true : true, // Toujours true pour sameSite: none
+      sameSite: isProduction ? 'strict' : 'none', // 'none' en dev pour cross-origin
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
 

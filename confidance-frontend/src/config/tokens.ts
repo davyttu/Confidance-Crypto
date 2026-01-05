@@ -33,7 +33,7 @@ export const SUPPORTED_TOKENS: Record<TokenSymbol, Token> = {
     name: 'USD Coin',
     address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
     decimals: 6,
-    icon: '/tokens/usdc.svg',
+    icon: '/tokens/usdc.png',
     isNative: false,
     color: '#2775CA',
     gradient: 'from-[#2775CA] to-[#5B9FE3]',
@@ -44,7 +44,7 @@ export const SUPPORTED_TOKENS: Record<TokenSymbol, Token> = {
     name: 'Tether USD',
     address: '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2',
     decimals: 6,
-    icon: '/tokens/usdt.svg',
+    icon: '/tokens/usdt.png',
     isNative: false,
     color: '#26A17B',
     gradient: 'from-[#26A17B] to-[#50AF95]',
@@ -79,11 +79,13 @@ export const getToken = (symbol: TokenSymbol): Token => {
   return SUPPORTED_TOKENS[symbol];
 };
 
-// Liste des tokens pour l'UI
-export const TOKEN_LIST: Token[] = Object.values(SUPPORTED_TOKENS);
+// Liste des tokens pour l'UI (exclut cbBTC et WBTC)
+export const TOKEN_LIST: Token[] = Object.values(SUPPORTED_TOKENS).filter(
+  (token) => token.symbol !== 'cbBTC' && token.symbol !== 'WBTC'
+);
 
 // Tokens recommandés (affichés en premier)
-export const RECOMMENDED_TOKENS: TokenSymbol[] = ['ETH', 'USDC', 'cbBTC'];
+export const RECOMMENDED_TOKENS: TokenSymbol[] = ['ETH', 'USDC'];
 
 // Helper pour filtrer les tokens Bitcoin
 export const BTC_TOKENS: TokenSymbol[] = ['cbBTC', 'WBTC'];

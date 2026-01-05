@@ -4,6 +4,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { WalletSyncProvider } from '@/components/WalletSyncProvider';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { HelpWidget } from '@/components/HelpWidget';
@@ -25,12 +26,14 @@ export default function RootLayout({
       <body className={inter.className}>
         <Providers>
           <AuthProvider>
-            <Navbar />
-            <main className="pt-16">
-              {children}
-            </main>
-            <Footer />
-            <HelpWidget />
+            <WalletSyncProvider>
+              <Navbar />
+              <main className="pt-16">
+                {children}
+              </main>
+              <Footer />
+              <HelpWidget />
+            </WalletSyncProvider>
           </AuthProvider>
         </Providers>
       </body>

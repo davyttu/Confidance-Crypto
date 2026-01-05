@@ -211,7 +211,7 @@ export function Navbar() {
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                                 </svg>
-                                {isMounted && ready ? t('payment.create') : 'Créer un paiement'}
+                                {isMounted && translationsReady ? t('payment.create') : 'Créer un paiement'}
                               </Link>
 
                               <div className="border-t border-gray-200 dark:border-gray-700 my-1.5"></div>
@@ -389,7 +389,7 @@ export function Navbar() {
                       }}
                       className="w-full px-4 py-2.5 text-sm font-medium bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-lg shadow-lg text-left"
                     >
-                      {isMounted && ready ? t('common.register') : 'Créer un compte'}
+                      {isMounted && translationsReady ? t('common.register') : 'Créer un compte'}
                     </button>
                   </>
                 ) : (
@@ -407,7 +407,7 @@ export function Navbar() {
                       }}
                       className="w-full px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors text-left"
                     >
-                      {isMounted && ready ? t('common.disconnect') : 'Déconnexion'}
+                      {isMounted && translationsReady ? t('common.disconnect') : 'Déconnexion'}
                     </button>
                   </div>
                 )}
