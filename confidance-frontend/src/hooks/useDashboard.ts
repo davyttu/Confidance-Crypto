@@ -36,6 +36,11 @@ export interface Payment {
   batch_beneficiaries: BatchBeneficiary[] | null;
   payment_type: 'instant' | 'scheduled' | 'recurring';
   is_instant: boolean;
+  
+  // 🆕 Propriétés pour les paiements récurrents
+  total_months?: number | null;
+  monthly_amount?: string | null;
+  is_recurring?: boolean;
 }
 
 interface UseDashboardReturn {

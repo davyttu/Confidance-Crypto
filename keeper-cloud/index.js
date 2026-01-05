@@ -235,7 +235,9 @@ async function loadScheduledPayments() {
     }
     
     // ✅ Mapper TOUS les paiements pending (la vérification released se fera dans executeScheduledPayment)
-    const payments = data.map(row => {
+    const now = Math.floor(Date.now() / 1000);
+    const payments = data
+      .map(row => {
         const isBatch = row.is_batch === true;
         const batchCount = row.batch_count || 0;
         const tokenSymbol = row.token_symbol || 'ETH';
@@ -257,11 +259,28 @@ async function loadScheduledPayments() {
           isBatch: isBatch,
           batchCount: batchCount,
           network: row.network, // ✅ Ajouter network pour vérification
+          is_instant: row.is_instant || false, // ✅ Ajouter is_instant pour filtrage
           name: isBatch 
             ? `📦 Batch #${row.id.substring(0, 8)} (${batchCount} benef, ${formattedAmount})`
             : `💎 Payment #${row.id.substring(0, 8)} (${formattedAmount})`
         };
+      })
+      .filter(payment => {
+        // ✅ FIX CRITIQUE : Filtrer UNIQUEMENT les paiements avec is_instant=true
+        // Ne PAS filtrer les paiements programmés avec timeUntil négatif (ceux-là doivent être exécutés !)
+        if (payment.is_instant === true) {
+          const releaseTime = Number(payment.releaseTime);
+          const timeUntil = releaseTime - now;
+          console.log(`   ⚠️ Paiement ${payment.id.substring(0, 8)} est instantané (is_instant=true), ignoré`);
+          return false; // Exclure les paiements instantanés
+        }
+        return true; // Inclure tous les autres paiements (même avec timeUntil négatif)
       });
+    
+    const filteredCount = data.length - payments.length;
+    if (filteredCount > 0) {
+      console.log(`   ℹ️ ${filteredCount} paiement(s) instantané(s) filtré(s), ${payments.length} paiement(s) programmé(s) restant(s)`);
+    }
     
     return payments;
     

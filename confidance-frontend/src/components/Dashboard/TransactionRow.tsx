@@ -1,231 +1,187 @@
 // components/Dashboard/TransactionRow.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Payment } from '@/hooks/useDashboard';
 import { useBeneficiaries } from '@/hooks/useBeneficiaries';
-import { formatAmount } from '@/lib/utils/amountFormatter';
-import { formatDate } from '@/lib/utils/dateFormatter';
-import { truncateAddress, copyToClipboard } from '@/lib/utils/addressFormatter';
-import { BeneficiariesModal } from './BeneficiariesModal';
+import { formatDistanceToNow } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import { Copy, ExternalLink, Mail, X, Edit2 } from 'lucide-react';
 
 interface TransactionRowProps {
   payment: Payment;
   onRename: (address: string) => void;
   onCancel: (payment: Payment) => void;
+  onEmailClick?: (payment: Payment) => void;
 }
 
-const getTokenDecimals = (tokenSymbol: string): number => {
-  if (tokenSymbol === 'USDC' || tokenSymbol === 'USDT') return 6;
-  return 18;
-};
-
-export function TransactionRow({ payment, onRename, onCancel }: TransactionRowProps) {
+export function TransactionRow({ payment, onRename, onCancel, onEmailClick }: TransactionRowProps) {
   const { t, ready: translationsReady } = useTranslation();
-  const [isMounted, setIsMounted] = useState(false);
   const { getBeneficiaryName } = useBeneficiaries();
   const [copied, setCopied] = useState(false);
-  const [showBeneficiariesModal, setShowBeneficiariesModal] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
 
   const beneficiaryName = getBeneficiaryName(payment.payee_address);
-  const displayName = beneficiaryName || truncateAddress(payment.payee_address);
+  const displayName = beneficiaryName || `${payment.payee_address.slice(0, 6)}...${payment.payee_address.slice(-4)}`;
 
-  // 🆕 Données pour les nouvelles colonnes
-  const beneficiariesCount = payment.is_batch ? (payment.batch_count || 1) : 1;
-  const isBatch = payment.is_batch && beneficiariesCount > 1;
+  // Formater le montant
+  const formatAmount = (amount: string, symbol: string) => {
+    const decimals = symbol === 'ETH' ? 18 : 6;
+    const amountNum = Number(BigInt(amount)) / Math.pow(10, decimals);
+    return amountNum.toLocaleString('fr-FR', {
+      minimumFractionDigits: symbol === 'ETH' ? 4 : 2,
+      maximumFractionDigits: symbol === 'ETH' ? 4 : 2,
+    });
+  };
 
-  const getStatusBadge = (status: string) => {
-    const badgeConfig = {
-      pending: { color: 'bg-orange-100 text-orange-800', key: 'dashboard.status.pending', fallback: 'En cours' },
-      released: { color: 'bg-green-100 text-green-800', key: 'dashboard.status.released', fallback: 'Exécuté' },
-      cancelled: { color: 'bg-gray-100 text-gray-800', key: 'dashboard.status.cancelled', fallback: 'Annulé' },
-      failed: { color: 'bg-red-100 text-red-800', key: 'dashboard.status.failed', fallback: 'Échoué' },
+  // Formater la date
+  const formatDate = (timestamp: number) => {
+    const date = new Date(timestamp * 1000);
+    return formatDistanceToNow(date, { addSuffix: true, locale: fr });
+  };
+
+  // Copier dans le presse-papier
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  // Déterminer le type de paiement
+  const getPaymentType = () => {
+    if (payment.payment_type === 'recurring') return 'Récurrent';
+    if (payment.is_batch) return `Batch (${payment.batch_count || 0})`;
+    if (payment.is_instant || payment.payment_type === 'instant') return 'Instantané';
+    return 'Programmé';
+  };
+
+  // Statut avec badge
+  const getStatusBadge = () => {
+    const statusClass = {
+      pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+      released: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+      cancelled: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
+      failed: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
     };
 
-    const config = badgeConfig[status as keyof typeof badgeConfig] || badgeConfig.pending;
-    const label = isMounted && translationsReady ? t(config.key) : config.fallback;
-    
+    const statusLabels = {
+      pending: translationsReady ? t('dashboard.status.pending') : 'En attente',
+      released: translationsReady ? t('dashboard.status.released') : 'Libéré',
+      cancelled: translationsReady ? t('dashboard.status.cancelled') : 'Annulé',
+      failed: translationsReady ? t('dashboard.status.failed') : 'Échoué',
+    };
+
     return (
-      <span className={`px-3 py-1 rounded-full text-xs font-medium ${config.color}`}>
-        {label}
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusClass[payment.status as keyof typeof statusClass] || statusClass.pending}`}>
+        {statusLabels[payment.status as keyof typeof statusLabels] || payment.status}
       </span>
     );
   };
-
-  // 🆕 Badge de type de paiement
-  const getPaymentTypeBadge = (type: string) => {
-    const types = {
-      instant: { label: 'Instant', icon: '⚡', color: 'bg-yellow-100 text-yellow-800' },
-      scheduled: { label: 'Programmé', icon: '⏰', color: 'bg-blue-100 text-blue-800' },
-      recurring: { label: 'Mensuel', icon: '📅', color: 'bg-purple-100 text-purple-800' },
-    };
-
-    const typeInfo = types[type as keyof typeof types] || types.scheduled;
-    
-    return (
-      <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${typeInfo.color}`}>
-        <span>{typeInfo.icon}</span>
-        <span>{typeInfo.label}</span>
-      </span>
-    );
-  };
-
-  const handleCopyContract = async () => {
-    const success = await copyToClipboard(payment.contract_address);
-    if (success) {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  const canCancel = payment.cancellable && 
-                    payment.status === 'pending' && 
-                    payment.release_time > Math.floor(Date.now() / 1000);
 
   return (
-    <>
-      <tr className="hover:bg-gray-50 border-b border-gray-200">
-        {/* Bénéficiaire */}
-        <td className="px-6 py-4">
-          <div className="flex items-center gap-2">
-            <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-              <span className="text-blue-600 font-semibold text-sm">
-                {displayName[0].toUpperCase()}
-              </span>
+    <tr className="border-b border-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+      {/* Bénéficiaire */}
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="flex items-center gap-2">
+          <div>
+            <div className="text-sm font-medium text-gray-900 dark:text-white">
+              {beneficiaryName || 'Non nommé'}
             </div>
-            <div>
-              <button
-                onClick={() => onRename(payment.payee_address)}
-                className="font-medium text-gray-900 hover:text-blue-600 transition-colors text-left"
-                title={isMounted && translationsReady ? t('dashboard.table.clickToRename') : 'Cliquer pour renommer'}
-              >
-                {displayName}
-                {isBatch && <span className="text-gray-500 text-sm ml-1">+ {beneficiariesCount - 1} autres</span>}
-              </button>
-              {beneficiaryName && (
-                <p className="text-xs text-gray-500">{truncateAddress(payment.payee_address)}</p>
-              )}
+            <div className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+              {payment.payee_address.slice(0, 6)}...{payment.payee_address.slice(-4)}
             </div>
           </div>
-        </td>
-
-        {/* 🆕 COUNT */}
-        <td className="px-6 py-4">
-          {isBatch ? (
+          {!beneficiaryName && (
             <button
-              onClick={() => setShowBeneficiariesModal(true)}
-              className="flex items-center gap-1 px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-colors"
-              title="Voir les bénéficiaires"
+              onClick={() => onRename(payment.payee_address)}
+              className="text-gray-400 hover:text-blue-600 transition-colors"
+              title="Renommer"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-              <span className="font-semibold">{beneficiariesCount}</span>
+              <Edit2 className="w-4 h-4" />
             </button>
-          ) : (
-            <span className="text-gray-500 text-sm">1</span>
           )}
-        </td>
+        </div>
+      </td>
 
-        {/* Montant */}
-        <td className="px-6 py-4">
-          <div className="font-semibold text-gray-900">
-            {formatAmount(payment.amount, getTokenDecimals(payment.token_symbol))} {payment.token_symbol}
-          </div>
-          {isBatch && (
-            <div className="text-xs text-gray-500">
-              {formatAmount((BigInt(payment.amount) * BigInt(beneficiariesCount)).toString(), getTokenDecimals(payment.token_symbol))} total
-            </div>
-          )}
-        </td>
+      {/* Count */}
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+        {payment.batch_count || 1}
+      </td>
 
-        {/* 🆕 TYPE */}
-        <td className="px-6 py-4">
-          {getPaymentTypeBadge(payment.payment_type)}
-        </td>
+      {/* Montant */}
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="text-sm font-medium text-gray-900 dark:text-white">
+          {formatAmount(payment.amount, payment.token_symbol || 'ETH')} {payment.token_symbol || 'ETH'}
+        </div>
+      </td>
 
-        {/* Date de libération */}
-        <td className="px-6 py-4">
-          <div className="text-sm text-gray-900">
-            {formatDate(payment.release_time)}
-          </div>
-          {payment.released_at && (
-            <div className="text-xs text-gray-500">
-              {isMounted && translationsReady 
-                ? t('dashboard.table.releasedOn', { date: new Date(payment.released_at).toLocaleDateString() })
-                : `Libéré le ${new Date(payment.released_at).toLocaleDateString('fr-FR')}`}
-            </div>
-          )}
-        </td>
+      {/* Type */}
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+        {getPaymentType()}
+      </td>
 
-        {/* Statut */}
-        <td className="px-6 py-4">
-          {getStatusBadge(payment.status)}
-        </td>
+      {/* Date de libération */}
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+        {formatDate(payment.release_time)}
+      </td>
 
-        {/* Contrat */}
-        <td className="px-6 py-4">
-          <button
-            onClick={handleCopyContract}
-            className="flex items-center gap-1 text-sm text-gray-600 hover:text-blue-600 transition-colors group"
-            title={isMounted && translationsReady ? t('dashboard.table.copyAddress') : "Copier l'adresse"}
-          >
-            <span className="font-mono">{truncateAddress(payment.contract_address, 8, 6)}</span>
-            {copied ? (
-              <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            ) : (
-              <svg className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
-            )}
-          </button>
-        </td>
+      {/* Statut */}
+      <td className="px-6 py-4 whitespace-nowrap">
+        {getStatusBadge()}
+      </td>
 
-        {/* Actions */}
-        <td className="px-6 py-4">
-          <div className="flex items-center gap-2">
-            {/* Voir sur Basescan */}
-            <a
-              href={`https://basescan.org/address/${payment.contract_address}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-              title={isMounted && translationsReady ? t('dashboard.table.viewOnBasescan') : 'Voir sur Basescan'}
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-              </svg>
-            </a>
-
-            {canCancel && (
+      {/* Contrat */}
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-mono text-gray-500 dark:text-gray-400">
+            {payment.contract_address?.slice(0, 8)}...{payment.contract_address?.slice(-6)}
+          </span>
+          {payment.contract_address && (
+            <>
               <button
-                onClick={() => onCancel(payment)}
-                className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
-                title={isMounted && translationsReady ? t('dashboard.table.cancelPayment') : 'Annuler le paiement'}
+                onClick={() => copyToClipboard(payment.contract_address!)}
+                className="text-gray-400 hover:text-blue-600 transition-colors"
+                title="Copier l'adresse"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <Copy className={`w-4 h-4 ${copied ? 'text-green-600' : ''}`} />
               </button>
-            )}
-          </div>
-        </td>
-      </tr>
+              <a
+                href={`https://basescan.org/address/${payment.contract_address}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-blue-600 transition-colors"
+                title="Voir sur Basescan"
+              >
+                <ExternalLink className="w-4 h-4" />
+              </a>
+            </>
+          )}
+        </div>
+      </td>
 
-      {/* 🆕 Modal */}
-      {showBeneficiariesModal && (
-        <BeneficiariesModal
-          payment={payment}
-          onClose={() => setShowBeneficiariesModal(false)}
-        />
-      )}
-    </>
+      {/* Actions */}
+      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+        <div className="flex items-center gap-2">
+          {onEmailClick && (
+            <button
+              onClick={() => onEmailClick(payment)}
+              className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+              title="Envoyer par email"
+            >
+              <Mail className="w-4 h-4" />
+            </button>
+          )}
+          {payment.status === 'pending' && payment.cancellable && (
+            <button
+              onClick={() => onCancel(payment)}
+              className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+              title="Annuler"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </td>
+    </tr>
   );
 }

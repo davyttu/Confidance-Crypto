@@ -237,6 +237,13 @@ app.post('/api/payments', optionalAuth, async (req, res) => {
     }
 
     console.log('✅ [SIMPLE] Paiement enregistré:', data.id);
+    
+    // 🆕 Notifier Albert via Payment Protocol (non bloquant)
+    const { notifyPaymentCreated } = require('./services/paymentProtocol');
+    notifyPaymentCreated(data).catch(err => {
+      console.warn('⚠️ [PaymentProtocol] Notification échouée (non bloquant):', err.message);
+    });
+    
     res.json({ success: true, payment: data });
   } catch (error) {
     console.error('❌ [SIMPLE] Erreur:', error.message);
@@ -332,6 +339,12 @@ app.post('/api/payments/batch', optionalAuth, async (req, res) => {
     console.log('✅ [BATCH] Paiement enregistré:', data.id);
     console.log(`   👥 ${beneficiaries.length} bénéficiaires`);
     console.log(`   💰 Montant total: ${insertData.amount}`);
+    
+    // 🆕 Notifier Albert via Payment Protocol (non bloquant)
+    const { notifyPaymentCreated } = require('./services/paymentProtocol');
+    notifyPaymentCreated(data).catch(err => {
+      console.warn('⚠️ [PaymentProtocol] Notification échouée (non bloquant):', err.message);
+    });
     
     res.json({ success: true, payment: data });
 
@@ -501,6 +514,10 @@ app.use('/api/beneficiaries', beneficiariesRoutes);
 // 🆕 ROUTES PAIEMENTS RÉCURRENTS
 app.use('/api/payments/recurring', recurringPaymentsRoutes); // ✅ AJOUTÉ
 
+// 🆕 ROUTES FRAIS DE GAS
+const paymentTransactionsRoutes = require('./routes/paymentTransactions');
+app.use('/api/payment-transactions', paymentTransactionsRoutes);
+
 // Démarrage du serveur
 app.listen(PORT, () => {
   console.log(`\n✅ API Backend démarrée sur http://localhost:${PORT}`);
@@ -527,5 +544,7 @@ app.listen(PORT, () => {
   console.log(`   GET  /api/payments/recurring/id/:id       - Détails paiement récurrent`);
   console.log(`   PATCH /api/payments/recurring/:id         - Mettre à jour récurrent`);
   console.log(`   DELETE /api/payments/recurring/:id        - Annuler récurrent`);
-  console.log(`   GET  /api/payments/recurring/stats/:wallet - Stats récurrents\n`);
+  console.log(`   GET  /api/payments/recurring/stats/:wallet - Stats récurrents`);
+  console.log(`   POST /api/payment-transactions            - Enregistrer frais de gas`);
+  console.log(`   GET  /api/payment-transactions/:id/:type  - Récupérer frais de gas\n`);
 });

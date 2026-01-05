@@ -14,6 +14,7 @@ import { type TokenSymbol, getToken } from '@/config/tokens';
 import { useTokenApproval, type UseTokenApprovalReturn } from './useTokenApproval';
 import { paymentFactoryAbi } from '@/lib/contracts/paymentFactoryAbi';
 import { erc20Abi } from '@/lib/contracts/erc20Abi';
+import { calculateGasFromReceipt, saveGasTransaction } from '@/lib/utils/gas';
 
 // ⚠️ ADRESSE DE LA FACTORY - Déployée sur Base Mainnet (V2 avec Instant Payments)
 const FACTORY_ADDRESS: `0x${string}` = '0x88Da5f28c4d5b7392812dB67355d72D21516bCaf';
@@ -1508,17 +1509,17 @@ export function useCreatePayment(): UseCreatePaymentReturn {
                 return;
               } else {
                 const result = await response.json();
-                
+
                 // ✅ FIX : Gérer le cas où le paiement existe déjà (retourné par le backend)
                 if (result.alreadyExists) {
                   console.log('⚠️ Paiement déjà enregistré (retourné par le backend)');
                 } else {
                   console.log('✅ Paiement enregistré dans Supabase:', result.payment.id);
                 }
-                
+
                 // ✅ FIX : Marquer comme enregistré
                 savedContractAddressRef.current = foundAddress;
-                
+
                 // ✅ DEBUG : Afficher ce qui a été enregistré
                 console.log('🔍 DEBUG Supabase enregistrement:', {
                   contract_address: result.payment?.contract_address,
@@ -1526,6 +1527,73 @@ export function useCreatePayment(): UseCreatePaymentReturn {
                   token_symbol: result.payment?.token_symbol,
                   alreadyExists: result.alreadyExists || false
                 });
+
+                // 💰 NOUVEAU : Enregistrer les frais de gas
+                try {
+                  console.log('💰 Début enregistrement frais de gas...');
+
+                  if (!result.payment?.id || !userAddress) {
+                    console.warn('⚠️ Impossible d\'enregistrer les frais de gas : payment_id ou user_address manquant');
+                    return;
+                  }
+
+                  const paymentId = result.payment.id;
+
+                  // 1. Transaction d'approbation (ERC20 uniquement)
+                  if (approvalHook.approveTxHash && approvalHook.approveReceipt) {
+                    console.log('📋 Enregistrement transaction d\'approbation...');
+
+                    const approvalGas = calculateGasFromReceipt(approvalHook.approveReceipt);
+
+                    await saveGasTransaction({
+                      scheduledPaymentId: paymentId,
+                      userAddress: userAddress,
+                      chainId: chainId,
+                      txHash: approvalHook.approveTxHash,
+                      txType: 'approve',
+                      tokenAddress: tokenData?.address || null,
+                      gasUsed: approvalGas.gas_used,
+                      gasPrice: approvalGas.gas_price,
+                      gasCostNative: approvalGas.total_gas_fee,
+                    });
+
+                    console.log('✅ Transaction d\'approbation enregistrée:', {
+                      hash: approvalHook.approveTxHash,
+                      gas_used: approvalGas.gas_used,
+                      gas_cost: approvalGas.total_gas_fee,
+                    });
+                  }
+
+                  // 2. Transaction de création (toujours présente)
+                  if (createTxHash && receiptToUse) {
+                    console.log('📋 Enregistrement transaction de création...');
+
+                    const creationGas = calculateGasFromReceipt(receiptToUse);
+
+                    await saveGasTransaction({
+                      scheduledPaymentId: paymentId,
+                      userAddress: userAddress,
+                      chainId: chainId,
+                      txHash: createTxHash,
+                      txType: 'create',
+                      tokenAddress: tokenData?.address || null,
+                      gasUsed: creationGas.gas_used,
+                      gasPrice: creationGas.gas_price,
+                      gasCostNative: creationGas.total_gas_fee,
+                    });
+
+                    console.log('✅ Transaction de création enregistrée:', {
+                      hash: createTxHash,
+                      gas_used: creationGas.gas_used,
+                      gas_cost: creationGas.total_gas_fee,
+                    });
+                  }
+
+                  console.log('✅ Tous les frais de gas enregistrés avec succès !');
+                } catch (gasError) {
+                  // Ne pas bloquer si l'enregistrement des gas échoue
+                  console.error('❌ Erreur lors de l\'enregistrement des frais de gas (non bloquant):', gasError);
+                }
               }
             } catch (apiError) {
               console.error('❌ Erreur API:', apiError);

@@ -11,9 +11,12 @@
   "dependencies": {
     "@gelatonetwork/automate-sdk": "^3.1.0",
     "@openzeppelin/contracts": "^5.4.0",
+    "@react-email/components": "^1.0.3",
     "@supabase/supabase-js": "^2.75.0",
     "ethers": "^5.7.2",
-    "next-intl": "^4.6.1"
+    "next-intl": "^4.6.1",
+    "react-email": "^5.1.1",
+    "resend": "^6.6.0"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-ethers": "^3.0.8",

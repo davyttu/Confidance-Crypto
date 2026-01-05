@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { Payment } from '@/hooks/useDashboard';
 import { TransactionRow } from './TransactionRow';
 import { useBeneficiaries } from '@/hooks/useBeneficiaries';
+import { EmailTransactionModal } from './EmailTransactionModal';
 
 interface TransactionTableProps {
   payments: Payment[];
@@ -25,6 +26,9 @@ export function TransactionTable({ payments, onRename, onCancel }: TransactionTa
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
+  
+  // State pour gérer le modal email
+  const [emailModalPayment, setEmailModalPayment] = useState<Payment | null>(null);
 
   useEffect(() => {
     setIsMounted(true);
@@ -216,6 +220,7 @@ export function TransactionTable({ payments, onRename, onCancel }: TransactionTa
                 payment={payment}
                 onRename={onRename}
                 onCancel={onCancel}
+                onEmailClick={(payment) => setEmailModalPayment(payment)}
               />
             ))}
           </tbody>
@@ -263,6 +268,14 @@ export function TransactionTable({ payments, onRename, onCancel }: TransactionTa
             </button>
           </div>
         </div>
+      )}
+
+      {/* Modal Email */}
+      {emailModalPayment && (
+        <EmailTransactionModal
+          payment={emailModalPayment}
+          onClose={() => setEmailModalPayment(null)}
+        />
       )}
     </div>
   );

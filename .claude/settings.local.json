@@ -4,7 +4,8 @@
       "Bash(npm run dev:*)",
       "WebFetch(domain:basescan.org)",
       "Bash(git checkout:*)",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "Bash(node -e \"const { ethers } = require\\(''ethers''\\); const provider = new ethers.JsonRpcProvider\\(''https://mainnet.base.org''\\); \\(async \\(\\) => { const testContract = ''0x862601FF3642F6AC1294B2657f0224aa575A5124''; const code = await provider.getCode\\(testContract\\); console.log\\(''Test payment contract:'', testContract\\); console.log\\(''Exists:'', code.length > 2\\); console.log\\(''Code length:'', code.length\\); }\\)\\(\\);\")"
     ]
   }
 }
