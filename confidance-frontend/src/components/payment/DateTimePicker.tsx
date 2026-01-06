@@ -30,7 +30,8 @@ export default function DateTimePicker({
   }, []);
 
   const defaultLabel = isMounted && ready ? t('create.date.label') : 'Date et heure de libération';
-  const displayLabel = label || defaultLabel;
+  // Si label est undefined, utiliser defaultLabel. Si label est une chaîne vide, ne pas afficher de label.
+  const displayLabel = label === undefined ? defaultLabel : (label === "" ? null : label);
   // Formater la date pour l'input datetime-local
   const formatDateTimeLocal = (date: Date | null): string => {
     if (!date) return '';
@@ -42,24 +43,33 @@ export default function DateTimePicker({
     return `${year}-${month}-${day}T${hours}:${minutes}`;
   };
 
-  // Date minimale (maintenant + 5 minutes)
-  const minDateTime = minDate || new Date(Date.now() + 5 * 60 * 1000);
+  // Date minimale (maintenant + 10 minutes)
+  const minDateTime = minDate || new Date(Date.now() + 10 * 60 * 1000);
   const minDateTimeString = formatDateTimeLocal(minDateTime);
 
   // Calculer le temps restant
   const [timeUntil, setTimeUntil] = useState<string>('');
+  const [isPastDate, setIsPastDate] = useState<boolean>(false);
 
   useEffect(() => {
-    if (!value) return;
+    if (!value) {
+      setIsPastDate(false);
+      return;
+    }
 
     const updateTimeUntil = () => {
       const now = new Date();
       const diff = value.getTime() - now.getTime();
 
       if (diff < 0) {
-        setTimeUntil(isMounted && ready ? t('create.date.timeUntil.past') : 'Dans le passé');
+        setIsPastDate(true);
+        setTimeUntil(isMounted && ready 
+          ? t('create.date.timeUntil.pastError', { defaultValue: 'Cette date est dans le passé. Veuillez choisir une date future.' })
+          : 'Cette date est dans le passé. Veuillez choisir une date future.');
         return;
       }
+
+      setIsPastDate(false);
 
       const days = Math.floor(diff / (1000 * 60 * 60 * 24));
       const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
@@ -110,7 +120,7 @@ export default function DateTimePicker({
   return (
     <div className="space-y-4">
       {/* Label */}
-      {displayLabel && (
+      {displayLabel !== null && displayLabel && (
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
           {displayLabel}
         </label>
@@ -173,21 +183,35 @@ export default function DateTimePicker({
         </div>
       </div>
 
-      {/* Info temps restant */}
-      {value && !error && (
-        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-          <svg
-            className="w-4 h-4 text-green-500"
-            fill="currentColor"
-            viewBox="0 0 20 20"
-          >
-            <path
-              fillRule="evenodd"
-              d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
-              clipRule="evenodd"
-            />
-          </svg>
-          <span>{timeUntil}</span>
+      {/* Info temps restant ou erreur date passée */}
+      {value && !error && timeUntil && (
+        <div className={`flex items-center gap-2 text-sm ${isPastDate ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>
+          {isPastDate ? (
+            <svg
+              className="w-4 h-4 text-red-500"
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
+              <path
+                fillRule="evenodd"
+                d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                clipRule="evenodd"
+              />
+            </svg>
+          ) : (
+            <svg
+              className="w-4 h-4 text-green-500"
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
+              <path
+                fillRule="evenodd"
+                d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+                clipRule="evenodd"
+              />
+            </svg>
+          )}
+          <span className={isPastDate ? 'font-medium' : ''}>{timeUntil}</span>
         </div>
       )}
 

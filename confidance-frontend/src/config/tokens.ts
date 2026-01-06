@@ -96,7 +96,16 @@ export const PROTOCOL_WALLET = '0xa34eDf91Cc494450000Eef08e6563062B2F115a9' as c
 
 // Helper pour calculer les fees
 // ✅ V2 - Fees additives
-export const calculateFees = (amountToPayee: bigint, decimals: number) => {
+export const calculateFees = (amountToPayee: bigint, decimals: number, isInstantPayment: boolean = false) => {
+  if (isInstantPayment) {
+    // Paiement instantané : 0% de frais
+    return {
+      totalAmount: amountToPayee,      // Ce que l'user envoie (sans frais)
+      protocolFee: BigInt(0),          // Les fees (0%)
+      recipientAmount: amountToPayee,  // Ce que reçoit le bénéficiaire
+    };
+  }
+  
   const feeBasisPoints = BigInt(179); // 1.79%
   const protocolFee = (amountToPayee * feeBasisPoints) / BigInt(10000);
   const totalRequired = amountToPayee + protocolFee;

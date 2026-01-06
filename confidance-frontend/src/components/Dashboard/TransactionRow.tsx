@@ -34,10 +34,24 @@ export function TransactionRow({ payment, onRename, onCancel, onEmailClick }: Tr
     });
   };
 
-  // Formater la date
-  const formatDate = (timestamp: number) => {
+  // Formater la date et l'heure
+  const formatDateAndTime = (timestamp: number) => {
     const date = new Date(timestamp * 1000);
-    return formatDistanceToNow(date, { addSuffix: true, locale: fr });
+    
+    // Formater la date (ex: "15 janvier 2026")
+    const dateFormatted = date.toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+    
+    // Formater l'heure (ex: "14:30")
+    const timeFormatted = date.toLocaleTimeString('fr-FR', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    
+    return { date: dateFormatted, time: timeFormatted };
   };
 
   // Copier dans le presse-papier
@@ -47,12 +61,18 @@ export function TransactionRow({ payment, onRename, onCancel, onEmailClick }: Tr
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Déterminer le type de paiement
+  // Déterminer le type de paiement avec emoji et texte
   const getPaymentType = () => {
-    if (payment.payment_type === 'recurring') return 'Récurrent';
-    if (payment.is_batch) return `Batch (${payment.batch_count || 0})`;
-    if (payment.is_instant || payment.payment_type === 'instant') return 'Instantané';
-    return 'Programmé';
+    if (payment.payment_type === 'recurring') {
+      return { emoji: '🔄', text: 'Récurrent' };
+    }
+    if (payment.is_batch) {
+      return { emoji: '👥', text: `Batch (${payment.batch_count || 0})` };
+    }
+    if (payment.is_instant || payment.payment_type === 'instant') {
+      return { emoji: '⚡', text: 'Instantané' };
+    }
+    return { emoji: '🕐', text: 'Programmé' };
   };
 
   // Statut avec badge
@@ -104,8 +124,36 @@ export function TransactionRow({ payment, onRename, onCancel, onEmailClick }: Tr
       </td>
 
       {/* Count */}
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+      <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white text-center">
         {payment.batch_count || 1}
+      </td>
+
+      {/* Blockchain */}
+      <td className="px-4 py-4 whitespace-nowrap">
+        <div className="flex items-center justify-center">
+          <div className="group relative">
+            {/* Logo Base officiel */}
+            <img 
+              src="/blockchains/base.svg" 
+              alt="Base" 
+              className="w-6 h-6"
+              onError={(e) => {
+                // Fallback si le logo ne charge pas
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                const parent = target.parentElement;
+                if (parent) {
+                  parent.innerHTML = '<div class="w-6 h-6 rounded bg-blue-500 flex items-center justify-center"><span class="text-white text-xs font-bold">B</span></div>';
+                }
+              }}
+            />
+            {/* Tooltip */}
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+              Base Mainnet
+              <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900 dark:border-t-gray-700"></div>
+            </div>
+          </div>
+        </div>
       </td>
 
       {/* Montant */}
@@ -116,13 +164,29 @@ export function TransactionRow({ payment, onRename, onCancel, onEmailClick }: Tr
       </td>
 
       {/* Type */}
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-        {getPaymentType()}
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="group relative inline-block">
+          <span className="text-lg cursor-help" title={getPaymentType().text}>
+            {getPaymentType().emoji}
+          </span>
+          {/* Tooltip */}
+          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+            {getPaymentType().text}
+            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900 dark:border-t-gray-700"></div>
+          </div>
+        </div>
       </td>
 
       {/* Date de libération */}
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-        {formatDate(payment.release_time)}
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="flex flex-col items-center">
+          <span className="text-sm font-medium text-gray-900 dark:text-white">
+            {formatDateAndTime(payment.release_time).date}
+          </span>
+          <span className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            {formatDateAndTime(payment.release_time).time}
+          </span>
+        </div>
       </td>
 
       {/* Statut */}

@@ -26,41 +26,47 @@ export function StatsCards({ payments }: StatsCardsProps) {
   const released = payments.filter(p => p.status === 'released').length;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
       {/* Total envoyé */}
-      <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white shadow-lg">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-medium opacity-90">{isMounted && translationsReady ? t('dashboard.stats.total') : 'Total envoyé'}</h3>
-          <svg className="w-8 h-8 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
+      <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-4 text-white border border-blue-400/30 shadow-md">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wide opacity-95">{isMounted && translationsReady ? t('dashboard.stats.total') : 'Total envoyé'}</h3>
+          <div className="w-12 h-12 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
+            <svg className="w-6 h-6 opacity-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
         </div>
-        <p className="text-3xl font-bold">{formatAmount(totalSent.toString())} ETH</p>
-        <p className="text-sm opacity-80 mt-2">{isMounted && translationsReady ? t('dashboard.stats.totalPayments', { count: payments.length, plural: payments.length > 1 ? 's' : '' }) : `${payments.length} paiement${payments.length > 1 ? 's' : ''} au total`}</p>
+        <p className="text-3xl font-bold mb-1">{formatAmount(totalSent.toString())} ETH</p>
+        <p className="text-xs opacity-85">{isMounted && translationsReady ? t('dashboard.stats.totalPayments', { count: payments.length, plural: payments.length > 1 ? 's' : '' }) : `${payments.length} paiement${payments.length > 1 ? 's' : ''} au total`}</p>
       </div>
 
       {/* En cours */}
-      <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-6 text-white shadow-lg">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-medium opacity-90">{isMounted && translationsReady ? t('dashboard.stats.pending') : 'En cours'}</h3>
-          <svg className="w-8 h-8 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
+      <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg p-4 text-white border border-orange-400/30 shadow-md">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wide opacity-95">{isMounted && translationsReady ? t('dashboard.stats.pending') : 'En cours'}</h3>
+          <div className="w-12 h-12 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
+            <svg className="w-6 h-6 opacity-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
         </div>
-        <p className="text-3xl font-bold">{pending}</p>
-        <p className="text-sm opacity-80 mt-2">{isMounted && translationsReady ? t('dashboard.stats.scheduledPayments', { plural: pending > 1 ? 's' : '' }) : `Paiement${pending > 1 ? 's' : ''} programmé${pending > 1 ? 's' : ''}`}</p>
+        <p className="text-3xl font-bold mb-1">{pending}</p>
+        <p className="text-xs opacity-85">{isMounted && translationsReady ? t('dashboard.stats.scheduledPayments', { plural: pending > 1 ? 's' : '' }) : `Paiement${pending > 1 ? 's' : ''} programmé${pending > 1 ? 's' : ''}`}</p>
       </div>
 
       {/* Exécutés */}
-      <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white shadow-lg">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-medium opacity-90">{isMounted && translationsReady ? t('dashboard.stats.released') : 'Exécutés'}</h3>
-          <svg className="w-8 h-8 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
+      <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-4 text-white border border-green-400/30 shadow-md">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wide opacity-95">{isMounted && translationsReady ? t('dashboard.stats.released') : 'Exécutés'}</h3>
+          <div className="w-12 h-12 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
+            <svg className="w-6 h-6 opacity-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
         </div>
-        <p className="text-3xl font-bold">{released}</p>
-        <p className="text-sm opacity-80 mt-2">{isMounted && translationsReady ? t('dashboard.stats.releasedPayments', { plural: released > 1 ? 's' : '' }) : `Paiement${released > 1 ? 's' : ''} libéré${released > 1 ? 's' : ''}`}</p>
+        <p className="text-3xl font-bold mb-1">{released}</p>
+        <p className="text-xs opacity-85">{isMounted && translationsReady ? t('dashboard.stats.releasedPayments', { plural: released > 1 ? 's' : '' }) : `Paiement${released > 1 ? 's' : ''} libéré${released > 1 ? 's' : ''}`}</p>
       </div>
     </div>
   );

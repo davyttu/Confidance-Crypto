@@ -14,12 +14,14 @@ interface FeeDisplayProps {
   amount: bigint | null;
   tokenSymbol: TokenSymbol;
   showDetails?: boolean;
+  releaseDate?: Date | null; // Pour détecter les paiements instantanés
 }
 
 export default function FeeDisplay({
   amount,
   tokenSymbol,
   showDetails = true,
+  releaseDate,
 }: FeeDisplayProps) {
   const { t, ready: translationsReady } = useTranslation();
   const [isMounted, setIsMounted] = useState(false);
@@ -33,7 +35,12 @@ export default function FeeDisplay({
     return null;
   }
 
-  const fees = calculateFees(amount, token.decimals);
+  // Détecter si c'est un paiement instantané (moins de 60 secondes)
+  const isInstantPayment = releaseDate 
+    ? (releaseDate.getTime() - Date.now()) < 60 * 1000
+    : false;
+
+  const fees = calculateFees(amount, token.decimals, isInstantPayment);
 
   return (
     <div className="space-y-4">
@@ -61,10 +68,13 @@ export default function FeeDisplay({
             {/* Frais protocole */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600 dark:text-gray-400">
+                <span className={`text-sm ${isInstantPayment ? 'text-green-600 dark:text-green-400 font-medium' : 'text-gray-600 dark:text-gray-400'}`}>
                   + {isMounted && translationsReady 
-                    ? t('create.summary.protocolFees', { percentage: PROTOCOL_FEE_PERCENTAGE })
-                    : `Frais protocole (${PROTOCOL_FEE_PERCENTAGE}%)`}
+                    ? t('create.summary.protocolFees', { percentage: isInstantPayment ? 0 : PROTOCOL_FEE_PERCENTAGE })
+                    : `Frais protocole (${isInstantPayment ? 0 : PROTOCOL_FEE_PERCENTAGE}%)`}
+                  {isInstantPayment && (
+                    <span className="ml-2 text-xs">⚡ Offerts</span>
+                  )}
                 </span>
                 <div className="group relative">
                   <svg
@@ -84,7 +94,7 @@ export default function FeeDisplay({
                   </div>
                 </div>
               </div>
-              <span className="text-sm font-medium text-orange-600 dark:text-orange-400">
+              <span className={`text-sm font-medium ${isInstantPayment ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400'}`}>
                 {formatTokenAmount(fees.protocolFee, token.decimals, tokenSymbol)}
               </span>
             </div>

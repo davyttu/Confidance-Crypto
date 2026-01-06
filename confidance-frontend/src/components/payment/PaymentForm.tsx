@@ -137,16 +137,22 @@ export default function PaymentForm() {
     }
 
     const now = new Date();
-    // Si c'est un paiement instantané (moins d'1 minute), on ne valide pas
     const diffInSeconds = (date.getTime() - now.getTime()) / 1000;
+    
+    // Vérifier si la date est dans le passé
+    if (diffInSeconds < 0) {
+      return 'Cette date est dans le passé. Veuillez choisir une date future.';
+    }
+    
+    // Si c'est un paiement instantané (moins d'1 minute), on ne valide pas
     if (diffInSeconds < 60) {
       return null; // Paiement instantané, pas d'erreur
     }
 
-    const minDate = new Date(now.getTime() + 5 * 60 * 1000);
+    const minDate = new Date(now.getTime() + 10 * 60 * 1000);
 
     if (date < minDate) {
-      return 'La date doit être au moins 5 minutes dans le futur';
+      return 'La date doit être au moins 10 minutes dans le futur';
     }
 
     return null;
@@ -426,17 +432,25 @@ export default function PaymentForm() {
           <button
             type="button"
             onClick={handleAddMultipleBeneficiaries}
-            className="flex items-center gap-2 text-sm text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 transition-colors group"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed border-primary-300 dark:border-primary-600 bg-primary-50/50 dark:bg-primary-950/20 hover:bg-primary-100 dark:hover:bg-primary-950/40 hover:border-primary-400 dark:hover:border-primary-500 text-primary-700 dark:text-primary-300 font-medium transition-all duration-200 group"
           >
             <svg 
-              className="w-4 h-4 transition-transform group-hover:scale-110" 
+              className="w-5 h-5 transition-transform group-hover:scale-110 group-hover:rotate-90" 
               fill="none" 
               stroke="currentColor" 
               viewBox="0 0 24 24"
             >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            <span>{isMounted && translationsReady ? t('create.beneficiary.addMultiple') : 'Ajouter plusieurs bénéficiaires'}</span>
+            <span className="text-sm">{isMounted && translationsReady ? t('create.beneficiary.addMultiple') : 'Ajouter plusieurs bénéficiaires'}</span>
+            <svg 
+              className="w-4 h-4 ml-auto opacity-50 group-hover:opacity-100 transition-opacity" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
           </button>
         )}
       </div>
@@ -903,7 +917,8 @@ export default function PaymentForm() {
             /* Affichage normal pour paiement one-time ou batch */
             <FeeDisplay 
               amount={getAmountBigInt()! * BigInt(isBatchMode ? additionalBeneficiaries.length + 1 : 1)} 
-              tokenSymbol={formData.tokenSymbol} 
+              tokenSymbol={formData.tokenSymbol}
+              releaseDate={formData.releaseDate}
             />
           )}
         </div>
