@@ -1,6 +1,5 @@
 const fs = require("fs");
 
-
 const networkArg = process.argv[2]; // ex: polygon | arbitrum | avalanche
 const envFile = networkArg ? `.env.${networkArg}` : ".env";
 
@@ -11,7 +10,7 @@ if (fs.existsSync(envFile)) {
 }
 
 const { ethers } = require("ethers");
-const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require("@supabase/supabase-js");
 
 // ============================================================
 // CONFIGURATION
@@ -23,10 +22,10 @@ const CHECK_INTERVAL = parseInt(process.env.CHECK_INTERVAL) || 60000; // 60 seco
 
 // ✅ Mapping NETWORK -> network string pour Supabase
 const NETWORK_MAP = {
-  'base': 'base_mainnet',
-  'polygon': 'polygon_mainnet',
-  'arbitrum': 'arbitrum_mainnet',
-  'avalanche': 'avalanche_mainnet'
+  base: "base_mainnet",
+  polygon: "polygon_mainnet",
+  arbitrum: "arbitrum_mainnet",
+  avalanche: "avalanche_mainnet",
 };
 const NETWORK_STRING = NETWORK_MAP[NETWORK] || `chain_${NETWORK}`;
 
@@ -42,10 +41,57 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ============================================================
+// N8N (ALBERT) WEBHOOK - EVENT EMITTER
+// ============================================================
+// ⚠️ IMPORTANT :
+// - Le keeper "émet" seulement des events
+// - Albert/n8n décide quoi faire (Telegram, logs, etc.)
+// - Node 20+ a fetch natif → pas besoin de node-fetch
+//
+// Variables à ajouter dans .env.base et .env.polygon :
+//   N8N_WEBHOOK_URL=https://.../webhook/xxx
+//   KEEPER_NAME=keeper-base (ou keeper-polygon)
+//
+// Optionnel :
+//   N8N_WEBHOOK_SECRET=... (si tu veux ajouter un header secret côté n8n)
+
+const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL || null;
+const KEEPER_NAME = process.env.KEEPER_NAME || `keeper-${NETWORK}`;
+const N8N_WEBHOOK_SECRET = process.env.N8N_WEBHOOK_SECRET || null;
+
+async function emitEvent(event) {
+  try {
+    if (!N8N_WEBHOOK_URL) return;
+    if (typeof fetch !== "function") return; // sécurité (devrait exister sur Node 20)
+
+    const payload = {
+      source: "confidance-keeper",
+      keeper: KEEPER_NAME,
+      network: NETWORK,
+      network_string: NETWORK_STRING,
+      timestamp: new Date().toISOString(),
+      ...event,
+    };
+
+    const headers = { "Content-Type": "application/json" };
+    if (N8N_WEBHOOK_SECRET) headers["x-confidance-secret"] = N8N_WEBHOOK_SECRET;
+
+    await fetch(N8N_WEBHOOK_URL, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+    });
+  } catch (e) {
+    // On ne doit JAMAIS casser le keeper si n8n est down.
+    console.error("⚠️ N8N emit failed:", e.message);
+  }
+}
+
+// ============================================================
 // HEALTH CHECK ENDPOINT
 // ============================================================
 
-const http = require('http');
+const http = require("http");
 const PORT = process.env.PORT || 3000;
 
 let lastCheckTime = null;
@@ -53,20 +99,25 @@ let scheduledPayments = [];
 let recurringPayments = [];
 
 const server = http.createServer((req, res) => {
-  if (req.url === '/health') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ 
-      status: 'healthy', 
-      uptime: process.uptime(),
-      lastCheck: lastCheckTime,
-      scheduledPayments: scheduledPayments.length,
-      recurringPayments: recurringPayments.length,
-      totalActive: scheduledPayments.length + recurringPayments.length,
-      version: '3.2-USDC-FIX'
-    }));
+  if (req.url === "/health") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(
+      JSON.stringify({
+        status: "healthy",
+        uptime: process.uptime(),
+        lastCheck: lastCheckTime,
+        scheduledPayments: scheduledPayments.length,
+        recurringPayments: recurringPayments.length,
+        totalActive: scheduledPayments.length + recurringPayments.length,
+        version: "3.2-USDC-FIX+N8N",
+        network: NETWORK,
+        network_string: NETWORK_STRING,
+        keeper_name: KEEPER_NAME,
+      })
+    );
   } else {
-    res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('Confidance Crypto Keeper V3.2 - USDC FIX 🚀💰');
+    res.writeHead(200, { "Content-Type": "text/plain" });
+    res.end("Confidance Crypto Keeper V3.2 - USDC FIX + N8N 🚀💰");
   }
 });
 
@@ -79,12 +130,14 @@ server.listen(PORT, () => {
 // ============================================================
 
 console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-console.log("🚀 CONFIDANCE CRYPTO KEEPER V3.2 - USDC FIX");
+console.log("🚀 CONFIDANCE CRYPTO KEEPER V3.2 - USDC FIX + N8N");
 console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 console.log(`🌐 Network: ${NETWORK} (${NETWORK_STRING})`);
 console.log(`⏰ Check interval: ${CHECK_INTERVAL / 1000}s`);
 console.log(`🗄️ Database: Supabase`);
-console.log(`✨ Features: ETH + ERC20 (USDC/USDT) + Batch + Recurring`);
+console.log(`🟣 N8N Webhook: ${N8N_WEBHOOK_URL ? "enabled" : "disabled"}`);
+console.log(`🧠 Keeper Name: ${KEEPER_NAME}`);
+console.log("✨ Features: ETH + ERC20 (USDC/USDT) + Batch + Recurring");
 console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
 // ============================================================
@@ -101,7 +154,7 @@ const SCHEDULED_PAYMENT_ABI = [
   "function releaseTime() view returns (uint256)",
   "function released() view returns (bool)",
   "function cancelled() view returns (bool)",
-  "function release() external"
+  "function release() external",
 ];
 
 // ABI pour BatchScheduledPayment_V2 (multi)
@@ -109,7 +162,7 @@ const BATCH_PAYMENT_ABI = [
   "function releaseTime() view returns (uint256)",
   "function released() view returns (bool)",
   "function release() external",
-  "function cancelled() view returns (bool)"  // ✅ AJOUTÉ
+  "function cancelled() view returns (bool)", // ✅ AJOUTÉ
 ];
 
 // ABI pour RecurringPaymentERC20 (mensuel)
@@ -123,7 +176,7 @@ const RECURRING_PAYMENT_ABI = [
   "function tokenAddress() view returns (address)",
   "function monthlyAmount() view returns (uint256)",
   "function startDate() view returns (uint256)",
-  "function getStatus() view returns (string memory status, uint256 monthsExecuted, uint256 monthsRemaining, uint256 amountPaid, uint256 monthsFailed)"
+  "function getStatus() view returns (string memory status, uint256 monthsExecuted, uint256 monthsRemaining, uint256 amountPaid, uint256 monthsFailed)",
 ];
 
 // Constante pour calcul du prochain mois (30 jours)
@@ -141,10 +194,10 @@ function formatAmount(amountWei, tokenSymbol) {
 
 function getTokenDecimals(symbol) {
   const decimalsMap = {
-    'ETH': 18,
-    'USDC': 6,
-    'USDT': 6,
-    'DAI': 18
+    ETH: 18,
+    USDC: 6,
+    USDT: 6,
+    DAI: 18,
   };
   return decimalsMap[symbol] || 18;
 }
@@ -184,71 +237,80 @@ async function loadScheduledPayments() {
     // ✅ FIX : Inclure les paiements où is_instant est false OU null (exclure seulement true)
     // ✅ FIX : Filtrer par réseau pour ne traiter que les paiements du réseau courant
     let query = supabase
-      .from('scheduled_payments')
-      .select('*')
-      .eq('status', 'pending')
-      .or('is_instant.is.null,is_instant.eq.false') // Inclure null OU false (exclure true)
-      .eq('network', NETWORK_STRING) // ✅ Filtrer par réseau
-      .order('release_time', { ascending: true });
-    
+      .from("scheduled_payments")
+      .select("*")
+      .eq("status", "pending")
+      .or("is_instant.is.null,is_instant.eq.false") // Inclure null OU false (exclure true)
+      .eq("network", NETWORK_STRING) // ✅ Filtrer par réseau
+      .order("release_time", { ascending: true });
+
     const { data, error } = await query;
-    
+
     if (error) {
       console.error("❌ Erreur scheduled_payments:", error.message);
+
+      await emitEvent({
+        type: "KEEPER_DB_ERROR",
+        scope: "loadScheduledPayments",
+        error: error.message,
+      });
+
       return [];
     }
-    
+
     // ✅ Logs de débogage
     if (!data || data.length === 0) {
       console.log("📋 Aucun paiement scheduled pending trouvé");
       console.log(`   🔍 Filtres appliqués: status=pending, network=${NETWORK_STRING}, is_instant=null|false`);
-      
+
       // ✅ DEBUG : Vérifier s'il y a des paiements failed récemment
       const { data: failedPayments } = await supabase
-        .from('scheduled_payments')
-        .select('id, status, error_message, updated_at')
-        .eq('network', NETWORK_STRING)
-        .eq('status', 'failed')
-        .order('updated_at', { ascending: false })
+        .from("scheduled_payments")
+        .select("id, status, error_message, updated_at")
+        .eq("network", NETWORK_STRING)
+        .eq("status", "failed")
+        .order("updated_at", { ascending: false })
         .limit(3);
-      
+
       if (failedPayments && failedPayments.length > 0) {
         console.log(`   ⚠️ DEBUG: ${failedPayments.length} paiement(s) failed récent(s) trouvé(s):`);
-        failedPayments.forEach(p => {
-          console.log(`      - ${p.id.substring(0, 8)}: ${p.error_message?.substring(0, 100) || 'no error message'} (${p.updated_at})`);
+        failedPayments.forEach((p) => {
+          console.log(
+            `      - ${p.id.substring(0, 8)}: ${p.error_message?.substring(0, 100) || "no error message"} (${p.updated_at})`
+          );
         });
       }
-      
+
       return [];
     }
-    
+
     console.log(`📦 ${data.length} paiement(s) scheduled chargé(s) depuis Supabase`);
-    
+
     // ✅ Log des IDs et réseaux pour débogage
     if (data.length > 0) {
-      const ids = data.map(row => row.id.substring(0, 8)).join(', ');
-      const networks = data.map(row => row.network || 'null').join(', ');
-      const statuses = data.map(row => row.status || 'null').join(', ');
+      const ids = data.map((row) => row.id.substring(0, 8)).join(", ");
+      const networks = data.map((row) => row.network || "null").join(", ");
+      const statuses = data.map((row) => row.status || "null").join(", ");
       console.log(`   IDs: ${ids}`);
       console.log(`   Networks: ${networks}`);
       console.log(`   Statuses: ${statuses}`);
     }
-    
+
     // ✅ Mapper TOUS les paiements pending (la vérification released se fera dans executeScheduledPayment)
     const now = Math.floor(Date.now() / 1000);
     const payments = data
-      .map(row => {
+      .map((row) => {
         const isBatch = row.is_batch === true;
         const batchCount = row.batch_count || 0;
-        const tokenSymbol = row.token_symbol || 'ETH';
-        const isERC20 = tokenSymbol !== 'ETH';
-        
+        const tokenSymbol = row.token_symbol || "ETH";
+        const isERC20 = tokenSymbol !== "ETH";
+
         // ✅ FIX : Formater correctement le montant selon le token
         const formattedAmount = formatAmount(row.amount, tokenSymbol);
-        
+
         return {
-          type: 'scheduled',
-          subType: isBatch ? 'batch' : (isERC20 ? 'single_erc20' : 'single_eth'),
+          type: "scheduled",
+          subType: isBatch ? "batch" : isERC20 ? "single_erc20" : "single_eth",
           id: row.id,
           contractAddress: row.contract_address,
           releaseTime: row.release_time,
@@ -260,12 +322,12 @@ async function loadScheduledPayments() {
           batchCount: batchCount,
           network: row.network, // ✅ Ajouter network pour vérification
           is_instant: row.is_instant || false, // ✅ Ajouter is_instant pour filtrage
-          name: isBatch 
+          name: isBatch
             ? `📦 Batch #${row.id.substring(0, 8)} (${batchCount} benef, ${formattedAmount})`
-            : `💎 Payment #${row.id.substring(0, 8)} (${formattedAmount})`
+            : `💎 Payment #${row.id.substring(0, 8)} (${formattedAmount})`,
         };
       })
-      .filter(payment => {
+      .filter((payment) => {
         // ✅ FIX CRITIQUE : Filtrer UNIQUEMENT les paiements avec is_instant=true
         // Ne PAS filtrer les paiements programmés avec timeUntil négatif (ceux-là doivent être exécutés !)
         if (payment.is_instant === true) {
@@ -276,16 +338,22 @@ async function loadScheduledPayments() {
         }
         return true; // Inclure tous les autres paiements (même avec timeUntil négatif)
       });
-    
+
     const filteredCount = data.length - payments.length;
     if (filteredCount > 0) {
       console.log(`   ℹ️ ${filteredCount} paiement(s) instantané(s) filtré(s), ${payments.length} paiement(s) programmé(s) restant(s)`);
     }
-    
+
     return payments;
-    
   } catch (error) {
     console.error("❌ Erreur loadScheduledPayments:", error.message);
+
+    await emitEvent({
+      type: "KEEPER_ERROR",
+      scope: "loadScheduledPayments",
+      error: error.message || String(error),
+    });
+
     return [];
   }
 }
@@ -297,25 +365,32 @@ async function loadScheduledPayments() {
 async function loadRecurringPayments() {
   try {
     const now = Math.floor(Date.now() / 1000);
-    
+
     const { data, error } = await supabase
-      .from('recurring_payments')
-      .select('*')
-      .in('status', ['pending', 'active'])
-      .lte('next_execution_time', now)
-      .order('next_execution_time', { ascending: true });
-    
+      .from("recurring_payments")
+      .select("*")
+      .in("status", ["pending", "active"])
+      .lte("next_execution_time", now)
+      .order("next_execution_time", { ascending: true });
+
     if (error) {
       console.error("❌ Erreur recurring_payments:", error.message);
+
+      await emitEvent({
+        type: "KEEPER_DB_ERROR",
+        scope: "loadRecurringPayments",
+        error: error.message,
+      });
+
       return [];
     }
-    
+
     if (!data || data.length === 0) {
       return [];
     }
-    
-    const payments = data.map(row => ({
-      type: 'recurring',
+
+    const payments = data.map((row) => ({
+      type: "recurring",
       id: row.id,
       contractAddress: row.contract_address,
       tokenSymbol: row.token_symbol,
@@ -324,13 +399,19 @@ async function loadRecurringPayments() {
       executedMonths: row.executed_months,
       nextExecutionTime: row.next_execution_time,
       status: row.status,
-      name: `🔄 Recurring #${row.id.substring(0, 8)} (${row.token_symbol}, ${row.executed_months}/${row.total_months} mois)`
+      name: `🔄 Recurring #${row.id.substring(0, 8)} (${row.token_symbol}, ${row.executed_months}/${row.total_months} mois)`,
     }));
-    
+
     return payments;
-    
   } catch (error) {
     console.error("❌ Erreur loadRecurringPayments:", error.message);
+
+    await emitEvent({
+      type: "KEEPER_ERROR",
+      scope: "loadRecurringPayments",
+      error: error.message || String(error),
+    });
+
     return [];
   }
 }
@@ -342,14 +423,14 @@ async function loadRecurringPayments() {
 async function markScheduledAsReleased(paymentId, txHash) {
   try {
     const { error } = await supabase
-      .from('scheduled_payments')
-      .update({ 
-        status: 'released',
+      .from("scheduled_payments")
+      .update({
+        status: "released",
         tx_hash: txHash,
-        executed_at: new Date().toISOString()
+        executed_at: new Date().toISOString(),
       })
-      .eq('id', paymentId);
-    
+      .eq("id", paymentId);
+
     if (error) {
       console.error("❌ Erreur update scheduled:", error.message);
     } else {
@@ -364,24 +445,26 @@ async function markScheduledAsFailed(paymentId, errorMsg) {
   try {
     // ✅ Vérifier d'abord le release_time ET le réseau avant de marquer comme failed
     const { data: paymentData } = await supabase
-      .from('scheduled_payments')
-      .select('release_time, status, network')
-      .eq('id', paymentId)
+      .from("scheduled_payments")
+      .select("release_time, status, network")
+      .eq("id", paymentId)
       .single();
-    
+
     if (paymentData) {
       // ✅ PROTECTION CRITIQUE : Vérifier que le paiement appartient au bon réseau
       if (paymentData.network && paymentData.network !== NETWORK_STRING) {
-        console.log(`   🛡️ PROTECTION: Tentative de marquer comme failed un paiement du réseau ${paymentData.network} (keeper configuré pour ${NETWORK_STRING})`);
+        console.log(
+          `   🛡️ PROTECTION: Tentative de marquer comme failed un paiement du réseau ${paymentData.network} (keeper configuré pour ${NETWORK_STRING})`
+        );
         console.log(`   ✅ Paiement ${paymentId.substring(0, 8)} ne sera PAS marqué comme failed par ce keeper`);
         console.log(`   📋 Raison bloquée: ${errorMsg.substring(0, 200)}`);
         return; // Ne pas marquer comme failed, ce n'est pas notre réseau
       }
-      
+
       const now = Math.floor(Date.now() / 1000);
       const releaseTime = Number(paymentData.release_time);
       const timeUntil = releaseTime - now;
-      
+
       // ✅ PROTECTION CRITIQUE : Ne JAMAIS marquer comme failed si le release_time n'est pas encore atteint
       if (timeUntil > 0) {
         console.log(`   🛡️ PROTECTION: Tentative de marquer comme failed AVANT le release_time (${Math.floor(timeUntil / 60)}m restantes)`);
@@ -389,32 +472,39 @@ async function markScheduledAsFailed(paymentId, errorMsg) {
         console.log(`   📋 Raison bloquée: ${errorMsg.substring(0, 200)}`);
         return; // Ne pas marquer comme failed
       }
-      
+
       // ✅ Vérifier aussi que le statut n'est pas déjà "failed" (éviter les doublons)
-      if (paymentData.status === 'failed') {
+      if (paymentData.status === "failed") {
         console.log(`   ℹ️ Paiement ${paymentId.substring(0, 8)} est déjà en "failed", pas de mise à jour`);
         return;
       }
     }
-    
+
     console.log(`   ⚠️ [markScheduledAsFailed] Marquant le paiement ${paymentId.substring(0, 8)} comme FAILED`);
     console.log(`   📋 Raison: ${errorMsg.substring(0, 200)}`);
-    console.log(`   📍 Stack trace:`, new Error().stack?.split('\n').slice(1, 4).join('\n'));
-    
+    console.log(`   📍 Stack trace:`, new Error().stack?.split("\n").slice(1, 4).join("\n"));
+
     const { error } = await supabase
-      .from('scheduled_payments')
-      .update({ 
-        status: 'failed',
+      .from("scheduled_payments")
+      .update({
+        status: "failed",
         error_message: errorMsg.substring(0, 500),
         executed_at: new Date().toISOString(), // ✅ FIX : Utiliser executed_at au lieu de failed_at
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
-      .eq('id', paymentId);
-    
+      .eq("id", paymentId);
+
     if (error) {
       console.error("❌ Erreur update failed:", error.message);
     } else {
       console.log(`   ✅ DB updated: scheduled_payments → failed`);
+
+      // 🟣 Emit event (Albert)
+      await emitEvent({
+        type: "SCHEDULED_FAILED",
+        paymentId,
+        error: errorMsg.substring(0, 300),
+      });
     }
   } catch (error) {
     console.error("❌ Erreur markScheduledAsFailed:", error.message);
@@ -428,13 +518,13 @@ async function markScheduledAsFailed(paymentId, errorMsg) {
 async function markRecurringAsCancelled(paymentId) {
   try {
     const { error } = await supabase
-      .from('recurring_payments')
-      .update({ 
-        status: 'cancelled',
-        cancelled_at: new Date().toISOString()
+      .from("recurring_payments")
+      .update({
+        status: "cancelled",
+        cancelled_at: new Date().toISOString(),
       })
-      .eq('id', paymentId);
-    
+      .eq("id", paymentId);
+
     if (error) {
       console.error("❌ Erreur update cancelled:", error.message);
     }
@@ -448,23 +538,33 @@ async function updateRecurringAfterExecution(paymentId, txHash, executedMonths, 
     const now = Math.floor(Date.now() / 1000);
     const isCompleted = executedMonths >= totalMonths;
     const nextExecutionTime = isCompleted ? null : now + MONTH_IN_SECONDS;
-    const newStatus = isCompleted ? 'completed' : 'active';
-    
+    const newStatus = isCompleted ? "completed" : "active";
+
     const { error } = await supabase
-      .from('recurring_payments')
+      .from("recurring_payments")
       .update({
         executed_months: executedMonths,
         next_execution_time: nextExecutionTime,
         last_execution_hash: txHash,
         last_execution_at: new Date().toISOString(),
-        status: newStatus
+        status: newStatus,
       })
-      .eq('id', paymentId);
-    
+      .eq("id", paymentId);
+
     if (error) {
       console.error("❌ Erreur update recurring:", error.message);
     } else {
       console.log(`   ✅ DB updated: executed_months = ${executedMonths}/${totalMonths}, status = ${newStatus}`);
+
+      // 🟣 Emit event (Albert)
+      await emitEvent({
+        type: "RECURRING_EXECUTED",
+        paymentId,
+        txHash,
+        executedMonths,
+        totalMonths,
+        status: newStatus,
+      });
     }
   } catch (error) {
     console.error("❌ Erreur updateRecurringAfterExecution:", error.message);
@@ -474,17 +574,24 @@ async function updateRecurringAfterExecution(paymentId, txHash, executedMonths, 
 async function markRecurringAsFailed(paymentId, errorMsg) {
   try {
     const { error } = await supabase
-      .from('recurring_payments')
+      .from("recurring_payments")
       .update({
-        status: 'failed',
+        status: "failed",
         error_message: errorMsg.substring(0, 500),
         last_execution_at: new Date().toISOString(), // ✅ FIX : Utiliser last_execution_at au lieu de failed_at
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
-      .eq('id', paymentId);
-    
+      .eq("id", paymentId);
+
     if (error) {
       console.error("❌ Erreur update failed:", error.message);
+    } else {
+      // 🟣 Emit event (Albert)
+      await emitEvent({
+        type: "RECURRING_FAILED",
+        paymentId,
+        error: errorMsg.substring(0, 300),
+      });
     }
   } catch (error) {
     console.error("❌ Erreur markRecurringAsFailed:", error.message);
@@ -498,42 +605,49 @@ async function markRecurringAsFailed(paymentId, errorMsg) {
 async function executeScheduledPayment(payment) {
   try {
     const now = Math.floor(Date.now() / 1000);
-    
+
     // ✅ Afficher les détails du paiement
     console.log(`   🔧 Type: ${payment.subType}`);
     console.log(`   💰 Token: ${payment.tokenSymbol}`);
     console.log(`   📍 Contract: ${payment.contractAddress}`);
     console.log(`   📍 Token Address: ${payment.tokenAddress}`);
     console.log(`   🆔 Payment ID: ${payment.id}`);
-    console.log(`   🌐 Payment Network: ${payment.network || 'null'}`);
+    console.log(`   🌐 Payment Network: ${payment.network || "null"}`);
     console.log(`   🌐 Keeper Network: ${NETWORK_STRING}`);
-    
+
     // ✅ FIX CRITIQUE : Vérifier que le paiement appartient au bon réseau
-    // Cela évite que le keeper Polygon vérifie un contrat Base (ou vice versa)
     if (payment.network && payment.network !== NETWORK_STRING) {
       console.log(`   ⚠️ Paiement appartient au réseau ${payment.network} mais keeper est configuré pour ${NETWORK_STRING}`);
       console.log(`   ✅ Ignorant ce paiement (sera traité par le bon keeper)`);
-      return; // Ne pas traiter ce paiement, il sera traité par le bon keeper
+
+      // 🟣 Emit event (Albert)
+      await emitEvent({
+        type: "SCHEDULED_SKIPPED",
+        reason: "WRONG_NETWORK",
+        paymentId: payment.id,
+        paymentNetwork: payment.network,
+        keeperNetwork: NETWORK_STRING,
+      });
+
+      return;
     }
-    
+
     // ✅ FIX CRITIQUE : Vérifier d'abord le release_time depuis la DB
-    // Cela évite d'appeler le contrat et de marquer comme failed si ce n'est pas encore l'heure
     const dbReleaseTime = Number(payment.releaseTime);
     const timeUntilFromDB = dbReleaseTime - now;
-    
+
     console.log(`   ⏰ Release time (DB): ${new Date(dbReleaseTime * 1000).toLocaleString()}`);
     console.log(`   ⏰ Current time: ${new Date(now * 1000).toLocaleString()}`);
-    
+
     if (timeUntilFromDB > 0) {
       const minutes = Math.floor(timeUntilFromDB / 60);
       const seconds = timeUntilFromDB % 60;
       console.log(`   ⏳ Encore ${minutes}m ${seconds}s (vérification depuis DB, pas d'appel contrat)`);
       console.log(`   ✅ Paiement reste en PENDING, aucun appel au contrat avant le release_time`);
-      return; // Ne pas vérifier le contrat si ce n'est pas encore l'heure
+      return;
     }
-    
+
     // ✅ PROTECTION : Ne jamais appeler le contrat si le release_time n'est pas encore atteint
-    // Cette vérification supplémentaire évite tout appel accidentel
     if (timeUntilFromDB > 0) {
       console.log(`   ⚠️ PROTECTION: Release_time pas encore atteint, retour anticipé`);
       return;
@@ -541,69 +655,90 @@ async function executeScheduledPayment(payment) {
 
     // ✅ FIX CRITIQUE : Vérifier que contractAddress n'est pas l'adresse du token
     const knownTokenAddresses = [
-      '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913', // USDC Base
-      '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2', // USDT Base
-      '0x50c5725949a6f0c72e6c4a641f24049a917db0cb', // DAI Base
-      '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf', // cbBTC Base
-      '0x0555E30da8f98308EdB960aa94C0Db47230d2B9c', // WBTC Base
+      "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913", // USDC Base
+      "0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2", // USDT Base
+      "0x50c5725949a6f0c72e6c4a641f24049a917db0cb", // DAI Base
+      "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf", // cbBTC Base
+      "0x0555E30da8f98308EdB960aa94C0Db47230d2B9c", // WBTC Base
     ];
-    
-    const isTokenAddress = knownTokenAddresses.some(
-      addr => addr.toLowerCase() === payment.contractAddress?.toLowerCase()
-    );
-    
+
+    const isTokenAddress = knownTokenAddresses.some((addr) => addr.toLowerCase() === payment.contractAddress?.toLowerCase());
+
     if (isTokenAddress) {
       console.error(`   ❌ ERREUR CRITIQUE: contract_address contient l'adresse du token au lieu du contrat de paiement !`);
       console.error(`   📍 Contract Address (ERREUR): ${payment.contractAddress}`);
       console.error(`   📍 Token Address: ${payment.tokenAddress}`);
-      await markScheduledAsFailed(payment.id, `ERREUR: contract_address contient l'adresse du token (${payment.contractAddress}) au lieu du contrat de paiement. Veuillez corriger manuellement dans la base de données.`);
+      await markScheduledAsFailed(
+        payment.id,
+        `ERREUR: contract_address contient l'adresse du token (${payment.contractAddress}) au lieu du contrat de paiement. Veuillez corriger manuellement dans la base de données.`
+      );
+
+      await emitEvent({
+        type: "KEEPER_DATA_ERROR",
+        scope: "executeScheduledPayment",
+        paymentId: payment.id,
+        reason: "CONTRACT_ADDRESS_IS_TOKEN",
+        contractAddress: payment.contractAddress,
+        tokenAddress: payment.tokenAddress,
+      });
+
       return;
     }
-    
 
     // ✅ NOUVEAU : Vérifier d'abord si déjà released (paiement instantané)
-const isAlreadyReleased = await checkIfAlreadyReleased(payment.contractAddress);
-if (isAlreadyReleased) {
-  console.log(`   ✅ Already released (instant payment)`);
-  await markScheduledAsReleased(payment.id, 'instant_payment');
-  return;
-}
+    const isAlreadyReleased = await checkIfAlreadyReleased(payment.contractAddress);
+    if (isAlreadyReleased) {
+      console.log(`   ✅ Already released (instant payment)`);
+      await markScheduledAsReleased(payment.id, "instant_payment");
 
-// ✅ NOUVEAU : Vérifier si annulé
-const isCancelled = await checkIfCancelled(payment.contractAddress);
-if (isCancelled) {
-  console.log(`   🚫 Cancelled on-chain`);
-  await supabase.from('scheduled_payments')
-    .update({ status: 'cancelled', updated_at: new Date().toISOString() })
-    .eq('id', payment.id);
-  return;
-}
+      await emitEvent({
+        type: "SCHEDULED_ALREADY_RELEASED",
+        paymentId: payment.id,
+        contractAddress: payment.contractAddress,
+      });
+
+      return;
+    }
+
+    // ✅ NOUVEAU : Vérifier si annulé
+    const isCancelled = await checkIfCancelled(payment.contractAddress);
+    if (isCancelled) {
+      console.log(`   🚫 Cancelled on-chain`);
+      await supabase
+        .from("scheduled_payments")
+        .update({ status: "cancelled", updated_at: new Date().toISOString() })
+        .eq("id", payment.id);
+
+      await emitEvent({
+        type: "SCHEDULED_CANCELLED_ONCHAIN",
+        paymentId: payment.id,
+        contractAddress: payment.contractAddress,
+      });
+
+      return;
+    }
+
     // ✅ Vérifier que l'adresse est bien un contrat
-    // ⚠️ ATTENTION : On ne vérifie le code que si le release_time est atteint ou proche
-    // Si le release_time n'est pas encore atteint, on ne devrait pas être ici (déjà vérifié plus haut)
     console.log(`   🔍 Vérification du code du contrat à ${payment.contractAddress}...`);
     let code;
     try {
       code = await provider.getCode(payment.contractAddress);
     } catch (codeError) {
       console.error(`   ❌ Erreur lors de la vérification du code: ${codeError.message}`);
-      // Si on ne peut pas vérifier le code, ne pas marquer comme failed si le release_time n'est pas atteint
       if (timeUntilFromDB > 0) {
         console.log(`   ⚠️ Erreur vérification code mais release_time pas encore atteint, on réessaiera plus tard`);
         return;
       }
-      // Si le release_time est atteint, on peut considérer que c'est une erreur réelle
       throw codeError;
     }
-    
-    if (code === '0x' || code === '0x0' || !code || code.length < 10) {
+
+    if (code === "0x" || code === "0x0" || !code || code.length < 10) {
       const errorMsg = `L'adresse ${payment.contractAddress} n'est pas un contrat valide (code vide ou invalide: ${code?.substring(0, 20)}...)`;
       console.error(`   ❌ ${errorMsg}`);
-      // ✅ FIX : Ne marquer comme failed que si le release_time est passé depuis plus de 5 minutes
-      // Si le release_time n'est pas encore atteint, on ne devrait pas être ici, mais on double-vérifie
+
       if (timeUntilFromDB > 0) {
         console.log(`   ⚠️ Code vide mais release_time pas encore atteint (${Math.floor(timeUntilFromDB / 60)}m restantes), on réessaiera plus tard`);
-        return; // Ne pas marquer comme failed
+        return;
       } else if (timeUntilFromDB <= -300) {
         await markScheduledAsFailed(payment.id, errorMsg);
       } else {
@@ -611,7 +746,7 @@ if (isCancelled) {
       }
       return;
     }
-    
+
     console.log(`   ✅ Contrat valide (code length: ${code.length})`);
 
     // Choisir le bon ABI
@@ -627,49 +762,55 @@ if (isCancelled) {
     } catch (error) {
       console.error(`   ❌ Erreur lors de l'appel à contract.released():`, error.message);
       console.error(`   📋 Code du contrat: ${code?.substring(0, 50)}... (length: ${code?.length})`);
-      
+
       // ✅ FIX : Détecter si c'est un contrat InstantPayment (pas de méthode released())
-      // Les contrats InstantPayment ont une méthode executed() au lieu de released()
-      if (error.message?.includes('execution reverted') || 
-          error.message?.includes('require(false)') ||
-          error.message?.includes('CALL_EXCEPTION')) {
-        
-        // Essayer d'appeler executed() pour vérifier si c'est un InstantPayment
+      if (
+        error.message?.includes("execution reverted") ||
+        error.message?.includes("require(false)") ||
+        error.message?.includes("CALL_EXCEPTION")
+      ) {
         try {
           console.log(`   🔍 Tentative d'appel à executed() (paiement instantané?)...`);
           const INSTANT_PAYMENT_ABI = ["function executed() view returns (bool)"];
           const instantContract = new ethers.Contract(payment.contractAddress, INSTANT_PAYMENT_ABI, wallet);
           const executed = await instantContract.executed();
-          
+
           if (executed) {
             console.log(`   ✅ C'est un paiement instantané déjà exécuté (executed = true)`);
             console.log(`   ✅ Marquant comme released car déjà exécuté dans le constructor`);
-            await markScheduledAsReleased(payment.id, 'instant_payment_already_executed');
+            await markScheduledAsReleased(payment.id, "instant_payment_already_executed");
+
+            await emitEvent({
+              type: "SCHEDULED_INSTANT_ALREADY_EXECUTED",
+              paymentId: payment.id,
+              contractAddress: payment.contractAddress,
+            });
+
             return;
           } else {
             console.log(`   ⚠️ Paiement instantané mais executed = false (anormal)`);
           }
         } catch (executedError) {
-          // Ce n'est pas un InstantPayment, continuer avec la gestion d'erreur normale
           console.log(`   ℹ️ Ce n'est pas un InstantPayment (executed() n'existe pas ou erreur: ${executedError.message?.substring(0, 100)})`);
         }
       }
-      
-      // Si l'erreur est liée au décodage, le contrat n'a probablement pas la méthode released()
-      if (error.message?.includes('could not decode result data') || 
-          error.message?.includes('BAD_DATA') ||
-          error.message?.includes('value="0x"')) {
-        const errorMsg = `Le contrat à l'adresse ${payment.contractAddress} n'a pas la méthode released() ou retourne des données invalides. Code length: ${code?.length || 0}. Vérifiez que c'est bien un contrat ScheduledPayment valide.`;
+
+      if (
+        error.message?.includes("could not decode result data") ||
+        error.message?.includes("BAD_DATA") ||
+        error.message?.includes('value="0x"')
+      ) {
+        const errorMsg = `Le contrat à l'adresse ${payment.contractAddress} n'a pas la méthode released() ou retourne des données invalides. Code length: ${
+          code?.length || 0
+        }. Vérifiez que c'est bien un contrat ScheduledPayment valide.`;
         console.error(`   ❌ ${errorMsg}`);
         console.error(`   📋 Erreur détaillée: ${error.message}`);
-        
-        // ✅ FIX CRITIQUE : Ne JAMAIS marquer comme failed si le release_time n'est pas encore atteint
-        // L'erreur "could not decode" peut arriver si le contrat n'est pas encore complètement déployé
+
         if (timeUntilFromDB > 0) {
           console.log(`   ⚠️ Erreur de décodage mais release_time pas encore atteint (${Math.floor(timeUntilFromDB / 60)}m restantes)`);
           console.log(`   ✅ Paiement reste en PENDING, on réessaiera plus tard`);
-          return; // Ne pas marquer comme failed
-        } else if (timeUntilFromDB <= -300) { // 5 minutes après le release_time
+          return;
+        } else if (timeUntilFromDB <= -300) {
           console.log(`   ⚠️ Release_time passé depuis ${Math.floor(-timeUntilFromDB / 60)}m, marquant comme failed`);
           await markScheduledAsFailed(payment.id, errorMsg);
         } else {
@@ -678,13 +819,13 @@ if (isCancelled) {
         }
         return;
       }
-      // Pour les autres erreurs, re-lancer
+
       throw error;
     }
-    
+
     if (released) {
       console.log(`   ✅ Already released`);
-      await markScheduledAsReleased(payment.id, 'already_released');
+      await markScheduledAsReleased(payment.id, "already_released");
       return;
     }
 
@@ -693,9 +834,9 @@ if (isCancelled) {
     try {
       releaseTime = await contract.releaseTime();
       const timeUntil = Number(releaseTime) - now;
-      
+
       console.log(`   ⏰ Release time (on-chain): ${new Date(Number(releaseTime) * 1000).toLocaleString()}`);
-      
+
       if (timeUntil > 0) {
         const minutes = Math.floor(timeUntil / 60);
         const seconds = timeUntil % 60;
@@ -703,14 +844,15 @@ if (isCancelled) {
         return;
       }
     } catch (error) {
-      if (error.message?.includes('could not decode result data') || 
-          error.message?.includes('BAD_DATA') ||
-          error.message?.includes('value="0x"')) {
+      if (
+        error.message?.includes("could not decode result data") ||
+        error.message?.includes("BAD_DATA") ||
+        error.message?.includes('value="0x"')
+      ) {
         const errorMsg = `Le contrat à l'adresse ${payment.contractAddress} n'a pas la méthode releaseTime(). Vérifiez que c'est bien un contrat ScheduledPayment valide.`;
         console.error(`   ❌ ${errorMsg}`);
         console.error(`   📋 Erreur détaillée: ${error.message}`);
-        
-        // Seulement marquer comme failed si le release_time est passé (avec marge de 5 minutes)
+
         if (timeUntilFromDB <= -300) {
           await markScheduledAsFailed(payment.id, errorMsg);
         } else {
@@ -725,62 +867,73 @@ if (isCancelled) {
     console.log(`   💸 Executing release()...`);
     const tx = await contract.release();
     console.log(`   📤 TX sent: ${tx.hash}`);
-    
+
     const receipt = await tx.wait();
     console.log(`   ✅ SUCCESS! Block: ${receipt.blockNumber}`);
     console.log(`   🔗 https://basescan.org/tx/${tx.hash}`);
 
     await markScheduledAsReleased(payment.id, tx.hash);
 
+    // 🟣 Emit event (Albert)
+    await emitEvent({
+      type: "SCHEDULED_RELEASED",
+      paymentId: payment.id,
+      txHash: tx.hash,
+      blockNumber: receipt.blockNumber,
+      contractAddress: payment.contractAddress,
+      tokenSymbol: payment.tokenSymbol,
+      isBatch: payment.isBatch,
+    });
   } catch (error) {
     const errorMsg = error.message || error.toString();
-    
+
     console.error(`   ❌ Error dans executeScheduledPayment:`, errorMsg.substring(0, 300));
-    
-    // ✅ Afficher détails supplémentaires
-    if (error.data) {
-      console.error(`   📋 Error data:`, error.data);
-    }
-    if (error.reason) {
-      console.error(`   📋 Error reason:`, error.reason);
-    }
-    
-    // ✅ FIX CRITIQUE : Ne JAMAIS marquer comme failed si le release_time n'est pas encore atteint
-    // Cela évite de marquer comme failed pour des erreurs temporaires ou si le contrat n'est pas encore prêt
+
+    if (error.data) console.error(`   📋 Error data:`, error.data);
+    if (error.reason) console.error(`   📋 Error reason:`, error.reason);
+
     try {
       const dbReleaseTime = Number(payment.releaseTime);
       const now = Math.floor(Date.now() / 1000);
       const timeUntilFromDB = dbReleaseTime - now;
-      
-      console.log(`   🔍 Vérification release_time dans catch: ${new Date(dbReleaseTime * 1000).toLocaleString()}, maintenant: ${new Date(now * 1000).toLocaleString()}, temps restant: ${Math.floor(timeUntilFromDB / 60)}m ${timeUntilFromDB % 60}s`);
-      
+
+      console.log(
+        `   🔍 Vérification release_time dans catch: ${new Date(dbReleaseTime * 1000).toLocaleString()}, maintenant: ${new Date(now * 1000).toLocaleString()}, temps restant: ${Math.floor(
+          timeUntilFromDB / 60
+        )}m ${timeUntilFromDB % 60}s`
+      );
+
       if (errorMsg.includes("Already released")) {
         console.log(`   ✅ Already released`);
-        await markScheduledAsReleased(payment.id, 'already_released');
+        await markScheduledAsReleased(payment.id, "already_released");
       } else if (timeUntilFromDB > 60) {
-        // Le release_time n'est pas encore atteint (avec marge de 1 minute), ne JAMAIS marquer comme failed
-        console.log(`   ⚠️ Erreur mais release_time pas encore atteint (${Math.floor(timeUntilFromDB / 60)}m ${timeUntilFromDB % 60}s restantes), on réessaiera plus tard`);
+        console.log(
+          `   ⚠️ Erreur mais release_time pas encore atteint (${Math.floor(timeUntilFromDB / 60)}m ${timeUntilFromDB % 60}s restantes), on réessaiera plus tard`
+        );
         console.log(`   📋 Erreur capturée: ${errorMsg.substring(0, 200)}`);
         console.log(`   ✅ Paiement reste en PENDING, ne sera PAS marqué comme failed`);
-        // Ne pas marquer comme failed, juste logger l'erreur
-        return; // Sortir sans marquer comme failed
+
+        // 🟣 Emit event (Albert) - optionnel (bruit faible)
+        await emitEvent({
+          type: "SCHEDULED_TEMP_ERROR",
+          paymentId: payment.id,
+          error: errorMsg.substring(0, 200),
+          note: "release_time_not_reached",
+        });
+
+        return;
       } else if (timeUntilFromDB <= -300) {
-        // Le release_time est passé depuis plus de 5 minutes, marquer comme failed
         console.log(`   ⚠️ Release_time passé depuis ${Math.floor(-timeUntilFromDB / 60)}m, marquant comme failed`);
         await markScheduledAsFailed(payment.id, errorMsg);
       } else {
-        // Le release_time vient juste d'être atteint (entre -5min et +1min), attendre un peu avant de marquer comme failed
         console.log(`   ⚠️ Erreur mais release_time vient d'être atteint (${Math.floor(timeUntilFromDB / 60)}m), on réessaiera au prochain check`);
         console.log(`   📋 Erreur: ${errorMsg.substring(0, 200)}`);
         console.log(`   ✅ Paiement reste en PENDING pour le moment`);
-        // Ne pas marquer comme failed immédiatement
-        return; // Sortir sans marquer comme failed
+        return;
       }
     } catch (timeCheckError) {
-      // Si on ne peut même pas vérifier le release_time, ne pas marquer comme failed
       console.error(`   ❌ Erreur lors de la vérification du release_time:`, timeCheckError.message);
       console.log(`   ✅ Par sécurité, on ne marque PAS le paiement comme failed`);
-      // Ne pas marquer comme failed si on ne peut pas vérifier le release_time
     }
   }
 }
@@ -791,17 +944,20 @@ if (isCancelled) {
 
 async function executeRecurringPayment(payment) {
   try {
-    const contract = new ethers.Contract(
-      payment.contractAddress,
-      RECURRING_PAYMENT_ABI,
-      wallet
-    );
+    const contract = new ethers.Contract(payment.contractAddress, RECURRING_PAYMENT_ABI, wallet);
 
     // Vérifier si annulé
     const cancelled = await contract.cancelled();
     if (cancelled) {
       console.log(`   🚫 Cancelled on-chain`);
       await markRecurringAsCancelled(payment.id);
+
+      await emitEvent({
+        type: "RECURRING_CANCELLED_ONCHAIN",
+        paymentId: payment.id,
+        contractAddress: payment.contractAddress,
+      });
+
       return;
     }
 
@@ -811,10 +967,10 @@ async function executeRecurringPayment(payment) {
     console.log(`   📊 Status: ${status}, Executed: ${monthsExecuted}, Remaining: ${monthsRemaining}, Failed: ${monthsFailed}`);
 
     // Vérifier si complété
-    if (status === 'completed' || monthsRemaining === 0n) {
+    if (status === "completed" || monthsRemaining === 0n) {
       console.log(`   ✅ Completed on-chain (${monthsExecuted} months executed)`);
       const totalMonthsOnChain = await contract.totalMonths();
-      await updateRecurringAfterExecution(payment.id, 'already_completed', Number(monthsExecuted), Number(totalMonthsOnChain));
+      await updateRecurringAfterExecution(payment.id, "already_completed", Number(monthsExecuted), Number(totalMonthsOnChain));
       return;
     }
 
@@ -831,21 +987,26 @@ async function executeRecurringPayment(payment) {
     const newExecutedMonths = await contract.executedMonths();
     const totalMonthsOnChain = await contract.totalMonths();
 
-    await updateRecurringAfterExecution(
-      payment.id,
-      tx.hash,
-      Number(newExecutedMonths),
-      Number(totalMonthsOnChain)
-    );
-
+    await updateRecurringAfterExecution(payment.id, tx.hash, Number(newExecutedMonths), Number(totalMonthsOnChain));
   } catch (error) {
     const errorMsg = error.message || error.toString();
 
     // ⚠️ Skip-on-failure : Balance insuffisante
-    if (errorMsg.includes("Insufficient balance") ||
-        errorMsg.includes("ERC20: transfer amount exceeds balance") ||
-        errorMsg.includes("Transfer failed")) {
+    if (
+      errorMsg.includes("Insufficient balance") ||
+      errorMsg.includes("ERC20: transfer amount exceeds balance") ||
+      errorMsg.includes("Transfer failed")
+    ) {
       console.log(`   ⚠️ Insufficient balance - skipped (retry next month)`);
+
+      // 🟣 Emit event (Albert)
+      await emitEvent({
+        type: "RECURRING_SKIPPED",
+        reason: "INSUFFICIENT_FUNDS",
+        paymentId: payment.id,
+        error: errorMsg.substring(0, 200),
+      });
+
       return; // Ne pas marquer failed
     }
 
@@ -859,16 +1020,15 @@ async function executeRecurringPayment(payment) {
 // ============================================================
 
 async function checkAndExecuteAll() {
-  const now = Math.floor(Date.now() / 1000);
   lastCheckTime = new Date().toISOString();
   console.log(`\n⏰ [${new Date().toLocaleTimeString()}] Checking all payments...`);
 
   // Charger les 2 types de paiements
   scheduledPayments = await loadScheduledPayments();
   recurringPayments = await loadRecurringPayments();
-  
+
   const totalPayments = scheduledPayments.length + recurringPayments.length;
-  
+
   if (totalPayments === 0) {
     console.log("😴 No payments to execute");
     return;
@@ -897,31 +1057,49 @@ async function healthCheck() {
   try {
     const balance = await provider.getBalance(wallet.address);
     console.log(`💰 Balance keeper: ${ethers.formatEther(balance)} ETH`);
-    
+
     if (balance === 0n) {
       console.warn("⚠️ WARNING: Balance is 0!");
+
+      await emitEvent({
+        type: "KEEPER_LOW_BALANCE",
+        balanceWei: balance.toString(),
+        balanceEth: ethers.formatEther(balance),
+      });
     }
-    
+
     // Vérifier connexion Supabase (2 tables) - Filtrer par réseau
     const { data: scheduled, error: err1 } = await supabase
-      .from('scheduled_payments')
-      .select('count', { count: 'exact', head: true })
-      .eq('status', 'pending')
-      .eq('network', NETWORK_STRING); // ✅ Filtrer par réseau
-    
+      .from("scheduled_payments")
+      .select("count", { count: "exact", head: true })
+      .eq("status", "pending")
+      .eq("network", NETWORK_STRING);
+
     const { data: recurring, error: err2 } = await supabase
-      .from('recurring_payments')
-      .select('count', { count: 'exact', head: true })
-      .in('status', ['pending', 'active'])
-      .eq('network', NETWORK_STRING); // ✅ Filtrer par réseau
-      
+      .from("recurring_payments")
+      .select("count", { count: "exact", head: true })
+      .in("status", ["pending", "active"])
+      .eq("network", NETWORK_STRING);
+
     if (err1 || err2) {
       console.warn("⚠️ WARNING: Supabase connection issue");
+
+      await emitEvent({
+        type: "KEEPER_DB_WARNING",
+        error1: err1 ? err1.message : null,
+        error2: err2 ? err2.message : null,
+      });
     } else {
       console.log(`✅ Supabase OK (${scheduled || 0} scheduled, ${recurring || 0} recurring)`);
     }
   } catch (error) {
     console.error("❌ Health check failed:", error.message);
+
+    await emitEvent({
+      type: "KEEPER_ERROR",
+      scope: "healthCheck",
+      error: error.message || String(error),
+    });
   }
 }
 
@@ -942,15 +1120,24 @@ async function selfPing() {
 // ============================================================
 
 async function start() {
-  console.log("🚀 Starting Keeper V3.2 (USDC Fix)...\n");
-  
+  console.log("🚀 Starting Keeper V3.2 (USDC Fix + N8N)...\n");
+
+  // 🟣 Notify start (Albert)
+  await emitEvent({
+    type: "KEEPER_STARTED",
+    keeperAddress: wallet.address,
+    rpc: RPC_URL,
+    port: PORT,
+    checkIntervalMs: CHECK_INTERVAL,
+  });
+
   await healthCheck();
   await checkAndExecuteAll();
-  
+
   setInterval(checkAndExecuteAll, CHECK_INTERVAL);
   setInterval(healthCheck, 5 * 60 * 1000);
   setInterval(selfPing, 5 * 60 * 1000);
-  
+
   console.log("\n✅ Keeper V3.2 operational! Monitoring ETH + ERC20 + Batch + Recurring...\n");
 }
 
@@ -958,14 +1145,32 @@ async function start() {
 // ERROR HANDLING
 // ============================================================
 
-process.on("unhandledRejection", (error) => {
+process.on("unhandledRejection", async (error) => {
   console.error("❌ Unhandled rejection:", error);
+
+  await emitEvent({
+    type: "KEEPER_UNHANDLED_REJECTION",
+    error: (error?.message || String(error)).substring(0, 500),
+  });
 });
 
-process.on("SIGTERM", () => {
+process.on("SIGTERM", async () => {
   console.log("⚠️ SIGTERM received, graceful shutdown...");
+
+  await emitEvent({
+    type: "KEEPER_STOPPED",
+    reason: "SIGTERM",
+  });
+
   process.exit(0);
 });
 
 // LAUNCH!
-start().catch(console.error);
+start().catch(async (e) => {
+  console.error(e);
+
+  await emitEvent({
+    type: "KEEPER_FATAL_START_ERROR",
+    error: (e?.message || String(e)).substring(0, 500),
+  });
+});
