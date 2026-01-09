@@ -182,8 +182,8 @@ export const TransactionReceiptEmail = ({
             </Text>
             <Text style={footerText}>
               Des questions ? Contactez-nous sur{' '}
-              <a href="mailto:support@confidance-defi.com" style={link}>
-                support@confidance-defi.com
+              <a href="mailto:contact@confidance-defi.com" style={link}>
+                contact@confidance-defi.com
               </a>
             </Text>
             <Text style={copyrightText}>

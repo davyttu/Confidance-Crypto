@@ -8,6 +8,7 @@ import { useBeneficiaries } from '@/hooks/useBeneficiaries';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Copy, ExternalLink, Mail, X, Edit2 } from 'lucide-react';
+import { BeneficiariesDropdown } from './BeneficiariesDropdown';
 
 interface TransactionRowProps {
   payment: Payment;
@@ -102,30 +103,7 @@ export function TransactionRow({ payment, onRename, onCancel, onEmailClick }: Tr
     <tr className="border-b border-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
       {/* Bénéficiaire */}
       <td className="px-6 py-4 whitespace-nowrap">
-        <div className="flex items-center gap-2">
-          <div>
-            <div className="text-sm font-medium text-gray-900 dark:text-white">
-              {beneficiaryName || 'Non nommé'}
-            </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 font-mono">
-              {payment.payee_address.slice(0, 6)}...{payment.payee_address.slice(-4)}
-            </div>
-          </div>
-          {!beneficiaryName && (
-            <button
-              onClick={() => onRename(payment.payee_address)}
-              className="text-gray-400 hover:text-blue-600 transition-colors"
-              title="Renommer"
-            >
-              <Edit2 className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-      </td>
-
-      {/* Count */}
-      <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white text-center">
-        {payment.batch_count || 1}
+        <BeneficiariesDropdown payment={payment} onRename={onRename} />
       </td>
 
       {/* Blockchain */}

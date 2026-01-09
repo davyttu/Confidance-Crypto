@@ -17,8 +17,8 @@ import { type TokenSymbol, getToken } from '@/config/tokens';
 import { paymentFactoryAbi } from '@/lib/contracts/paymentFactoryAbi';
 import { useAuth } from '@/contexts/AuthContext';
 
-// Factory V2 avec support récurrent (avec dayOfMonth + InstantPayment)
-const FACTORY_ADDRESS: `0x${string}` = '0x88Da5f28c4d5b7392812dB67355d72D21516bCaf';
+// Factory V3 FIXÉE avec support récurrent (avec dayOfMonth + InstantPayment)
+const FACTORY_ADDRESS: `0x${string}` = '0x88530C2f1A77BD8eb69caf91816E42982d25aa6C';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 // ✅ Multi-chain : réseau courant
 const getNetworkFromChainId = (chainId: number): string => {

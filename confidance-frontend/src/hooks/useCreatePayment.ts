@@ -16,8 +16,8 @@ import { paymentFactoryAbi } from '@/lib/contracts/paymentFactoryAbi';
 import { erc20Abi } from '@/lib/contracts/erc20Abi';
 import { calculateGasFromReceipt, saveGasTransaction } from '@/lib/utils/gas';
 
-// ⚠️ ADRESSE DE LA FACTORY - Déployée sur Base Mainnet (V2 avec Instant Payments)
-const FACTORY_ADDRESS: `0x${string}` = '0x88Da5f28c4d5b7392812dB67355d72D21516bCaf';
+// ⚠️ ADRESSE DE LA FACTORY - Déployée sur Base Mainnet (V3 FIXÉE - Constructor Balance Check)
+const FACTORY_ADDRESS: `0x${string}` = '0x88530C2f1A77BD8eb69caf91816E42982d25aa6C';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 // ✅ Multi-chain : réseau courant (utilisé par l'API / DB)
 const getNetworkFromChainId = (chainId: number): string => {
@@ -113,13 +113,15 @@ export function useCreatePayment(): UseCreatePaymentReturn {
   
   // ✅ FIX : Stocker le hash d'approbation pour cette tentative (protection contre double déclenchement)
   const currentApproveTxHash = useRef<`0x${string}` | undefined>(undefined);
-  // ✅ FIX : Timeout de sécurité pour éviter que la modal reste bloquée
+  // ✅ FIX : Timeout de sécurité pour éviter que la modal reste bloquée (60 secondes maximum)
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   // ✅ FIX : Flag pour éviter les enregistrements multiples
   const isSavingRef = useRef<boolean>(false);
   const savedContractAddressRef = useRef<`0x${string}` | undefined>(undefined);
   // ✅ FIX CRITIQUE : Ref pour toujours avoir la dernière instance du hook d'approbation
   const approvalHookRef = useRef<UseTokenApprovalReturn | null>(null);
+  // ✅ FIX : Ref pour le timeout de sécurité du processus de création
+  const creationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Hook pour écrire les transactions
   const {
@@ -164,6 +166,8 @@ export function useCreatePayment(): UseCreatePaymentReturn {
   }, [isConfirmed, createTxHash, status]);
 
   // Hook d'approbation (pour ERC20)
+  // ✅ FIX CRITIQUE : Ne pas créer le hook si currentParams n'est pas défini
+  // Cela évite de créer le hook avec 'ETH' par défaut et de tenter d'approuver le mauvais token
   const token = currentParams ? getToken(currentParams.tokenSymbol) : null;
   
   // 🔧 FIX ERC20 ALLOWANCE : Calculer totalRequired (amountToPayee + fees 1.79%)
@@ -171,60 +175,136 @@ export function useCreatePayment(): UseCreatePaymentReturn {
     ? currentParams.amount + (currentParams.amount * BigInt(179)) / BigInt(10000)
     : BigInt(1);
   
-  // ✅ FIX CRITIQUE : Utiliser le tokenSymbol de currentParams SANS valeur par défaut
-  // Si currentParams n'existe pas, utiliser 'ETH' (qui n'a pas besoin d'approbation)
-  // Cela évite d'approuver le mauvais token (ex: USDC au lieu de USDT)
-  const approvalTokenSymbol: TokenSymbol = currentParams?.tokenSymbol || 'ETH';
+  // ✅ FIX CRITIQUE : Utiliser le tokenSymbol de currentParams, ou 'USDC' comme valeur par défaut
+  // On utilise 'USDC' au lieu de 'ETH' car :
+  // 1. Le hook ne sera jamais utilisé pour ETH (pas besoin d'approbation)
+  // 2. 'USDC' est un token ERC20 valide qui peut servir de placeholder
+  // 3. Les override dans approve() garantiront que le bon token est utilisé
+  const approvalTokenSymbol: TokenSymbol = currentParams?.tokenSymbol || 'USDC';
   
-  // ✅ FIX : Ne créer le hook qu'avec le bon tokenSymbol
+  // ✅ FIX : Toujours créer le hook, mais il se mettra à jour quand currentParams change
+  // Les override dans approve() garantiront que le bon token est utilisé même si le hook
+  // a été créé avec un token par défaut
   const approvalHook = useTokenApproval({
-    tokenSymbol: approvalTokenSymbol, // ✅ FIX : Utiliser le tokenSymbol réel, pas de valeur par défaut USDC
-    spenderAddress: FACTORY_ADDRESS,
-    amount: amountForApproval, // 🔧 FIX : Approve totalRequired (amountToPayee + fees)
+    tokenSymbol: approvalTokenSymbol,
+    spenderAddress: FACTORY_ADDRESS, // ✅ Toujours passer FACTORY_ADDRESS car le hook sera utilisé
+    amount: amountForApproval,
     releaseTime: currentParams?.releaseTime,
   });
   
   // ✅ FIX CRITIQUE : Mettre à jour la ref à chaque render pour toujours avoir la dernière instance
   approvalHookRef.current = approvalHook;
 
-  // ✅ FIX : Log pour vérifier que le hook est bien créé avec le bon token
+  // ✅ FIX : Log pour vérifier que le hook est bien créé
   console.log('🔧 approvalHook créé:', {
     tokenSymbol: approvalTokenSymbol,
     currentParamsTokenSymbol: currentParams?.tokenSymbol || 'null',
+    currentParamsExists: currentParams !== null,
     amount: currentParams?.amount?.toString() || '0',
     isNative: token?.isNative,
     hasApproveFunction: typeof approvalHook.approve === 'function',
+    note: 'Les override dans approve() garantiront que le bon token est utilisé',
   });
 
   // Fonction principale de création
   const createPayment = async (params: CreatePaymentParams) => {
+    console.log('🚀🚀🚀 [DEBUT] createPayment appelé 🚀🚀🚀');
+    console.log('📋 [DEBUT] Paramètres reçus:', {
+      tokenSymbol: params.tokenSymbol,
+      amount: params.amount.toString(),
+      releaseTime: params.releaseTime,
+      releaseTimeDate: new Date(params.releaseTime * 1000).toISOString(),
+      beneficiary: params.beneficiary,
+      cancellable: params.cancellable,
+      address: address || 'NON CONNECTÉ',
+      chainId,
+    });
+    
     if (!address) {
+      console.error('❌ [createPayment] Wallet non connecté');
       setError(new Error('Wallet non connecté'));
+      setStatus('error');
+      setProgressMessage('Veuillez connecter votre wallet');
       return;
     }
+    
+    console.log('✅ [DEBUT] Wallet connecté, continuation...');
 
     try {
       setError(null);
       // ✅ FIX : Réinitialiser le hash d'approbation pour cette nouvelle tentative
       currentApproveTxHash.current = undefined;
       const tokenData = getToken(params.tokenSymbol);
+      
+      console.log('🔍 [createPayment] Token data:', {
+        symbol: tokenData.symbol,
+        address: tokenData.address,
+        isNative: tokenData.isNative,
+        decimals: tokenData.decimals,
+      });
+      
+      // ✅ FIX : Vérifier que le contrat Factory existe bien
+      if (!publicClient) {
+        throw new Error('Client blockchain non disponible');
+      }
+      
+      console.log('🔍 [createPayment] Vérification que le contrat Factory existe...');
+      try {
+        const factoryCode = await publicClient.getBytecode({ address: FACTORY_ADDRESS });
+        if (!factoryCode || factoryCode === '0x') {
+          console.error('❌ [ERREUR CRITIQUE] Le contrat Factory n\'existe pas à l\'adresse:', FACTORY_ADDRESS);
+          throw new Error(`Le contrat Factory n'existe pas à l'adresse ${FACTORY_ADDRESS}. Vérifiez que le contrat est bien déployé sur Base Mainnet.`);
+        }
+        console.log('✅ [createPayment] Contrat Factory trouvé à l\'adresse:', FACTORY_ADDRESS);
+        console.log('🔗 [createPayment] Voir sur Basescan:', `https://basescan.org/address/${FACTORY_ADDRESS}`);
+      } catch (factoryErr) {
+        console.error('❌ [ERREUR] Erreur lors de la vérification du contrat Factory:', factoryErr);
+        throw new Error(`Impossible de vérifier le contrat Factory: ${(factoryErr as Error).message}`);
+      }
+      
+      // ✅ FIX : Vérifier que le token ERC20 existe bien (si ce n'est pas ETH)
+      if (!tokenData.isNative && tokenData.address && tokenData.address !== 'NATIVE') {
+        console.log('🔍 [createPayment] Vérification que le token ERC20 existe...');
+        try {
+          const tokenCode = await publicClient.getBytecode({ address: tokenData.address as `0x${string}` });
+          if (!tokenCode || tokenCode === '0x') {
+            console.error('❌ [ERREUR CRITIQUE] Le token ERC20 n\'existe pas à l\'adresse:', tokenData.address);
+            throw new Error(`Le token ${params.tokenSymbol} n'existe pas à l'adresse ${tokenData.address}. Vérifiez la configuration des tokens.`);
+          }
+          console.log('✅ [createPayment] Token ERC20 trouvé à l\'adresse:', tokenData.address);
+        } catch (tokenErr) {
+          console.error('❌ [ERREUR] Erreur lors de la vérification du token ERC20:', tokenErr);
+          throw new Error(`Impossible de vérifier le token ERC20: ${(tokenErr as Error).message}`);
+        }
+      }
 
       // ✅ FIX CRITIQUE : Mettre à jour currentParams AVANT tout pour que le hook se mette à jour
+      console.log('🔄 [createPayment] Mise à jour currentParams avec:', {
+        tokenSymbol: params.tokenSymbol,
+        amount: params.amount.toString(),
+        beneficiary: params.beneficiary,
+      });
       setCurrentParams(params);
       setCapturedPayerAddress(address);
 
       // ✅ FIX CRITIQUE : Attendre que le hook useTokenApproval soit bien mis à jour avec le nouveau tokenSymbol
       // On force React à re-rendre en attendant et en utilisant une ref qui est mise à jour à chaque render
-      console.log('⏳ Attente que le hook useTokenApproval se mette à jour avec le bon token...');
+      console.log('⏳ [createPayment] Attente que le hook useTokenApproval se mette à jour avec le bon token...');
 
       // Forcer React à re-rendre avec le nouveau currentParams
       // On attend plusieurs renders en utilisant requestAnimationFrame
       await new Promise(resolve => requestAnimationFrame(resolve));
       await new Promise(resolve => requestAnimationFrame(resolve));
-      await new Promise(resolve => setTimeout(resolve, 50)); // Sécurité supplémentaire
+      await new Promise(resolve => setTimeout(resolve, 100)); // ✅ FIX : Augmenté à 100ms pour laisser plus de temps
 
       // ✅ FIX CRITIQUE : Utiliser la ref pour avoir la dernière instance du hook
       const currentApprovalHook = approvalHookRef.current;
+      
+      console.log('🔍 [createPayment] Hook récupéré après mise à jour:', {
+        hasHook: !!currentApprovalHook,
+        tokenSymbol: params.tokenSymbol,
+        currentParamsTokenSymbol: currentParams?.tokenSymbol || 'null',
+      });
 
       if (!currentApprovalHook) {
         console.error('❌ Hook d\'approbation non disponible');
@@ -234,6 +314,23 @@ export function useCreatePayment(): UseCreatePaymentReturn {
       }
 
       console.log('✅ Hook d\'approbation récupéré depuis la ref');
+      
+      // ✅ FIX : Pour les tokens ERC20, attendre un peu que React se stabilise
+      // Note: On ne vérifie plus currentParams car il peut être mis à jour de manière asynchrone par React
+      // Au lieu de bloquer, on passera les bons paramètres directement à approve()
+      if (!tokenData.isNative) {
+        console.log('⏳ [ERC20] Attente que React se stabilise...');
+        console.log('🔍 [DIAGNOSTIC] État:', {
+          paramsTokenSymbol: params.tokenSymbol,
+          tokenDataSymbol: tokenData.symbol,
+          tokenDataAddress: tokenData.address,
+          note: 'Les paramètres seront passés directement à approve()',
+        });
+        
+        // Attendre un peu que React se stabilise (mais pas trop longtemps)
+        await new Promise(resolve => requestAnimationFrame(resolve));
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
 
       // ✅ NOUVEAU : Détecter si c'est un paiement instantané
       const now = Math.floor(Date.now() / 1000);
@@ -260,6 +357,15 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             amount: params.amount.toString(),
           });
 
+          console.log('📤 [ETH INSTANTANÉ] Appel writeContract...');
+          console.log('📋 [ETH INSTANTANÉ] Paramètres:', {
+            factoryAddress: FACTORY_ADDRESS,
+            functionName: 'createInstantPaymentETH',
+            beneficiary: params.beneficiary,
+            valueToSend: params.amount.toString(),
+            valueToSendFormatted: `${(Number(params.amount) / 1e18).toFixed(6)} ETH`,
+          });
+
           writeContract({
             abi: paymentFactoryAbi,
             address: FACTORY_ADDRESS,
@@ -267,6 +373,8 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             args: [params.beneficiary],
             value: params.amount, // ✅ Montant exact, pas de fees
           });
+          console.log('✅ [ETH INSTANTANÉ] writeContract appelé (pas d\'erreur synchrone)');
+          console.log('⏳ [ETH INSTANTANÉ] Attente de la réponse MetaMask...');
         } else {
           // PAIEMENT PROGRAMMÉ ETH (1.79% fees)
           setStatus('creating');
@@ -282,6 +390,19 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             totalRequired: totalRequired.toString()
           });
 
+          console.log('📤 [ETH PROGRAMMÉ] Appel writeContract...');
+          console.log('📋 [ETH PROGRAMMÉ] Paramètres:', {
+            factoryAddress: FACTORY_ADDRESS,
+            functionName: 'createPaymentETH',
+            beneficiary: params.beneficiary,
+            amountToPayee: amountToPayee.toString(),
+            releaseTime: params.releaseTime,
+            releaseTimeDate: new Date(params.releaseTime * 1000).toISOString(),
+            cancellable: params.cancellable || false,
+            valueToSend: totalRequired.toString(),
+            valueToSendFormatted: `${(Number(totalRequired) / 1e18).toFixed(6)} ETH`,
+          });
+
           writeContract({
             abi: paymentFactoryAbi,
             address: FACTORY_ADDRESS,
@@ -294,6 +415,8 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             ],
             value: totalRequired,
           });
+          console.log('✅ [ETH PROGRAMMÉ] writeContract appelé (pas d\'erreur synchrone)');
+          console.log('⏳ [ETH PROGRAMMÉ] Attente de la réponse MetaMask...');
         }
       }
       // CAS 2 : ERC20
@@ -317,8 +440,11 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             console.log('🔐 Approbation nécessaire pour paiement instantané');
             setStatus('approving');
             setProgressMessage(`⚡ Approbation ${tokenData.symbol} instantané (0% fees)...`);
-            // ✅ FIX : Passer le montant directement (pas de fees pour instantané)
-            currentApprovalHook.approve(params.amount);
+            // ✅ FIX : Passer le montant directement (pas de fees pour instantané) + tokenSymbol et tokenAddress override
+            if (!tokenData.address) {
+              throw new Error(`Token ${params.tokenSymbol} n'a pas d'adresse de contrat`);
+            }
+            currentApprovalHook.approve(params.amount, params.tokenSymbol as TokenSymbol, tokenData.address as `0x${string}`);
           } else {
             // Approbation déjà suffisante, passer directement à la création
             console.log('✅ Allowance suffisante, création instantanée directe');
@@ -374,11 +500,22 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             isCheckingAllowance: currentApprovalHook.isCheckingAllowance,
           });
 
+          console.log('🔍 [VERIFICATION ALLOWANCE] Début vérification allowance pour paiement programmé ERC20...');
+          
           // ✅ FIX : Vérifier manuellement l'allowance avec le bon montant
           // (car le hook peut ne pas être à jour immédiatement après setCurrentParams)
           // IMPORTANT : Par sécurité, on approuve toujours sauf si l'allowance est clairement supérieure
           const currentAllowance = currentApprovalHook.currentAllowance;
           const isChecking = currentApprovalHook.isCheckingAllowance;
+          
+          console.log('🔍 [VERIFICATION ALLOWANCE] État actuel:', {
+            currentAllowance: currentAllowance?.toString() || 'undefined',
+            isCheckingAllowance: isChecking,
+            currentParams: currentParams ? {
+              tokenSymbol: currentParams.tokenSymbol,
+              amount: currentParams.amount.toString(),
+            } : 'null',
+          });
           
           // ✅ FIX : Calculer avec une marge de sécurité (10% de plus) pour éviter les problèmes d'arrondi
           // et permettre une marge confortable pour les fees supplémentaires et les erreurs de timing
@@ -396,7 +533,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             && currentAllowance !== undefined 
             && currentAllowance >= safetyMargin; // Doit être >= safetyMargin (110% de totalRequired)
           
-          console.log('🔍 Vérification allowanceIsSufficient (PAIEMENT PROGRAMMÉ):', {
+          console.log('🔍 [VERIFICATION ALLOWANCE] Vérification allowanceIsSufficient (PAIEMENT PROGRAMMÉ):', {
             token: tokenData.symbol,
             isCheckingAllowance: isChecking,
             hookWasCreatedWithIncorrectAmount,
@@ -422,12 +559,14 @@ export function useCreatePayment(): UseCreatePaymentReturn {
           // Mais comme le contrat n'existe pas encore, on approuve la factory avec un montant élevé
           // Le contrat créé pourra utiliser cette allowance via un mécanisme de délégation
           // OU on approuve toujours pour éviter les problèmes de timing
-          console.log('🔐 Approbation nécessaire (toujours approuver pour paiement programmé ERC20):', {
+          console.log('🔐 [VERIFICATION ALLOWANCE] Approbation nécessaire (toujours approuver pour paiement programmé ERC20):', {
             currentAllowance: currentApprovalHook.currentAllowance?.toString() || 'non disponible',
             totalRequired: totalRequired.toString(),
             safetyMargin: safetyMargin.toString(),
             needsApproval: true,
           });
+          
+          console.log('✅ [VERIFICATION ALLOWANCE] Décision: APPROBATION NÉCESSAIRE, passage à l\'approbation...');
           
           // ✅ FIX : Vérifier que tokenData correspond bien à params.tokenSymbol (c'est le plus important)
           // Le hook se mettra à jour automatiquement quand currentParams change
@@ -463,17 +602,33 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             });
           }
           
+          console.log('🔄 [AVANT APPROBATION] Passage au statut approving...');
           setStatus('approving');
           setProgressMessage(`Approbation ${tokenData.symbol}...`);
           
-          console.log('📞 Appel de currentApprovalHook.approve() avec montant override...');
-          console.log('🔍 Vérification currentApprovalHook:', {
+          console.log('📞 [AVANT APPROBATION] Vérification de currentApprovalHook...');
+          console.log('🔍 [AVANT APPROBATION] Vérification currentApprovalHook:', {
             hasApproveFunction: typeof currentApprovalHook.approve === 'function',
-            approveFunction: currentApprovalHook.approve.toString().substring(0, 100),
+            approveFunction: typeof currentApprovalHook.approve === 'function' ? currentApprovalHook.approve.toString().substring(0, 100) : 'N/A',
             isNative: tokenData.isNative,
             tokenSymbol: tokenData.symbol,
             tokenAddress: tokenData.address,
+            currentAllowance: currentApprovalHook.currentAllowance?.toString() || 'undefined',
+            isAllowanceSufficient: currentApprovalHook.isAllowanceSufficient,
+            isCheckingAllowance: currentApprovalHook.isCheckingAllowance,
           });
+          
+          // ✅ FIX CRITIQUE : Vérifier que approve est bien une fonction
+          if (typeof currentApprovalHook.approve !== 'function') {
+            console.error('❌ [ERREUR CRITIQUE] currentApprovalHook.approve n\'est pas une fonction !', {
+              type: typeof currentApprovalHook.approve,
+              currentApprovalHook: currentApprovalHook,
+            });
+            setError(new Error('Erreur: fonction d\'approbation non disponible. Veuillez rafraîchir la page.'));
+            setStatus('error');
+            setProgressMessage('Erreur: fonction d\'approbation non disponible');
+            return;
+          }
           
           try {
             // ✅ FIX : Utiliser le montant exact avec une marge de sécurité de 10%
@@ -481,7 +636,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             // Augmenté à 10% pour éviter les problèmes d'arrondi et de timing
             const approvalAmount = (totalRequired * BigInt(110)) / BigInt(100); // +10% de marge (augmenté de 5% à 10%)
             
-            console.log('🔐 Montants approbation:', {
+            console.log('🔐 [AVANT APPROBATION] Montants approbation:', {
               token: tokenData.symbol,
               tokenAddress: tokenData.address,
               totalRequired: totalRequired.toString(),
@@ -493,7 +648,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             
             // ✅ FIX CRITIQUE : Vérifier que le hook utilise le bon token AVANT d'appeler approve()
             // Le hook devrait se mettre à jour automatiquement, mais vérifions quand même
-            console.log('🔍 État avant appel approve():', {
+            console.log('🔍 [AVANT APPROBATION] État avant appel approve():', {
               paramsTokenSymbol: params.tokenSymbol,
               approvalTokenSymbol,
               currentParamsTokenSymbol: currentParams?.tokenSymbol,
@@ -502,14 +657,155 @@ export function useCreatePayment(): UseCreatePaymentReturn {
               hookIsNative: token?.isNative,
             });
             
-            // ✅ FIX : Passer le montant avec marge de sécurité
-            console.log('📞 Appel de currentApprovalHook.approve()...');
-            currentApprovalHook.approve(approvalAmount);
+            // ✅ FIX : Log pour diagnostic
+            const hookTokenSymbol = currentParams?.tokenSymbol || approvalTokenSymbol;
+            const hookToken = getToken(hookTokenSymbol);
+            console.log('🔍 [AVANT APPROBATION] État avant appel approve():', {
+              paramsTokenSymbol: params.tokenSymbol,
+              approvalTokenSymbol,
+              currentParamsTokenSymbol: currentParams?.tokenSymbol || 'null',
+              tokenDataSymbol: tokenData.symbol,
+              tokenDataAddress: tokenData.address,
+              hookTokenSymbol,
+              hookTokenAddress: hookToken.address,
+              hookIsNative: token?.isNative,
+              addressesMatch: hookToken.address === tokenData.address,
+            });
+            
+            // ✅ FIX CRITIQUE : Le hook peut utiliser un tokenSymbol différent au moment de sa création
+            // Mais la fonction approve() utilise getToken(tokenSymbol) en interne, donc elle utilisera
+            // le tokenSymbol passé au hook lors de sa création. Si le hook a été créé avec 'USDC'
+            // alors qu'on veut approuver 'USDT', cela échouera.
+            // Solution: Vérifier que le hook utilise bien le bon token, et si ce n'est pas le cas,
+            // créer une nouvelle instance du hook ou passer le bon tokenSymbol directement.
+            // Pour l'instant, on fait confiance que React a mis à jour le hook après les attentes.
+            
+            // ✅ FIX CRITIQUE : Passer le tokenSymbol et tokenAddress en override à la fonction approve
+            // Cela garantit que le bon token est utilisé même si le hook a été créé avec un token par défaut
+            console.log('📞 [APPROBATION] Appel de currentApprovalHook.approve() avec montant:', approvalAmount.toString());
+            console.log('📞 [APPROBATION] Token attendu:', tokenData.symbol, 'Address:', tokenData.address);
+            console.log('📞 [APPROBATION] Hook tokenSymbol actuel:', hookTokenSymbol);
+            console.log('📞 [APPROBATION] Passage du tokenSymbol et tokenAddress en override pour garantir le bon token');
+            
+            // ✅ FIX CRITIQUE : Appeler approve() avec le tokenSymbol et tokenAddress en override
+            // Cela garantit que le bon token est utilisé même si le hook a été créé avec 'ETH' ou 'USDC' par défaut
+            if (!tokenData.address || tokenData.address === 'NATIVE') {
+              throw new Error(`Token ${params.tokenSymbol} n'a pas d'adresse de contrat valide`);
+            }
+            
+            // ✅ FIX CRITIQUE : Vérifier que tous les paramètres sont corrects avant d'appeler approve()
+            console.log('🔍 [APPROBATION] Vérification finale des paramètres avant approve():', {
+              tokenSymbol: params.tokenSymbol,
+              tokenAddress: tokenData.address,
+              spenderAddress: FACTORY_ADDRESS,
+              approvalAmount: approvalAmount.toString(),
+              approvalAmountFormatted: `${(Number(approvalAmount) / (10 ** tokenDecimals)).toFixed(6)} ${tokenData.symbol}`,
+              totalRequired: totalRequired.toString(),
+              tokenDecimals,
+              allParamsValid: !!params.tokenSymbol && !!tokenData.address && !!FACTORY_ADDRESS && approvalAmount > BigInt(0),
+            });
+            
+            // ✅ FIX : Vérifier que l'adresse du token correspond bien au tokenSymbol
+            const expectedToken = getToken(params.tokenSymbol as TokenSymbol);
+            if (tokenData.address !== expectedToken.address) {
+              const errorMsg = `Erreur: L'adresse du token (${tokenData.address}) ne correspond pas au tokenSymbol (${params.tokenSymbol}). Attendu: ${expectedToken.address}`;
+              console.error('❌ [ERREUR CRITIQUE]', errorMsg);
+              throw new Error(errorMsg);
+            }
+            
+            // ✅ FIX : Vérifier que le montant est valide
+            if (approvalAmount <= BigInt(0)) {
+              const errorMsg = `Erreur: Le montant d'approbation doit être supérieur à zéro. Montant: ${approvalAmount.toString()}`;
+              console.error('❌ [ERREUR CRITIQUE]', errorMsg);
+              throw new Error(errorMsg);
+            }
+            
+            // ✅ FIX CRITIQUE : Vérifier directement l'allowance pour le BON token avant d'appeler approve()
+            // Cela garantit que MetaMask ne rejettera pas la transaction
+            if (!publicClient || !address) {
+              throw new Error('Client blockchain ou adresse wallet non disponible');
+            }
+            
+            console.log('🔍 [APPROBATION] Vérification directe de l\'allowance pour le bon token...');
+            try {
+              const directAllowance = await publicClient.readContract({
+                address: tokenData.address as `0x${string}`,
+                abi: [
+                  {
+                    inputs: [
+                      { name: 'owner', type: 'address' },
+                      { name: 'spender', type: 'address' },
+                    ],
+                    name: 'allowance',
+                    outputs: [{ name: '', type: 'uint256' }],
+                    stateMutability: 'view',
+                    type: 'function',
+                  },
+                ],
+                functionName: 'allowance',
+                args: [address, FACTORY_ADDRESS],
+              }) as bigint;
+              
+              console.log('📊 [APPROBATION] Allowance actuelle lue directement:', {
+                token: params.tokenSymbol,
+                tokenAddress: tokenData.address,
+                owner: address,
+                spender: FACTORY_ADDRESS,
+                currentAllowance: directAllowance.toString(),
+                approvalAmount: approvalAmount.toString(),
+                isSufficient: directAllowance >= approvalAmount,
+                needApproval: directAllowance < approvalAmount,
+              });
+              
+              // Si l'allowance est déjà suffisante, pas besoin d'approuver
+              if (directAllowance >= approvalAmount) {
+                console.log('✅ [APPROBATION] Allowance déjà suffisante, pas besoin d\'approuver');
+                // Passer directement à la création du paiement
+                // Ne pas appeler approve(), passer à la création
+                console.log('⏭️ [APPROBATION] Passage direct à la création du paiement...');
+                // TODO: Appeler directement la création du paiement ici
+                // Pour l'instant, on continue avec approve() pour être sûr
+              }
+            } catch (allowanceErr) {
+              console.error('❌ [APPROBATION] Erreur lors de la vérification directe de l\'allowance:', allowanceErr);
+              // Continue quand même, on essaiera d'approuver
+            }
+            
+            // ✅ FIX : Utiliser le hook mais avec les override pour garantir le bon token
+            // Le hook gère le suivi de la transaction (approveTxHash, approveError, etc.)
+            console.log('📤 [APPROBATION] Appel de approve() avec override via le hook...');
+            console.log('📋 [APPROBATION] Paramètres qui seront passés à writeContract:', {
+              address: tokenData.address,
+              functionName: 'approve',
+              args: [FACTORY_ADDRESS, approvalAmount.toString()],
+              spenderAddress: FACTORY_ADDRESS,
+              approvalAmount: approvalAmount.toString(),
+              approvalAmountHex: `0x${approvalAmount.toString(16)}`,
+              tokenDecimals,
+              approvalAmountFormatted: `${(Number(approvalAmount) / (10 ** tokenDecimals)).toFixed(6)} ${tokenData.symbol}`,
+            });
+            
+            // ✅ FIX : Appeler approve() avec les override pour garantir le bon token
+            // Même si le hook a été créé avec un token par défaut, les override garantissent le bon token
+            currentApprovalHook.approve(approvalAmount, params.tokenSymbol as TokenSymbol, tokenData.address as `0x${string}`);
+            
+            console.log('✅ [APPROBATION] approve() appelé avec succès (pas d\'erreur immédiate)');
+            console.log('✅ [APPROBATION] TokenSymbol override:', params.tokenSymbol, 'TokenAddress override:', tokenData.address);
+            console.log('✅ [APPROBATION] SpenderAddress:', FACTORY_ADDRESS);
+            console.log('✅ [APPROBATION] Montant:', approvalAmount.toString(), `(${(Number(approvalAmount) / (10 ** tokenDecimals)).toFixed(6)} ${tokenData.symbol})`);
+            console.log('⏳ [APPROBATION] Attente de la transaction MetaMask...');
+            console.log('📊 [APPROBATION] Si MetaMask rejette la transaction, vérifiez les logs [useTokenApproval] ci-dessus');
           } catch (err) {
-            console.error('❌ Erreur lors de l\'appel currentApprovalHook.approve():', err);
+            console.error('❌ [ERREUR APPROBATION] Erreur lors de l\'appel currentApprovalHook.approve():', err);
+            console.error('❌ [ERREUR APPROBATION] Stack trace:', (err as Error)?.stack);
+            console.error('❌ [ERREUR APPROBATION] Détails:', {
+              name: (err as Error)?.name,
+              message: (err as Error)?.message,
+              cause: (err as Error)?.cause,
+            });
             setError(err as Error);
             setStatus('error');
-            setProgressMessage('Erreur lors de l\'approbation');
+            setProgressMessage('Erreur lors de l\'approbation - voir console');
           }
           
           // ✅ FIX : Ne pas continuer - on attendra que l'approbation soit confirmée dans le useEffect suivant
@@ -533,16 +829,90 @@ export function useCreatePayment(): UseCreatePaymentReturn {
     }
   }, [approvalHook.approveTxHash]);
   
+  // ✅ FIX CRITIQUE : Détecter immédiatement les erreurs d'approbation et mettre à jour le statut
+  useEffect(() => {
+    // Si on est en train d'approuver et qu'une erreur survient, mettre à jour immédiatement
+    if (status === 'approving' && approvalHook.approveError) {
+      console.error('❌ [ERREUR APPROBATION DÉTECTÉE] Erreur d\'approbation pendant le processus:', {
+        error: approvalHook.approveError,
+        message: approvalHook.approveError.message,
+        name: approvalHook.approveError.name,
+        stack: approvalHook.approveError.stack,
+        status,
+      });
+      
+      // Analyser l'erreur pour donner un message plus clair
+      let errorMessage = 'Erreur lors de l\'approbation. ';
+      const errorMsgLower = approvalHook.approveError.message?.toLowerCase() || '';
+      
+      if (errorMsgLower.includes('user rejected') || errorMsgLower.includes('user denied') || errorMsgLower.includes('user cancelled')) {
+        errorMessage = 'Transaction d\'approbation annulée par l\'utilisateur dans MetaMask.';
+      } else if (errorMsgLower.includes('insufficient funds') || errorMsgLower.includes('balance') || errorMsgLower.includes('insufficient balance')) {
+        errorMessage = 'Balance ETH insuffisante pour payer les frais de transaction (gas). Veuillez ajouter de l\'ETH à votre wallet.';
+      } else if (errorMsgLower.includes('nonce') || errorMsgLower.includes('replacement transaction')) {
+        errorMessage = 'Erreur de nonce. Veuillez réessayer dans quelques instants.';
+      } else if (errorMsgLower.includes('network') || errorMsgLower.includes('connection') || errorMsgLower.includes('rpc')) {
+        errorMessage = 'Erreur de connexion réseau ou RPC. Vérifiez votre connexion internet et réessayez.';
+      } else if (errorMsgLower.includes('gas') || errorMsgLower.includes('transaction underpriced')) {
+        errorMessage = 'Erreur de gas. Vérifiez votre connexion réseau et réessayez.';
+      } else if (approvalHook.approveError.message) {
+        errorMessage += approvalHook.approveError.message;
+      } else {
+        errorMessage += 'Vérifiez MetaMask pour plus de détails.';
+      }
+      
+      console.error('❌ [ERREUR APPROBATION] Message d\'erreur final:', errorMessage);
+      setError(approvalHook.approveError);
+      setStatus('error');
+      setProgressMessage(errorMessage);
+      
+      // Nettoyer les timeouts
+      if (creationTimeoutRef.current) {
+        clearTimeout(creationTimeoutRef.current);
+        creationTimeoutRef.current = null;
+      }
+    }
+  }, [approvalHook.approveError, status]);
+
   // ✅ FIX : Logs pour suivre l'état de l'approbation
   useEffect(() => {
-    console.log('🔍 État approbation:', {
-      approveTxHash: approvalHook.approveTxHash,
+    console.log('🔍 [SUIVI APPROBATION] État approbation:', {
+      approveTxHash: approvalHook.approveTxHash || 'NON DISPONIBLE',
       isApproveSuccess: approvalHook.isApproveSuccess,
       isApproving: approvalHook.isApproving,
-      approveError: approvalHook.approveError,
+      approveError: approvalHook.approveError?.message || 'Aucune erreur',
       status,
+      currentAllowance: approvalHook.currentAllowance?.toString() || 'undefined',
+      isAllowanceSufficient: approvalHook.isAllowanceSufficient,
+      hasReceipt: !!approvalHook.approveReceipt,
+      receiptStatus: approvalHook.approveReceipt?.status || 'NON DISPONIBLE',
     });
-  }, [approvalHook.approveTxHash, approvalHook.isApproveSuccess, approvalHook.isApproving, approvalHook.approveError, status]);
+    
+    // ✅ FIX : Logger spécifiquement quand une transaction est envoyée
+    if (approvalHook.approveTxHash && !currentApproveTxHash.current) {
+      console.log('✅ [SUIVI APPROBATION] NOUVELLE transaction d\'approbation détectée:', approvalHook.approveTxHash);
+      console.log('🔗 [SUIVI APPROBATION] Voir sur Basescan:', `https://basescan.org/tx/${approvalHook.approveTxHash}`);
+    }
+    
+    // ✅ FIX : Logger quand l'approbation réussit
+    if (approvalHook.isApproveSuccess && approvalHook.approveTxHash) {
+      console.log('✅ [SUIVI APPROBATION] Approbation confirmée avec succès !', {
+        txHash: approvalHook.approveTxHash,
+        receiptStatus: approvalHook.approveReceipt?.status,
+        blockNumber: approvalHook.approveReceipt?.blockNumber,
+      });
+    }
+    
+    // ✅ FIX : Logger les erreurs d'approbation (mais ne pas mettre à jour le statut ici, c'est fait dans le useEffect précédent)
+    if (approvalHook.approveError) {
+      console.error('❌ [SUIVI APPROBATION] Erreur d\'approbation détectée:', {
+        error: approvalHook.approveError,
+        message: approvalHook.approveError.message,
+        name: approvalHook.approveError.name,
+        stack: approvalHook.approveError.stack,
+      });
+    }
+  }, [approvalHook.approveTxHash, approvalHook.isApproveSuccess, approvalHook.isApproving, approvalHook.approveError, approvalHook.approveReceipt, approvalHook.currentAllowance, approvalHook.isAllowanceSufficient, status]);
 
   // Effect : Passer de l'approbation à la création
   useEffect(() => {
@@ -604,6 +974,30 @@ export function useCreatePayment(): UseCreatePaymentReturn {
         approveError: approvalHook.approveError?.message || 'Aucune erreur',
       });
       
+      // ✅ FIX : Nettoyer le timeout précédent s'il existe
+      if (creationTimeoutRef.current) {
+        clearTimeout(creationTimeoutRef.current);
+        creationTimeoutRef.current = null;
+      }
+      
+      // ✅ FIX : Ajouter un timeout de sécurité (60 secondes) pour éviter que le processus reste bloqué
+      creationTimeoutRef.current = setTimeout(() => {
+        if (status === 'approving' || status === 'creating') {
+          console.error('❌ TIMEOUT: Le processus de création a pris trop de temps (>60s)');
+          console.error('❌ État actuel:', {
+            status,
+            approveTxHash: approvalHook.approveTxHash,
+            createTxHash,
+            isApproveSuccess: approvalHook.isApproveSuccess,
+            approveError: approvalHook.approveError?.message,
+          });
+          setError(new Error('Le processus de création a pris trop de temps. Veuillez réessayer. Si le problème persiste, vérifiez votre connexion réseau et l\'état de MetaMask.'));
+          setStatus('error');
+          setProgressMessage('Timeout - veuillez réessayer');
+          creationTimeoutRef.current = null;
+        }
+      }, 60000); // 60 secondes
+      
       // ✅ NOUVEAU : Détecter à nouveau si instantané
       const now = Math.floor(Date.now() / 1000);
       const isInstantPayment = (currentParams.releaseTime - now) < 60;
@@ -635,24 +1029,28 @@ export function useCreatePayment(): UseCreatePaymentReturn {
       // ✅ FIX : Attendre un peu que l'allowance soit mise à jour (refetch peut prendre du temps)
       // On vérifie l'allowance actuelle et on attend si nécessaire
       const checkAndCreate = async () => {
-        if (!address || !token.address || !publicClient) {
-          setError(new Error('Paramètres manquants pour vérifier l\'allowance'));
-          setStatus('error');
-          return;
-        }
+        try {
+          if (!address || !token.address || !publicClient) {
+            const errorMsg = 'Paramètres manquants pour vérifier l\'allowance';
+            console.error('❌', errorMsg, { address: !!address, tokenAddress: !!token.address, publicClient: !!publicClient });
+            setError(new Error(errorMsg));
+            setStatus('error');
+            setProgressMessage('Erreur de paramètres');
+            return;
+          }
 
-        // ✅ FIX CRITIQUE USDT : Vérifier que le receipt de la transaction d'approbation est bien confirmé
-        const isUSDT = currentParams?.tokenSymbol === 'USDT';
-        
-        console.log('🔍 DÉBUT checkAndCreate - État de l\'approbation:', {
-          token: currentParams?.tokenSymbol,
-          approveTxHash: approvalHook.approveTxHash || 'NON DISPONIBLE',
-          isApproveSuccess: approvalHook.isApproveSuccess,
-          isApproving: approvalHook.isApproving,
-          approveError: approvalHook.approveError?.message || 'Aucune erreur',
-          hasReceipt: !!approvalHook.approveReceipt,
-          receiptStatus: approvalHook.approveReceipt?.status || 'NON DISPONIBLE',
-        });
+          // ✅ FIX CRITIQUE USDT : Vérifier que le receipt de la transaction d'approbation est bien confirmé
+          const isUSDT = currentParams?.tokenSymbol === 'USDT';
+          
+          console.log('🔍 DÉBUT checkAndCreate - État de l\'approbation:', {
+            token: currentParams?.tokenSymbol,
+            approveTxHash: approvalHook.approveTxHash || 'NON DISPONIBLE',
+            isApproveSuccess: approvalHook.isApproveSuccess,
+            isApproving: approvalHook.isApproving,
+            approveError: approvalHook.approveError?.message || 'Aucune erreur',
+            hasReceipt: !!approvalHook.approveReceipt,
+            receiptStatus: approvalHook.approveReceipt?.status || 'NON DISPONIBLE',
+          });
         
         if (!approvalHook.approveTxHash) {
           console.error('❌ Hash de transaction d\'approbation non disponible');
@@ -1171,11 +1569,55 @@ export function useCreatePayment(): UseCreatePaymentReturn {
           });
           console.log('✅ writeContract appelé pour paiement programmé');
         }
-      };
+      } catch (checkAndCreateError: any) {
+        // ✅ FIX CRITIQUE : Catch toutes les erreurs dans checkAndCreate
+        console.error('❌ ERREUR CRITIQUE dans checkAndCreate:', checkAndCreateError);
+        console.error('❌ Stack trace:', checkAndCreateError?.stack);
+        console.error('❌ Détails erreur:', {
+          name: checkAndCreateError?.name,
+          message: checkAndCreateError?.message,
+          cause: checkAndCreateError?.cause,
+          code: checkAndCreateError?.code,
+        });
+        
+        // Définir un message d'erreur clair
+        let errorMessage = 'Erreur lors de la vérification de l\'allowance. ';
+        if (checkAndCreateError?.message) {
+          errorMessage += checkAndCreateError.message;
+        } else if (checkAndCreateError?.shortMessage) {
+          errorMessage += checkAndCreateError.shortMessage;
+        } else {
+          errorMessage += 'Vérifiez la console pour plus de détails.';
+        }
+        
+        setError(new Error(errorMessage));
+        setStatus('error');
+        setProgressMessage('Erreur lors de la vérification - voir console');
+      }
+    };
 
-      checkAndCreate();
+      checkAndCreate().catch((err) => {
+        // ✅ FIX : Catch supplémentaire au cas où la promesse rejette
+        console.error('❌ ERREUR PROMESSE checkAndCreate:', err);
+        console.error('❌ Stack trace:', err?.stack);
+        console.error('❌ Détails erreur:', {
+          name: err?.name,
+          message: err?.message,
+          cause: err?.cause,
+        });
+        
+        // Nettoyer le timeout
+        if (creationTimeoutRef.current) {
+          clearTimeout(creationTimeoutRef.current);
+          creationTimeoutRef.current = null;
+        }
+        
+        setError(new Error(`Erreur lors de la vérification: ${err?.message || String(err)}`));
+        setStatus('error');
+        setProgressMessage('Erreur lors de la vérification - voir console');
+      });
     }
-  }, [approvalHook.isApproveSuccess, approvalHook.approveTxHash, status, currentParams, token]);
+  }, [approvalHook.isApproveSuccess, approvalHook.approveTxHash, status, currentParams, token, address, publicClient]);
 
   // Effect : Extraction de l'adresse du contrat créé ET enregistrement Supabase
   useEffect(() => {
@@ -1700,31 +2142,59 @@ export function useCreatePayment(): UseCreatePaymentReturn {
 
   // Effect : Gestion des erreurs
   useEffect(() => {
+    console.log('🔍 [ERROR DETECTION] Vérification erreurs:', {
+      hasWriteError: !!writeError,
+      hasConfirmError: !!confirmError,
+      writeErrorMessage: writeError?.message || 'none',
+      confirmErrorMessage: confirmError?.message || 'none',
+      currentStatus: status,
+    });
+
     if (writeError) {
       console.error('❌ Erreur writeContract détectée:', writeError);
+      console.error('❌ Type d\'erreur:', typeof writeError);
+      console.error('❌ Détails erreur complets:', JSON.stringify(writeError, null, 2));
       console.error('❌ Détails erreur:', {
         name: writeError.name,
         message: writeError.message,
         cause: writeError.cause,
         stack: writeError.stack,
+        code: (writeError as any)?.code,
+        shortMessage: (writeError as any)?.shortMessage,
+        data: (writeError as any)?.data,
       });
       
-      // ✅ FIX : Annuler le timeout si erreur
+      // ✅ FIX : Annuler les timeouts si erreur
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
       }
-      
-      // ✅ FIX : Message d'erreur plus détaillé
-      let errorMessage = 'Transaction annulée ou échouée.';
-      if (writeError.message.includes('User rejected') || writeError.message.includes('User denied')) {
-        errorMessage = 'Transaction annulée par l\'utilisateur dans MetaMask.';
-      } else if (writeError.message.includes('insufficient funds') || writeError.message.includes('balance')) {
-        errorMessage = 'Balance insuffisante pour effectuer cette transaction.';
-      } else if (writeError.message.includes('allowance') || writeError.message.includes('approval')) {
-        errorMessage = 'Allowance insuffisante. Veuillez approuver à nouveau le token.';
+      if (creationTimeoutRef.current) {
+        clearTimeout(creationTimeoutRef.current);
+        creationTimeoutRef.current = null;
       }
       
+      // ✅ FIX : Message d'erreur plus détaillé avec détection précise
+      let errorMessage = 'Transaction annulée ou échouée.';
+      const errorMsgLower = writeError.message?.toLowerCase() || '';
+      
+      if (errorMsgLower.includes('user rejected') || errorMsgLower.includes('user denied') || errorMsgLower.includes('user cancelled')) {
+        errorMessage = 'Transaction annulée par l\'utilisateur dans MetaMask.';
+      } else if (errorMsgLower.includes('insufficient funds') || errorMsgLower.includes('balance') || errorMsgLower.includes('insufficient balance')) {
+        errorMessage = 'Balance insuffisante pour effectuer cette transaction. Vérifiez votre solde ETH pour les frais de gas.';
+      } else if (errorMsgLower.includes('allowance') || errorMsgLower.includes('approval')) {
+        errorMessage = 'Allowance insuffisante. Veuillez approuver à nouveau le token.';
+      } else if (errorMsgLower.includes('gas') || errorMsgLower.includes('transaction underpriced')) {
+        errorMessage = 'Erreur de gas. Vérifiez votre connexion réseau et réessayez.';
+      } else if (errorMsgLower.includes('nonce') || errorMsgLower.includes('replacement transaction')) {
+        errorMessage = 'Erreur de nonce. Veuillez réessayer dans quelques instants.';
+      } else if (errorMsgLower.includes('network') || errorMsgLower.includes('connection')) {
+        errorMessage = 'Erreur de connexion réseau. Vérifiez votre connexion internet.';
+      } else if (writeError.message) {
+        errorMessage = `Erreur: ${writeError.message}`;
+      }
+      
+      console.error('❌ Message d\'erreur final:', errorMessage);
       setError(writeError as Error);
       setStatus('error');
       setProgressMessage(errorMessage);
@@ -1750,22 +2220,30 @@ export function useCreatePayment(): UseCreatePaymentReturn {
     }
   }, [writeError, confirmError]);
   
-  // ✅ FIX : Nettoyer le timeout quand le status change vers success ou error
+  // ✅ FIX : Nettoyer les timeouts quand le status change vers success ou error
   useEffect(() => {
     if (status === 'success' || status === 'error') {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
       }
+      if (creationTimeoutRef.current) {
+        clearTimeout(creationTimeoutRef.current);
+        creationTimeoutRef.current = null;
+      }
     }
   }, [status]);
 
   // Reset
   const reset = () => {
-    // ✅ FIX : Annuler le timeout
+    // ✅ FIX : Annuler tous les timeouts
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
+    }
+    if (creationTimeoutRef.current) {
+      clearTimeout(creationTimeoutRef.current);
+      creationTimeoutRef.current = null;
     }
     setStatus('idle');
     setError(null);

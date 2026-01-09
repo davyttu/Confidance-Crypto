@@ -237,6 +237,11 @@ export default function PaymentForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    console.log('🎯🎯🎯 [FORM SUBMIT] handleSubmit appelé');
+    console.log('📋 [FORM SUBMIT] formData:', formData);
+    console.log('📋 [FORM SUBMIT] isConnected:', isConnected);
+    console.log('📋 [FORM SUBMIT] address:', address);
+
     // Validation complète
     const newErrors: Record<string, string> = {};
 
@@ -255,15 +260,29 @@ export default function PaymentForm() {
     }
 
     if (Object.keys(newErrors).length > 0) {
+      console.log('❌ [FORM SUBMIT] Erreurs de validation:', newErrors);
       setErrors(newErrors);
       return;
     }
+
+    console.log('✅ [FORM SUBMIT] Validation passée, préparation des données...');
 
     const token = getToken(formData.tokenSymbol);
     const amountBigInt = BigInt(
       Math.floor(parseFloat(formData.amount) * 10 ** token.decimals)
     );
     const releaseTime = Math.floor(formData.releaseDate!.getTime() / 1000);
+
+    console.log('📋 [FORM SUBMIT] Données préparées:', {
+      tokenSymbol: formData.tokenSymbol,
+      beneficiary: formData.beneficiary,
+      amountBigInt: amountBigInt.toString(),
+      releaseTime,
+      releaseDate: new Date(releaseTime * 1000).toISOString(),
+      cancellable,
+      isRecurringMode,
+      isBatchMode,
+    });
 
     try {
       if (isRecurringMode) {
@@ -291,6 +310,14 @@ export default function PaymentForm() {
           cancellable,
         });
       } else {
+        console.log('📤 [FORM SUBMIT] Appel singlePayment.createPayment()...');
+        console.log('📋 [FORM SUBMIT] Paramètres:', {
+          tokenSymbol: formData.tokenSymbol,
+          beneficiary: formData.beneficiary,
+          amount: amountBigInt.toString(),
+          releaseTime,
+          cancellable,
+        });
         await singlePayment.createPayment({
           tokenSymbol: formData.tokenSymbol,
           beneficiary: formData.beneficiary as `0x${string}`,
@@ -298,9 +325,11 @@ export default function PaymentForm() {
           releaseTime,
           cancellable,
         });
+        console.log('✅ [FORM SUBMIT] singlePayment.createPayment() appelé');
       }
     } catch (err) {
-      console.error('Erreur lors de la création:', err);
+      console.error('❌ [FORM SUBMIT] Erreur lors de la création:', err);
+      console.error('❌ [FORM SUBMIT] Stack:', (err as Error)?.stack);
     }
   };
 

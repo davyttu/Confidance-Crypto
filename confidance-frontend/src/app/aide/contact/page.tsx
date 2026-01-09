@@ -8,10 +8,88 @@ import { EnvelopeIcon, ChatBubbleLeftIcon } from '@heroicons/react/24/outline';
 export default function ContactPage() {
   const { t, ready: translationsReady } = useTranslation();
   const [isMounted, setIsMounted] = useState(false);
+  const [formData, setFormData] = useState({
+    email: '',
+    subject: '',
+    message: '',
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState<{ type: 'success' | 'error' | null; message: string }>({ type: null, message: '' });
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validation
+    if (!formData.email || !formData.subject || !formData.message) {
+      setSubmitStatus({
+        type: 'error',
+        message: isMounted && translationsReady ? t('help.contact.form.error.required') : 'Veuillez remplir tous les champs'
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitStatus({ type: null, message: '' });
+
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de l\'envoi du message');
+      }
+
+      // Succès
+      setSubmitStatus({
+        type: 'success',
+        message: data.message || (isMounted && translationsReady ? t('help.contact.form.success') : 'Votre message a été envoyé avec succès !')
+      });
+
+      // Réinitialiser le formulaire
+      setFormData({
+        email: '',
+        subject: '',
+        message: '',
+      });
+
+      // Effacer le message de succès après 5 secondes
+      setTimeout(() => {
+        setSubmitStatus({ type: null, message: '' });
+      }, 5000);
+
+    } catch (error) {
+      console.error('Erreur envoi formulaire:', error);
+      setSubmitStatus({
+        type: 'error',
+        message: error instanceof Error ? error.message : (isMounted && translationsReady ? t('help.contact.form.error.generic') : 'Une erreur est survenue. Veuillez réessayer.')
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value,
+    }));
+    // Effacer le message d'erreur quand l'utilisateur modifie le formulaire
+    if (submitStatus.type === 'error') {
+      setSubmitStatus({ type: null, message: '' });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
@@ -34,7 +112,7 @@ export default function ContactPage() {
             </div>
             <h2 className="text-xl font-bold text-gray-900 mb-2">{isMounted && translationsReady ? t('help.contact.email.title') : 'Email'}</h2>
             <p className="text-gray-600 mb-4">{isMounted && translationsReady ? t('help.contact.email.description') : 'Réponse sous 24h en moyenne'}</p>
-            <p className="text-blue-600 font-medium">support@confidance.crypto</p>
+            <p className="text-blue-600 font-medium">contact@confidance-defi.com</p>
           </div>
 
           <div className="bg-white rounded-2xl p-8 shadow-lg">
@@ -49,21 +127,69 @@ export default function ContactPage() {
 
         <div className="bg-white rounded-2xl p-8 shadow-lg">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">{isMounted && translationsReady ? t('help.contact.form.title') : 'Formulaire de contact'}</h2>
-          <form className="space-y-4">
+          
+          {/* Message de statut */}
+          {submitStatus.type && (
+            <div className={`mb-6 p-4 rounded-xl ${
+              submitStatus.type === 'success' 
+                ? 'bg-green-50 border border-green-200 text-green-800' 
+                : 'bg-red-50 border border-red-200 text-red-800'
+            }`}>
+              <p className="font-medium">{submitStatus.message}</p>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">{isMounted && translationsReady ? t('help.contact.form.email') : 'Votre email'}</label>
-              <input type="email" className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none" placeholder={isMounted && translationsReady ? t('help.contact.form.emailPlaceholder') : 'votre@email.com'} />
+              <input 
+                type="email" 
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                required
+                disabled={isSubmitting}
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed" 
+                placeholder={isMounted && translationsReady ? t('help.contact.form.emailPlaceholder') : 'votre@email.com'} 
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">{isMounted && translationsReady ? t('help.contact.form.subject') : 'Sujet'}</label>
-              <input type="text" className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none" placeholder={isMounted && translationsReady ? t('help.contact.form.subjectPlaceholder') : 'Sujet de votre demande'} />
+              <input 
+                type="text" 
+                name="subject"
+                value={formData.subject}
+                onChange={handleChange}
+                required
+                disabled={isSubmitting}
+                maxLength={200}
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed" 
+                placeholder={isMounted && translationsReady ? t('help.contact.form.subjectPlaceholder') : 'Sujet de votre demande'} 
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">{isMounted && translationsReady ? t('help.contact.form.message') : 'Message'}</label>
-              <textarea rows={6} className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none resize-none" placeholder={isMounted && translationsReady ? t('help.contact.form.messagePlaceholder') : 'Votre message...'} />
+              <textarea 
+                rows={6} 
+                name="message"
+                value={formData.message}
+                onChange={handleChange}
+                required
+                disabled={isSubmitting}
+                maxLength={5000}
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none resize-none disabled:opacity-50 disabled:cursor-not-allowed" 
+                placeholder={isMounted && translationsReady ? t('help.contact.form.messagePlaceholder') : 'Votre message...'} 
+              />
             </div>
-            <button type="submit" className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl hover:shadow-lg transition-all">
-              {isMounted && translationsReady ? t('help.contact.form.submit') : 'Envoyer'}
+            <button 
+              type="submit" 
+              disabled={isSubmitting}
+              className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting 
+                ? (isMounted && translationsReady ? t('help.contact.form.sending') : 'Envoi en cours...') 
+                : (isMounted && translationsReady ? t('help.contact.form.submit') : 'Envoyer')
+              }
             </button>
           </form>
         </div>

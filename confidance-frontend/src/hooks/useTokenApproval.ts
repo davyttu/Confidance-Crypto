@@ -21,7 +21,7 @@ export interface UseTokenApprovalReturn {
   currentAllowance: bigint | undefined;
   isAllowanceSufficient: boolean;
   isCheckingAllowance: boolean;
-  approve: (amountOverride?: bigint) => void; // ✅ FIX : Permettre de passer un montant override
+  approve: (amountOverride?: bigint, tokenSymbolOverride?: TokenSymbol, tokenAddressOverride?: `0x${string}`) => void; // ✅ FIX : Permettre de passer un montant, tokenSymbol et tokenAddress override
   isApproving: boolean;
   isApproveSuccess: boolean;
   approveError: Error | null;
@@ -91,10 +91,21 @@ export function useTokenApproval({
     isPending: isApprovePending,
   } = useWriteContract();
 
-  // ✅ FIX : Logs pour suivre les erreurs d'approbation
+  // ✅ FIX : Logs détaillés pour suivre les erreurs d'approbation
   useEffect(() => {
     if (approveError) {
-      console.error('❌ Erreur approbation:', approveError);
+      console.error('❌ [useTokenApproval] Erreur approbation détectée:', approveError);
+      console.error('❌ [useTokenApproval] Type d\'erreur:', typeof approveError);
+      console.error('❌ [useTokenApproval] Détails complets:', JSON.stringify(approveError, null, 2));
+      console.error('❌ [useTokenApproval] Détails erreur:', {
+        name: approveError.name,
+        message: approveError.message,
+        cause: approveError.cause,
+        stack: approveError.stack,
+        code: (approveError as any)?.code,
+        shortMessage: (approveError as any)?.shortMessage,
+        data: (approveError as any)?.data,
+      });
     }
   }, [approveError]);
 
@@ -180,30 +191,40 @@ export function useTokenApproval({
     && currentAllowance !== undefined 
     && currentAllowance >= totalAmountToApprove;
 
-  // ✅ MODIFIÉ : Approuver le montant TOTAL (avec possibilité d'override)
-  const approve = (amountOverride?: bigint) => {
-    console.log('🔍 Fonction approve() appelée', { 
+  // ✅ MODIFIÉ : Approuver le montant TOTAL (avec possibilité d'override pour montant, tokenSymbol et tokenAddress)
+  const approve = (amountOverride?: bigint, tokenSymbolOverride?: TokenSymbol, tokenAddressOverride?: `0x${string}`) => {
+    // ✅ FIX CRITIQUE : Utiliser le tokenSymbol et tokenAddress override si fournis, sinon utiliser ceux du hook
+    const finalTokenSymbol = tokenSymbolOverride || tokenSymbol;
+    const finalToken = tokenSymbolOverride ? getToken(tokenSymbolOverride) : token;
+    const finalTokenAddress = tokenAddressOverride || (finalToken.address === 'NATIVE' ? undefined : finalToken.address as `0x${string}`);
+    
+    console.log('🔍 [useTokenApproval] Fonction approve() appelée', { 
       amountOverride: amountOverride?.toString(),
-      tokenSymbol,
-      tokenAddress: token.address,
-      isNative: token.isNative,
+      tokenSymbolOverride,
+      tokenSymbolFromHook: tokenSymbol,
+      finalTokenSymbol,
+      tokenAddressOverride,
+      tokenAddressFromHook: token.address,
+      finalTokenAddress,
+      isNative: finalToken.isNative,
     });
     
     // ✅ FIX CRITIQUE : Vérifier que ce n'est pas un token natif (ETH)
-    if (token.isNative) {
+    if (finalToken.isNative) {
       console.error('❌ Approbation impossible: token natif (ETH) n\'a pas besoin d\'approbation', {
-        tokenSymbol,
-        tokenAddress: token.address,
+        finalTokenSymbol,
+        finalTokenAddress,
       });
       return;
     }
     
-    if (!spenderAddress || !token.address || token.address === 'NATIVE') {
+    if (!spenderAddress || !finalTokenAddress) {
       console.error('❌ Approbation impossible: spenderAddress ou token.address manquant/invalide', {
         spenderAddress,
-        tokenAddress: token.address,
-        tokenSymbol,
-        isNative: token.isNative,
+        finalTokenAddress,
+        finalTokenSymbol,
+        isNative: finalToken.isNative,
+        hasOverride: !!tokenSymbolOverride,
       });
       return;
     }
@@ -242,50 +263,98 @@ export function useTokenApproval({
       });
     }
 
-    // ✅ FIX CRITIQUE : Vérifier que le token.address correspond bien au tokenSymbol
-    const expectedToken = getToken(tokenSymbol);
-    if (token.address !== expectedToken.address) {
+    // ✅ FIX CRITIQUE : Vérifier que le token.address correspond bien au tokenSymbol (utiliser les valeurs finales)
+    const expectedToken = getToken(finalTokenSymbol);
+    if (finalTokenAddress !== expectedToken.address) {
       console.error('❌ ERREUR CRITIQUE: Mismatch entre tokenSymbol et token.address !', {
-        tokenSymbol,
-        tokenAddress: token.address,
+        finalTokenSymbol,
+        finalTokenAddress,
         expectedTokenAddress: expectedToken.address,
         expectedTokenSymbol: expectedToken.symbol,
+        hasOverride: !!tokenSymbolOverride,
+        hookTokenSymbol: tokenSymbol,
       });
-      throw new Error(`Mismatch token: tokenSymbol=${tokenSymbol} mais token.address=${token.address} (attendu: ${expectedToken.address})`);
+      throw new Error(`Mismatch token: tokenSymbol=${finalTokenSymbol} mais token.address=${finalTokenAddress} (attendu: ${expectedToken.address})`);
+    }
+    
+    // ✅ FIX CRITIQUE : Vérifier que ce n'est pas ETH (qui n'a pas besoin d'approbation) - déjà vérifié plus haut mais double vérification
+    if (finalToken.isNative) {
+      console.error('❌ ERREUR CRITIQUE: Tentative d\'approbation d\'un token natif (ETH) !', {
+        finalTokenSymbol,
+        finalTokenAddress,
+        isNative: finalToken.isNative,
+      });
+      throw new Error(`Impossible d'approuver un token natif (ETH). Le tokenSymbol=${finalTokenSymbol} ne devrait pas nécessiter d'approbation.`);
     }
 
-    console.log('🔍 Lancement approbation:', {
-      token: tokenSymbol,
-      tokenAddress: token.address,
+    console.log('🔍 [useTokenApproval] Lancement approbation:', {
+      token: finalTokenSymbol,
+      tokenAddress: finalTokenAddress,
       baseAmount: amount.toString(),
       amountOverride: amountOverride?.toString(),
       isInstant: isInstantPayment,
       feesAdded: !isInstantPayment,
       totalToApprove: amountToApprove.toString(),
-      totalToApproveFormatted: `${(Number(amountToApprove) / (10 ** token.decimals)).toFixed(6)} ${tokenSymbol}`,
+      totalToApproveFormatted: `${(Number(amountToApprove) / (10 ** finalToken.decimals)).toFixed(6)} ${finalTokenSymbol}`,
       spenderAddress,
-      decimals: token.decimals,
+      decimals: finalToken.decimals,
+      isNative: finalToken.isNative,
+      hasTokenOverride: !!tokenSymbolOverride,
     });
 
     try {
-      console.log('📤 Appel writeContract pour approbation...');
-      console.log('📋 Paramètres approve:', {
-        tokenSymbol,
-        tokenAddress: token.address,
+      console.log('📤 [useTokenApproval] Appel writeContract pour approbation...');
+      console.log('📋 [useTokenApproval] Paramètres approve:', {
+        tokenSymbol: finalTokenSymbol,
+        tokenAddress: finalTokenAddress,
         spenderAddress,
         amount: amountToApprove.toString(),
         amountHex: `0x${amountToApprove.toString(16)}`,
+        hasTokenOverride: !!tokenSymbolOverride,
+        hookTokenSymbol: tokenSymbol,
+        hookTokenAddress: token.address,
       });
       
+      // ✅ FIX CRITIQUE : Vérifier une dernière fois que tous les paramètres sont valides
+      if (!finalTokenAddress || finalTokenAddress === 'NATIVE') {
+        throw new Error(`Adresse du token invalide: ${finalTokenAddress}`);
+      }
+      
+      if (!spenderAddress) {
+        throw new Error(`SpenderAddress invalide: ${spenderAddress}`);
+      }
+      
+      if (amountToApprove <= BigInt(0)) {
+        throw new Error(`Montant invalide: ${amountToApprove.toString()}`);
+      }
+      
+      console.log('✅ [useTokenApproval] Tous les paramètres sont valides, appel writeContract...');
+      console.log('📋 [useTokenApproval] Paramètres writeContract:', {
+        address: finalTokenAddress,
+        functionName: 'approve',
+        args: [spenderAddress, amountToApprove.toString()],
+        abiLength: erc20Abi.length,
+      });
+      
+      // ✅ FIX CRITIQUE : Utiliser finalTokenAddress au lieu de token.address
       writeContract({
-        address: token.address,
+        address: finalTokenAddress,
         abi: erc20Abi,
         functionName: 'approve',
         args: [spenderAddress, amountToApprove],
       });
-      console.log('✅ writeContract appelé pour approbation (pas d\'erreur immédiate)');
+      console.log('✅ [useTokenApproval] writeContract appelé pour approbation (pas d\'erreur immédiate)');
+      console.log('✅ [useTokenApproval] Token utilisé:', finalTokenSymbol, 'Address:', finalTokenAddress);
+      console.log('✅ [useTokenApproval] SpenderAddress:', spenderAddress);
+      console.log('✅ [useTokenApproval] Montant:', amountToApprove.toString(), `(${(Number(amountToApprove) / (10 ** finalToken.decimals)).toFixed(6)} ${finalTokenSymbol})`);
     } catch (err) {
-      console.error('❌ Erreur lors de l\'appel writeContract pour approbation:', err);
+      console.error('❌ [useTokenApproval] Erreur lors de l\'appel writeContract pour approbation:', err);
+      console.error('❌ [useTokenApproval] Détails de l\'erreur:', {
+        name: (err as Error)?.name,
+        message: (err as Error)?.message,
+        stack: (err as Error)?.stack,
+        cause: (err as Error)?.cause,
+      });
       throw err; // Re-lancer l'erreur pour qu'elle soit catchée par le code appelant
     }
   };

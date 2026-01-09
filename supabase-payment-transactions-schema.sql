@@ -54,3 +54,6 @@ COMMENT ON COLUMN payment_transactions.total_gas_fee IS 'Total des frais de gas 
 
 
 
+
+
+

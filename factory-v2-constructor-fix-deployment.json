@@ -2,9 +2,9 @@
   "version": "V2-CONSTRUCTOR-BALANCE-CHECK-FIX",
   "network": "base_mainnet",
   "chainId": "8453",
-  "factoryAddress": "0x0BD36382637312095a93354b2e5c71B68f570881",
-  "deployedAt": "2025-12-18T09:54:48.721Z",
-  "deployedBy": "0xdbA6ABe2aBd4B9E007D102533Be76c460E06A833",
+  "factoryAddress": "0x88530C2f1A77BD8eb69caf91816E42982d25aa6C",
+  "deployedAt": "2026-01-09T10:33:27.660Z",
+  "deployedBy": "0x9DE23D58d4064Fcf7347E64D19FE64BB4aac2Bf6",
   "fix": "Suppression vérification balanceOf dans constructor ScheduledPaymentERC20",
   "problem": "Constructor vérifiait balanceOf AVANT que Factory transfère les tokens",
   "bugTimeline": [

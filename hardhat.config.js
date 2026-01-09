@@ -65,10 +65,7 @@ module.exports = {
 
   etherscan: {
     // ✅ API V2 - Utilise une seule clé API pour tous les réseaux
-    apiKey: {
-      base_mainnet: process.env.BASESCAN_API_KEY || "",
-      polygon_mainnet: POLYGONSCAN_API_KEY || "",
-    },
+    apiKey: process.env.BASESCAN_API_KEY || "",
     customChains: [
       {
         network: "base_mainnet",

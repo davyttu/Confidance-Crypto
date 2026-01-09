@@ -158,11 +158,6 @@ export function TransactionTable({ payments, onRename, onCancel }: TransactionTa
                 </div>
               </th>
               
-              {/* 🆕 COUNT */}
-              <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-16">
-                Count
-              </th>
-              
               {/* 🆕 BLOCKCHAIN */}
               <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
                 Blockchain

@@ -87,7 +87,7 @@ export function useCancelPayment(): UseCancelPaymentReturn {
       }
 
       // Vérifier que ce n'est pas l'adresse de la Factory (qui serait une erreur)
-      const FACTORY_ADDRESS = '0x88Da5f28c4d5b7392812dB67355d72D21516bCaf';
+      const FACTORY_ADDRESS = '0x88530C2f1A77BD8eb69caf91816E42982d25aa6C';
       if (payerAddress.toLowerCase() === FACTORY_ADDRESS.toLowerCase()) {
         throw new Error(
           'Erreur : L\'adresse du payer correspond à la Factory. Le contrat_address dans la base de données semble incorrect. Veuillez vérifier que l\'adresse est celle du ScheduledPayment et non de la Factory.'
