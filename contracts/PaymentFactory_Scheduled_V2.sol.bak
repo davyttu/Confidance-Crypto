@@ -1,0 +1,110 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "./ScheduledPayment_V2.sol";
+import "./ScheduledPaymentERC20.sol";
+import "./BatchScheduledPayment_V2.sol";
+import "./BatchScheduledPaymentERC20.sol";
+import "./RecurringPaymentERC20.sol";
+
+contract PaymentFactory_Scheduled {
+    using SafeERC20 for IERC20;
+
+    error InvalidAmount();
+    error InvalidAddress();
+    error InvalidTime();
+    error ArrayMismatch();
+    error TooManyPayees();
+
+    address public constant PROTOCOL_WALLET = 0xa34eDf91Cc494450000Eef08e6563062B2F115a9;
+    uint256 constant FEE = 179;
+    uint256 constant DENOM = 10000;
+
+    event PaymentCreated(address indexed payer,address paymentContract);
+    event BatchPaymentCreated(address indexed payer,address paymentContract,uint256 count);
+    event RecurringCreated(address indexed payer,address paymentContract);
+
+    function createPaymentETH(address _payee,uint256 _amountToPayee,uint256 _releaseTime,bool _cancellable) external payable returns (address) {
+        if (_amountToPayee == 0 || _payee == address(0) || _releaseTime <= block.timestamp) revert InvalidAmount();
+        unchecked {
+            uint256 totalRequired = _amountToPayee + (_amountToPayee * FEE / DENOM);
+            if (msg.value != totalRequired) revert InvalidAmount();
+        }
+
+        ScheduledPayment p = new ScheduledPayment{value: msg.value}(msg.sender,_payee,_amountToPayee,_releaseTime,_cancellable,PROTOCOL_WALLET);
+        emit PaymentCreated(msg.sender,address(p));
+        return address(p);
+    }
+
+    function createPaymentERC20(address _payee,address _tokenAddress,uint256 _amountToPayee,uint256 _releaseTime,bool _cancellable) external returns (address) {
+        if (_amountToPayee == 0 || _payee == address(0) || _tokenAddress == address(0) || _releaseTime <= block.timestamp) revert InvalidAmount();
+
+        uint256 totalRequired;
+        unchecked {
+            totalRequired = _amountToPayee + (_amountToPayee * FEE / DENOM);
+        }
+
+        IERC20(_tokenAddress).safeTransferFrom(msg.sender, address(this), totalRequired);
+        ScheduledPaymentERC20 p = new ScheduledPaymentERC20(msg.sender,_payee,_tokenAddress,_amountToPayee,_releaseTime,_cancellable,PROTOCOL_WALLET);
+        IERC20(_tokenAddress).safeTransfer(address(p), totalRequired);
+        emit PaymentCreated(msg.sender,address(p));
+        return address(p);
+    }
+
+    function createBatchPaymentETH(address[] memory _payees,uint256[] memory _amounts,uint256 _releaseTime,bool _cancellable) external payable returns (address) {
+        if (_payees.length == 0 || _payees.length > 50) revert TooManyPayees();
+        if (_payees.length != _amounts.length) revert ArrayMismatch();
+        if (_releaseTime <= block.timestamp) revert InvalidTime();
+
+        uint256 total;
+        unchecked {
+            for (uint256 i = 0; i < _amounts.length; i++) {
+                if (_amounts[i] == 0 || _payees[i] == address(0)) revert InvalidAmount();
+                total += _amounts[i];
+            }
+            uint256 totalRequired = total + (total * FEE / DENOM);
+            if (msg.value != totalRequired) revert InvalidAmount();
+        }
+
+        BatchScheduledPayment p = new BatchScheduledPayment{value: msg.value}(msg.sender,_payees,_amounts,_releaseTime,_cancellable);
+        emit BatchPaymentCreated(msg.sender,address(p),_payees.length);
+        return address(p);
+    }
+
+    function createBatchPaymentERC20(address _tokenAddress,address[] memory _payees,uint256[] memory _amounts,uint256 _releaseTime,bool _cancellable) external returns (address) {
+        if (_payees.length == 0 || _payees.length > 50) revert TooManyPayees();
+        if (_payees.length != _amounts.length) revert ArrayMismatch();
+        if (_tokenAddress == address(0) || _releaseTime <= block.timestamp) revert InvalidAddress();
+
+        uint256 total;
+        unchecked {
+            for (uint256 i = 0; i < _amounts.length; i++) {
+                if (_amounts[i] == 0 || _payees[i] == address(0)) revert InvalidAmount();
+                total += _amounts[i];
+            }
+        }
+
+        uint256 totalRequired;
+        unchecked {
+            totalRequired = total + (total * FEE / DENOM);
+        }
+
+        IERC20(_tokenAddress).safeTransferFrom(msg.sender, address(this), totalRequired);
+        BatchScheduledPaymentERC20 p = new BatchScheduledPaymentERC20(msg.sender,_tokenAddress,_payees,_amounts,_releaseTime,_cancellable,PROTOCOL_WALLET);
+        IERC20(_tokenAddress).safeTransfer(address(p), totalRequired);
+        emit BatchPaymentCreated(msg.sender,address(p),_payees.length);
+        return address(p);
+    }
+
+    function createRecurringPaymentERC20(address _payee,address _tokenAddress,uint256 _monthlyAmount,uint256 _startDate,uint256 _totalMonths,uint256 _dayOfMonth) external returns (address) {
+        if (_payee == address(0) || _tokenAddress == address(0) || _monthlyAmount == 0) revert InvalidAddress();
+        if (_startDate <= block.timestamp) revert InvalidTime();
+        if (_totalMonths < 1 || _totalMonths > 12 || _dayOfMonth < 1 || _dayOfMonth > 28) revert InvalidAmount();
+
+        RecurringPaymentERC20 p = new RecurringPaymentERC20(msg.sender,_payee,_tokenAddress,_monthlyAmount,_startDate,_totalMonths,_dayOfMonth,PROTOCOL_WALLET);
+        emit RecurringCreated(msg.sender,address(p));
+        return address(p);
+    }
+}

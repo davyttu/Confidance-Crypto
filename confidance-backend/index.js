@@ -271,13 +271,17 @@ app.post('/api/payments/batch', optionalAuth, async (req, res) => {
       cancellable,
       network,
       transaction_hash,
+      is_instant,
+      payment_type,
     } = req.body;
 
     console.log('📥 [BATCH] Nouvelle demande:', { 
       contract_address, 
       payer_address,
       transaction_hash,
-      beneficiaries_count: beneficiaries?.length 
+      beneficiaries_count: beneficiaries?.length,
+      is_instant,
+      payment_type,
     });
 
     // Validation des champs obligatoires
@@ -301,6 +305,48 @@ app.post('/api/payments/batch', optionalAuth, async (req, res) => {
       return res.status(400).json({ error: 'release_time is required' });
     }
 
+    // ✅ Déterminer isInstant et payment_type de manière explicite (NE JAMAIS laisser NULL)
+    // Normaliser is_instant (peut être true, "true", 1, etc.)
+    const normalizedIsInstant = is_instant === true || 
+                                is_instant === 'true' || 
+                                is_instant === 1 || 
+                                is_instant === '1' ||
+                                payment_type === 'instant';
+    
+    // Déterminer finalPaymentType (TOUJOURS 'instant' ou 'scheduled', JAMAIS null/undefined)
+    let finalPaymentType;
+    if (payment_type === 'instant' || payment_type === 'scheduled') {
+      // Si payment_type est valide, l'utiliser
+      finalPaymentType = payment_type;
+    } else if (normalizedIsInstant) {
+      // Si is_instant est vrai (même sans payment_type valide), c'est instantané
+      finalPaymentType = 'instant';
+    } else {
+      // Par défaut, c'est scheduled
+      finalPaymentType = 'scheduled';
+    }
+    
+    // ✅ Garantir que finalPaymentType n'est jamais null/undefined
+    if (!finalPaymentType || (finalPaymentType !== 'instant' && finalPaymentType !== 'scheduled')) {
+      console.error('❌ [BATCH] ERREUR CRITIQUE: finalPaymentType invalide après détermination:', finalPaymentType);
+      finalPaymentType = 'scheduled'; // Fallback sécurisé
+    }
+    
+    // ✅ Recalculer isInstant avec la valeur finale de payment_type
+    const isInstant = normalizedIsInstant || finalPaymentType === 'instant';
+    
+    // Déterminer le statut : completed pour instantané, pending pour programmé
+    const finalStatus = isInstant ? 'completed' : 'pending';
+    
+    console.log('📋 [BATCH] Détermination payment_type:', {
+      is_instant_from_body: is_instant,
+      payment_type_from_body: payment_type,
+      normalizedIsInstant,
+      finalPaymentType,
+      isInstant,
+      finalStatus,
+    });
+    
     // Préparer les données pour insertion
     const insertData = {
       contract_address,
@@ -313,15 +359,26 @@ app.post('/api/payments/batch', optionalAuth, async (req, res) => {
       cancellable: cancellable || false,
       network: network || 'base_mainnet',
       transaction_hash,
-      status: 'pending',
+      status: finalStatus, // ✅ Utiliser le statut déterminé (completed pour instantané)
       
       // Colonnes BATCH
       is_batch: true,
+      is_instant: isInstant || false, // ✅ Ajouter is_instant
+      payment_type: finalPaymentType, // ✅ Ajouter payment_type (TOUJOURS défini)
       batch_count: beneficiaries.length,
       batch_beneficiaries: beneficiaries, // Supabase accepte direct l'objet JS pour JSONB
       user_id: user ? user.userId : null,
       guest_email: !user ? req.body.guest_email : null,
     };
+    
+    // ✅ Vérification finale avant insertion
+    if (!insertData.payment_type || (insertData.payment_type !== 'instant' && insertData.payment_type !== 'scheduled')) {
+      console.error('❌ [BATCH] ERREUR CRITIQUE: payment_type invalide dans insertData:', insertData.payment_type);
+      insertData.payment_type = 'scheduled'; // Fallback absolu
+      console.warn('⚠️ [BATCH] Correction appliquée: payment_type = "scheduled"');
+    }
+    
+    console.log('✅ [BATCH] insertData avec payment_type:', insertData.payment_type, 'is_instant:', insertData.is_instant);
 
     console.log('📤 [BATCH] Données à insérer:', JSON.stringify(insertData, null, 2));
 
@@ -462,6 +519,70 @@ app.get('/api/payments', async (req, res) => {
   }
 });
 
+// 🆕 PATCH /api/payments/:id - Mettre à jour un paiement (utilisé pour l'annulation)
+app.patch('/api/payments/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, cancelled_at } = req.body;
+
+    console.log('🔄 PATCH /api/payments/:id:', { id, status, cancelled_at });
+
+    const updateData = { 
+      updated_at: new Date().toISOString()
+    };
+
+    // Gérer le statut si fourni
+    if (status) {
+      const validStatuses = ['pending', 'released', 'cancelled', 'failed'];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ 
+          error: `Status invalide. Valeurs acceptées: ${validStatuses.join(', ')}` 
+        });
+      }
+      updateData.status = status;
+    }
+
+    // Gérer cancelled_at si fourni
+    if (cancelled_at) {
+      updateData.cancelled_at = cancelled_at;
+    }
+
+    // Si le statut est 'released' et qu'il n'y a pas encore de released_at
+    if (status === 'released' && !updateData.released_at) {
+      updateData.released_at = new Date().toISOString();
+    }
+
+    // Si le statut est 'cancelled' et qu'il n'y a pas encore de cancelled_at
+    if (status === 'cancelled' && !updateData.cancelled_at) {
+      updateData.cancelled_at = new Date().toISOString();
+    }
+
+    console.log('📝 Données de mise à jour:', updateData);
+
+    const { data, error } = await supabase
+      .from('scheduled_payments')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ Erreur Supabase:', error);
+      throw error;
+    }
+
+    if (!data) {
+      return res.status(404).json({ error: 'Paiement non trouvé' });
+    }
+
+    console.log('✅ Paiement mis à jour:', { id: data.id, status: data.status, cancelled_at: data.cancelled_at });
+    res.json({ success: true, payment: data });
+  } catch (error) {
+    console.error('❌ Erreur PATCH /api/payments/:id:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // 🆕 PUT /api/payments/:id/status - Mettre à jour le statut d'un paiement
 app.put('/api/payments/:id/status', async (req, res) => {
   try {
@@ -486,6 +607,10 @@ app.put('/api/payments/:id/status', async (req, res) => {
     // Si le statut est 'released' ou 'cancelled', ajouter la date
     if (status === 'released') {
       updateData.released_at = new Date().toISOString();
+    }
+    
+    if (status === 'cancelled') {
+      updateData.cancelled_at = new Date().toISOString();
     }
 
     const { data, error } = await supabase
@@ -536,9 +661,10 @@ app.listen(PORT, () => {
   console.log(`   GET  /api/chat/health           - Vérifier disponibilité Chat Agent`);
   console.log(`   POST /api/payments              - Paiement simple`);
   console.log(`   POST /api/payments/batch        - Paiement batch`);
-  console.log(`   GET  /api/payments/:address     - Liste paiements utilisateur`);
-  console.log(`   GET  /api/payments              - Tous les paiements`);
-  console.log(`   PUT  /api/payments/:id/status   - Mise à jour statut`);
+    console.log(`   GET  /api/payments/:address     - Liste paiements utilisateur`);
+    console.log(`   GET  /api/payments              - Tous les paiements`);
+    console.log(`   PATCH /api/payments/:id         - Mise à jour paiement (annulation)`);
+    console.log(`   PUT  /api/payments/:id/status   - Mise à jour statut`);
   console.log(`   GET  /api/beneficiaries/:wallet - Liste bénéficiaires`);
   console.log(`   POST /api/beneficiaries         - Créer bénéficiaire`);
   console.log(`   PUT  /api/beneficiaries/:id     - Modifier bénéficiaire`);

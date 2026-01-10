@@ -97,6 +97,35 @@ export const paymentFactoryAbi = [
   },
 
   // ============================================================
+  // ⚡ INSTANT BATCH PAYMENT ETH - 0% FEES
+  // ============================================================
+  {
+    inputs: [
+      { name: '_payees', type: 'address[]' },
+      { name: '_amounts', type: 'uint256[]' },
+    ],
+    name: 'createInstantBatchPaymentETH',
+    outputs: [],
+    stateMutability: 'payable',
+    type: 'function',
+  },
+
+  // ============================================================
+  // ⚡ INSTANT BATCH PAYMENT ERC20 - 0% FEES
+  // ============================================================
+  {
+    inputs: [
+      { name: '_tokenAddress', type: 'address' },
+      { name: '_payees', type: 'address[]' },
+      { name: '_amounts', type: 'uint256[]' },
+    ],
+    name: 'createInstantBatchPaymentERC20',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+
+  // ============================================================
   // HELPERS
   // ============================================================
   {
@@ -234,6 +263,29 @@ export const paymentFactoryAbi = [
     name: 'InstantPaymentCreatedERC20',
     type: 'event',
   },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: 'payer', type: 'address' },
+      { indexed: false, name: 'beneficiariesCount', type: 'uint256' },
+      { indexed: false, name: 'totalAmount', type: 'uint256' },
+      { indexed: false, name: 'timestamp', type: 'uint256' },
+    ],
+    name: 'InstantBatchPaymentCreatedETH',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: 'payer', type: 'address' },
+      { indexed: true, name: 'tokenAddress', type: 'address' },
+      { indexed: false, name: 'beneficiariesCount', type: 'uint256' },
+      { indexed: false, name: 'totalAmount', type: 'uint256' },
+      { indexed: false, name: 'timestamp', type: 'uint256' },
+    ],
+    name: 'InstantBatchPaymentCreatedERC20',
+    type: 'event',
+  },
 
   // ============================================================
   // CONSTANTS (optionnel, pour lecture)
@@ -253,3 +305,9 @@ export const paymentFactoryAbi = [
     type: 'function',
   },
 ] as const;
+
+// ✅ Export séparés pour les deux factories
+// Les deux factories partagent la même interface ABI
+// Wagmi n'appellera que les fonctions disponibles sur chaque contrat
+export const paymentFactoryScheduledAbi = paymentFactoryAbi;
+export const paymentFactoryInstantAbi = paymentFactoryAbi;

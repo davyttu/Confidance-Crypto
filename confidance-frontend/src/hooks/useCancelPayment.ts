@@ -1,7 +1,7 @@
 // hooks/useCancelPayment.ts
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAccount, usePublicClient, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { scheduledPaymentAbi } from '@/lib/contracts/scheduledPaymentAbi';
 
@@ -41,9 +41,41 @@ export function useCancelPayment(): UseCancelPaymentReturn {
     isLoading: isConfirming,
     isSuccess: isConfirmed,
     error: confirmError,
+    data: receipt,
   } = useWaitForTransactionReceipt({
     hash: txHash,
   });
+
+  // ✅ AJOUT : Log quand le hash est reçu (peut prendre quelques secondes après confirmation MetaMask)
+  useEffect(() => {
+    if (txHash) {
+      console.log('✅✅✅ [CANCEL] Hash de transaction reçu!', txHash);
+      console.log('🔗 Voir sur Basescan:', `https://basescan.org/tx/${txHash}`);
+      console.log('⏳ Le hook useWaitForTransactionReceipt va maintenant attendre la confirmation...');
+    } else {
+      // Log toutes les secondes pour voir si le hash arrive
+      if (status === 'cancelling' || status === 'confirming') {
+        console.log('⏳ [CANCEL] En attente du hash de transaction... (txHash =', txHash, ')');
+      }
+    }
+  }, [txHash, status]);
+
+  // ✅ AJOUT : Logs détaillés pour déboguer la confirmation
+  useEffect(() => {
+    if (txHash) {
+      console.log('🔍 [CANCEL] État confirmation transaction:', {
+        txHash,
+        isConfirming,
+        isConfirmed,
+        hasReceipt: !!receipt,
+        receiptStatus: receipt?.status,
+        confirmError: confirmError?.message,
+        currentStatus: status,
+        currentPaymentId,
+        hasUpdatedDb: hasUpdatedDbRef.current,
+      });
+    }
+  }, [txHash, isConfirming, isConfirmed, receipt, confirmError, status, currentPaymentId]);
 
   const cancelPayment = async ({ contractAddress, paymentId, payerAddress: payerAddressFromDB }: CancelPaymentParams) => {
     try {
@@ -86,18 +118,29 @@ export function useCancelPayment(): UseCancelPaymentReturn {
         console.log('📡 Payer lu depuis le contrat:', payerAddress);
       }
 
-      // Vérifier que ce n'est pas l'adresse de la Factory (qui serait une erreur)
-      const FACTORY_ADDRESS = '0x88530C2f1A77BD8eb69caf91816E42982d25aa6C';
-      if (payerAddress.toLowerCase() === FACTORY_ADDRESS.toLowerCase()) {
+      // Vérifier que ce n'est pas l'adresse d'une Factory (qui serait une erreur)
+      // ✅ Vérifier les nouvelles factories + l'ancienne pour compatibilité
+      const FACTORY_ADDRESSES = [
+        '0x88530C2f1A77BD8eb69caf91816E42982d25aa6C', // Ancienne factory (legacy)
+        '0x0d83DF4f396490c8A692Cde5749Ea799637D4bfe', // PaymentFactory_Scheduled
+        '0xF8AE1807C9a6Ed4C25cd59513825277A8e8F0368', // PaymentFactory_Instant
+      ];
+      const isFactoryAddress = FACTORY_ADDRESSES.some(
+        addr => payerAddress.toLowerCase() === addr.toLowerCase()
+      );
+      if (isFactoryAddress) {
         throw new Error(
-          'Erreur : L\'adresse du payer correspond à la Factory. Le contrat_address dans la base de données semble incorrect. Veuillez vérifier que l\'adresse est celle du ScheduledPayment et non de la Factory.'
+          'Erreur : L\'adresse du payer correspond à une Factory. Le contrat_address dans la base de données semble incorrect. Veuillez vérifier que l\'adresse est celle du ScheduledPayment et non de la Factory.'
         );
       }
 
-      // Vérifier aussi que contractAddress n'est pas la Factory
-      if (contractAddress.toLowerCase() === FACTORY_ADDRESS.toLowerCase()) {
+      // Vérifier aussi que contractAddress n'est pas une Factory
+      const isContractAddressFactory = FACTORY_ADDRESSES.some(
+        addr => contractAddress.toLowerCase() === addr.toLowerCase()
+      );
+      if (isContractAddressFactory) {
         throw new Error(
-          'Erreur : L\'adresse du contrat est celle de la Factory. Veuillez utiliser l\'adresse du ScheduledPayment individuel créé, pas celle de la Factory.'
+          'Erreur : L\'adresse du contrat est celle d\'une Factory. Veuillez utiliser l\'adresse du ScheduledPayment individuel créé, pas celle de la Factory.'
         );
       }
 
@@ -229,6 +272,7 @@ export function useCancelPayment(): UseCancelPaymentReturn {
       });
       
       setStatus('cancelling');
+      contractAddressRef.current = contractAddress; // Stocker l'adresse pour vérification directe
       
       // Appel DIRECT de writeContract, comme dans useCreatePayment
       writeContract({
@@ -238,6 +282,102 @@ export function useCancelPayment(): UseCancelPaymentReturn {
       });
       
       console.log('📤 writeContract appelé');
+      console.log('⏳ En attente du hash de transaction...');
+      console.log('💡 Démarrage du polling de vérification directe du contrat...');
+      
+      // ✅ NOUVEAU : Démarrer immédiatement un polling pour vérifier le contrat
+      // Cela fonctionne même si le hash n'est jamais reçu
+      // Capturer les valeurs nécessaires
+      const contractAddr = contractAddress;
+      const paymentIdToUpdate = paymentId;
+      
+      // Démarrer le polling après 3 secondes (pour laisser le temps à MetaMask)
+      setTimeout(() => {
+        let attempts = 0;
+        const maxAttempts = 25; // 25 tentatives sur 50 secondes (2 secondes par tentative)
+        
+        console.log('🔄 [POLLING] Démarrage du polling de vérification...');
+        
+        const pollInterval = setInterval(async () => {
+          attempts++;
+          console.log(`🔍 [POLLING] Tentative ${attempts}/${maxAttempts} - Vérification du contrat...`, contractAddr);
+          
+          try {
+            // Vérifier si la DB a déjà été mise à jour
+            if (hasUpdatedDbRef.current) {
+              console.log('✅ [POLLING] DB déjà mise à jour, arrêt du polling');
+              clearInterval(pollInterval);
+              return;
+            }
+            
+            if (!publicClient) {
+              console.error('❌ [POLLING] publicClient non disponible');
+              clearInterval(pollInterval);
+              return;
+            }
+            
+            // Vérifier l'état du contrat
+            const isCancelled = await publicClient.readContract({
+              address: contractAddr,
+              abi: scheduledPaymentAbi,
+              functionName: 'cancelled',
+            }) as boolean;
+            
+            console.log(`📋 [POLLING] Tentative ${attempts} - État cancelled:`, isCancelled);
+            
+            if (isCancelled) {
+              console.log('✅✅✅ [POLLING] Le contrat a été annulé ! Mise à jour de la DB...');
+              clearInterval(pollInterval);
+              
+              // Mettre à jour la DB
+              hasUpdatedDbRef.current = true;
+              
+              try {
+                setStatus('updating-db');
+                console.log('📝 [POLLING] Envoi de la requête PATCH...', {
+                  paymentId: paymentIdToUpdate,
+                  contractAddress: contractAddr,
+                });
+                
+                const response = await fetch(`${API_URL}/api/payments/${paymentIdToUpdate}`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    status: 'cancelled',
+                    cancelled_at: new Date().toISOString()
+                  }),
+                });
+
+                if (response.ok) {
+                  const result = await response.json();
+                  console.log('✅✅✅ [POLLING] Statut mis à jour dans la DB:', result);
+                  setStatus('success');
+                  window.dispatchEvent(new CustomEvent('payment-cancelled', { 
+                    detail: { paymentId: paymentIdToUpdate, txHash: undefined, status: 'cancelled' } 
+                  }));
+                } else {
+                  const errorText = await response.text();
+                  console.error('❌ [POLLING] Erreur HTTP:', response.status, errorText);
+                }
+              } catch (err) {
+                console.error('❌ [POLLING] Erreur mise à jour DB:', err);
+              }
+            } else if (attempts >= maxAttempts) {
+              console.log('⏰ [POLLING] Nombre maximum de tentatives atteint, arrêt du polling');
+              console.log('💡 Le contrat n\'a pas été annulé après 50 secondes. Vérifiez manuellement sur Basescan.');
+              clearInterval(pollInterval);
+            }
+          } catch (err) {
+            console.error(`❌ [POLLING] Erreur tentative ${attempts}:`, err);
+            if (attempts >= maxAttempts) {
+              clearInterval(pollInterval);
+            }
+          }
+        }, 2000); // Vérifier toutes les 2 secondes
+        
+        // Stocker l'interval dans un ref pour pouvoir le nettoyer si nécessaire
+        // (le nettoyage se fera automatiquement quand le composant se démonte)
+      }, 3000);
       
     } catch (err) {
       console.error('❌ Erreur annulation:', err);
@@ -246,13 +386,46 @@ export function useCancelPayment(): UseCancelPaymentReturn {
     }
   };
 
+  // ✅ FIX : Ref pour éviter les appels multiples de mise à jour DB
+  const hasUpdatedDbRef = useRef(false);
+  // ✅ AJOUT : Ref pour stocker l'adresse du contrat en cours d'annulation
+  const contractAddressRef = useRef<`0x${string}` | undefined>(undefined);
+
   // Effet : Gérer la confirmation et la mise à jour de la DB
   useEffect(() => {
-    const updateDatabaseStatus = async () => {
-      if (isConfirmed && currentPaymentId) {
+    // Déclencheur : Quand la transaction est en attente de confirmation
+    if (isConfirming) {
+      if (status === 'cancelling' || status === 'confirming') {
+        console.log('⏳ Transaction en attente de confirmation blockchain...', { txHash, currentPaymentId });
+        setStatus('confirming');
+        hasUpdatedDbRef.current = false; // Reset le flag si on recommence
+      }
+    }
+
+    // Déclencheur : Dès que la transaction est confirmée, mettre à jour la DB IMMÉDIATEMENT
+    // ✅ FIX : Vérifier aussi le receipt.status pour être sûr
+    const transactionConfirmed = isConfirmed || (receipt && receipt.status === 'success');
+    
+    if (transactionConfirmed && txHash && currentPaymentId && !hasUpdatedDbRef.current) {
+      console.log('✅ Transaction confirmée ! Mise à jour IMMÉDIATE de la DB...', {
+        txHash,
+        paymentId: currentPaymentId,
+        currentStatus: status,
+        isConfirmed,
+        receiptStatus: receipt?.status,
+        hasReceipt: !!receipt,
+      });
+
+      // Marquer comme en cours pour éviter les appels multiples
+      hasUpdatedDbRef.current = true;
+      
+      const updateDatabaseStatus = async () => {
         try {
           setStatus('updating-db');
-          console.log('📝 Mise à jour du statut dans la base de données...');
+          console.log('📝 Envoi de la requête PATCH pour mettre à jour le statut...', {
+            paymentId: currentPaymentId,
+            txHash,
+          });
 
           const response = await fetch(`${API_URL}/api/payments/${currentPaymentId}`, {
             method: 'PATCH',
@@ -264,30 +437,203 @@ export function useCancelPayment(): UseCancelPaymentReturn {
           });
 
           if (!response.ok) {
-            throw new Error('Erreur lors de la mise à jour du statut');
+            const errorText = await response.text();
+            console.error('❌ Erreur HTTP:', response.status, errorText);
+            throw new Error(`Erreur lors de la mise à jour du statut: ${response.status} ${errorText}`);
           }
 
           const result = await response.json();
-          console.log('✅ Statut mis à jour:', result);
+          console.log('✅ Réponse du serveur:', result);
 
-          setStatus('success');
+          // Vérifier que le statut a bien été mis à jour
+          if (result.payment && result.payment.status === 'cancelled') {
+            console.log('✅✅✅ SUCCÈS: Statut = cancelled dans la DB - Dashboard doit se rafraîchir IMMÉDIATEMENT');
+            setStatus('success');
+            
+            // Émettre un événement personnalisé pour forcer le rafraîchissement du dashboard
+            window.dispatchEvent(new CustomEvent('payment-cancelled', { 
+              detail: { paymentId: currentPaymentId, txHash, status: 'cancelled' } 
+            }));
+          } else {
+            console.warn('⚠️ Le statut dans la réponse ne correspond pas:', result);
+            setStatus('success'); // On considère que c'est OK quand même
+            
+            // Émettre l'événement quand même pour rafraîchir
+            window.dispatchEvent(new CustomEvent('payment-cancelled', { 
+              detail: { paymentId: currentPaymentId, txHash, status: 'cancelled' } 
+            }));
+          }
         } catch (err) {
           console.error('❌ Erreur mise à jour DB:', err);
+          console.error('❌ Détails:', {
+            paymentId: currentPaymentId,
+            txHash,
+            error: err instanceof Error ? err.message : String(err),
+          });
           // Ne pas bloquer l'utilisateur si la DB fail, la transaction blockchain est OK
+          // Mais afficher un message d'erreur pour l'utilisateur
+          setError(new Error('La transaction blockchain a réussi mais la mise à jour de la base de données a échoué. Veuillez rafraîchir la page.'));
           setStatus('success');
+          
+          // Émettre l'événement quand même pour rafraîchir (au cas où)
+          window.dispatchEvent(new CustomEvent('payment-cancelled', { 
+            detail: { paymentId: currentPaymentId, txHash, status: 'cancelled' } 
+          }));
         }
-      }
-    };
+      };
 
-    // Déclencheur : Quand la transaction est confirmée
-    if (isConfirming && status !== 'confirming') {
-      setStatus('confirming');
-    }
-
-    if (isConfirmed && status === 'confirming') {
       updateDatabaseStatus();
     }
-  }, [isConfirming, isConfirmed, currentPaymentId, status]);
+  }, [isConfirming, isConfirmed, currentPaymentId, status, txHash, receipt]);
+
+  // ✅ AJOUT : Fallback - Vérifier directement le contrat si la confirmation ne se déclenche pas après 15 secondes
+  useEffect(() => {
+    if (txHash && currentPaymentId && !hasUpdatedDbRef.current && publicClient) {
+      console.log('⏰ [FALLBACK] Démarrage du timer de fallback (15 secondes)...');
+      
+      const fallbackCheckTimeout = setTimeout(async () => {
+        // Si après 15 secondes, isConfirmed n'est toujours pas true, vérifier directement
+        if (!isConfirmed && txHash && currentPaymentId && !hasUpdatedDbRef.current) {
+          console.log('⏰ [FALLBACK] 15 secondes écoulées, vérification directe de la transaction...', {
+            txHash,
+            isConfirmed,
+            hasReceipt: !!receipt,
+            currentStatus: status,
+          });
+          
+          try {
+            const receipt = await publicClient.getTransactionReceipt({ hash: txHash });
+            console.log('📋 [FALLBACK] Receipt récupéré:', {
+              status: receipt?.status,
+              blockNumber: receipt?.blockNumber?.toString(),
+            });
+            
+            if (receipt && receipt.status === 'success') {
+              console.log('✅✅✅ [FALLBACK] Transaction confirmée via vérification directe !');
+              // Forcer la mise à jour de la DB
+              hasUpdatedDbRef.current = true;
+              
+              try {
+                setStatus('updating-db');
+                console.log('📝 [FALLBACK] Envoi de la requête PATCH...');
+                
+                const response = await fetch(`${API_URL}/api/payments/${currentPaymentId}`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    status: 'cancelled',
+                    cancelled_at: new Date().toISOString()
+                  }),
+                });
+
+                if (response.ok) {
+                  const result = await response.json();
+                  console.log('✅✅✅ [FALLBACK] Statut mis à jour via fallback:', result);
+                  setStatus('success');
+                  window.dispatchEvent(new CustomEvent('payment-cancelled', { 
+                    detail: { paymentId: currentPaymentId, txHash, status: 'cancelled' } 
+                  }));
+                } else {
+                  const errorText = await response.text();
+                  console.error('❌ [FALLBACK] Erreur HTTP:', response.status, errorText);
+                }
+              } catch (err) {
+                console.error('❌ [FALLBACK] Erreur mise à jour DB:', err);
+              }
+            } else if (receipt && receipt.status === 'reverted') {
+              console.error('❌ [FALLBACK] Transaction reverted!');
+              setError(new Error('La transaction a été revertée'));
+              setStatus('error');
+            } else {
+              console.warn('⚠️ [FALLBACK] Receipt non disponible ou en attente...');
+            }
+          } catch (err) {
+            console.error('❌ [FALLBACK] Erreur vérification transaction:', err);
+            // Si la transaction n'existe pas encore, c'est peut-être qu'elle est toujours en attente
+            console.log('💡 La transaction peut être encore en attente de confirmation...');
+          }
+        } else {
+          console.log('✅ [FALLBACK] Pas besoin de fallback, transaction déjà confirmée ou DB déjà mise à jour');
+        }
+      }, 15000); // 15 secondes (augmenté pour laisser plus de temps)
+
+      return () => {
+        console.log('🧹 [FALLBACK] Nettoyage du timer de fallback');
+        clearTimeout(fallbackCheckTimeout);
+      };
+    }
+  }, [txHash, currentPaymentId, isConfirmed, publicClient, receipt, status]);
+
+  // ✅ AJOUT : Fallback alternatif - Vérifier directement le contrat si le hash n'est jamais reçu
+  useEffect(() => {
+    // Si on a un contrat en cours d'annulation mais pas de hash après 20 secondes
+    if (contractAddressRef.current && currentPaymentId && !txHash && !hasUpdatedDbRef.current && publicClient && (status === 'cancelling' || status === 'confirming')) {
+      console.log('⏰ [FALLBACK CONTRAT] Timer démarré - Vérification du contrat dans 20 secondes si pas de hash...');
+      
+      const contractAddr = contractAddressRef.current;
+      const paymentId = currentPaymentId;
+      
+      const contractCheckTimeout = setTimeout(async () => {
+        // Vérifier à nouveau si on n'a toujours pas de hash ni de mise à jour
+        if (!txHash && !hasUpdatedDbRef.current && contractAddr && paymentId) {
+          console.log('⏰ [FALLBACK CONTRAT] 20 secondes écoulées sans hash, vérification directe du contrat...', contractAddr);
+          
+          try {
+            console.log('🔍 [FALLBACK CONTRAT] Vérification de l\'état cancelled du contrat:', contractAddr);
+            const isCancelled = await publicClient.readContract({
+              address: contractAddr,
+              abi: scheduledPaymentAbi,
+              functionName: 'cancelled',
+            }) as boolean;
+            
+            console.log('📋 [FALLBACK CONTRAT] État cancelled du contrat:', isCancelled);
+            
+            if (isCancelled) {
+              console.log('✅✅✅ [FALLBACK CONTRAT] Le contrat a été annulé ! Mise à jour de la DB...');
+              hasUpdatedDbRef.current = true;
+              
+              try {
+                setStatus('updating-db');
+                const response = await fetch(`${API_URL}/api/payments/${paymentId}`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    status: 'cancelled',
+                    cancelled_at: new Date().toISOString()
+                  }),
+                });
+
+                if (response.ok) {
+                  const result = await response.json();
+                  console.log('✅✅✅ [FALLBACK CONTRAT] Statut mis à jour:', result);
+                  setStatus('success');
+                  window.dispatchEvent(new CustomEvent('payment-cancelled', { 
+                    detail: { paymentId, txHash: undefined, status: 'cancelled' } 
+                  }));
+                } else {
+                  const errorText = await response.text();
+                  console.error('❌ [FALLBACK CONTRAT] Erreur HTTP:', response.status, errorText);
+                }
+              } catch (err) {
+                console.error('❌ [FALLBACK CONTRAT] Erreur mise à jour DB:', err);
+              }
+            } else {
+              console.log('⚠️ [FALLBACK CONTRAT] Le contrat n\'est pas encore annulé, peut-être que la transaction est toujours en attente...');
+            }
+          } catch (err) {
+            console.error('❌ [FALLBACK CONTRAT] Erreur vérification contrat:', err);
+          }
+        } else {
+          console.log('✅ [FALLBACK CONTRAT] Pas besoin de vérification, hash reçu ou DB déjà mise à jour');
+        }
+      }, 20000); // 20 secondes
+
+      return () => {
+        console.log('🧹 [FALLBACK CONTRAT] Nettoyage du timer');
+        clearTimeout(contractCheckTimeout);
+      };
+    }
+  }, [currentPaymentId, txHash, status, publicClient]);
 
   // Effet : Gestion des erreurs de writeContract
   useEffect(() => {
@@ -339,6 +685,8 @@ export function useCancelPayment(): UseCancelPaymentReturn {
     setStatus('idle');
     setError(null);
     setCurrentPaymentId(null);
+    hasUpdatedDbRef.current = false; // ✅ Reset le flag
+    contractAddressRef.current = undefined; // ✅ Reset l'adresse du contrat
     resetWrite();
   };
 

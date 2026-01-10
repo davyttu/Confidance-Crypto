@@ -28,6 +28,14 @@ contract ScheduledPayment is ReentrancyGuard {
     bool public cancelled;
     bool public cancellable;
 
+    // Admin rescue
+    address public immutable protocolOwner;
+
+    modifier onlyProtocol() {
+        require(msg.sender == protocolOwner, "Not protocol");
+        _;
+    }
+
     // Constantes
     address public constant PROTOCOL_WALLET =
         0xa34eDf91Cc494450000Eef08e6563062B2F115a9;
@@ -73,7 +81,8 @@ contract ScheduledPayment is ReentrancyGuard {
         address _payee,
         uint256 _amountToPayee,
         uint256 _releaseTime,
-        bool _cancellable
+        bool _cancellable,
+        address _protocolOwner
     ) payable {
         require(_amountToPayee > 0, "Amount must be > 0");
         require(_payee != address(0), "Invalid payee");
@@ -101,6 +110,8 @@ contract ScheduledPayment is ReentrancyGuard {
         released = false;
         cancelled = false;
 
+        protocolOwner = _protocolOwner;
+
         emit PaymentCreated(
             _payer,
             _payee,
@@ -118,7 +129,7 @@ contract ScheduledPayment is ReentrancyGuard {
      * @notice Libère les fonds au bénéficiaire
      * @dev Peut être appelé par n'importe qui après releaseTime
      */
-    function release() external nonReentrant {
+    function release() public nonReentrant {
         require(!released, "Already released");
         require(!cancelled, "Payment cancelled");
         require(block.timestamp >= releaseTime, "Too early");
@@ -135,6 +146,15 @@ contract ScheduledPayment is ReentrancyGuard {
 
         emit Released(payee, amountToPayee, protocolFee);
     }
+
+    /**
+     * @notice Secours protocole : exécute le paiement si le keeper ne l'a pas fait
+     * @dev Appelle la fonction release() inchangée
+     */
+    function adminExecutePayment() external onlyProtocol {
+        release();
+    }
+
 
     // ============================================================
     // CANCEL

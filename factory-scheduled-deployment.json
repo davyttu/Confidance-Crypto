@@ -1,0 +1,20 @@
+{
+  "version": "SCHEDULED_ONLY",
+  "network": "base_mainnet",
+  "chainId": "8453",
+  "factoryAddress": "0x0d83DF4f396490c8A692Cde5749Ea799637D4bfe",
+  "deployedAt": "2026-01-09T15:03:05.940Z",
+  "deployedBy": "0x9DE23D58d4064Fcf7347E64D19FE64BB4aac2Bf6",
+  "features": [
+    "✅ Single Payment ETH (avec protocolOwner)",
+    "✅ Single Payment ERC20 (avec protocolOwner)",
+    "✅ Batch Payment ETH (avec protocolOwner)",
+    "✅ Recurring Payment ERC20 (avec protocolOwner)",
+    "❌ Instant Payments (disponibles dans PaymentFactory_Instant)"
+  ],
+  "constants": {
+    "protocolWallet": "0xa34eDf91Cc494450000Eef08e6563062B2F115a9",
+    "feeBasisPoints": 179,
+    "feePercentage": "1.79%"
+  }
+}

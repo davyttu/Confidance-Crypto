@@ -22,7 +22,10 @@ module.exports = {
         enabled: true,
         runs: 1, // Optimisé pour la taille du bytecode (minimum)
       },
-      viaIR: true,
+      viaIR: true, // Nécessaire pour éviter "Stack too deep"
+      metadata: {
+        bytecodeHash: "none", // Réduit la taille du bytecode
+      },
     },
   },
 

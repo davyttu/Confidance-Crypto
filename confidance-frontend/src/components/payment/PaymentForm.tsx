@@ -65,6 +65,9 @@ export default function PaymentForm() {
 
   // Vérifier si la mensualisation est disponible
   const isRecurringAvailable = formData.tokenSymbol === 'USDT' || formData.tokenSymbol === 'USDC';
+  
+  // Vérifier si les paiements batch sont disponibles (uniquement ETH)
+  const isBatchAvailable = formData.tokenSymbol === 'ETH';
 
   // Restaurer les données au retour de /create-batch
   useEffect(() => {
@@ -308,6 +311,7 @@ export default function PaymentForm() {
           beneficiaries: allBeneficiaries,
           releaseTime,
           cancellable,
+          tokenSymbol: formData.tokenSymbol, // ✅ Ajouter le token symbol
         });
       } else {
         console.log('📤 [FORM SUBMIT] Appel singlePayment.createPayment()...');
@@ -458,29 +462,48 @@ export default function PaymentForm() {
         )}
         
         {!isBatchMode && (
-          <button
-            type="button"
-            onClick={handleAddMultipleBeneficiaries}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed border-primary-300 dark:border-primary-600 bg-primary-50/50 dark:bg-primary-950/20 hover:bg-primary-100 dark:hover:bg-primary-950/40 hover:border-primary-400 dark:hover:border-primary-500 text-primary-700 dark:text-primary-300 font-medium transition-all duration-200 group"
-          >
-            <svg 
-              className="w-5 h-5 transition-transform group-hover:scale-110 group-hover:rotate-90" 
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
+          <div className="relative group">
+            <button
+              type="button"
+              onClick={handleAddMultipleBeneficiaries}
+              disabled={!isBatchAvailable}
+              className={`
+                w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed font-medium transition-all duration-200
+                ${isBatchAvailable
+                  ? 'border-primary-300 dark:border-primary-600 bg-primary-50/50 dark:bg-primary-950/20 hover:bg-primary-100 dark:hover:bg-primary-950/40 hover:border-primary-400 dark:hover:border-primary-500 text-primary-700 dark:text-primary-300 cursor-pointer'
+                  : 'border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 opacity-60 cursor-not-allowed'
+                }
+              `}
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            <span className="text-sm">{isMounted && translationsReady ? t('create.beneficiary.addMultiple') : 'Ajouter plusieurs bénéficiaires'}</span>
-            <svg 
-              className="w-4 h-4 ml-auto opacity-50 group-hover:opacity-100 transition-opacity" 
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
+              <svg 
+                className={`w-5 h-5 ${isBatchAvailable ? 'transition-transform group-hover:scale-110 group-hover:rotate-90' : ''}`}
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span className="text-sm">{isMounted && translationsReady ? t('create.beneficiary.addMultiple') : 'Ajouter plusieurs bénéficiaires'}</span>
+              {isBatchAvailable && (
+                <svg 
+                  className="w-4 h-4 ml-auto opacity-50 group-hover:opacity-100 transition-opacity" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              )}
+            </button>
+            
+            {/* Message informatif si USDC/USDT sélectionné */}
+            {!isBatchAvailable && (
+              <div className="absolute top-full left-0 right-0 mt-2 px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                Uniquement disponible en ETH
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 -mb-1 border-4 border-transparent border-b-gray-900 dark:border-b-gray-700"></div>
+              </div>
+            )}
+          </div>
         )}
       </div>
 

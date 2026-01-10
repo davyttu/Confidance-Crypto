@@ -1,0 +1,17 @@
+{
+  "version": "INSTANT_ONLY",
+  "network": "base_mainnet",
+  "chainId": "8453",
+  "factoryAddress": "0xF8AE1807C9a6Ed4C25cd59513825277A8e8F0368",
+  "deployedAt": "2026-01-09T15:13:36.951Z",
+  "deployedBy": "0x9DE23D58d4064Fcf7347E64D19FE64BB4aac2Bf6",
+  "features": [
+    "✅ Instant Payment ETH (0% fees)",
+    "✅ Instant Payment ERC20 (0% fees)",
+    "❌ Scheduled Payments (disponibles dans PaymentFactory_Scheduled)"
+  ],
+  "constants": {
+    "fees": "0%",
+    "note": "Aucun frais sur les paiements instantanés"
+  }
+}

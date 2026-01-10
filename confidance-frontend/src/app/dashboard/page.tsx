@@ -42,21 +42,48 @@ export default function DashboardPage() {
 
   // 🆕 AJOUT : Rafraîchir automatiquement après annulation réussie
   useEffect(() => {
+    // Rafraîchir quand le statut devient 'success'
     if (cancelStatus === 'success') {
-      console.log('✅ Annulation confirmée, rafraîchissement du dashboard...');
+      console.log('✅ Annulation confirmée, rafraîchissement IMMÉDIAT du dashboard...');
       
-      // Attendre 1 seconde pour que la DB soit bien à jour
-      setTimeout(async () => {
-        await refetch();
-        setSelectedPaymentToCancel(null);
-        
-        // Réinitialiser le status après 3 secondes (pour cacher la notification)
-        setTimeout(() => {
-          resetCancel();
-        }, 3000);
-      }, 1000);
+      // Rafraîchir immédiatement (pas d'attente)
+      refetch();
+      setSelectedPaymentToCancel(null);
+      
+      // Réinitialiser le status après 5 secondes (pour cacher la notification)
+      setTimeout(() => {
+        resetCancel();
+      }, 5000);
     }
   }, [cancelStatus, refetch, resetCancel]);
+
+  // 🆕 AJOUT : Écouter l'événement personnalisé de cancellation pour rafraîchir immédiatement
+  useEffect(() => {
+    const handlePaymentCancelled = async (event: CustomEvent) => {
+      console.log('📢 Événement payment-cancelled reçu, rafraîchissement du dashboard...', event.detail);
+      
+      // Rafraîchir immédiatement (plusieurs fois pour être sûr)
+      await refetch();
+      
+      // Rafraîchir à nouveau après 1 seconde (au cas où)
+      setTimeout(async () => {
+        console.log('🔄 Rafraîchissement supplémentaire après 1 seconde...');
+        await refetch();
+      }, 1000);
+      
+      // Et encore une fois après 3 secondes
+      setTimeout(async () => {
+        console.log('🔄 Rafraîchissement supplémentaire après 3 secondes...');
+        await refetch();
+      }, 3000);
+    };
+
+    window.addEventListener('payment-cancelled', handlePaymentCancelled as EventListener);
+    
+    return () => {
+      window.removeEventListener('payment-cancelled', handlePaymentCancelled as EventListener);
+    };
+  }, [refetch]);
 
   // Filtrer les paiements par période
   const filteredPayments = useMemo(() => {

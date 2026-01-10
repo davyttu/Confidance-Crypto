@@ -7,8 +7,6 @@ import "./ScheduledPayment_V2.sol";
 import "./ScheduledPaymentERC20.sol";
 import "./BatchScheduledPayment_V2.sol";
 import "./RecurringPaymentERC20.sol";
-import "./InstantPayment.sol";
-import "./InstantPaymentERC20.sol";
 
 /**
  * @title PaymentFactory V2
@@ -16,7 +14,7 @@ import "./InstantPaymentERC20.sol";
  * @dev Support : Single ETH, Single ERC20, Batch ETH, Recurring ERC20
  *      Nouvelle logique : bénéficiaires reçoivent montants EXACTS
  */
-contract PaymentFactory {
+contract PaymentFactory_Scheduled {
     using SafeERC20 for IERC20;
     
     // ============================================================
@@ -75,23 +73,6 @@ contract PaymentFactory {
         uint256 totalMonths
     );
     
-    event InstantPaymentCreatedETH(
-        address indexed payer,
-        address indexed payee,
-        address paymentContract,
-        uint256 amount,
-        uint256 timestamp
-    );
-
-    event InstantPaymentCreatedERC20(
-        address indexed payer,
-        address indexed payee,
-        address indexed tokenAddress,
-        address paymentContract,
-        uint256 amount,
-        uint256 timestamp
-    );
-    
     // ============================================================
     // SINGLE PAYMENT ETH
     // ============================================================
@@ -113,14 +94,14 @@ contract PaymentFactory {
         uint256 _releaseTime,
         bool _cancellable
     ) external payable returns (address) {
-        require(_amountToPayee > 0);
-        require(_payee != address(0));
-        require(_releaseTime > block.timestamp);
+        require(_amountToPayee > 0, "Amount must be > 0");
+        require(_payee != address(0), "Invalid payee");
+        require(_releaseTime > block.timestamp, "Release time must be in future");
         
         // Calculer total requis
         uint256 protocolFee = (_amountToPayee * FEE_BASIS_POINTS) / BASIS_POINTS_DENOMINATOR;
         uint256 totalRequired = _amountToPayee + protocolFee;
-        require(msg.value == totalRequired);
+        require(msg.value == totalRequired, "Incorrect amount sent");
         
         // Déployer
         ScheduledPayment newPayment = new ScheduledPayment{value: msg.value}(
@@ -168,10 +149,10 @@ contract PaymentFactory {
         uint256 _releaseTime,
         bool _cancellable
     ) external returns (address) {
-        require(_amountToPayee > 0);
-        require(_payee != address(0));
-        require(_tokenAddress != address(0));
-        require(_releaseTime > block.timestamp);
+        require(_amountToPayee > 0, "Amount must be > 0");
+        require(_payee != address(0), "Invalid payee");
+        require(_tokenAddress != address(0), "Invalid token");
+        require(_releaseTime > block.timestamp, "Release time must be in future");
         
         // Calculer total
         uint256 protocolFee = (_amountToPayee * FEE_BASIS_POINTS) / BASIS_POINTS_DENOMINATOR;
@@ -229,22 +210,22 @@ contract PaymentFactory {
         uint256 _releaseTime,
         bool _cancellable
     ) external payable returns (address) {
-        require(_payees.length > 0);
-        require(_payees.length <= 50);
-        require(_payees.length == _amounts.length);
-        require(_releaseTime > block.timestamp);
+        require(_payees.length > 0, "No payees");
+        require(_payees.length <= 50, "Max 50 payees");
+        require(_payees.length == _amounts.length, "Length mismatch");
+        require(_releaseTime > block.timestamp, "Release time must be in future");
         
         // Calculer total
         uint256 totalToBeneficiaries = 0;
         for (uint256 i = 0; i < _amounts.length; i++) {
-            require(_amounts[i] > 0);
-            require(_payees[i] != address(0));
+            require(_amounts[i] > 0, "Amount must be > 0");
+            require(_payees[i] != address(0), "Invalid payee");
             totalToBeneficiaries += _amounts[i];
         }
         
         uint256 protocolFee = (totalToBeneficiaries * FEE_BASIS_POINTS) / BASIS_POINTS_DENOMINATOR;
         uint256 totalRequired = totalToBeneficiaries + protocolFee;
-        require(msg.value == totalRequired);
+        require(msg.value == totalRequired, "Incorrect total sent");
         
         // Déployer
         BatchScheduledPayment batchPayment = new BatchScheduledPayment{value: msg.value}(
@@ -295,12 +276,12 @@ contract PaymentFactory {
         uint256 _totalMonths,
         uint256 _dayOfMonth
     ) external returns (address) {
-        require(_payee != address(0));
-        require(_tokenAddress != address(0));
-        require(_monthlyAmount > 0);
-        require(_startDate > block.timestamp);
-        require(_totalMonths >= 1 && _totalMonths <= 12);
-        require(_dayOfMonth >= 1 && _dayOfMonth <= 28);
+        require(_payee != address(0), "Invalid payee");
+        require(_tokenAddress != address(0), "Invalid token");
+        require(_monthlyAmount > 0, "Monthly amount must be > 0");
+        require(_startDate > block.timestamp, "Start date must be in future");
+        require(_totalMonths >= 1 && _totalMonths <= 12, "Total months must be 1-12");
+        require(_dayOfMonth >= 1 && _dayOfMonth <= 28, "Day of month must be 1-28");
 
         // Calculer les fees par mois
         uint256 protocolFeePerMonth = (_monthlyAmount * FEE_BASIS_POINTS) / BASIS_POINTS_DENOMINATOR;
@@ -330,71 +311,7 @@ contract PaymentFactory {
         
         return address(newRecurringPayment);
     }
-    
-    // ============================================================
-    // INSTANT PAYMENT ETH
-    // ============================================================
 
-    function createInstantPaymentETH(
-        address _payee
-    ) external payable returns (address) {
-        require(_payee != address(0));
-        require(msg.value > 0);
-
-        InstantPayment newPayment = new InstantPayment{value: msg.value}(
-            msg.sender,
-            _payee
-        );
-
-        emit InstantPaymentCreatedETH(
-            msg.sender,
-            _payee,
-            address(newPayment),
-            msg.value,
-            block.timestamp
-        );
-
-        return address(newPayment);
-    }
-
-    // ============================================================
-    // INSTANT PAYMENT ERC20
-    // ============================================================
-
-    function createInstantPaymentERC20(
-        address _payee,
-        address _tokenAddress,
-        uint256 _amount
-    ) external returns (address) {
-        require(_payee != address(0));
-        require(_tokenAddress != address(0));
-        require(_amount > 0);
-
-        IERC20(_tokenAddress).safeTransferFrom(msg.sender, address(this), _amount);
-
-        InstantPaymentERC20 newPayment = new InstantPaymentERC20(
-            msg.sender,
-            _payee,
-            _tokenAddress,
-            _amount
-        );
-
-        IERC20(_tokenAddress).safeTransfer(address(newPayment), _amount);
-
-        newPayment.execute();
-
-        emit InstantPaymentCreatedERC20(
-            msg.sender,
-            _payee,
-            _tokenAddress,
-            address(newPayment),
-            _amount,
-            block.timestamp
-        );
-
-        return address(newPayment);
-    }
-    
     // ============================================================
     // HELPERS (TEMPORAIREMENT DÉSACTIVÉES POUR RÉDUIRE LA TAILLE)
     // ============================================================

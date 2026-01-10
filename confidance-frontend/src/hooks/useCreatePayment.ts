@@ -12,12 +12,22 @@ import {
 import { decodeEventLog } from 'viem';
 import { type TokenSymbol, getToken } from '@/config/tokens';
 import { useTokenApproval, type UseTokenApprovalReturn } from './useTokenApproval';
-import { paymentFactoryAbi } from '@/lib/contracts/paymentFactoryAbi';
+import { paymentFactoryScheduledAbi, paymentFactoryInstantAbi } from '@/lib/contracts/paymentFactoryAbi';
+import { PAYMENT_FACTORY_SCHEDULED, PAYMENT_FACTORY_INSTANT } from '@/lib/contracts/addresses';
 import { erc20Abi } from '@/lib/contracts/erc20Abi';
 import { calculateGasFromReceipt, saveGasTransaction } from '@/lib/utils/gas';
 
-// ⚠️ ADRESSE DE LA FACTORY - Déployée sur Base Mainnet (V3 FIXÉE - Constructor Balance Check)
-const FACTORY_ADDRESS: `0x${string}` = '0x88530C2f1A77BD8eb69caf91816E42982d25aa6C';
+// ✅ Factories (Base Mainnet)
+const FACTORY_SCHEDULED_ADDRESS: `0x${string}` = PAYMENT_FACTORY_SCHEDULED as `0x${string}`;
+const FACTORY_INSTANT_ADDRESS: `0x${string}` = PAYMENT_FACTORY_INSTANT as `0x${string}`;
+
+const getFactoryAddress = (isInstant: boolean): `0x${string}` =>
+  (isInstant ? FACTORY_INSTANT_ADDRESS : FACTORY_SCHEDULED_ADDRESS);
+
+const getFactoryAbi = (isInstant: boolean) =>
+  (isInstant ? paymentFactoryInstantAbi : paymentFactoryScheduledAbi);
+
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 // ✅ Multi-chain : réseau courant (utilisé par l'API / DB)
 const getNetworkFromChainId = (chainId: number): string => {
@@ -122,6 +132,10 @@ export function useCreatePayment(): UseCreatePaymentReturn {
   const approvalHookRef = useRef<UseTokenApprovalReturn | null>(null);
   // ✅ FIX : Ref pour le timeout de sécurité du processus de création
   const creationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // ✅ FIX : Ref pour stocker le statut actuel et le vérifier dans le timeout
+  const statusRef = useRef<PaymentStatus>(status);
+  // ✅ FIX : Ref pour stocker contractAddress et le vérifier dans le timeout
+  const contractAddressRef = useRef<`0x${string}` | undefined>(contractAddress);
 
   // Hook pour écrire les transactions
   const {
@@ -170,9 +184,17 @@ export function useCreatePayment(): UseCreatePaymentReturn {
   // Cela évite de créer le hook avec 'ETH' par défaut et de tenter d'approuver le mauvais token
   const token = currentParams ? getToken(currentParams.tokenSymbol) : null;
   
-  // 🔧 FIX ERC20 ALLOWANCE : Calculer totalRequired (amountToPayee + fees 1.79%)
-  const amountForApproval = currentParams?.amount 
-    ? currentParams.amount + (currentParams.amount * BigInt(179)) / BigInt(10000)
+  // 🔧 FIX ERC20 ALLOWANCE : Calculer totalRequired
+  // - Paiement programmé : amount + fees (1.79%)
+  // - Paiement instantané : amount (0% fees)
+  const isInstantFromParams = currentParams
+    ? (currentParams.releaseTime - Math.floor(Date.now() / 1000)) < 60
+    : false;
+
+  const amountForApproval = currentParams?.amount
+    ? (isInstantFromParams
+        ? currentParams.amount
+        : currentParams.amount + (currentParams.amount * BigInt(179)) / BigInt(10000))
     : BigInt(1);
   
   // ✅ FIX CRITIQUE : Utiliser le tokenSymbol de currentParams, ou 'USDC' comme valeur par défaut
@@ -187,7 +209,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
   // a été créé avec un token par défaut
   const approvalHook = useTokenApproval({
     tokenSymbol: approvalTokenSymbol,
-    spenderAddress: FACTORY_ADDRESS, // ✅ Toujours passer FACTORY_ADDRESS car le hook sera utilisé
+    spenderAddress: isInstantFromParams ? FACTORY_INSTANT_ADDRESS : FACTORY_SCHEDULED_ADDRESS, // ✅ Spender selon instant/programmé
     amount: amountForApproval,
     releaseTime: currentParams?.releaseTime,
   });
@@ -243,20 +265,30 @@ export function useCreatePayment(): UseCreatePaymentReturn {
         decimals: tokenData.decimals,
       });
       
+      // ✅ FIX : Déterminer si c'est un paiement instantané pour sélectionner la bonne factory
+      const now = Math.floor(Date.now() / 1000);
+      const isInstantPayment = (params.releaseTime - now) < 60;
+      const factoryAddress = getFactoryAddress(isInstantPayment);
+      const factoryAbi = getFactoryAbi(isInstantPayment);
+      
       // ✅ FIX : Vérifier que le contrat Factory existe bien
       if (!publicClient) {
         throw new Error('Client blockchain non disponible');
       }
       
-      console.log('🔍 [createPayment] Vérification que le contrat Factory existe...');
+      console.log('🔍 [createPayment] Vérification que le contrat Factory existe...', {
+        isInstantPayment,
+        factoryAddress,
+        factoryType: isInstantPayment ? 'INSTANT' : 'SCHEDULED',
+      });
       try {
-        const factoryCode = await publicClient.getBytecode({ address: FACTORY_ADDRESS });
+        const factoryCode = await publicClient.getBytecode({ address: factoryAddress });
         if (!factoryCode || factoryCode === '0x') {
-          console.error('❌ [ERREUR CRITIQUE] Le contrat Factory n\'existe pas à l\'adresse:', FACTORY_ADDRESS);
-          throw new Error(`Le contrat Factory n'existe pas à l'adresse ${FACTORY_ADDRESS}. Vérifiez que le contrat est bien déployé sur Base Mainnet.`);
+          console.error('❌ [ERREUR CRITIQUE] Le contrat Factory n\'existe pas à l\'adresse:', factoryAddress);
+          throw new Error(`Le contrat Factory n'existe pas à l'adresse ${factoryAddress}. Vérifiez que le contrat est bien déployé sur Base Mainnet.`);
         }
-        console.log('✅ [createPayment] Contrat Factory trouvé à l\'adresse:', FACTORY_ADDRESS);
-        console.log('🔗 [createPayment] Voir sur Basescan:', `https://basescan.org/address/${FACTORY_ADDRESS}`);
+        console.log('✅ [createPayment] Contrat Factory trouvé à l\'adresse:', factoryAddress);
+        console.log('🔗 [createPayment] Voir sur Basescan:', `https://basescan.org/address/${factoryAddress}`);
       } catch (factoryErr) {
         console.error('❌ [ERREUR] Erreur lors de la vérification du contrat Factory:', factoryErr);
         throw new Error(`Impossible de vérifier le contrat Factory: ${(factoryErr as Error).message}`);
@@ -332,10 +364,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
         await new Promise(resolve => setTimeout(resolve, 100));
       }
 
-      // ✅ NOUVEAU : Détecter si c'est un paiement instantané
-      const now = Math.floor(Date.now() / 1000);
-      const isInstantPayment = (params.releaseTime - now) < 60;
-
+      // ✅ `now` et `isInstantPayment` sont déjà définis plus haut (ligne 265-266)
       console.log('🚀 Création paiement:', {
         token: params.tokenSymbol,
         amount: params.amount.toString(),
@@ -359,7 +388,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
 
           console.log('📤 [ETH INSTANTANÉ] Appel writeContract...');
           console.log('📋 [ETH INSTANTANÉ] Paramètres:', {
-            factoryAddress: FACTORY_ADDRESS,
+            factoryAddress: factoryAddress,
             functionName: 'createInstantPaymentETH',
             beneficiary: params.beneficiary,
             valueToSend: params.amount.toString(),
@@ -367,8 +396,8 @@ export function useCreatePayment(): UseCreatePaymentReturn {
           });
 
           writeContract({
-            abi: paymentFactoryAbi,
-            address: FACTORY_ADDRESS,
+            abi: factoryAbi,
+            address: factoryAddress,
             functionName: 'createInstantPaymentETH',
             args: [params.beneficiary],
             value: params.amount, // ✅ Montant exact, pas de fees
@@ -392,7 +421,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
 
           console.log('📤 [ETH PROGRAMMÉ] Appel writeContract...');
           console.log('📋 [ETH PROGRAMMÉ] Paramètres:', {
-            factoryAddress: FACTORY_ADDRESS,
+            factoryAddress: factoryAddress,
             functionName: 'createPaymentETH',
             beneficiary: params.beneficiary,
             amountToPayee: amountToPayee.toString(),
@@ -404,8 +433,8 @@ export function useCreatePayment(): UseCreatePaymentReturn {
           });
 
           writeContract({
-            abi: paymentFactoryAbi,
-            address: FACTORY_ADDRESS,
+            abi: factoryAbi,
+            address: factoryAddress,
             functionName: 'createPaymentETH',
             args: [
               params.beneficiary,
@@ -462,8 +491,8 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             });
 
             writeContract({
-              abi: paymentFactoryAbi,
-              address: FACTORY_ADDRESS,
+              abi: factoryAbi,
+              address: factoryAddress,
               functionName: 'createInstantPaymentERC20',
               args: [
                 params.beneficiary,
@@ -697,12 +726,12 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             console.log('🔍 [APPROBATION] Vérification finale des paramètres avant approve():', {
               tokenSymbol: params.tokenSymbol,
               tokenAddress: tokenData.address,
-              spenderAddress: FACTORY_ADDRESS,
+              spenderAddress: factoryAddress,
               approvalAmount: approvalAmount.toString(),
               approvalAmountFormatted: `${(Number(approvalAmount) / (10 ** tokenDecimals)).toFixed(6)} ${tokenData.symbol}`,
               totalRequired: totalRequired.toString(),
               tokenDecimals,
-              allParamsValid: !!params.tokenSymbol && !!tokenData.address && !!FACTORY_ADDRESS && approvalAmount > BigInt(0),
+              allParamsValid: !!params.tokenSymbol && !!tokenData.address && !!factoryAddress && approvalAmount > BigInt(0),
             });
             
             // ✅ FIX : Vérifier que l'adresse du token correspond bien au tokenSymbol
@@ -726,7 +755,10 @@ export function useCreatePayment(): UseCreatePaymentReturn {
               throw new Error('Client blockchain ou adresse wallet non disponible');
             }
             
-            console.log('🔍 [APPROBATION] Vérification directe de l\'allowance pour le bon token...');
+              console.log('🔍 [APPROBATION] Vérification directe de l\'allowance pour le bon token...', {
+                factoryAddress,
+                factoryType: isInstantPayment ? 'INSTANT' : 'SCHEDULED',
+              });
             try {
               const directAllowance = await publicClient.readContract({
                 address: tokenData.address as `0x${string}`,
@@ -743,14 +775,15 @@ export function useCreatePayment(): UseCreatePaymentReturn {
                   },
                 ],
                 functionName: 'allowance',
-                args: [address, FACTORY_ADDRESS],
+                args: [address, factoryAddress],
               }) as bigint;
               
               console.log('📊 [APPROBATION] Allowance actuelle lue directement:', {
                 token: params.tokenSymbol,
                 tokenAddress: tokenData.address,
                 owner: address,
-                spender: FACTORY_ADDRESS,
+                spender: factoryAddress,
+                factoryType: isInstantPayment ? 'INSTANT' : 'SCHEDULED',
                 currentAllowance: directAllowance.toString(),
                 approvalAmount: approvalAmount.toString(),
                 isSufficient: directAllowance >= approvalAmount,
@@ -777,8 +810,9 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             console.log('📋 [APPROBATION] Paramètres qui seront passés à writeContract:', {
               address: tokenData.address,
               functionName: 'approve',
-              args: [FACTORY_ADDRESS, approvalAmount.toString()],
-              spenderAddress: FACTORY_ADDRESS,
+              args: [factoryAddress, approvalAmount.toString()],
+              spenderAddress: factoryAddress,
+              factoryType: isInstantPayment ? 'INSTANT' : 'SCHEDULED',
               approvalAmount: approvalAmount.toString(),
               approvalAmountHex: `0x${approvalAmount.toString(16)}`,
               tokenDecimals,
@@ -791,7 +825,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             
             console.log('✅ [APPROBATION] approve() appelé avec succès (pas d\'erreur immédiate)');
             console.log('✅ [APPROBATION] TokenSymbol override:', params.tokenSymbol, 'TokenAddress override:', tokenData.address);
-            console.log('✅ [APPROBATION] SpenderAddress:', FACTORY_ADDRESS);
+            console.log('✅ [APPROBATION] SpenderAddress:', factoryAddress, `(${isInstantPayment ? 'INSTANT' : 'SCHEDULED'})`);
             console.log('✅ [APPROBATION] Montant:', approvalAmount.toString(), `(${(Number(approvalAmount) / (10 ** tokenDecimals)).toFixed(6)} ${tokenData.symbol})`);
             console.log('⏳ [APPROBATION] Attente de la transaction MetaMask...');
             console.log('📊 [APPROBATION] Si MetaMask rejette la transaction, vérifiez les logs [useTokenApproval] ci-dessus');
@@ -980,27 +1014,49 @@ export function useCreatePayment(): UseCreatePaymentReturn {
         creationTimeoutRef.current = null;
       }
       
-      // ✅ FIX : Ajouter un timeout de sécurité (60 secondes) pour éviter que le processus reste bloqué
+      // ✅ FIX : Ajouter un timeout de sécurité (90 secondes) pour éviter que le processus reste bloqué
+      // Augmenté à 90s car l'enregistrement en DB peut prendre du temps
       creationTimeoutRef.current = setTimeout(() => {
-        if (status === 'approving' || status === 'creating') {
-          console.error('❌ TIMEOUT: Le processus de création a pris trop de temps (>60s)');
+        // ✅ Vérifier le statut actuel via la ref (toujours à jour)
+        // Ne déclencher le timeout que si on est toujours dans un état d'attente
+        // ET qu'on n'a pas encore trouvé l'adresse du contrat
+        const currentStatus = statusRef.current;
+        const hasContractAddress = !!contractAddressRef.current;
+        
+        // ✅ Si on a déjà l'adresse du contrat, le processus est réussi (même si DB prend du temps)
+        if (hasContractAddress) {
+          console.log('✅ Timeout ignoré - adresse du contrat trouvée:', contractAddressRef.current, '(processus réussi, enregistrement DB en cours)');
+          creationTimeoutRef.current = null;
+          return;
+        }
+        
+        if (currentStatus === 'approving' || currentStatus === 'creating' || currentStatus === 'confirming') {
+          console.error('❌ TIMEOUT: Le processus de création a pris trop de temps (>90s)');
           console.error('❌ État actuel:', {
-            status,
+            status: currentStatus,
             approveTxHash: approvalHook.approveTxHash,
             createTxHash,
             isApproveSuccess: approvalHook.isApproveSuccess,
             approveError: approvalHook.approveError?.message,
+            contractAddress: contractAddressRef.current,
+            hasContractAddress,
           });
-          setError(new Error('Le processus de création a pris trop de temps. Veuillez réessayer. Si le problème persiste, vérifiez votre connexion réseau et l\'état de MetaMask.'));
+          setError(new Error('Le processus de création a pris trop de temps. Veuillez réessayer. Si le paiement a été créé, vérifiez votre dashboard.'));
           setStatus('error');
           setProgressMessage('Timeout - veuillez réessayer');
           creationTimeoutRef.current = null;
+        } else {
+          console.log('✅ Timeout ignoré - statut actuel:', currentStatus, '(processus terminé)');
+          creationTimeoutRef.current = null;
         }
-      }, 60000); // 60 secondes
+      }, 90000); // 90 secondes (augmenté de 60s pour laisser plus de temps à l'enregistrement DB)
       
       // ✅ NOUVEAU : Détecter à nouveau si instantané
       const now = Math.floor(Date.now() / 1000);
       const isInstantPayment = (currentParams.releaseTime - now) < 60;
+
+        const factoryAddress = getFactoryAddress(isInstantPayment);
+        const factoryAbi = getFactoryAbi(isInstantPayment);
 
       // ✅ FIX : Calculer le montant total requis (sans fees pour paiements instantanés)
       const totalRequired = isInstantPayment 
@@ -1209,7 +1265,8 @@ export function useCreatePayment(): UseCreatePaymentReturn {
               console.log('🔍 Lecture allowance depuis blockchain:', {
                 tokenAddress: token.address,
                 owner: address,
-                spender: FACTORY_ADDRESS,
+                spender: factoryAddress,
+                factoryType: isInstantPayment ? 'INSTANT' : 'SCHEDULED',
               });
               
               latestAllowance = await publicClient.readContract({
@@ -1227,7 +1284,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
                   },
                 ],
                 functionName: 'allowance',
-                args: [address, FACTORY_ADDRESS],
+                args: [address, factoryAddress],
               }) as bigint;
               
               console.log('✅ Allowance lue depuis blockchain:', latestAllowance.toString());
@@ -1292,7 +1349,10 @@ export function useCreatePayment(): UseCreatePaymentReturn {
           // ✅ FIX USDT : Dernière tentative de lecture directe de l'allowance pour diagnostiquer
           let diagnosticAllowance: bigint | undefined;
           try {
-            console.log('🔍 DERNIÈRE TENTATIVE: Lecture directe allowance pour diagnostic...');
+            console.log('🔍 DERNIÈRE TENTATIVE: Lecture directe allowance pour diagnostic...', {
+              factoryAddress,
+              factoryType: isInstantPayment ? 'INSTANT' : 'SCHEDULED',
+            });
             diagnosticAllowance = await publicClient.readContract({
               address: token.address as `0x${string}`,
               abi: [
@@ -1308,7 +1368,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
                 },
               ],
               functionName: 'allowance',
-              args: [address, FACTORY_ADDRESS],
+              args: [address, factoryAddress],
             }) as bigint;
             console.log('📊 Diagnostic allowance:', diagnosticAllowance.toString());
           } catch (diagErr) {
@@ -1334,7 +1394,8 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             receiptStatus: receiptStatus || 'NON DISPONIBLE',
             receiptBlockNumber: approvalHook.approveReceipt?.blockNumber || 'NON DISPONIBLE',
             owner: address,
-            spender: FACTORY_ADDRESS,
+            spender: factoryAddress,
+            factoryType: isInstantPayment ? 'INSTANT' : 'SCHEDULED',
             tokenAddress: token.address,
             isApproveSuccess: approvalHook.isApproveSuccess,
             approveError: approvalHook.approveError?.message || 'Aucune erreur',
@@ -1414,7 +1475,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             },
           ],
           functionName: 'allowance',
-          args: [address, FACTORY_ADDRESS],
+          args: [address, factoryAddress],
         }) as bigint;
         
         const preSimulationIsSufficient = preSimulationAllowance >= totalRequired;
@@ -1423,6 +1484,8 @@ export function useCreatePayment(): UseCreatePaymentReturn {
           preSimulationAllowance: preSimulationAllowance.toString(),
           totalRequired: totalRequired.toString(),
           isSufficient: preSimulationIsSufficient,
+          factoryAddress,
+          factoryType: isInstantPayment ? 'INSTANT' : 'SCHEDULED',
         });
         
         if (!preSimulationIsSufficient) {
@@ -1466,8 +1529,8 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             // ⚡ INSTANTANÉ
             await publicClient.simulateContract({
               account: address,
-              address: FACTORY_ADDRESS,
-              abi: paymentFactoryAbi,
+              address: factoryAddress,
+              abi: factoryAbi,
               functionName: 'createInstantPaymentERC20',
               args: [
                 currentParams.beneficiary,
@@ -1480,8 +1543,8 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             // PROGRAMMÉ
             await publicClient.simulateContract({
               account: address,
-              address: FACTORY_ADDRESS,
-              abi: paymentFactoryAbi,
+              address: factoryAddress,
+              abi: factoryAbi,
               functionName: 'createPaymentERC20',
               args: [
                 currentParams.beneficiary,
@@ -1534,8 +1597,8 @@ export function useCreatePayment(): UseCreatePaymentReturn {
           });
           console.log('📤 Appel writeContract pour créer le paiement instantané...');
           writeContract({
-            abi: paymentFactoryAbi,
-            address: FACTORY_ADDRESS,
+            abi: factoryAbi,
+            address: factoryAddress,
             functionName: 'createInstantPaymentERC20',
             args: [
               currentParams.beneficiary,
@@ -1556,8 +1619,8 @@ export function useCreatePayment(): UseCreatePaymentReturn {
           });
           console.log('📤 Appel writeContract pour créer le paiement programmé...');
           writeContract({
-            abi: paymentFactoryAbi,
-            address: FACTORY_ADDRESS,
+            abi: factoryAbi,
+            address: factoryAddress,
             functionName: 'createPaymentERC20',
             args: [
               currentParams.beneficiary,
@@ -1647,21 +1710,45 @@ export function useCreatePayment(): UseCreatePaymentReturn {
         }
         
         try {
+          // ✅ Annuler le timeout car on passe à la phase de confirmation
+          if (creationTimeoutRef.current) {
+            clearTimeout(creationTimeoutRef.current);
+            creationTimeoutRef.current = null;
+            console.log('✅ Timeout annulé - passage à la confirmation');
+          }
+          
           setStatus('confirming');
           setProgressMessage('Récupération de l\'adresse du contrat...');
 
-          // ✅ FIX : Vérifier que la transaction est bien vers la factory
+          // ✅ FIX : Vérifier que la transaction est bien vers une factory (Scheduled OU Instant)
           const tx = await publicClient.getTransaction({ hash: createTxHash });
           
-          if (tx.to?.toLowerCase() !== FACTORY_ADDRESS.toLowerCase()) {
-            console.warn('⚠️ La transaction analysée n\'est pas vers la factory.');
+          // ✅ Détecter quelle factory a été utilisée
+          const isToScheduledFactory = tx.to?.toLowerCase() === FACTORY_SCHEDULED_ADDRESS.toLowerCase();
+          const isToInstantFactory = tx.to?.toLowerCase() === FACTORY_INSTANT_ADDRESS.toLowerCase();
+          
+          if (!isToScheduledFactory && !isToInstantFactory) {
+            console.warn('⚠️ La transaction analysée n\'est pas vers une factory connue.');
             console.warn('⚠️ Transaction "to":', tx.to);
-            console.warn('⚠️ Factory attendue:', FACTORY_ADDRESS);
+            console.warn('⚠️ Factories attendues:', {
+              scheduled: FACTORY_SCHEDULED_ADDRESS,
+              instant: FACTORY_INSTANT_ADDRESS,
+            });
             console.warn('⚠️ Cela signifie que createTxHash pointe vers la transaction d\'approbation, pas la création.');
             console.warn('⚠️ Attente de la transaction de création...');
             // Ne pas bloquer, juste attendre que la bonne transaction arrive
             return;
           }
+          
+          // ✅ Déterminer la factory et l'ABI utilisés
+          const factoryAddressUsed = isToInstantFactory ? FACTORY_INSTANT_ADDRESS : FACTORY_SCHEDULED_ADDRESS;
+          const factoryAbiToUse = isToInstantFactory ? paymentFactoryInstantAbi : paymentFactoryScheduledAbi;
+          const isInstantPayment = isToInstantFactory;
+          
+          console.log('🔍 Factory détectée:', {
+            address: factoryAddressUsed,
+            type: isInstantPayment ? 'INSTANT' : 'SCHEDULED',
+          });
 
           // ✅ FIX : Utiliser le receipt de useWaitForTransactionReceipt si disponible
           const receiptToUse = receipt || await publicClient.getTransactionReceipt({
@@ -1674,16 +1761,17 @@ export function useCreatePayment(): UseCreatePaymentReturn {
           // ✅ FIX CRITIQUE : Décoder les events PaymentCreated correctement
           // Les events ont paymentContract dans les data, pas dans les topics
           
-          // Chercher les logs émis par la factory
+          // Chercher les logs émis par la factory utilisée
           const factoryLogs = receiptToUse.logs.filter(
-            log => log.address.toLowerCase() === FACTORY_ADDRESS.toLowerCase()
+            log => log.address.toLowerCase() === factoryAddressUsed.toLowerCase()
           );
 
           console.log(`🔍 ${factoryLogs.length} log(s) trouvé(s) depuis la factory`);
-          console.log('📋 Factory address attendue:', FACTORY_ADDRESS);
+          console.log('📋 Factory address utilisée:', factoryAddressUsed);
+          console.log('📋 Factory type:', isInstantPayment ? 'INSTANT' : 'SCHEDULED');
           console.log('📋 Tous les logs (adresses):', receiptToUse.logs.map(l => ({
             address: l.address,
-            isFactory: l.address.toLowerCase() === FACTORY_ADDRESS.toLowerCase(),
+            isFactory: l.address.toLowerCase() === FACTORY_SCHEDULED_ADDRESS.toLowerCase(),
             topicsCount: l.topics.length,
             firstTopic: l.topics[0],
           })));
@@ -1703,7 +1791,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
               // Essayer PaymentCreatedETH
               try {
                 const decoded = decodeEventLog({
-                  abi: paymentFactoryAbi,
+                  abi: factoryAbiToUse,
                   data: log.data,
                   topics: log.topics as any,
                   eventName: 'PaymentCreatedETH',
@@ -1721,7 +1809,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
               // Essayer PaymentCreatedERC20
               try {
                 const decoded = decodeEventLog({
-                  abi: paymentFactoryAbi,
+                  abi: factoryAbiToUse,
                   data: log.data,
                   topics: log.topics as any,
                   eventName: 'PaymentCreatedERC20',
@@ -1744,7 +1832,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
               // Essayer InstantPaymentCreatedETH
               try {
                 const decoded = decodeEventLog({
-                  abi: paymentFactoryAbi,
+                  abi: factoryAbiToUse,
                   data: log.data,
                   topics: log.topics as any,
                   eventName: 'InstantPaymentCreatedETH',
@@ -1762,7 +1850,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
               // Essayer InstantPaymentCreatedERC20
               try {
                 const decoded = decodeEventLog({
-                  abi: paymentFactoryAbi,
+                  abi: factoryAbiToUse,
                   data: log.data,
                   topics: log.topics as any,
                   eventName: 'InstantPaymentCreatedERC20',
@@ -1797,7 +1885,10 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             console.log('⚠️ Décodage events échoué, essai méthode fallback simple...');
             
             for (const log of receiptToUse.logs) {
-              if (log.address.toLowerCase() !== FACTORY_ADDRESS.toLowerCase()) {
+              // ✅ Exclure la factory utilisée ET l'autre factory de la recherche
+              const isScheduledFactory = log.address.toLowerCase() === FACTORY_SCHEDULED_ADDRESS.toLowerCase();
+              const isInstantFactory = log.address.toLowerCase() === FACTORY_INSTANT_ADDRESS.toLowerCase();
+              if (!isScheduledFactory && !isInstantFactory) {
                 // ✅ FIX : Vérifier que ce n'est pas un token connu (pour éviter de prendre l'adresse du token)
                 const isKnownToken = knownTokens.some(
                   token => log.address.toLowerCase() === token.toLowerCase()
@@ -1817,6 +1908,14 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             // ✅ FIX : Vérifier si on a déjà enregistré cette adresse
             if (savedContractAddressRef.current === foundAddress) {
               console.log('✅ Paiement déjà enregistré pour ce contrat:', foundAddress);
+              
+              // ✅ FIX : Annuler le timeout car l'adresse a été trouvée (processus réussi)
+              if (creationTimeoutRef.current) {
+                clearTimeout(creationTimeoutRef.current);
+                creationTimeoutRef.current = null;
+                console.log('✅ Timeout annulé - adresse du contrat trouvée (déjà enregistré):', foundAddress);
+              }
+              
               setContractAddress(foundAddress);
               setStatus('success');
               setProgressMessage(t('create.modal.paymentCreatedSuccess', { defaultValue: 'Paiement créé avec succès !' }));
@@ -1824,6 +1923,13 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             }
             
             setContractAddress(foundAddress);
+            
+            // ✅ FIX : Annuler le timeout car l'adresse a été trouvée (processus réussi)
+            if (creationTimeoutRef.current) {
+              clearTimeout(creationTimeoutRef.current);
+              creationTimeoutRef.current = null;
+              console.log('✅ Timeout annulé - adresse du contrat trouvée:', foundAddress);
+            }
 
             // ✅ FIX : Marquer comme en cours d'enregistrement
             if (isSavingRef.current) {
@@ -1872,6 +1978,10 @@ export function useCreatePayment(): UseCreatePaymentReturn {
               // Déterminer si c'est un paiement instantané
               const now = Math.floor(Date.now() / 1000);
               const isInstantPayment = (params.releaseTime - now) < 60;
+
+              const factoryAddress = getFactoryAddress(isInstantPayment);
+              const factoryAbi = getFactoryAbi(isInstantPayment);
+
               
               // Déterminer le type de paiement
               const paymentType = isInstantPayment ? 'instant' : 'scheduled';
@@ -2053,7 +2163,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             try {
               const receiptToUse = receipt || (publicClient && createTxHash ? await publicClient.getTransactionReceipt({ hash: createTxHash }) : null);
               const factoryLogs = receiptToUse ? receiptToUse.logs.filter(
-                log => log.address.toLowerCase() === FACTORY_ADDRESS.toLowerCase()
+                log => log.address.toLowerCase() === FACTORY_SCHEDULED_ADDRESS.toLowerCase()
               ) : [];
               
               console.error('📋 Détails de diagnostic:', {
@@ -2220,9 +2330,19 @@ export function useCreatePayment(): UseCreatePaymentReturn {
     }
   }, [writeError, confirmError]);
   
-  // ✅ FIX : Nettoyer les timeouts quand le status change vers success ou error
+  // ✅ FIX : Mettre à jour les refs du statut et contractAddress quand ils changent
   useEffect(() => {
-    if (status === 'success' || status === 'error') {
+    statusRef.current = status;
+  }, [status]);
+  
+  useEffect(() => {
+    contractAddressRef.current = contractAddress;
+  }, [contractAddress]);
+
+  // ✅ FIX : Nettoyer les timeouts quand le status change vers success, error, ou confirming
+  // (confirming signifie que la transaction est confirmée et on extrait l'adresse, donc le timeout n'est plus nécessaire)
+  useEffect(() => {
+    if (status === 'success' || status === 'error' || status === 'confirming') {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
@@ -2230,6 +2350,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
       if (creationTimeoutRef.current) {
         clearTimeout(creationTimeoutRef.current);
         creationTimeoutRef.current = null;
+        console.log('✅ Timeout annulé - statut:', status);
       }
     }
   }, [status]);

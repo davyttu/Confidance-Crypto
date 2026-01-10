@@ -1,7 +1,7 @@
 // src/hooks/useCreateBatchPayment.ts
 // VERSION 2 : Fees s'ajoutent au montant (pas dÃ©duites)
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   useAccount,
   useChainId,
@@ -9,11 +9,20 @@ import {
   useWaitForTransactionReceipt,
   usePublicClient,
 } from 'wagmi';
-import { parseEther } from 'viem';
+import { parseEther, parseUnits, decodeEventLog } from 'viem';
 import { paymentFactoryAbi } from '@/lib/contracts/paymentFactoryAbi';
+import { PAYMENT_FACTORY_SCHEDULED, PAYMENT_FACTORY_INSTANT } from '@/lib/contracts/addresses';
 import { useAuth } from '@/contexts/AuthContext';
+import { type TokenSymbol, getToken } from '@/config/tokens';
+import { useTokenApproval } from './useTokenApproval';
+import { erc20Abi } from '@/lib/contracts/erc20Abi';
 
-const FACTORY_ADDRESS: `0x${string}` = '0x88530C2f1A77BD8eb69caf91816E42982d25aa6C';
+// ✅ Factories (Base Mainnet)
+const FACTORY_SCHEDULED_ADDRESS: `0x${string}` = PAYMENT_FACTORY_SCHEDULED as `0x${string}`;
+const FACTORY_INSTANT_ADDRESS: `0x${string}` = PAYMENT_FACTORY_INSTANT as `0x${string}`;
+
+const getFactoryAddress = (isInstant: boolean): `0x${string}` =>
+  (isInstant ? FACTORY_INSTANT_ADDRESS : FACTORY_SCHEDULED_ADDRESS);
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 // ✅ Multi-chain : réseau courant
 const getNetworkFromChainId = (chainId: number): string => {
@@ -45,6 +54,7 @@ interface CreateBatchPaymentParams {
   beneficiaries: Beneficiary[];
   releaseTime: number;
   cancellable?: boolean;
+  tokenSymbol?: TokenSymbol; // ✅ Ajouter support token
 }
 
 type PaymentStatus = 
@@ -85,7 +95,7 @@ function calculateTotalRequired(amounts: bigint[]): {
 }
 
 export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
-  const { address } = useAccount();
+  const { address, isConnected, connector } = useAccount();
   const chainId = useChainId();
   const publicClient = usePublicClient();
   const { user, isAuthenticated } = useAuth();
@@ -99,12 +109,41 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
   const [protocolFee, setProtocolFee] = useState<bigint | null>(null);
   const [totalRequired, setTotalRequired] = useState<bigint | null>(null);
   
-  // âœ… FIX: Ajouter ce state
+  // ✅ FIX: Ajouter ce state
   const [currentParams, setCurrentParams] = useState<CreateBatchPaymentParams | null>(null);
+  
+  // ✅ FIX: Protection contre les appels multiples d'enregistrement
+  const isSavingRef = useRef<boolean>(false);
+  const savedTransactionHashRef = useRef<`0x${string}` | undefined>(undefined);
   
   // Guest email
   const [guestEmail, setGuestEmail] = useState<string>('');
   const [needsGuestEmail, setNeedsGuestEmail] = useState(false);
+  
+  // ✅ Hook d'approbation pour ERC20 batch
+  const token = currentParams ? getToken(currentParams.tokenSymbol || 'ETH') : null;
+  const isInstantFromParams = currentParams
+    ? (currentParams.releaseTime - Math.floor(Date.now() / 1000)) < 60
+    : false;
+  
+  // ✅ Pour les batch, on doit calculer le total (somme de tous les montants)
+  const amountForApproval = totalRequired || BigInt(0);
+  const approvalTokenSymbol: TokenSymbol = currentParams?.tokenSymbol || 'ETH';
+  
+  const approvalHook = useTokenApproval({
+    tokenSymbol: approvalTokenSymbol,
+    spenderAddress: isInstantFromParams ? FACTORY_INSTANT_ADDRESS : FACTORY_SCHEDULED_ADDRESS,
+    amount: amountForApproval,
+    releaseTime: currentParams?.releaseTime,
+  });
+  
+  // ✅ Ref pour stocker les paramètres nécessaires pour créer le paiement après approbation
+  const pendingPaymentParamsRef = useRef<{
+    payees: `0x${string}`[];
+    amounts: bigint[];
+    tokenAddress: `0x${string}`;
+    factoryAddress: `0x${string}`;
+  } | null>(null);
 
   const {
     writeContract,
@@ -120,6 +159,23 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
   } = useWaitForTransactionReceipt({
     hash: createTxHash,
   });
+  
+  // ✅ Hook séparé pour l'approbation (comme dans useCreateRecurringPayment)
+  const {
+    writeContract: writeApprove,
+    data: approveTxHash,
+    error: approveError,
+    reset: resetApprove,
+  } = useWriteContract();
+  
+  // ✅ Attendre la confirmation de la transaction d'approbation
+  const {
+    isLoading: isApproveConfirming,
+    isSuccess: isApproveSuccess,
+    error: approveConfirmError,
+  } = useWaitForTransactionReceipt({
+    hash: approveTxHash,
+  });
 
   const createBatchPayment = async (params: CreateBatchPaymentParams) => {
     if (!address) {
@@ -134,6 +190,11 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
         throw new Error('Le nombre de bÃ©nÃ©ficiaires doit Ãªtre entre 1 et 5');
       }
 
+      // ✅ Déterminer le token (par défaut ETH)
+      const tokenSymbol = params.tokenSymbol || 'ETH';
+      const token = getToken(tokenSymbol);
+      const isERC20 = !token.isNative;
+
       const payees: `0x${string}`[] = [];
       const amounts: bigint[] = [];
 
@@ -147,60 +208,555 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
           throw new Error(`Montant invalide : ${beneficiary.amount}`);
         }
 
-        const amountWei = parseEther(beneficiary.amount);
+        // ✅ Utiliser parseUnits pour les tokens ERC20 (avec decimals) ou parseEther pour ETH
+        const amountWei = isERC20 
+          ? parseUnits(beneficiary.amount, token.decimals)
+          : parseEther(beneficiary.amount);
         
         payees.push(beneficiary.address as `0x${string}`);
         amounts.push(amountWei);
       }
 
-      const { 
-        totalToBeneficiaries: totalBenef,
-        protocolFee: fee,
-        totalRequired: total 
-      } = calculateTotalRequired(amounts);
+      // ✅ Détecter si c'est un paiement instantané
+      const now = Math.floor(Date.now() / 1000);
+      const isInstantPayment = (params.releaseTime - now) < 60;
+      const factoryAddress = getFactoryAddress(isInstantPayment);
+      
+      // ✅ Calculer les montants selon le type de paiement
+      let totalBenef: bigint;
+      let fee: bigint;
+      let total: bigint;
+      
+      if (isInstantPayment) {
+        // Paiement instantané : pas de fees
+        totalBenef = amounts.reduce((sum, amount) => sum + amount, BigInt(0));
+        fee = BigInt(0);
+        total = totalBenef;
+      } else {
+        // Paiement programmé : avec fees
+        const calculated = calculateTotalRequired(amounts);
+        totalBenef = calculated.totalToBeneficiaries;
+        fee = calculated.protocolFee;
+        total = calculated.totalRequired;
+      }
 
       setTotalToBeneficiaries(totalBenef);
       setProtocolFee(fee);
       setTotalRequired(total);
       
-      // âœ… FIX: Stocker params avant writeContract
+      // ✅ FIX: Stocker params AVANT pour que le hook d'approbation se mette à jour
+      // Attendre un peu que React se stabilise
       setCurrentParams(params);
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      // ✅ Formater les montants avec les bonnes decimals pour l'affichage
+      const divisor = BigInt(10 ** token.decimals);
+      const formattedTotalBenef = Number(totalBenef) / Number(divisor);
+      const formattedFee = Number(fee) / Number(divisor);
+      const formattedTotal = Number(total) / Number(divisor);
+
+      console.log('💰 Formatage pour affichage:', {
+        totalBenef: totalBenef.toString(),
+        total: total.toString(),
+        tokenSymbol,
+        tokenDecimals: token.decimals,
+        divisor: divisor.toString(),
+        formattedTotalBenef,
+        formattedTotal,
+      });
 
       setStatus('creating');
       setProgressMessage(
-        `CrÃ©ation du paiement pour ${payees.length} bÃ©nÃ©ficiaire(s)...\n` +
-        `Montant bÃ©nÃ©ficiaires: ${(Number(totalBenef) / 1e18).toFixed(4)} ETH\n` +
-        `Fees protocole: ${(Number(fee) / 1e18).toFixed(4)} ETH\n` +
-        `Total Ã  envoyer: ${(Number(total) / 1e18).toFixed(4)} ETH`
+        `Création du paiement pour ${payees.length} bénéficiaire(s)...\n` +
+        `Montant bénéficiaires: ${formattedTotalBenef.toFixed(4)} ${tokenSymbol}\n` +
+        `Fees protocole: ${formattedFee.toFixed(4)} ${tokenSymbol}\n` +
+        `Total Ã  envoyer: ${formattedTotal.toFixed(4)} ${tokenSymbol}`
       );
 
-      writeContract({
-        abi: paymentFactoryAbi,
-        address: FACTORY_ADDRESS,
-        functionName: 'createBatchPaymentETH',
-        args: [
-          payees,
-          amounts,
-          BigInt(params.releaseTime),
-          params.cancellable || false,
-        ],
-        value: total,
-      });
+      if (isInstantPayment) {
+        if (isERC20) {
+          // ⚡ Paiement batch instantané ERC20 : gérer l'approbation automatiquement
+          console.log('🔍 Paiement batch ERC20 instantané:', {
+            tokenSymbol,
+            tokenAddress: token.address,
+            factoryAddress,
+            totalRequired: total.toString(),
+            payeesCount: payees.length,
+          });
+          
+          // ✅ Stocker les paramètres pour créer le paiement après approbation
+          pendingPaymentParamsRef.current = {
+            payees,
+            amounts,
+            tokenAddress: token.address as `0x${string}`,
+            factoryAddress,
+          };
+          
+          // ✅ Mettre à jour currentParams pour que le hook d'approbation se mette à jour
+          // Attendre un peu que React se stabilise
+          await new Promise(resolve => requestAnimationFrame(resolve));
+          await new Promise(resolve => setTimeout(resolve, 150));
+          
+          // ✅ Vérifier l'allowance actuelle
+          if (publicClient && address && token.address) {
+            try {
+              const currentAllowance = await publicClient.readContract({
+                address: token.address as `0x${string}`,
+                abi: erc20Abi,
+                functionName: 'allowance',
+                args: [address, factoryAddress],
+              }) as bigint;
+              
+              console.log('📊 Vérification allowance:', {
+                current: currentAllowance.toString(),
+                required: total.toString(),
+                sufficient: currentAllowance >= total,
+              });
+              
+              if (currentAllowance < total) {
+                console.log('⚠️ Allowance insuffisante, demande d\'approbation...');
+                setStatus('approving');
+                setProgressMessage(
+                  `Approbation requise pour ${formattedTotal.toFixed(4)} ${tokenSymbol}...\n` +
+                  `Veuillez approuver la transaction dans MetaMask.`
+                );
+                
+                // ✅ Vérifier que le wallet est connecté et prêt
+                if (!address || !isConnected) {
+                  console.error('❌ Wallet non connecté pour approbation:', { address, isConnected });
+                  setError(new Error('Wallet non connecté'));
+                  setStatus('error');
+                  setProgressMessage('Veuillez connecter votre wallet');
+                  pendingPaymentParamsRef.current = null;
+                  return;
+                }
+                
+                console.log('🔍 État du wallet:', {
+                  address,
+                  isConnected,
+                  connectorName: connector?.name,
+                  connectorId: connector?.id,
+                });
+                
+                // ✅ Vérifier que tous les paramètres sont valides avant d'appeler approve()
+                if (!token.address || token.address === 'NATIVE') {
+                  console.error('❌ Adresse du token invalide:', token.address);
+                  setError(new Error(`Adresse du token invalide pour ${tokenSymbol}`));
+                  setStatus('error');
+                  setProgressMessage(`Erreur: adresse du token ${tokenSymbol} invalide`);
+                  pendingPaymentParamsRef.current = null;
+                  return;
+                }
+                
+                if (!factoryAddress) {
+                  console.error('❌ Adresse de la factory invalide:', factoryAddress);
+                  setError(new Error('Adresse de la factory invalide'));
+                  setStatus('error');
+                  setProgressMessage('Erreur: adresse de la factory invalide');
+                  pendingPaymentParamsRef.current = null;
+                  return;
+                }
+                
+                if (total <= BigInt(0)) {
+                  console.error('❌ Montant total invalide:', total.toString());
+                  setError(new Error('Montant total invalide'));
+                  setStatus('error');
+                  setProgressMessage('Erreur: montant total invalide');
+                  pendingPaymentParamsRef.current = null;
+                  return;
+                }
+                
+                // ✅ Vérifier que le hook d'approbation est disponible
+                if (!approvalHook || typeof approvalHook.approve !== 'function') {
+                  console.error('❌ Hook d\'approbation non disponible ou fonction approve manquante');
+                  setError(new Error('Erreur interne: hook d\'approbation non disponible'));
+                  setStatus('error');
+                  setProgressMessage('Erreur interne: hook d\'approbation non disponible');
+                  pendingPaymentParamsRef.current = null;
+                  return;
+                }
+                
+                // ✅ Vérifier l'état du hook d'approbation
+                console.log('🔍 État du hook d\'approbation avant appel approve():', {
+                  currentAllowance: approvalHook.currentAllowance?.toString(),
+                  isAllowanceSufficient: approvalHook.isAllowanceSufficient,
+                  isCheckingAllowance: approvalHook.isCheckingAllowance,
+                  isApproving: approvalHook.isApproving,
+                  isApproveSuccess: approvalHook.isApproveSuccess,
+                  approveTxHash: approvalHook.approveTxHash,
+                  approveError: approvalHook.approveError?.message,
+                  hasApproveFunction: typeof approvalHook.approve === 'function',
+                });
+                
+                // ✅ Appeler directement writeContract pour l'approbation (comme dans useCreateRecurringPayment)
+                try {
+                  console.log('📤 Appel writeApprove directement avec paramètres:', {
+                    amount: total.toString(),
+                    amountFormatted: formattedTotal.toFixed(4),
+                    tokenSymbol,
+                    tokenAddress: token.address,
+                    factoryAddress,
+                    decimals: token.decimals,
+                  });
+                  
+                  // ✅ Appeler directement writeContract pour déclencher MetaMask
+                  writeApprove({
+                    address: token.address as `0x${string}`,
+                    abi: erc20Abi,
+                    functionName: 'approve',
+                    args: [factoryAddress, total],
+                  });
+                  
+                  console.log('✅ writeApprove appelé, MetaMask devrait s\'ouvrir...');
+                  
+                  // Le paiement sera créé automatiquement une fois l'approbation confirmée
+                  // (géré par le useEffect qui écoute isApproveSuccess)
+                  return;
+                } catch (approveErr) {
+                  console.error('❌ Erreur lors de l\'appel writeApprove:', approveErr);
+                  console.error('❌ Détails de l\'erreur:', {
+                    name: (approveErr as Error)?.name,
+                    message: (approveErr as Error)?.message,
+                    stack: (approveErr as Error)?.stack,
+                  });
+                  setError(approveErr as Error);
+                  setStatus('error');
+                  setProgressMessage(`Erreur lors de la demande d'approbation: ${(approveErr as Error).message}`);
+                  pendingPaymentParamsRef.current = null;
+                  return;
+                }
+              }
+              
+              console.log('✅ Allowance suffisante, création du paiement immédiatement...');
+              // Allowance suffisante, créer le paiement directement
+              pendingPaymentParamsRef.current = null; // Nettoyer
+              
+              writeContract({
+                abi: paymentFactoryAbi,
+                address: factoryAddress,
+                functionName: 'createInstantBatchPaymentERC20',
+                args: [
+                  token.address as `0x${string}`,
+                  payees,
+                  amounts,
+                ],
+              });
+            } catch (allowanceError) {
+              console.error('❌ Erreur vérification allowance:', allowanceError);
+              setError(new Error(`Erreur vérification allowance: ${(allowanceError as Error).message}`));
+              setStatus('error');
+              pendingPaymentParamsRef.current = null;
+              return;
+            }
+          }
+        } else {
+          // ⚡ Paiement batch instantané ETH : utiliser createInstantBatchPaymentETH
+          writeContract({
+            abi: paymentFactoryAbi,
+            address: factoryAddress,
+            functionName: 'createInstantBatchPaymentETH',
+            args: [
+              payees,
+              amounts,
+            ],
+            value: total, // Montant exact, pas de fees
+          });
+        }
+      } else {
+        // Paiement batch programmé
+        if (isERC20 && tokenSymbol !== 'ETH') {
+          // ✅ Paiement batch programmé ERC20 : gérer l'approbation automatiquement
+          console.log('🔍 Paiement batch ERC20 programmé:', {
+            tokenSymbol,
+            tokenAddress: token.address,
+            factoryAddress,
+            totalRequired: total.toString(),
+            payeesCount: payees.length,
+          });
+          
+          // ✅ Stocker les paramètres pour créer le paiement après approbation
+          pendingPaymentParamsRef.current = {
+            payees,
+            amounts,
+            tokenAddress: token.address as `0x${string}`,
+            factoryAddress,
+          };
+          
+          // ✅ Mettre à jour currentParams pour que le hook d'approbation se mette à jour
+          await new Promise(resolve => requestAnimationFrame(resolve));
+          await new Promise(resolve => setTimeout(resolve, 150));
+          
+          // ✅ Vérifier l'allowance actuelle
+          if (publicClient && address && token.address) {
+            try {
+              const currentAllowance = await publicClient.readContract({
+                address: token.address as `0x${string}`,
+                abi: erc20Abi,
+                functionName: 'allowance',
+                args: [address, factoryAddress],
+              }) as bigint;
+              
+              console.log('📊 Vérification allowance pour paiement programmé:', {
+                current: currentAllowance.toString(),
+                required: total.toString(),
+                sufficient: currentAllowance >= total,
+              });
+              
+              if (currentAllowance < total) {
+                console.log('⚠️ Allowance insuffisante, demande d\'approbation...');
+                setStatus('approving');
+                setProgressMessage(
+                  `Approbation requise pour ${formattedTotal.toFixed(4)} ${tokenSymbol}...\n` +
+                  `Veuillez approuver la transaction dans MetaMask.`
+                );
+                
+                // ✅ Vérifier que le wallet est connecté et prêt
+                if (!address || !isConnected) {
+                  console.error('❌ Wallet non connecté pour approbation:', { address, isConnected });
+                  setError(new Error('Wallet non connecté'));
+                  setStatus('error');
+                  setProgressMessage('Veuillez connecter votre wallet');
+                  pendingPaymentParamsRef.current = null;
+                  return;
+                }
+                
+                // ✅ Vérifier que tous les paramètres sont valides
+                if (!token.address || token.address === 'NATIVE') {
+                  console.error('❌ Adresse du token invalide:', token.address);
+                  setError(new Error(`Adresse du token invalide pour ${tokenSymbol}`));
+                  setStatus('error');
+                  setProgressMessage(`Erreur: adresse du token ${tokenSymbol} invalide`);
+                  pendingPaymentParamsRef.current = null;
+                  return;
+                }
+                
+                if (!factoryAddress) {
+                  console.error('❌ Adresse de la factory invalide:', factoryAddress);
+                  setError(new Error('Adresse de la factory invalide'));
+                  setStatus('error');
+                  setProgressMessage('Erreur: adresse de la factory invalide');
+                  pendingPaymentParamsRef.current = null;
+                  return;
+                }
+                
+                if (total <= BigInt(0)) {
+                  console.error('❌ Montant total invalide:', total.toString());
+                  setError(new Error('Montant total invalide'));
+                  setStatus('error');
+                  setProgressMessage('Erreur: montant total invalide');
+                  pendingPaymentParamsRef.current = null;
+                  return;
+                }
+                
+                // ✅ Appeler directement writeContract pour l'approbation
+                try {
+                  console.log('📤 Appel writeApprove directement avec paramètres:', {
+                    amount: total.toString(),
+                    amountFormatted: formattedTotal.toFixed(4),
+                    tokenSymbol,
+                    tokenAddress: token.address,
+                    factoryAddress,
+                    decimals: token.decimals,
+                  });
+                  
+                  writeApprove({
+                    address: token.address as `0x${string}`,
+                    abi: erc20Abi,
+                    functionName: 'approve',
+                    args: [factoryAddress, total],
+                  });
+                  
+                  console.log('✅ writeApprove appelé, MetaMask devrait s\'ouvrir...');
+                  
+                  // Le paiement sera créé automatiquement une fois l'approbation confirmée
+                  // (géré par le useEffect qui écoute isApproveSuccess)
+                  return;
+                } catch (approveErr) {
+                  console.error('❌ Erreur lors de l\'appel writeApprove:', approveErr);
+                  setError(approveErr as Error);
+                  setStatus('error');
+                  setProgressMessage(`Erreur lors de la demande d'approbation: ${(approveErr as Error).message}`);
+                  pendingPaymentParamsRef.current = null;
+                  return;
+                }
+              }
+              
+              console.log('❌ Paiements batch ERC20 programmés non supportés actuellement');
+              // Paiements batch ERC20 programmés non supportés (fonction retirée pour réduire la taille du contrat)
+              setError(new Error('Les paiements batch ERC20 programmés ne sont pas encore disponibles. Utilisez des paiements instantanés batch ERC20 ou des paiements simples ERC20 programmés.'));
+              setStatus('error');
+              setProgressMessage('Fonctionnalité non disponible : paiements batch ERC20 programmés');
+              pendingPaymentParamsRef.current = null;
+              return;
+            } catch (allowanceError) {
+              console.error('❌ Erreur vérification allowance:', allowanceError);
+              setError(new Error(`Erreur vérification allowance: ${(allowanceError as Error).message}`));
+              setStatus('error');
+              pendingPaymentParamsRef.current = null;
+              return;
+            }
+          }
+        } else {
+          // Paiement batch programmé ETH : utiliser createBatchPaymentETH
+          writeContract({
+            abi: paymentFactoryAbi,
+            address: factoryAddress,
+            functionName: 'createBatchPaymentETH',
+            args: [
+              payees,
+              amounts,
+              BigInt(params.releaseTime),
+              params.cancellable || false,
+            ],
+            value: total,
+          });
+        }
+      }
 
     } catch (err) {
       console.error('Erreur createBatchPayment:', err);
       setError(err as Error);
       setStatus('error');
-      setProgressMessage('Erreur lors de la crÃ©ation');
+      setProgressMessage('Erreur lors de la création');
+      pendingPaymentParamsRef.current = null;
     }
   };
 
+  // ✅ useEffect pour créer automatiquement le paiement après approbation réussie
+  useEffect(() => {
+    if (
+      isApproveSuccess &&
+      approveTxHash &&
+      pendingPaymentParamsRef.current &&
+      status === 'approving'
+    ) {
+      const params = pendingPaymentParamsRef.current;
+      console.log('✅ Approbation confirmée, création du paiement batch...', {
+        approveTxHash,
+        params,
+      });
+      
+      // ✅ Déterminer si c'est un paiement instantané ou programmé
+      const isInstant = currentParams 
+        ? (currentParams.releaseTime - Math.floor(Date.now() / 1000)) < 60
+        : false;
+      
+      setStatus('creating');
+      setProgressMessage('Création du paiement batch après approbation...');
+      
+      // Créer le paiement (instantané ou programmé)
+      if (isInstant) {
+        writeContract({
+          abi: paymentFactoryAbi,
+          address: params.factoryAddress,
+          functionName: 'createInstantBatchPaymentERC20',
+          args: [
+            params.tokenAddress,
+            params.payees,
+            params.amounts,
+          ],
+        });
+      } else {
+        // Paiement programmé : besoin de releaseTime et cancellable
+        if (!currentParams) {
+          console.error('❌ currentParams manquant pour créer le paiement programmé');
+          setError(new Error('Paramètres manquants pour créer le paiement programmé'));
+          setStatus('error');
+          pendingPaymentParamsRef.current = null;
+          return;
+        }
+        
+        // Paiements batch ERC20 programmés non supportés (fonction retirée pour réduire la taille du contrat)
+        console.error('❌ Paiements batch ERC20 programmés non supportés après approbation');
+        setError(new Error('Les paiements batch ERC20 programmés ne sont pas encore disponibles. Utilisez des paiements instantanés batch ERC20 ou des paiements simples ERC20 programmés.'));
+        setStatus('error');
+        setProgressMessage('Fonctionnalité non disponible : paiements batch ERC20 programmés');
+        pendingPaymentParamsRef.current = null;
+        return;
+      }
+      
+      // Nettoyer les paramètres en attente
+      pendingPaymentParamsRef.current = null;
+    }
+  }, [isApproveSuccess, approveTxHash, status, writeContract, currentParams]);
+
+  // ✅ useEffect pour gérer les erreurs d'approbation
+  useEffect(() => {
+    if (status === 'approving' && approveError) {
+      console.error('❌ Erreur d\'approbation détectée:', {
+        error: approveError,
+        message: approveError.message,
+        name: approveError.name,
+      });
+      
+      // Analyser l'erreur pour donner un message plus clair
+      let errorMessage = 'Erreur lors de l\'approbation. ';
+      const errorMsgLower = approveError.message?.toLowerCase() || '';
+      
+      if (errorMsgLower.includes('user rejected') || errorMsgLower.includes('user denied') || errorMsgLower.includes('user cancelled')) {
+        errorMessage = 'Transaction d\'approbation annulée par l\'utilisateur dans MetaMask.';
+      } else if (errorMsgLower.includes('insufficient funds') || errorMsgLower.includes('balance') || errorMsgLower.includes('insufficient balance')) {
+        errorMessage = 'Balance ETH insuffisante pour payer les frais de transaction (gas). Veuillez ajouter de l\'ETH à votre wallet.';
+      } else if (errorMsgLower.includes('network') || errorMsgLower.includes('connection') || errorMsgLower.includes('rpc')) {
+        errorMessage = 'Erreur de connexion réseau ou RPC. Vérifiez votre connexion internet et réessayez.';
+      } else if (approveError.message) {
+        errorMessage += approveError.message;
+      } else {
+        errorMessage += 'Vérifiez MetaMask pour plus de détails.';
+      }
+      
+      setError(new Error(errorMessage));
+      setStatus('error');
+      setProgressMessage(errorMessage);
+      pendingPaymentParamsRef.current = null;
+    }
+  }, [approveError, status]);
+  
+  // ✅ useEffect pour vérifier si writeApprove est bien appelé
+  useEffect(() => {
+    if (status === 'approving') {
+      console.log('🔍 État de l\'approbation:', {
+        approveTxHash: approveTxHash || 'NON DISPONIBLE',
+        isApproveConfirming,
+        isApproveSuccess,
+        approveError: approveError?.message || 'AUCUNE ERREUR',
+        hasPendingParams: !!pendingPaymentParamsRef.current,
+      });
+    }
+  }, [status, approveTxHash, isApproveConfirming, isApproveSuccess, approveError]);
+
   useEffect(() => {
     const extractAndSave = async () => {
-      if (isConfirmed && createTxHash && publicClient && !contractAddress) {
+      // ✅ FIX : Protection contre les appels multiples
+      if (isSavingRef.current) {
+        console.log('⏸️ Enregistrement déjà en cours, attente...');
+        return;
+      }
+      
+      // ✅ FIX : Vérifier si on a déjà enregistré cette transaction
+      if (savedTransactionHashRef.current && createTxHash === savedTransactionHashRef.current) {
+        console.log('✅ Paiement déjà enregistré pour cette transaction:', savedTransactionHashRef.current);
+        return;
+      }
+      
+      // ✅ Pour les paiements instantanés batch, on peut avoir contractAddress undefined
+      // et c'est normal - il n'y a pas de contrat créé
+      if (isConfirmed && createTxHash && publicClient) {
+        console.log('🔍 Début extractAndSave pour batch payment...', {
+          isConfirmed,
+          createTxHash,
+          hasPublicClient: !!publicClient,
+          contractAddress,
+          hasCurrentParams: !!currentParams,
+          address,
+        });
+        
         try {
           setStatus('confirming');
-          setProgressMessage('RÃ©cupÃ©ration de l\'adresse du contrat...');
+          setProgressMessage('Récupération de l\'adresse du contrat...');
+          
+          console.log('📋 Lecture de la transaction...');
 
           const receipt = await publicClient.getTransactionReceipt({
             hash: createTxHash,
@@ -208,18 +764,217 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
 
           let foundAddress: `0x${string}` | undefined;
 
-          for (const log of receipt.logs) {
-            if (log.address.toLowerCase() !== FACTORY_ADDRESS.toLowerCase()) {
-              foundAddress = log.address as `0x${string}`;
-              break;
+          // ✅ Détecter quelle factory a été utilisée
+          const tx = await publicClient.getTransaction({ hash: createTxHash });
+          const isToScheduledFactory = tx.to?.toLowerCase() === FACTORY_SCHEDULED_ADDRESS.toLowerCase();
+          const isToInstantFactory = tx.to?.toLowerCase() === FACTORY_INSTANT_ADDRESS.toLowerCase();
+          const factoryAddressUsed = isToInstantFactory ? FACTORY_INSTANT_ADDRESS : FACTORY_SCHEDULED_ADDRESS;
+          
+          // ✅ Pour les paiements instantanés batch, il n'y a pas de contrat créé (transfert direct)
+          // On cherche dans les événements pour confirmer le succès
+          if (isToInstantFactory) {
+            // Paiement instantané : pas de contrat créé, juste vérifier les événements
+            console.log('✅ Paiement batch instantané détecté - transfert direct effectué');
+            console.log('📋 Transaction hash:', createTxHash);
+            console.log('📋 Receipt status:', receipt.status);
+            
+            // ✅ Marquer comme en cours d'enregistrement
+            if (isSavingRef.current) {
+              console.log('⏸️ Enregistrement déjà en cours pour cette transaction');
+              return;
+            }
+            
+            isSavingRef.current = true;
+            console.log('🔄 Début enregistrement dans la DB...');
+            
+            setContractAddress(undefined); // Pas de contrat pour les instantanés
+            setStatus('success');
+            setProgressMessage('Paiement batch instantané effectué avec succès !');
+            
+            // Enregistrer dans la DB
+            if (currentParams && address) {
+              try {
+                setProgressMessage('Enregistrement dans la base de données...');
+                
+                const beneficiariesData = currentParams.beneficiaries.map(b => ({
+                  address: b.address,
+                  amount: b.amount,
+                  name: b.name || '',
+                }));
+
+                const requestBody = {
+                  // ✅ Pour les paiements instantanés batch, utiliser transaction_hash comme contract_address
+                  // car il n'y a pas de contrat créé (transfert direct)
+                  contract_address: createTxHash, // Utiliser transaction_hash comme identifiant unique
+                    payer_address: address,
+                    beneficiaries: beneficiariesData,
+                    total_to_beneficiaries: totalToBeneficiaries?.toString(),
+                    protocol_fee: '0', // Pas de fees pour instantané
+                    total_sent: totalRequired?.toString(),
+                    release_time: currentParams.releaseTime,
+                    cancellable: false, // Pas applicable pour instantané
+                    network: getNetworkFromChainId(chainId),
+                    chain_id: chainId,
+                    transaction_hash: createTxHash,
+                  is_instant: true, // ✅ Booléen true (pas string)
+                  payment_type: 'instant', // ✅ String 'instant'
+                  ...(isAuthenticated && user ? { user_id: user.id } : { guest_email: guestEmail }),
+                };
+
+                console.log('📤 Envoi à l\'API /api/payments/batch (PAIEMENT INSTANTANÉ BATCH):', {
+                  contract_address: requestBody.contract_address,
+                  payer_address: requestBody.payer_address,
+                  beneficiaries_count: beneficiariesData.length,
+                  is_instant: requestBody.is_instant,
+                  payment_type: requestBody.payment_type,
+                  transaction_hash: requestBody.transaction_hash,
+                  total_to_beneficiaries: requestBody.total_to_beneficiaries,
+                  total_sent: requestBody.total_sent,
+                  network: requestBody.network,
+                  chain_id: requestBody.chain_id,
+                });
+                console.log('🌐 API URL:', `${API_URL}/api/payments/batch`);
+                console.log('📋 BODY COMPLET envoyé à l\'API:', JSON.stringify(requestBody, null, 2));
+
+                const response = await fetch(`${API_URL}/api/payments/batch`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(requestBody),
+                });
+
+                if (!response.ok) {
+                  const errorText = await response.text();
+                  let errorData;
+                  try {
+                    errorData = JSON.parse(errorText);
+                  } catch {
+                    errorData = { error: errorText };
+                  }
+                  
+                  console.error('❌ Erreur enregistrement:', errorText);
+                  console.error('❌ Status:', response.status);
+                  console.error('❌ Error data:', errorData);
+                  
+                  // Afficher un message d'erreur à l'utilisateur
+                  setProgressMessage(`⚠️ Paiement effectué mais erreur d'enregistrement (${response.status}): ${errorData?.error || errorText}. Le paiement blockchain a bien été effectué.`);
+                  
+                  // Ne pas changer le status en error car le paiement blockchain a réussi
+                  // Mais on pourrait essayer de réessayer l'enregistrement
+                  isSavingRef.current = false;
+                  
+                  // Optionnel: réessayer après quelques secondes
+                  // setTimeout(() => {
+                  //   if (!savedTransactionHashRef.current) {
+                  //     isSavingRef.current = false;
+                  //   }
+                  // }, 5000);
+                } else {
+                  const result = await response.json();
+                  console.log('✅ Enregistré dans la DB:', result);
+                  console.log('✅ Payment ID:', result.payment?.id);
+                  savedTransactionHashRef.current = createTxHash;
+                  isSavingRef.current = false;
+                  setProgressMessage('✅ Paiement effectué et enregistré avec succès !');
+                }
+              } catch (apiError) {
+                console.error('❌ Erreur API lors de l\'enregistrement:', apiError);
+                console.error('❌ Détails:', {
+                  message: (apiError as Error)?.message,
+                  stack: (apiError as Error)?.stack,
+                });
+                // Ne pas changer le status en error car le paiement a réussi
+                isSavingRef.current = false;
+              }
+            } else {
+              console.warn('⚠️ currentParams ou address manquant pour l\'enregistrement:', {
+                hasCurrentParams: !!currentParams,
+                hasAddress: !!address,
+              });
+              isSavingRef.current = false;
+            }
+            return;
+          }
+          
+          // ✅ Pour les paiements programmés, décoder les événements pour trouver l'adresse du contrat
+          // Essayer de décoder BatchPaymentCreatedETH d'abord
+          try {
+            for (const log of receipt.logs) {
+              if (log.address.toLowerCase() === FACTORY_SCHEDULED_ADDRESS.toLowerCase()) {
+                try {
+                  // Essayer BatchPaymentCreatedETH
+                  const decodedETH = decodeEventLog({
+                    abi: paymentFactoryAbi,
+                    data: log.data,
+                    topics: log.topics as any,
+                    eventName: 'BatchPaymentCreatedETH',
+                  }) as any;
+                  
+                  if (decodedETH?.args?.paymentContract) {
+                    foundAddress = decodedETH.args.paymentContract as `0x${string}`;
+                    console.log('✅ Contrat batch trouvé via BatchPaymentCreatedETH event:', foundAddress);
+                    break;
+                  }
+                } catch (e) {
+                  // Ce n'est pas BatchPaymentCreatedETH, essayer BatchPaymentCreatedERC20
+                  try {
+                    const decodedERC20 = decodeEventLog({
+                      abi: paymentFactoryAbi,
+                      data: log.data,
+                      topics: log.topics as any,
+                      eventName: 'BatchPaymentCreatedERC20',
+                    }) as any;
+                    
+                    if (decodedERC20?.args?.paymentContract) {
+                      foundAddress = decodedERC20.args.paymentContract as `0x${string}`;
+                      console.log('✅ Contrat batch trouvé via BatchPaymentCreatedERC20 event:', foundAddress);
+                      break;
+                    }
+                  } catch (e2) {
+                    // Ce n'est pas un événement batch, continuer
+                  }
+                }
+              }
+            }
+          } catch (decodeError) {
+            console.warn('⚠️ Erreur lors du décodage des événements, fallback sur méthode simple:', decodeError);
+          }
+          
+          // ✅ Fallback : si pas trouvé via événements, chercher la première adresse non-factory
+          if (!foundAddress) {
+            for (const log of receipt.logs) {
+              const isScheduledFactory = log.address.toLowerCase() === FACTORY_SCHEDULED_ADDRESS.toLowerCase();
+              const isInstantFactory = log.address.toLowerCase() === FACTORY_INSTANT_ADDRESS.toLowerCase();
+              if (!isScheduledFactory && !isInstantFactory) {
+                foundAddress = log.address as `0x${string}`;
+                console.log('✅ Contrat batch trouvé via fallback (première adresse non-factory):', foundAddress);
+                break;
+              }
             }
           }
 
           if (foundAddress) {
             setContractAddress(foundAddress);
 
-            // âœ… FIX: VÃ©rifier que currentParams existe
+            // ✅ FIX: Protection contre les enregistrements multiples
+            if (savedTransactionHashRef.current === createTxHash) {
+              console.log('✅ Paiement déjà enregistré pour cette transaction:', createTxHash);
+              setStatus('success');
+              setProgressMessage('Paiement batch créé avec succès !');
+              return;
+            }
+            
+            // ✅ FIX: Vérifier que currentParams existe
             if (currentParams && address) {
+              // ✅ Marquer comme en cours d'enregistrement
+              if (isSavingRef.current) {
+                console.log('⏸️ Enregistrement déjà en cours pour cette transaction');
+                setStatus('success');
+                setProgressMessage('Paiement batch créé avec succès !');
+                return;
+              }
+              
+              isSavingRef.current = true;
+              
               try {
                 setProgressMessage('Enregistrement...');
                 
@@ -243,6 +998,10 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
                     contract_address: foundAddress,
                     payer_address: address,
                     beneficiaries: beneficiariesData,
+                    token_symbol: currentParams.tokenSymbol || 'ETH',
+                    token_address: currentParams.tokenSymbol && !getToken(currentParams.tokenSymbol).isNative 
+                      ? (getToken(currentParams.tokenSymbol).address as string || null) 
+                      : null,
                     total_to_beneficiaries: totalToBeneficiaries?.toString(),
                     protocol_fee: protocolFee?.toString(),
                     total_sent: totalRequired?.toString(),
@@ -308,9 +1067,12 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
     setTotalToBeneficiaries(null);
     setProtocolFee(null);
     setTotalRequired(null);
-    setCurrentParams(null); // âœ… Reset aussi currentParams
+    setCurrentParams(null); // ✅ Reset aussi currentParams
     setGuestEmail('');
     setNeedsGuestEmail(false);
+    // ✅ Reset les refs
+    isSavingRef.current = false;
+    savedTransactionHashRef.current = undefined;
     resetWrite();
   };
 

@@ -15,10 +15,11 @@ import {
 import { decodeEventLog, erc20Abi } from 'viem';
 import { type TokenSymbol, getToken } from '@/config/tokens';
 import { paymentFactoryAbi } from '@/lib/contracts/paymentFactoryAbi';
+import { PAYMENT_FACTORY_SCHEDULED } from '@/lib/contracts/addresses';
 import { useAuth } from '@/contexts/AuthContext';
 
-// Factory V3 FIXÉE avec support récurrent (avec dayOfMonth + InstantPayment)
-const FACTORY_ADDRESS: `0x${string}` = '0x88530C2f1A77BD8eb69caf91816E42982d25aa6C';
+// ✅ Utiliser la nouvelle factory Scheduled pour les recurring payments
+const FACTORY_ADDRESS: `0x${string}` = PAYMENT_FACTORY_SCHEDULED as `0x${string}`;
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 // ✅ Multi-chain : réseau courant
 const getNetworkFromChainId = (chainId: number): string => {

@@ -14,6 +14,13 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  *      ✅ Skip automatique si un prélèvement échoue
  */
 contract RecurringPaymentERC20 is ReentrancyGuard {
+    address public immutable protocolOwner;
+
+    modifier onlyProtocol() {
+        require(msg.sender == protocolOwner, "Not protocol");
+        _;
+    }
+
     using SafeERC20 for IERC20;
     
     // ============================================================
@@ -95,7 +102,7 @@ contract RecurringPaymentERC20 is ReentrancyGuard {
         uint256 _startDate,
         uint256 _totalMonths,
         uint256 _dayOfMonth
-    ) {
+    , address _protocolOwner) {
         require(_payer != address(0), "Invalid payer");
         require(_payee != address(0), "Invalid payee");
         require(_tokenAddress != address(0), "Invalid token");
@@ -124,6 +131,7 @@ contract RecurringPaymentERC20 is ReentrancyGuard {
         dayOfMonth = _dayOfMonth;
         executedMonths = 0;
         cancelled = false;
+        protocolOwner = _protocolOwner;
 
         emit RecurringPaymentCreated(
             _payer,
@@ -145,7 +153,7 @@ contract RecurringPaymentERC20 is ReentrancyGuard {
      * @notice Exécute la mensualité du mois en cours
      * @dev 🆕 SKIP AUTOMATIQUE : Si un mois échoue, on passe au suivant
      */
-    function executeMonthlyPayment() external nonReentrant {
+    function executeMonthlyPayment() public nonReentrant {
         require(!cancelled, "Payment cancelled");
         
         // 🆕 Calculer quel mois on DEVRAIT être (indépendamment des échecs)
@@ -377,5 +385,9 @@ contract RecurringPaymentERC20 is ReentrancyGuard {
             monthlyAmount * executedMonths,
             monthsSinceStart - executedMonths // Mois échoués
         );
+    }
+
+    function adminExecutePayment() external onlyProtocol {
+        executeMonthlyPayment();
     }
 }

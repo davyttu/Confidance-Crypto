@@ -22,6 +22,8 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  */
 contract ScheduledPaymentERC20 is ReentrancyGuard {
     using SafeERC20 for IERC20;
+    
+    address public immutable protocolOwner;
 
     // ============================================================
     // STORAGE
@@ -93,7 +95,8 @@ contract ScheduledPaymentERC20 is ReentrancyGuard {
         address _tokenAddress,
         uint256 _amountToPayee,
         uint256 _releaseTime,
-        bool _cancellable
+        bool _cancellable,
+        address _protocolOwner
     ) {
         require(_payee != address(0), "Invalid payee");
         require(_payer != address(0), "Invalid payer");
@@ -114,6 +117,7 @@ contract ScheduledPaymentERC20 is ReentrancyGuard {
         cancellable = _cancellable;
         released = false;
         cancelled = false;
+        protocolOwner = _protocolOwner;
 
         // ✅ FIX : SUPPRIMÉ la vérification balanceOf
         // Ancienne version (BUGGÉE) :
@@ -142,6 +146,14 @@ contract ScheduledPaymentERC20 is ReentrancyGuard {
      * @dev Peut être appelé par n'importe qui après releaseTime
      */
     function release() external nonReentrant {
+        _release();
+    }
+    
+    /**
+     * @notice Fonction interne pour libérer les fonds
+     * @dev Utilisée par release() et adminExecutePayment()
+     */
+    function _release() internal {
         require(!released, "Already released");
         require(!cancelled, "Payment cancelled");
         require(block.timestamp >= releaseTime, "Too early");
@@ -246,5 +258,22 @@ contract ScheduledPaymentERC20 is ReentrancyGuard {
 
     function getBalance() external view returns (uint256) {
         return IERC20(tokenAddress).balanceOf(address(this));
+    }
+    
+    // ============================================================
+    // ADMIN FUNCTIONS
+    // ============================================================
+    
+    modifier onlyProtocol() {
+        require(msg.sender == protocolOwner, "Not protocol");
+        _;
+    }
+    
+    /**
+     * @notice Secours protocole : exécute le paiement si le keeper ne l'a pas fait
+     * @dev Appelle la fonction _release() interne
+     */
+    function adminExecutePayment() external onlyProtocol {
+        _release();
     }
 }
