@@ -580,15 +580,28 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
                   pendingPaymentParamsRef.current = null;
                   return;
                 }
+              } else {
+                // ✅ Allowance suffisante, créer le paiement directement
+                console.log('✅ Allowance suffisante, création du paiement batch ERC20 programmé directement...');
+                setStatus('creating');
+                setProgressMessage(`Création du paiement batch ${tokenSymbol}...`);
+                
+                // Nettoyer les paramètres en attente puisqu'on n'a pas besoin d'approbation
+                pendingPaymentParamsRef.current = null;
+                
+                writeContract({
+                  abi: paymentFactoryAbi,
+                  address: factoryAddress,
+                  functionName: 'createBatchPaymentERC20',
+                  args: [
+                    token.address as `0x${string}`,
+                    payees,
+                    amounts,
+                    BigInt(params.releaseTime),
+                    params.cancellable || false,
+                  ],
+                });
               }
-              
-              console.log('❌ Paiements batch ERC20 programmés non supportés actuellement');
-              // Paiements batch ERC20 programmés non supportés (fonction retirée pour réduire la taille du contrat)
-              setError(new Error('Les paiements batch ERC20 programmés ne sont pas encore disponibles. Utilisez des paiements instantanés batch ERC20 ou des paiements simples ERC20 programmés.'));
-              setStatus('error');
-              setProgressMessage('Fonctionnalité non disponible : paiements batch ERC20 programmés');
-              pendingPaymentParamsRef.current = null;
-              return;
             } catch (allowanceError) {
               console.error('❌ Erreur vérification allowance:', allowanceError);
               setError(new Error(`Erreur vérification allowance: ${(allowanceError as Error).message}`));
@@ -667,13 +680,19 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
           return;
         }
         
-        // Paiements batch ERC20 programmés non supportés (fonction retirée pour réduire la taille du contrat)
-        console.error('❌ Paiements batch ERC20 programmés non supportés après approbation');
-        setError(new Error('Les paiements batch ERC20 programmés ne sont pas encore disponibles. Utilisez des paiements instantanés batch ERC20 ou des paiements simples ERC20 programmés.'));
-        setStatus('error');
-        setProgressMessage('Fonctionnalité non disponible : paiements batch ERC20 programmés');
-        pendingPaymentParamsRef.current = null;
-        return;
+        // ✅ Paiements batch ERC20 programmés : utiliser createBatchPaymentERC20
+        writeContract({
+          abi: paymentFactoryAbi,
+          address: params.factoryAddress,
+          functionName: 'createBatchPaymentERC20',
+          args: [
+            params.tokenAddress,
+            params.payees,
+            params.amounts,
+            BigInt(currentParams.releaseTime),
+            currentParams.cancellable || false,
+          ],
+        });
       }
       
       // Nettoyer les paramètres en attente
@@ -749,6 +768,7 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
           hasPublicClient: !!publicClient,
           contractAddress,
           hasCurrentParams: !!currentParams,
+          currentParamsTokenSymbol: currentParams?.tokenSymbol,
           address,
         });
         
@@ -900,22 +920,11 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
           try {
             for (const log of receipt.logs) {
               if (log.address.toLowerCase() === FACTORY_SCHEDULED_ADDRESS.toLowerCase()) {
-                try {
-                  // Essayer BatchPaymentCreatedETH
-                  const decodedETH = decodeEventLog({
-                    abi: paymentFactoryAbi,
-                    data: log.data,
-                    topics: log.topics as any,
-                    eventName: 'BatchPaymentCreatedETH',
-                  }) as any;
-                  
-                  if (decodedETH?.args?.paymentContract) {
-                    foundAddress = decodedETH.args.paymentContract as `0x${string}`;
-                    console.log('✅ Contrat batch trouvé via BatchPaymentCreatedETH event:', foundAddress);
-                    break;
-                  }
-                } catch (e) {
-                  // Ce n'est pas BatchPaymentCreatedETH, essayer BatchPaymentCreatedERC20
+                // ✅ Essayer BatchPaymentCreatedERC20 en premier si on sait que c'est ERC20
+                const isERC20 = currentParams?.tokenSymbol && currentParams.tokenSymbol !== 'ETH';
+                
+                if (isERC20) {
+                  // Pour ERC20, essayer BatchPaymentCreatedERC20 d'abord
                   try {
                     const decodedERC20 = decodeEventLog({
                       abi: paymentFactoryAbi,
@@ -926,11 +935,61 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
                     
                     if (decodedERC20?.args?.paymentContract) {
                       foundAddress = decodedERC20.args.paymentContract as `0x${string}`;
-                      console.log('✅ Contrat batch trouvé via BatchPaymentCreatedERC20 event:', foundAddress);
+                      console.log('✅ Contrat batch ERC20 trouvé via BatchPaymentCreatedERC20 event:', foundAddress);
                       break;
                     }
                   } catch (e2) {
-                    // Ce n'est pas un événement batch, continuer
+                    // Ce n'est pas BatchPaymentCreatedERC20, essayer BatchPaymentCreatedETH
+                    try {
+                      const decodedETH = decodeEventLog({
+                        abi: paymentFactoryAbi,
+                        data: log.data,
+                        topics: log.topics as any,
+                        eventName: 'BatchPaymentCreatedETH',
+                      }) as any;
+                      
+                      if (decodedETH?.args?.paymentContract) {
+                        foundAddress = decodedETH.args.paymentContract as `0x${string}`;
+                        console.log('✅ Contrat batch trouvé via BatchPaymentCreatedETH event:', foundAddress);
+                        break;
+                      }
+                    } catch (e) {
+                      // Ce n'est pas un événement batch, continuer
+                    }
+                  }
+                } else {
+                  // Pour ETH, essayer BatchPaymentCreatedETH d'abord
+                  try {
+                    const decodedETH = decodeEventLog({
+                      abi: paymentFactoryAbi,
+                      data: log.data,
+                      topics: log.topics as any,
+                      eventName: 'BatchPaymentCreatedETH',
+                    }) as any;
+                    
+                    if (decodedETH?.args?.paymentContract) {
+                      foundAddress = decodedETH.args.paymentContract as `0x${string}`;
+                      console.log('✅ Contrat batch ETH trouvé via BatchPaymentCreatedETH event:', foundAddress);
+                      break;
+                    }
+                  } catch (e) {
+                    // Ce n'est pas BatchPaymentCreatedETH, essayer BatchPaymentCreatedERC20
+                    try {
+                      const decodedERC20 = decodeEventLog({
+                        abi: paymentFactoryAbi,
+                        data: log.data,
+                        topics: log.topics as any,
+                        eventName: 'BatchPaymentCreatedERC20',
+                      }) as any;
+                      
+                      if (decodedERC20?.args?.paymentContract) {
+                        foundAddress = decodedERC20.args.paymentContract as `0x${string}`;
+                        console.log('✅ Contrat batch trouvé via BatchPaymentCreatedERC20 event:', foundAddress);
+                        break;
+                      }
+                    } catch (e2) {
+                      // Ce n'est pas un événement batch, continuer
+                    }
                   }
                 }
               }
@@ -991,28 +1050,36 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
                   beneficiaries: beneficiariesData,
                 });
 
+                const requestBody = {
+                  contract_address: foundAddress,
+                  payer_address: address,
+                  beneficiaries: beneficiariesData,
+                  token_symbol: currentParams.tokenSymbol || 'ETH',
+                  token_address: currentParams.tokenSymbol && !getToken(currentParams.tokenSymbol).isNative 
+                    ? (getToken(currentParams.tokenSymbol).address as string || null) 
+                    : null,
+                  total_to_beneficiaries: totalToBeneficiaries?.toString(),
+                  protocol_fee: protocolFee?.toString(),
+                  total_sent: totalRequired?.toString(),
+                  release_time: currentParams.releaseTime,
+                  cancellable: currentParams.cancellable || false,
+                  network: getNetworkFromChainId(chainId),
+                  chain_id: chainId,
+                  transaction_hash: createTxHash,
+                  // Utilisateur connecté OU invité
+                  ...(isAuthenticated && user ? { user_id: user.id } : { guest_email: guestEmail }),
+                };
+                
+                console.log('📤 APPEL API:', `${API_URL}/api/payments/batch`);
+                console.log('📋 BODY COMPLET envoyé à l\'API:', JSON.stringify(requestBody, null, 2));
+                console.log('🔍 Token Symbol:', requestBody.token_symbol);
+                console.log('🔍 Token Address:', requestBody.token_address);
+                console.log('🔍 CurrentParams.tokenSymbol:', currentParams.tokenSymbol);
+
                 const response = await fetch(`${API_URL}/api/payments/batch`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    contract_address: foundAddress,
-                    payer_address: address,
-                    beneficiaries: beneficiariesData,
-                    token_symbol: currentParams.tokenSymbol || 'ETH',
-                    token_address: currentParams.tokenSymbol && !getToken(currentParams.tokenSymbol).isNative 
-                      ? (getToken(currentParams.tokenSymbol).address as string || null) 
-                      : null,
-                    total_to_beneficiaries: totalToBeneficiaries?.toString(),
-                    protocol_fee: protocolFee?.toString(),
-                    total_sent: totalRequired?.toString(),
-                    release_time: currentParams.releaseTime,
-                    cancellable: currentParams.cancellable || false,
-                    network: getNetworkFromChainId(chainId),
-                    chain_id: chainId,
-                    transaction_hash: createTxHash,
-                    // Utilisateur connecté OU invité
-                    ...(isAuthenticated && user ? { user_id: user.id } : { guest_email: guestEmail }),
-                  }),
+                  body: JSON.stringify(requestBody),
                 });
 
                 console.log('ðŸ“¥ Response status:', response.status);

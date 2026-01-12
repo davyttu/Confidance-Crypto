@@ -69,24 +69,23 @@ export function BeneficiariesDropdown({ payment, onRename }: BeneficiariesDropdo
   const getAllBeneficiaries = (): Array<{ address: string; amount: string | number; isMain: boolean }> => {
     const beneficiaries: Array<{ address: string; amount: string | number; isMain: boolean }> = [];
 
-    // Ajouter le bénéficiaire principal
-    beneficiaries.push({
-      address: payment.payee_address,
-      amount: payment.amount,
-      isMain: true,
-    });
-
-    // Ajouter les bénéficiaires batch s'ils existent
+    // Pour les paiements batch, utiliser les montants depuis batch_beneficiaries
     if (payment.is_batch && payment.batch_beneficiaries && payment.batch_beneficiaries.length > 0) {
-      payment.batch_beneficiaries.forEach((batchBeneficiary) => {
-        // Ne pas dupliquer le bénéficiaire principal
-        if (batchBeneficiary.address.toLowerCase() !== payment.payee_address.toLowerCase()) {
-          beneficiaries.push({
-            address: batchBeneficiary.address,
-            amount: batchBeneficiary.amount, // Peut être string ou number selon la source
-            isMain: false,
-          });
-        }
+      payment.batch_beneficiaries.forEach((batchBeneficiary, index) => {
+        // Le premier bénéficiaire est considéré comme principal
+        const isMain = batchBeneficiary.address.toLowerCase() === payment.payee_address.toLowerCase() || index === 0;
+        beneficiaries.push({
+          address: batchBeneficiary.address,
+          amount: batchBeneficiary.amount, // ✅ Utiliser le montant individuel depuis batch_beneficiaries
+          isMain: isMain,
+        });
+      });
+    } else {
+      // Pour les paiements simples, utiliser le bénéficiaire principal
+      beneficiaries.push({
+        address: payment.payee_address,
+        amount: payment.amount,
+        isMain: true,
       });
     }
 

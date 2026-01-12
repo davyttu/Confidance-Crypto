@@ -273,6 +273,8 @@ app.post('/api/payments/batch', optionalAuth, async (req, res) => {
       transaction_hash,
       is_instant,
       payment_type,
+      token_symbol,           // ✅ Ajouter token_symbol depuis le body
+      token_address,          // ✅ Ajouter token_address depuis le body
     } = req.body;
 
     console.log('📥 [BATCH] Nouvelle demande:', { 
@@ -352,8 +354,8 @@ app.post('/api/payments/batch', optionalAuth, async (req, res) => {
       contract_address,
       payer_address,
       payee_address: beneficiaries[0].address, // Premier bénéficiaire comme référence
-      token_symbol: 'ETH',
-      token_address: null,
+      token_symbol: token_symbol || 'ETH',      // ✅ Utiliser token_symbol depuis req.body
+      token_address: token_address || null,     // ✅ Utiliser token_address depuis req.body
       amount: total_sent || total_to_beneficiaries || '0',
       release_time: parseInt(release_time),
       cancellable: cancellable || false,

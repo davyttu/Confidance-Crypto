@@ -1,15 +1,30 @@
 // src/lib/wagmi.ts
 import { getDefaultConfig } from '@rainbow-me/rainbowkit';
 import { base, polygon, arbitrum, avalanche } from 'wagmi/chains';
+import {
+  metaMaskWallet,
+  walletConnectWallet,
+  rainbowWallet,
+  trustWallet,
+} from '@rainbow-me/rainbowkit/wallets';
+
+const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID!;
+const chains = [base, polygon, arbitrum, avalanche];
 
 export const config = getDefaultConfig({
   appName: 'Confidance Crypto',
-  projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID!,
-  chains: [
-    base,
-    polygon,
-    arbitrum,
-    avalanche,
-  ],
+  projectId,
+  chains,
   ssr: true,
+  wallets: [
+    {
+      groupName: 'Popular',
+      wallets: [
+        metaMaskWallet,
+        walletConnectWallet,
+        rainbowWallet,
+        trustWallet,
+      ],
+    },
+  ],
 });

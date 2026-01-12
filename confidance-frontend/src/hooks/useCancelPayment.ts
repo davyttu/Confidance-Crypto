@@ -122,7 +122,8 @@ export function useCancelPayment(): UseCancelPaymentReturn {
       // ✅ Vérifier les nouvelles factories + l'ancienne pour compatibilité
       const FACTORY_ADDRESSES = [
         '0x88530C2f1A77BD8eb69caf91816E42982d25aa6C', // Ancienne factory (legacy)
-        '0x0d83DF4f396490c8A692Cde5749Ea799637D4bfe', // PaymentFactory_Scheduled
+        '0x479eFA3f706373a676F4489850bd414855D0941d', // PaymentFactory_Scheduled
+        '0x742081d6aEED01eA9F4733E7bA2C66986414d67E', // PaymentFactory_Recurring
         '0xF8AE1807C9a6Ed4C25cd59513825277A8e8F0368', // PaymentFactory_Instant
       ];
       const isFactoryAddress = FACTORY_ADDRESSES.some(

@@ -6,7 +6,7 @@ async function main() {
   const network = await hre.ethers.provider.getNetwork();
 
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-  console.log("🚀 DÉPLOIEMENT PAYMENTFACTORY_SCHEDULED");
+  console.log("🚀 DÉPLOIEMENT PAYMENTFACTORY_RECURRING");
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
   console.log("👤 Compte :", deployer.address);
   console.log("🌐 Réseau :", network.name, `(chainId: ${network.chainId})`);
@@ -22,9 +22,9 @@ async function main() {
 
   console.log("📦 Compilation en cours...");
 
-  const PaymentFactory = await hre.ethers.getContractFactory("contracts/PaymentFactory_Scheduled.sol:PaymentFactory_Scheduled");
+  const PaymentFactory = await hre.ethers.getContractFactory("PaymentFactory_Recurring");
 
-  console.log("🚀 Déploiement PaymentFactory_Scheduled (Single + Batch + Recurring)...");
+  console.log("🚀 Déploiement PaymentFactory_Recurring (Recurring Payments ERC20)...");
   const factory = await PaymentFactory.deploy();
   await factory.waitForDeployment();
   const factoryAddress = await factory.getAddress();
@@ -36,15 +36,16 @@ async function main() {
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
   console.log("🔎 Fonctions disponibles :");
-  console.log("   ✅ createPaymentETH() - Single payment ETH");
-  console.log("   ✅ createPaymentERC20() - Single payment ERC20");
-  console.log("   ✅ createBatchPaymentETH() - Batch payment ETH");
-  console.log("   ✅ createBatchPaymentERC20() - Batch payment ERC20 (NOUVEAU)");
-  console.log("   ✅ createRecurringPaymentERC20() - Recurring payment ERC20");
-  console.log("   ⚠️  Instant payments: utiliser PaymentFactory_Instant séparée\n");
+  console.log("   ✅ createRecurringPaymentERC20() - Single recurring payment ERC20");
+  console.log("   ✅ createBatchRecurringPaymentERC20() - Batch recurring payment ERC20");
+  console.log("   ✅ adminExecutePayment() - Admin fallback pour exécuter un paiement");
+  console.log("   ✅ adminCancel() - Admin fallback pour annuler");
+  console.log("   ✅ previewFeePerMonth() - Helper pour calculer les fees");
+  console.log("   ⚠️  Scheduled payments: utiliser PaymentFactory_Scheduled");
+  console.log("   ⚠️  Instant payments: utiliser PaymentFactory_Instant\n");
 
   const deploymentInfo = {
-    version: "SCHEDULED_ONLY",
+    version: "RECURRING_ONLY",
     network: "base_mainnet",
     chainId: network.chainId.toString(),
     factoryAddress: factoryAddress,
@@ -52,18 +53,11 @@ async function main() {
     deployedBy: deployer.address,
 
     features: [
-      "✅ Single Payment ETH (avec protocolOwner)",
-      "✅ Single Payment ERC20 (avec protocolOwner)",
-      "✅ Batch Payment ETH (avec protocolOwner)",
-      "✅ Batch Payment ERC20 (avec protocolOwner) - NOUVEAU",
-      "✅ Recurring Payment ERC20 (avec protocolOwner)",
+      "✅ Single Recurring Payment ERC20 (USDC/USDT)",
+      "✅ Batch Recurring Payment ERC20 (multi-bénéficiaires)",
+      "✅ Admin fallback functions (execute/cancel)",
+      "❌ Scheduled Payments (disponibles dans PaymentFactory_Scheduled)",
       "❌ Instant Payments (disponibles dans PaymentFactory_Instant)"
-    ],
-    
-    changes: [
-      "✅ Ajout de createBatchPaymentERC20() pour les paiements batch programmés en ERC20",
-      "✅ Création du contrat BatchScheduledPaymentERC20.sol",
-      "✅ Support des paiements batch multi-bénéficiaires en tokens ERC20"
     ],
 
     constants: {
@@ -73,7 +67,7 @@ async function main() {
     }
   };
 
-  const filename = "factory-scheduled-deployment.json";
+  const filename = "factory-recurring-deployment.json";
   fs.writeFileSync(filename, JSON.stringify(deploymentInfo, null, 2));
   console.log(`📄 Info sauvegardée dans ${filename}\n`);
 
@@ -85,11 +79,9 @@ async function main() {
   console.log(`   npx hardhat verify --network base_mainnet ${factoryAddress}\n`);
 
   console.log("2️⃣  METTRE À JOUR LE FRONTEND");
-  console.log(`   📁 confidance-frontend/src/hooks/useCreatePayment.ts`);
-  console.log(`      const FACTORY_ADDRESS: \`0x\${string}\` = '${factoryAddress}'\n`);
-
-  console.log("3️⃣  DÉPLOYER PaymentFactory_Instant");
-  console.log("   Pour les paiements instantanés (0% fees)\n");
+  console.log(`   📁 confidance-frontend/src/lib/contracts/addresses.ts`);
+  console.log(`   📁 confidance-frontend/src/hooks/useCreateRecurringPayment.ts`);
+  console.log(`      const PAYMENT_FACTORY_RECURRING = '${factoryAddress}';\n`);
 
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 }

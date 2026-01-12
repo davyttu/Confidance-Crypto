@@ -15,11 +15,11 @@ import {
 import { decodeEventLog, erc20Abi } from 'viem';
 import { type TokenSymbol, getToken } from '@/config/tokens';
 import { paymentFactoryAbi } from '@/lib/contracts/paymentFactoryAbi';
-import { PAYMENT_FACTORY_SCHEDULED } from '@/lib/contracts/addresses';
+import { PAYMENT_FACTORY_RECURRING } from '@/lib/contracts/addresses';
 import { useAuth } from '@/contexts/AuthContext';
 
-// ✅ Utiliser la nouvelle factory Scheduled pour les recurring payments
-const FACTORY_ADDRESS: `0x${string}` = PAYMENT_FACTORY_SCHEDULED as `0x${string}`;
+// ✅ Utiliser la nouvelle factory Recurring pour les recurring payments
+const FACTORY_ADDRESS: `0x${string}` = PAYMENT_FACTORY_RECURRING as `0x${string}`;
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 // ✅ Multi-chain : réseau courant
 const getNetworkFromChainId = (chainId: number): string => {

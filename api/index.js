@@ -126,7 +126,15 @@ app.post("/api/payments/batch", async (req, res) => {
       transaction_hash,
       is_instant,
       payment_type,
+      token_symbol,           // ✅ Ajouter token_symbol depuis le body
+      token_address,          // ✅ Ajouter token_address depuis le body
     } = req.body;
+    
+    // ✅ DEBUG CRITIQUE: Vérifier que token_symbol est bien reçu
+    console.log('🔍 DEBUG token_symbol depuis req.body:', token_symbol);
+    console.log('🔍 DEBUG token_address depuis req.body:', token_address);
+    console.log('🔍 DEBUG req.body.token_symbol:', req.body.token_symbol);
+    console.log('🔍 DEBUG req.body.token_address:', req.body.token_address);
 
     // ✅ Déterminer isInstant et payment_type de manière explicite (NE JAMAIS laisser NULL)
     // Normaliser is_instant (peut être true, "true", 1, etc.)
@@ -168,6 +176,8 @@ app.post("/api/payments/batch", async (req, res) => {
       isInstant,
       contract_address_from_body: contract_address,
       transaction_hash_from_body: transaction_hash,
+      token_symbol_from_body: token_symbol,
+      token_address_from_body: token_address,
     });
     
     if (!payer_address || !beneficiaries || !release_time) {
@@ -215,6 +225,8 @@ app.post("/api/payments/batch", async (req, res) => {
       is_instant: isInstant,
       status: isInstant ? "completed" : "pending",
       beneficiaries_count: beneficiaries.length,
+      token_symbol: token_symbol || "ETH",
+      token_address: token_address || null,
     });
 
     // ✅ Objet d'insertion avec payment_type garanti
@@ -225,8 +237,8 @@ app.post("/api/payments/batch", async (req, res) => {
       contract_address: finalContractAddress,
       payer_address: payer_address,                    // ✅
       payee_address: beneficiaries[0].address,         // ✅
-      token_symbol: "ETH",                             // ✅
-      token_address: null,                             // ✅ Ajouter
+      token_symbol: token_symbol || "ETH",             // ✅ Utiliser 'token_symbol' (nom de colonne Supabase)
+      token_address: token_address || null,            // ✅ Lire depuis req.body
       amount: total_to_beneficiaries,
       release_time,
       status: isInstant ? "completed" : "pending",     // ✅ Instantané = completed immédiatement
@@ -243,6 +255,9 @@ app.post("/api/payments/batch", async (req, res) => {
     // ✅ Vérification immédiate après création de l'objet
     console.log('✅ insertData créé - payment_type:', insertData.payment_type);
     console.log('✅ insertData créé - payment_type type:', typeof insertData.payment_type);
+    console.log('✅ insertData créé - token_symbol:', insertData.token_symbol);
+    console.log('✅ insertData créé - token_address:', insertData.token_address);
+    console.log('✅ insertData créé - token_symbol depuis body:', token_symbol);
     
     // ✅ Double vérification avant insertion : payment_type doit être défini
     if (!insertData.payment_type || (insertData.payment_type !== 'instant' && insertData.payment_type !== 'scheduled')) {
@@ -307,6 +322,7 @@ app.post("/api/payments/batch", async (req, res) => {
         payer_address: insertData.payer_address,
         payee_address: insertData.payee_address,
         token_symbol: insertData.token_symbol,
+        token_address: insertData.token_address,
         amount: insertData.amount,
         release_time: insertData.release_time,
         status: insertData.status,

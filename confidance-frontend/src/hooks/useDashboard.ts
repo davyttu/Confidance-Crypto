@@ -40,6 +40,9 @@ export interface Payment {
   // 🆕 Propriétés pour les paiements récurrents
   total_months?: number | null;
   monthly_amount?: string | null;
+  executed_months?: number | null;
+  first_payment_time?: number | null;
+  next_execution_time?: number | null;
   is_recurring?: boolean;
 }
 

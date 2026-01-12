@@ -7,8 +7,9 @@ import { Payment } from '@/hooks/useDashboard';
 import { useBeneficiaries } from '@/hooks/useBeneficiaries';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Copy, ExternalLink, Mail, X, Edit2 } from 'lucide-react';
+import { Copy, ExternalLink, Mail, X, Edit2, ChevronDown, ChevronRight } from 'lucide-react';
 import { BeneficiariesDropdown } from './BeneficiariesDropdown';
+import { RecurringPaymentHistory } from './RecurringPaymentHistory';
 
 interface TransactionRowProps {
   payment: Payment;
@@ -21,6 +22,10 @@ export function TransactionRow({ payment, onRename, onCancel, onEmailClick }: Tr
   const { t, ready: translationsReady } = useTranslation();
   const { getBeneficiaryName } = useBeneficiaries();
   const [copied, setCopied] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  // Vérifier si c'est un paiement récurrent
+  const isRecurring = payment.is_recurring || payment.payment_type === 'recurring';
 
   const beneficiaryName = getBeneficiaryName(payment.payee_address);
   const displayName = beneficiaryName || `${payment.payee_address.slice(0, 6)}...${payment.payee_address.slice(-4)}`;
@@ -100,11 +105,27 @@ export function TransactionRow({ payment, onRename, onCancel, onEmailClick }: Tr
   };
 
   return (
-    <tr className="border-b border-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-      {/* Bénéficiaire */}
-      <td className="px-6 py-4 whitespace-nowrap">
-        <BeneficiariesDropdown payment={payment} onRename={onRename} />
-      </td>
+    <>
+      <tr className="border-b border-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+        {/* Bénéficiaire */}
+        <td className="px-6 py-4 whitespace-nowrap">
+          <div className="flex items-center gap-2">
+            {isRecurring && (
+              <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+                title={isExpanded ? 'Masquer l\'historique' : 'Afficher l\'historique'}
+              >
+                {isExpanded ? (
+                  <ChevronDown className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                ) : (
+                  <ChevronRight className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                )}
+              </button>
+            )}
+            <BeneficiariesDropdown payment={payment} onRename={onRename} />
+          </div>
+        </td>
 
       {/* Blockchain */}
       <td className="px-4 py-4 whitespace-nowrap">
@@ -225,5 +246,13 @@ export function TransactionRow({ payment, onRename, onCancel, onEmailClick }: Tr
         </div>
       </td>
     </tr>
+    {isRecurring && isExpanded && (
+      <tr className="border-b border-gray-200">
+        <td colSpan={8} className="p-0">
+          <RecurringPaymentHistory payment={payment} />
+        </td>
+      </tr>
+    )}
+    </>
   );
 }

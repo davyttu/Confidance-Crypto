@@ -51,6 +51,23 @@ export const paymentFactoryAbi = [
   },
 
   // ============================================================
+  // BATCH PAYMENT ERC20
+  // ============================================================
+  {
+    inputs: [
+      { name: '_tokenAddress', type: 'address' },
+      { name: '_payees', type: 'address[]' },
+      { name: '_amounts', type: 'uint256[]' },
+      { name: '_releaseTime', type: 'uint256' },
+      { name: '_cancellable', type: 'bool' },
+    ],
+    name: 'createBatchPaymentERC20',
+    outputs: [{ name: '', type: 'address' }],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+
+  // ============================================================
   // 🆕 RECURRING PAYMENT ERC20 - ✅ ORDRE PARAMÈTRES CORRIGÉ
   // ============================================================
   {
@@ -217,6 +234,21 @@ export const paymentFactoryAbi = [
       { indexed: false, name: 'cancellable', type: 'bool' },
     ],
     name: 'BatchPaymentCreatedETH',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: 'payer', type: 'address' },
+      { indexed: false, name: 'paymentContract', type: 'address' },
+      { indexed: true, name: 'tokenAddress', type: 'address' },
+      { indexed: false, name: 'beneficiariesCount', type: 'uint256' },
+      { indexed: false, name: 'totalToBeneficiaries', type: 'uint256' },
+      { indexed: false, name: 'protocolFee', type: 'uint256' },
+      { indexed: false, name: 'releaseTime', type: 'uint256' },
+      { indexed: false, name: 'cancellable', type: 'bool' },
+    ],
+    name: 'BatchPaymentCreatedERC20',
     type: 'event',
   },
   {
