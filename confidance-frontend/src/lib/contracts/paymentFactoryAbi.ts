@@ -86,6 +86,24 @@ export const paymentFactoryAbi = [
   },
 
   // ============================================================
+  // 🆕 BATCH RECURRING PAYMENT ERC20
+  // ============================================================
+  {
+    inputs: [
+      { name: '_tokenAddress', type: 'address' },
+      { name: '_payees', type: 'address[]' },
+      { name: '_monthlyAmounts', type: 'uint256[]' },
+      { name: '_startDate', type: 'uint256' },
+      { name: '_totalMonths', type: 'uint256' },
+      { name: '_dayOfMonth', type: 'uint256' },
+    ],
+    name: 'createBatchRecurringPaymentERC20',
+    outputs: [{ name: '', type: 'address[]' }],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+
+  // ============================================================
   // ⚡ INSTANT PAYMENT ETH - 0% FEES
   // ============================================================
   {
@@ -264,6 +282,18 @@ export const paymentFactoryAbi = [
       { indexed: false, name: 'totalMonths', type: 'uint256' },
     ],
     name: 'RecurringPaymentCreatedERC20',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: 'payer', type: 'address' },
+      { indexed: true, name: 'tokenAddress', type: 'address' },
+      { indexed: false, name: 'count', type: 'uint256' },
+      { indexed: false, name: 'startDate', type: 'uint256' },
+      { indexed: false, name: 'totalMonths', type: 'uint256' },
+    ],
+    name: 'BatchRecurringPaymentCreatedERC20',
     type: 'event',
   },
 

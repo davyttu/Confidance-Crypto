@@ -6,7 +6,7 @@ import { type TokenSymbol } from '@/config/tokens';
 
 interface PaymentProgressModalProps {
   isOpen: boolean;
-  status: 'idle' | 'approving' | 'creating' | 'confirming' | 'success' | 'error';
+  status: 'idle' | 'approving' | 'approving_factory' | 'creating' | 'confirming' | 'approving_contract' | 'success' | 'error';
   currentStep: number;
   totalSteps: number;
   progressMessage: string;
@@ -192,8 +192,8 @@ export default function PaymentProgressModal({
           </div>
         )}
 
-        {/* LOADING (approving, creating, confirming) */}
-        {(status === 'approving' || status === 'creating' || status === 'confirming') && (
+        {/* LOADING (approving, creating, confirming) - ✅ Support des nouveaux statuts recurring */}
+        {(status === 'approving' || status === 'approving_factory' || status === 'creating' || status === 'confirming' || status === 'approving_contract') && (
           <div className="text-center space-y-6">
             {/* Spinner */}
             <div className="w-20 h-20 mx-auto">
@@ -221,8 +221,35 @@ export default function PaymentProgressModal({
 
               {/* Étapes */}
               <div className="flex justify-between text-xs text-gray-500">
-                {totalSteps === 2 && (
+                {totalSteps > 3 ? (
                   <>
+                    {/* Paiements récurrents BATCH : 2 + N étapes */}
+                    <span className={currentStep >= 1 ? 'text-primary-600 font-medium' : ''}>
+                      {t('create.modal.approvalFactory', { defaultValue: '1. Approbation' })}
+                    </span>
+                    <span className={currentStep >= 2 ? 'text-primary-600 font-medium' : ''}>
+                      {t('create.modal.creation', { defaultValue: '2. Création' })}
+                    </span>
+                    <span className={currentStep >= 3 ? 'text-primary-600 font-medium' : ''}>
+                      {t('create.modal.approvingContracts', { defaultValue: `3-${totalSteps}. Autorisations` })}
+                    </span>
+                  </>
+                ) : totalSteps === 3 ? (
+                  <>
+                    {/* Paiements récurrents single : 3 étapes */}
+                    <span className={currentStep >= 1 ? 'text-primary-600 font-medium' : ''}>
+                      {t('create.modal.approvalFactory', { defaultValue: '1. Approbation' })}
+                    </span>
+                    <span className={currentStep >= 2 ? 'text-primary-600 font-medium' : ''}>
+                      {t('create.modal.creation', { defaultValue: '2. Création' })}
+                    </span>
+                    <span className={currentStep >= 3 ? 'text-primary-600 font-medium' : ''}>
+                      {t('create.modal.approvalContract', { defaultValue: '3. Autorisation' })}
+                    </span>
+                  </>
+                ) : totalSteps === 2 ? (
+                  <>
+                    {/* Ordre standard: Approbation puis Création (pour paiements programmés) */}
                     <span className={currentStep >= 1 ? 'text-primary-600 font-medium' : ''}>
                       {t('create.modal.approval', { defaultValue: '1. Approbation' })}
                     </span>
@@ -230,8 +257,7 @@ export default function PaymentProgressModal({
                       {t('create.modal.creation', { defaultValue: '2. Création' })}
                     </span>
                   </>
-                )}
-                {totalSteps === 1 && (
+                ) : (
                   <span className="text-primary-600 font-medium mx-auto">
                     {t('create.modal.creationSingle', { defaultValue: 'Création' })}
                   </span>

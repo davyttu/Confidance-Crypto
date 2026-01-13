@@ -6,6 +6,7 @@ import {
   useReadContract,
   useWriteContract,
   useWaitForTransactionReceipt,
+  usePublicClient,
 } from 'wagmi';
 import { type TokenSymbol, getToken } from '@/config/tokens';
 import { erc20Abi } from '@/lib/contracts/erc20Abi';
@@ -38,6 +39,7 @@ export function useTokenApproval({
   releaseTime, // ✅ NOUVEAU
 }: UseTokenApprovalProps): UseTokenApprovalReturn {
   const { address: userAddress } = useAccount();
+  const publicClient = usePublicClient();
   const token = getToken(tokenSymbol);
   
   // ✅ FIX : Log pour déboguer
@@ -120,9 +122,56 @@ export function useTokenApproval({
     isLoading: isWaitingConfirmation, 
     isSuccess: isApproveSuccess,
     data: receipt,
+    error: receiptError, // ✅ NOUVEAU : Détecter les erreurs de réception
   } = useWaitForTransactionReceipt({
     hash: approveTxHash,
+    query: {
+      // ✅ FIX : Ne pas attendre indéfiniment si la transaction n'existe pas
+      retryCount: 10, // 10 tentatives
+      retryDelay: 2000, // 2 secondes entre chaque tentative
+    },
   });
+  
+  // ✅ NOUVEAU : Détecter si la transaction n'existe pas sur la blockchain (annulée par MetaMask)
+  useEffect(() => {
+    if (approveTxHash && receiptError) {
+      console.error('❌ [useTokenApproval] Erreur lors de l\'attente de la transaction:', receiptError);
+      console.error('❌ [useTokenApproval] Cela peut indiquer que la transaction a été annulée par MetaMask avant soumission.');
+      console.error('❌ [useTokenApproval] Détails:', {
+        name: receiptError.name,
+        message: receiptError.message,
+        code: (receiptError as any)?.code,
+      });
+      console.error('🔗 [useTokenApproval] Vérifiez sur Basescan si la transaction existe:', `https://basescan.org/tx/${approveTxHash}`);
+    }
+  }, [approveTxHash, receiptError]);
+  
+  // ✅ NOUVEAU : Vérifier rapidement si la transaction existe sur la blockchain après réception du hash
+  useEffect(() => {
+    if (approveTxHash && !isApproveSuccess && !receiptError && publicClient) {
+      // Attendre 3 secondes puis vérifier si la transaction existe
+      const checkTimeout = setTimeout(async () => {
+        try {
+          const tx = await publicClient.getTransaction({ hash: approveTxHash });
+          if (tx) {
+            console.log('✅ [useTokenApproval] Transaction trouvée sur la blockchain:', {
+              hash: tx.hash,
+              blockNumber: tx.blockNumber,
+              status: tx.blockNumber ? 'dans un bloc' : 'en attente dans le mempool',
+            });
+          }
+        } catch (err: any) {
+          if (err?.name === 'TransactionNotFoundError' || err?.message?.includes('could not be found')) {
+            console.warn('⚠️ [useTokenApproval] Transaction non trouvée sur la blockchain après 3 secondes.');
+            console.warn('⚠️ [useTokenApproval] Cela peut indiquer que MetaMask a annulé la transaction avant soumission.');
+            console.warn('🔗 [useTokenApproval] Vérifiez sur Basescan:', `https://basescan.org/tx/${approveTxHash}`);
+          }
+        }
+      }, 3000);
+      
+      return () => clearTimeout(checkTimeout);
+    }
+  }, [approveTxHash, isApproveSuccess, receiptError, publicClient]);
   
   // ✅ FIX : Logs détaillés pour la confirmation
   useEffect(() => {
@@ -230,7 +279,24 @@ export function useTokenApproval({
     }
 
     // ✅ FIX : Utiliser le montant override si fourni, sinon utiliser le montant calculé
+    // ⚠️ IMPORTANT : Si amountOverride est fourni, l'utiliser directement SANS ajouter de fees
+    // car le montant total (avec fees) est déjà calculé dans amountOverride
+    // ✅ FIX CRITIQUE : Pour les paiements récurrents, on passe toujours amountOverride (total avec fees déjà incluses)
+    // donc on ne doit PAS ajouter de fees supplémentaires. Le hook ne devrait PAS calculer totalAmountToApprove avec fees
+    // si amountOverride est fourni. Mais si releaseTime n'est pas défini, isInstantPayment sera false
+    // et totalAmountToApprove sera calculé avec fees. C'est pourquoi on utilise amountOverride directement.
     const amountToApprove = amountOverride || totalAmountToApprove;
+    
+    console.log('🔍 [useTokenApproval] Calcul montant à approuver:', {
+      amountOverride: amountOverride?.toString(),
+      totalAmountToApprove: totalAmountToApprove.toString(),
+      amountToApprove: amountToApprove.toString(),
+      hasOverride: !!amountOverride,
+      isInstant: isInstantPayment,
+      releaseTimeProvided: !!releaseTime,
+      note: amountOverride ? '✅ Utilisation du montant override (fees déjà incluses - pas d\'ajout de fees)' : `⚠️ Utilisation du montant calculé (fees ajoutées si isInstant=${isInstantPayment})`,
+      warning: !amountOverride && !isInstantPayment ? '⚠️ ATTENTION: Des fees (1.79%) seront ajoutées au montant calculé' : '✅ Pas de double comptage de fees',
+    });
 
     // ✅ FIX : Vérifier que le montant n'est pas zéro
     if (amountToApprove === BigInt(0)) {
@@ -333,20 +399,55 @@ export function useTokenApproval({
         address: finalTokenAddress,
         functionName: 'approve',
         args: [spenderAddress, amountToApprove.toString()],
+        argsFormatted: [
+          spenderAddress,
+          `${amountToApprove.toString()} (${(Number(amountToApprove) / (10 ** finalToken.decimals)).toFixed(6)} ${finalTokenSymbol})`,
+        ],
         abiLength: erc20Abi.length,
       });
       
       // ✅ FIX CRITIQUE : Utiliser finalTokenAddress au lieu de token.address
+      console.log('🚀 [useTokenApproval] Appel writeContract avec les paramètres suivants:');
+      console.log('   - Token Address:', finalTokenAddress);
+      console.log('   - Token Symbol:', finalTokenSymbol);
+      console.log('   - Spender Address:', spenderAddress);
+      console.log('   - Amount (raw):', amountToApprove.toString());
+      console.log('   - Amount (formatted):', `${(Number(amountToApprove) / (10 ** finalToken.decimals)).toFixed(6)} ${finalTokenSymbol}`);
+      console.log('   - Decimals:', finalToken.decimals);
+      
+      // ✅ FIX : Vérifier que amountToApprove est bien un bigint et pas une string
+      const amountAsBigInt = typeof amountToApprove === 'bigint' ? amountToApprove : BigInt(amountToApprove.toString());
+      
+      console.log('📤 [useTokenApproval] Appel writeContract avec paramètres finaux:', {
+        address: finalTokenAddress,
+        functionName: 'approve',
+        args: [
+          spenderAddress,
+          amountAsBigInt.toString(),
+        ],
+        argsFormatted: [
+          `spender: ${spenderAddress}`,
+          `amount: ${amountAsBigInt.toString()} (${(Number(amountAsBigInt) / (10 ** finalToken.decimals)).toFixed(6)} ${finalTokenSymbol})`,
+        ],
+        amountType: typeof amountAsBigInt,
+        amountIsBigInt: typeof amountAsBigInt === 'bigint',
+        userAddress: userAddress || 'non disponible',
+        tokenDecimals: finalToken.decimals,
+      });
+      
       writeContract({
         address: finalTokenAddress,
         abi: erc20Abi,
         functionName: 'approve',
-        args: [spenderAddress, amountToApprove],
+        args: [spenderAddress, amountAsBigInt],
       });
+      
       console.log('✅ [useTokenApproval] writeContract appelé pour approbation (pas d\'erreur immédiate)');
-      console.log('✅ [useTokenApproval] Token utilisé:', finalTokenSymbol, 'Address:', finalTokenAddress);
-      console.log('✅ [useTokenApproval] SpenderAddress:', spenderAddress);
-      console.log('✅ [useTokenApproval] Montant:', amountToApprove.toString(), `(${(Number(amountToApprove) / (10 ** finalToken.decimals)).toFixed(6)} ${finalTokenSymbol})`);
+      console.log('💡 [useTokenApproval] Si MetaMask annule la transaction, vérifiez:');
+      console.log('   1. Que l\'adresse du token est correcte:', finalTokenAddress);
+      console.log('   2. Que l\'adresse du spender est correcte:', spenderAddress);
+      console.log('   3. Que le montant est valide:', amountAsBigInt.toString(), `(${(Number(amountAsBigInt) / (10 ** finalToken.decimals)).toFixed(6)} ${finalTokenSymbol})`);
+      console.log('   4. Que vous avez suffisamment de tokens pour approuver');
     } catch (err) {
       console.error('❌ [useTokenApproval] Erreur lors de l\'appel writeContract pour approbation:', err);
       console.error('❌ [useTokenApproval] Détails de l\'erreur:', {

@@ -13,6 +13,7 @@ import { useTokenBalance } from '@/hooks/useTokenBalance';
 import { useCreatePayment } from '@/hooks/useCreatePayment';
 import { useCreateBatchPayment } from '@/hooks/useCreateBatchPayment';
 import { useCreateRecurringPayment } from '@/hooks/useCreateRecurringPayment';
+import { useCreateBatchRecurringPayment } from '@/hooks/useCreateBatchRecurringPayment';
 
 interface PaymentFormData {
   tokenSymbol: TokenSymbol;
@@ -35,6 +36,7 @@ export default function PaymentForm() {
   const singlePayment = useCreatePayment();
   const batchPayment = useCreateBatchPayment();
   const recurringPayment = useCreateRecurringPayment();
+  const batchRecurringPayment = useCreateBatchRecurringPayment();
 
   // État: paiement simple ou batch?
   const [isBatchMode, setIsBatchMode] = useState(false);
@@ -288,10 +290,30 @@ export default function PaymentForm() {
     });
 
     try {
-      if (isRecurringMode) {
-        // ✅ MODIFICATION : Extraire le jour du mois de la date sélectionnée
+      if (isRecurringMode && isBatchMode && additionalBeneficiaries.length > 0) {
+        // ✅ NOUVEAU : Paiement récurrent BATCH (plusieurs bénéficiaires)
+        console.log('📋 [FORM SUBMIT] Mode: Batch Recurring Payment');
+
+        const dayOfMonth = formData.releaseDate!.getDate();
+        const allBeneficiaries = [
+          { address: formData.beneficiary, amount: formData.amount },
+          ...additionalBeneficiaries.map(addr => ({ address: addr, amount: formData.amount }))
+        ];
+
+        await batchRecurringPayment.createBatchRecurringPayment({
+          tokenSymbol: formData.tokenSymbol as 'USDC' | 'USDT',
+          beneficiaries: allBeneficiaries,
+          firstPaymentTime: releaseTime,
+          totalMonths: recurringMonths,
+          dayOfMonth: dayOfMonth,
+          cancellable,
+        });
+      } else if (isRecurringMode) {
+        // ✅ Paiement récurrent SINGLE
+        console.log('📋 [FORM SUBMIT] Mode: Single Recurring Payment');
+
         const dayOfMonth = formData.releaseDate!.getDate(); // Retourne 1-31
-        
+
         await recurringPayment.createRecurringPayment({
           tokenSymbol: formData.tokenSymbol as 'USDC' | 'USDT',
           beneficiary: formData.beneficiary as `0x${string}`,
@@ -339,7 +361,9 @@ export default function PaymentForm() {
 
   // Handler fermeture modal
   const handleCloseModal = () => {
-    if (isRecurringMode) {
+    if (isRecurringMode && isBatchMode) {
+      batchRecurringPayment.reset();
+    } else if (isRecurringMode) {
       recurringPayment.reset();
     } else if (isBatchMode) {
       batchPayment.reset();
@@ -350,20 +374,28 @@ export default function PaymentForm() {
 
   // Handler voir le paiement
   const handleViewPayment = () => {
-    const contractAddr = isRecurringMode 
-      ? recurringPayment.contractAddress 
-      : isBatchMode 
-      ? batchPayment.contractAddress 
+    // Pour batch recurring, on redirige vers le dashboard (plusieurs contrats)
+    if (isRecurringMode && isBatchMode) {
+      router.push('/dashboard');
+      return;
+    }
+
+    const contractAddr = isRecurringMode
+      ? recurringPayment.contractAddress
+      : isBatchMode
+      ? batchPayment.contractAddress
       : singlePayment.contractAddress;
     if (contractAddr) {
       router.push(`/payment/${contractAddr}`);
     }
   };
 
-  const activePayment = isRecurringMode 
-    ? recurringPayment 
-    : isBatchMode 
-    ? batchPayment 
+  const activePayment = (isRecurringMode && isBatchMode)
+    ? batchRecurringPayment
+    : isRecurringMode
+    ? recurringPayment
+    : isBatchMode
+    ? batchPayment
     : singlePayment;
 
   if (!isConnected) {
@@ -992,7 +1024,11 @@ export default function PaymentForm() {
         totalSteps={activePayment.totalSteps || 1}
         progressMessage={activePayment.progressMessage}
         error={activePayment.error}
-        approveTxHash={singlePayment.approveTxHash}
+        approveTxHash={(isRecurringMode && isBatchMode)
+          ? undefined // Batch recurring n'expose pas l'approveTxHash
+          : isRecurringMode
+          ? recurringPayment.approveTxHash
+          : (isBatchMode ? batchPayment.approveTxHash : singlePayment.approveTxHash)}
         createTxHash={activePayment.createTxHash}
         contractAddress={activePayment.contractAddress}
         tokenSymbol={formData.tokenSymbol}

@@ -166,17 +166,13 @@ const BATCH_PAYMENT_ABI = [
 ];
 
 // ABI pour RecurringPaymentERC20 (mensuel)
+// ✅ SIMPLIFIÉ : Seulement les fonctions essentielles pour éviter les erreurs
 const RECURRING_PAYMENT_ABI = [
   "function executeMonthlyPayment() external",
   "function executedMonths() view returns (uint256)",
   "function totalMonths() view returns (uint256)",
   "function cancelled() view returns (bool)",
-  "function payer() view returns (address)",
-  "function payee() view returns (address)",
-  "function tokenAddress() view returns (address)",
-  "function monthlyAmount() view returns (uint256)",
   "function startDate() view returns (uint256)",
-  "function getStatus() view returns (string memory status, uint256 monthsExecuted, uint256 monthsRemaining, uint256 amountPaid, uint256 monthsFailed)",
 ];
 
 // Constante pour calcul du prochain mois (30 jours)
@@ -533,21 +529,32 @@ async function markRecurringAsCancelled(paymentId) {
   }
 }
 
-async function updateRecurringAfterExecution(paymentId, txHash, executedMonths, totalMonths) {
+async function updateRecurringAfterExecution(paymentId, txHash, executedMonths, totalMonths, nextMonthToProcess = null, startDate = null) {
   try {
     const now = Math.floor(Date.now() / 1000);
     const isCompleted = executedMonths >= totalMonths;
-    const nextExecutionTime = isCompleted ? null : now + MONTH_IN_SECONDS;
+    
+    // ✅ FIX : Calculer next_execution_time basé sur nextMonthToProcess si fourni
+    // Sinon, utiliser l'ancienne méthode (now + MONTH_IN_SECONDS)
+    let nextExecutionTime;
+    if (nextMonthToProcess !== null && startDate !== null && !isCompleted) {
+      nextExecutionTime = startDate + (nextMonthToProcess * MONTH_IN_SECONDS);
+    } else {
+      nextExecutionTime = isCompleted ? null : now + MONTH_IN_SECONDS;
+    }
+    
     const newStatus = isCompleted ? "completed" : "active";
 
+    // ✅ FIX : Ne pas utiliser last_execution_at si la colonne n'existe pas
     const { error } = await supabase
       .from("recurring_payments")
       .update({
         executed_months: executedMonths,
         next_execution_time: nextExecutionTime,
         last_execution_hash: txHash,
-        last_execution_at: new Date().toISOString(),
+        // last_execution_at: new Date().toISOString(), // ✅ RETIRÉ si colonne n'existe pas
         status: newStatus,
+        updated_at: new Date().toISOString(),
       })
       .eq("id", paymentId);
 
@@ -573,19 +580,22 @@ async function updateRecurringAfterExecution(paymentId, txHash, executedMonths, 
 
 async function markRecurringAsFailed(paymentId, errorMsg) {
   try {
+    // ✅ FIX : Ne pas utiliser error_message ni last_execution_at si les colonnes n'existent pas
+    // On met juste le status à "failed" et on log l'erreur
     const { error } = await supabase
       .from("recurring_payments")
       .update({
         status: "failed",
-        error_message: errorMsg.substring(0, 500),
-        last_execution_at: new Date().toISOString(), // ✅ FIX : Utiliser last_execution_at au lieu de failed_at
         updated_at: new Date().toISOString(),
       })
       .eq("id", paymentId);
 
     if (error) {
       console.error("❌ Erreur update failed:", error.message);
+      // Log l'erreur même si la DB update échoue
+      console.error(`   📋 Erreur du paiement: ${errorMsg.substring(0, 300)}`);
     } else {
+      console.log(`   ⚠️ Paiement marqué comme failed: ${errorMsg.substring(0, 200)}`);
       // 🟣 Emit event (Albert)
       await emitEvent({
         type: "RECURRING_FAILED",
@@ -595,6 +605,7 @@ async function markRecurringAsFailed(paymentId, errorMsg) {
     }
   } catch (error) {
     console.error("❌ Erreur markRecurringAsFailed:", error.message);
+    console.error(`   📋 Erreur du paiement (non sauvegardée): ${errorMsg.substring(0, 300)}`);
   }
 }
 
@@ -946,58 +957,227 @@ async function executeRecurringPayment(payment) {
   try {
     const contract = new ethers.Contract(payment.contractAddress, RECURRING_PAYMENT_ABI, wallet);
 
-    // Vérifier si annulé
-    const cancelled = await contract.cancelled();
-    if (cancelled) {
-      console.log(`   🚫 Cancelled on-chain`);
-      await markRecurringAsCancelled(payment.id);
+    // ✅ FIX CRITIQUE : Simplifier au maximum
+    // Appeler directement executeMonthlyPayment() - le contrat a toutes les vérifications
+    // et revertra avec un message clair si les conditions ne sont pas remplies
 
-      await emitEvent({
-        type: "RECURRING_CANCELLED_ONCHAIN",
-        paymentId: payment.id,
-        contractAddress: payment.contractAddress,
-      });
+    console.log(`   💸 Attempting to execute monthly payment...`);
+    console.log(`   📋 Contract will revert with clear message if conditions not met`);
 
-      return;
-    }
-
-    // Récupérer le statut complet via getStatus()
-    const [status, monthsExecuted, monthsRemaining, amountPaid, monthsFailed] = await contract.getStatus();
-
-    console.log(`   📊 Status: ${status}, Executed: ${monthsExecuted}, Remaining: ${monthsRemaining}, Failed: ${monthsFailed}`);
-
-    // Vérifier si complété
-    if (status === "completed" || monthsRemaining === 0n) {
-      console.log(`   ✅ Completed on-chain (${monthsExecuted} months executed)`);
-      const totalMonthsOnChain = await contract.totalMonths();
-      await updateRecurringAfterExecution(payment.id, "already_completed", Number(monthsExecuted), Number(totalMonthsOnChain));
-      return;
-    }
-
-    // 🎯 EXÉCUTER LE MOIS
-    console.log(`   💸 Executing month ${Number(monthsExecuted) + 1}...`);
+    // 🎯 EXÉCUTER DIRECTEMENT - Le contrat décidera
     const tx = await contract.executeMonthlyPayment();
     console.log(`   📤 TX sent: ${tx.hash}`);
 
     const receipt = await tx.wait();
-    console.log(`   ✅ SUCCESS! Block: ${receipt.blockNumber}`);
+    console.log(`   ✅ TX SUCCESS! Block: ${receipt.blockNumber}`);
     console.log(`   🔗 https://basescan.org/tx/${tx.hash}`);
 
-    // Lire le nouveau nombre de mois exécutés
-    const newExecutedMonths = await contract.executedMonths();
-    const totalMonthsOnChain = await contract.totalMonths();
+    // ✅ FIX CRITIQUE : VÉRIFIER LES EVENTS pour savoir si le paiement a vraiment réussi
+    // Le contrat peut retourner SUCCESS même si le transfert a échoué (strict skip)
+    console.log(`   🔍 Checking events to verify if payment succeeded or failed...`);
 
-    await updateRecurringAfterExecution(payment.id, tx.hash, Number(newExecutedMonths), Number(totalMonthsOnChain));
+    // Event signatures
+    const MONTHLY_PAYMENT_EXECUTED_TOPIC = ethers.id("MonthlyPaymentExecuted(uint256,address,uint256,uint256,uint256)");
+    const MONTHLY_PAYMENT_FAILED_TOPIC = ethers.id("MonthlyPaymentFailed(uint256,address,string)");
+
+    let paymentSucceeded = false;
+    let paymentFailed = false;
+    let failureReason = null;
+
+    for (const log of receipt.logs) {
+      if (log.topics[0] === MONTHLY_PAYMENT_EXECUTED_TOPIC) {
+        console.log(`   ✅ Event MonthlyPaymentExecuted detected - Payment succeeded!`);
+        paymentSucceeded = true;
+        break;
+      } else if (log.topics[0] === MONTHLY_PAYMENT_FAILED_TOPIC) {
+        console.log(`   ⚠️ Event MonthlyPaymentFailed detected - Payment failed (strict skip)!`);
+        paymentFailed = true;
+        // Décoder la raison de l'échec
+        try {
+          const iface = new ethers.Interface([
+            "event MonthlyPaymentFailed(uint256 indexed monthNumber, address indexed payer, string reason)"
+          ]);
+          const decoded = iface.parseLog({ topics: log.topics, data: log.data });
+          failureReason = decoded.args.reason;
+          console.log(`   📋 Failure reason: ${failureReason}`);
+        } catch (e) {
+          console.log(`   ⚠️ Could not decode failure reason: ${e.message}`);
+        }
+        break;
+      }
+    }
+
+    if (!paymentSucceeded && !paymentFailed) {
+      console.log(`   ⚠️ No MonthlyPaymentExecuted or MonthlyPaymentFailed event found - unexpected!`);
+      // Fallback: vérifier le statut du contrat
+    }
+
+    // Lire le nouveau état du contrat après l'exécution
+    try {
+      const newExecutedMonths = await contract.executedMonths();
+      const totalMonthsOnChain = await contract.totalMonths();
+      let nextMonthToProcessOnChain = 0n;
+      let startDateOnChain = 0n;
+
+      try {
+        // Essayer de lire nextMonthToProcess et startDate si disponibles
+        // (peut ne pas exister dans les anciennes versions)
+        const nextMonthToProcessFunc = contract.nextMonthToProcess;
+        if (nextMonthToProcessFunc) {
+          nextMonthToProcessOnChain = await contract.nextMonthToProcess();
+        }
+        startDateOnChain = await contract.startDate();
+      } catch (e) {
+        // Si ces fonctions n'existent pas, utiliser les valeurs par défaut
+        console.log(`   ⚠️ Impossible de lire nextMonthToProcess/startDate (ancienne version?), utilisation valeurs par défaut`);
+      }
+
+      // ✅ FIX CRITIQUE : Mettre à jour la DB selon le résultat réel du paiement
+      if (paymentSucceeded) {
+        // Paiement réussi : mettre à jour normalement
+        await updateRecurringAfterExecution(
+          payment.id,
+          tx.hash,
+          Number(newExecutedMonths),
+          Number(totalMonthsOnChain),
+          nextMonthToProcessOnChain > 0n ? Number(nextMonthToProcessOnChain) : null,
+          startDateOnChain > 0n ? Number(startDateOnChain) : null
+        );
+      } else if (paymentFailed) {
+        // Paiement échoué : synchroniser la DB avec l'état du contrat (le mois a été skip)
+        console.log(`   ⚠️ Payment failed - synchronizing DB with contract state (month skipped)`);
+        await updateRecurringAfterExecution(
+          payment.id,
+          "skipped_" + tx.hash, // Préfixe "skipped_" pour indiquer que c'est un skip
+          Number(newExecutedMonths),
+          Number(totalMonthsOnChain),
+          nextMonthToProcessOnChain > 0n ? Number(nextMonthToProcessOnChain) : null,
+          startDateOnChain > 0n ? Number(startDateOnChain) : null
+        );
+
+        // Émettre un event pour notifier l'échec
+        await emitEvent({
+          type: "RECURRING_MONTH_SKIPPED",
+          paymentId: payment.id,
+          txHash: tx.hash,
+          reason: failureReason || "Unknown",
+          executedMonths: Number(newExecutedMonths),
+          totalMonths: Number(totalMonthsOnChain),
+        });
+      } else {
+        // Cas inattendu : mettre à jour quand même mais avec un warning
+        console.log(`   ⚠️ Unexpected: no clear success or failure event, updating DB anyway`);
+        await updateRecurringAfterExecution(
+          payment.id,
+          tx.hash,
+          Number(newExecutedMonths),
+          Number(totalMonthsOnChain),
+          nextMonthToProcessOnChain > 0n ? Number(nextMonthToProcessOnChain) : null,
+          startDateOnChain > 0n ? Number(startDateOnChain) : null
+        );
+      }
+    } catch (e) {
+      console.error(`   ⚠️ Erreur lecture état après exécution:`, e.message);
+      // Mettre à jour avec ce qu'on a
+      await updateRecurringAfterExecution(
+        payment.id,
+        tx.hash,
+        Number(payment.executedMonths) + 1,
+        Number(payment.totalMonths)
+      );
+    }
   } catch (error) {
     const errorMsg = error.message || error.toString();
 
-    // ⚠️ Skip-on-failure : Balance insuffisante
+    // ✅ FIX : Distinguer les vraies erreurs RPC des erreurs de contrat
+    // Erreur RPC réelle : code -32016 (over rate limit) avec "missing revert data"
+    const isRealRpcError = (
+      (error.info && error.info.error && error.info.error.code === -32016) ||
+      (errorMsg.includes("rate limit") && errorMsg.includes("missing revert data"))
+    );
+    
+    if (isRealRpcError) {
+      console.log(`   ⚠️ Erreur RPC temporaire (rate limit): ${errorMsg.substring(0, 150)}`);
+      if (error.info && error.info.error) {
+        console.log(`   📋 Détails RPC: code=${error.info.error.code}, message=${error.info.error.message}`);
+      }
+      console.log(`   ✅ Réessai automatique au prochain cycle`);
+      return; // Ne pas marquer comme failed, juste attendre
+    }
+
+    // ✅ FIX : Gérer "Too early for this payment" sans marquer comme failed
+    if (
+      errorMsg.includes("Too early for this payment") ||
+      errorMsg.includes("Payment not started yet") ||
+      errorMsg.includes("This month already executed")
+    ) {
+      console.log(`   ⏳ Payment not ready yet: ${errorMsg.substring(0, 100)}`);
+      console.log(`   ✅ Will retry automatically when ready`);
+      return; // Ne pas marquer comme failed, juste attendre
+    }
+
+    // ⚠️ Skip-on-failure : Balance insuffisante ou transfert échoué
+    // ✅ FIX CRITIQUE : Le contrat a déjà skip le mois (strict skip)
+    // Il faut synchroniser la DB avec l'état du contrat
     if (
       errorMsg.includes("Insufficient balance") ||
       errorMsg.includes("ERC20: transfer amount exceeds balance") ||
-      errorMsg.includes("Transfer failed")
+      errorMsg.includes("Transfer failed") ||
+      errorMsg.includes("Insufficient allowance") ||
+      errorMsg.includes("ALLOWANCE_TOO_LOW")
     ) {
-      console.log(`   ⚠️ Insufficient balance - skipped (retry next month)`);
+      console.log(`   ⚠️ Payment failed - month skipped by contract (strict skip)`);
+      
+      // ✅ FIX CRITIQUE : Synchroniser la DB avec l'état du contrat après le skip
+      // Le contrat a déjà marqué le mois comme exécuté et passé au suivant
+      try {
+        const contract = new ethers.Contract(payment.contractAddress, RECURRING_PAYMENT_ABI, wallet);
+        const executedMonthsOnChain = await contract.executedMonths();
+        const totalMonthsOnChain = await contract.totalMonths();
+        
+        console.log(`   📊 Contract state after skip: executedMonths=${Number(executedMonthsOnChain)}`);
+        
+        // Essayer de lire nextMonthToProcess et startDate si disponibles
+        let nextMonthToProcessOnChain = null;
+        let startDateOnChain = null;
+        
+        try {
+          const nextMonthToProcessFunc = contract.nextMonthToProcess;
+          if (nextMonthToProcessFunc) {
+            nextMonthToProcessOnChain = await contract.nextMonthToProcess();
+          }
+          startDateOnChain = await contract.startDate();
+        } catch (e) {
+          // Si ces fonctions n'existent pas, utiliser les valeurs par défaut
+        }
+        
+        // Calculer le prochain next_execution_time basé sur nextMonthToProcess
+        const now = Math.floor(Date.now() / 1000);
+        const isCompleted = Number(executedMonthsOnChain) >= Number(totalMonthsOnChain);
+        let nextExecutionTime;
+        
+        if (nextMonthToProcessOnChain !== null && startDateOnChain !== null && !isCompleted) {
+          nextExecutionTime = Number(startDateOnChain) + (Number(nextMonthToProcessOnChain) * MONTH_IN_SECONDS);
+        } else {
+          nextExecutionTime = isCompleted ? null : now + MONTH_IN_SECONDS;
+        }
+        
+        const newStatus = isCompleted ? "completed" : "active";
+        
+        // Mettre à jour la DB pour refléter l'état du contrat
+        await updateRecurringAfterExecution(
+          payment.id, 
+          "skipped", 
+          Number(executedMonthsOnChain), 
+          Number(totalMonthsOnChain),
+          nextMonthToProcessOnChain !== null ? Number(nextMonthToProcessOnChain) : null,
+          startDateOnChain !== null ? Number(startDateOnChain) : null
+        );
+        
+        console.log(`   ✅ DB synchronized: executed_months=${Number(executedMonthsOnChain)}, status=${newStatus}`);
+      } catch (syncError) {
+        console.error(`   ⚠️ Erreur synchronisation DB après skip:`, syncError.message);
+      }
 
       // 🟣 Emit event (Albert)
       await emitEvent({
@@ -1007,10 +1187,11 @@ async function executeRecurringPayment(payment) {
         error: errorMsg.substring(0, 200),
       });
 
-      return; // Ne pas marquer failed
+      return; // Ne pas marquer failed, le mois est déjà skip par le contrat
     }
 
-    console.error(`   ❌ Error:`, errorMsg.substring(0, 200));
+    console.error(`   ❌ Error:`, errorMsg.substring(0, 300));
+    console.error(`   📋 Full error:`, error);
     await markRecurringAsFailed(payment.id, errorMsg);
   }
 }

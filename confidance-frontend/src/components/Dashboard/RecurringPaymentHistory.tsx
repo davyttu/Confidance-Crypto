@@ -30,20 +30,26 @@ export function RecurringPaymentHistory({ payment }: RecurringPaymentHistoryProp
 
     const payments: MonthlyPayment[] = [];
 
+    // ✅ LOGIQUE SIMPLIFIÉE : On affiche seulement ce qu'on sait avec certitude
+    // - executedMonths = nombre de mois RÉUSSIS (confirmé par le contrat)
+    // - On ne peut pas savoir quels mois spécifiques ont échoué sans parser les events
+    // - Donc on affiche : exécutés (premiers mois) et pending (le reste)
     for (let monthIndex = 0; monthIndex < totalMonths; monthIndex++) {
       const paymentDate = startTime + (monthIndex * MONTH_IN_SECONDS);
-      
+
       let status: 'executed' | 'pending' | 'failed';
-      
+
       if (monthIndex < executedMonths) {
-        // Mois déjà exécuté
+        // ✅ Les premiers N mois ont été exécutés avec succès
         status = 'executed';
       } else if (paymentDate > now) {
         // Date dans le futur
         status = 'pending';
       } else {
-        // Date passée mais non exécuté (échec)
-        status = 'failed';
+        // Date passée mais pas exécuté avec succès
+        // On ne sait pas si c'est un échec ou si le keeper n'a pas encore traité
+        // On garde "pending" au lieu de "failed" pour éviter les faux positifs
+        status = 'pending';
       }
 
       payments.push({
