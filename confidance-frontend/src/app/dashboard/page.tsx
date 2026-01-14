@@ -124,6 +124,7 @@ export default function DashboardPage() {
         contractAddress: payment.contract_address as `0x${string}`,
         paymentId: payment.id,
         payerAddress: payment.payer_address,
+        isRecurring: payment.is_recurring || payment.payment_type === 'recurring',
       });
 
       // Le refetch() est maintenant géré par useEffect qui surveille cancelStatus
@@ -189,13 +190,13 @@ export default function DashboardPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
           </svg>
           <h2 className="text-2xl font-bold text-gray-900 mb-3">
-            Wallet non connecté
+            {isMounted && translationsReady ? t('dashboard.auth.walletNotConnected.title') : 'Wallet non connecté'}
           </h2>
           <p className="text-gray-600 mb-6">
-            Veuillez connecter votre wallet pour accéder à votre dashboard.
+            {isMounted && translationsReady ? t('dashboard.auth.walletNotConnected.description') : 'Veuillez connecter votre wallet pour accéder à votre dashboard.'}
           </p>
           <p className="text-sm text-gray-500">
-            Utilisez le bouton "Connect Wallet" en haut à droite
+            {isMounted && translationsReady ? t('dashboard.auth.walletNotConnected.hint') : 'Utilisez le bouton "Connect Wallet" en haut à droite'}
           </p>
         </div>
       </div>

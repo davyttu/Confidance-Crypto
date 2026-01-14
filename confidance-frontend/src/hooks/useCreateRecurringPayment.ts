@@ -178,7 +178,7 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
   // Fonction principale de création
   const createRecurringPayment = async (params: CreateRecurringPaymentParams) => {
     if (!address) {
-      setError(new Error('Wallet non connecté'));
+      setError(new Error(t('common.connectWallet', { defaultValue: 'Please connect your wallet' })));
       return;
     }
 
@@ -190,28 +190,28 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
 
       // Validation : Tokens supportés (USDC/USDT uniquement)
       if (params.tokenSymbol !== 'USDC' && params.tokenSymbol !== 'USDT') {
-        throw new Error('Paiements récurrents disponibles uniquement pour USDC et USDT');
+        throw new Error(t('create.recurring.onlyUSDCUSDT', { defaultValue: 'Recurring payments available only for USDC and USDT' }));
       }
 
       const tokenData = getToken(params.tokenSymbol);
       
       if (!tokenData.address) {
-        throw new Error(`Token ${params.tokenSymbol} n'a pas d'adresse de contrat`);
+        throw new Error(t('create.recurring.tokenNoAddress', { token: params.tokenSymbol, defaultValue: `Token ${params.tokenSymbol} has no contract address` }));
       }
 
       // Validation : Nombre de mois (1-12)
       if (params.totalMonths < 1 || params.totalMonths > 12) {
-        throw new Error('Le nombre de mois doit être entre 1 et 12');
+        throw new Error(t('create.recurring.monthsRange', { defaultValue: 'Number of months must be between 1 and 12' }));
       }
 
       // Validation : Date future
       if (params.firstPaymentTime <= Math.floor(Date.now() / 1000)) {
-        throw new Error('La première échéance doit être dans le futur');
+        throw new Error(t('create.recurring.futureDate', { defaultValue: 'First payment date must be in the future' }));
       }
 
       // Validation : Jour du mois (1-28)
       if (params.dayOfMonth < 1 || params.dayOfMonth > 28) {
-        throw new Error('Le jour du mois doit être entre 1 et 28');
+        throw new Error(t('create.recurring.dayOfMonthRange', { defaultValue: 'Day of month must be between 1 and 28' }));
       }
 
       // Calculer le total requis
@@ -236,7 +236,7 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
       // ✅ FIX : Workflow identique aux Scheduled Payments : Approbation → Création
       // Vérifier d'abord si l'allowance est déjà suffisante
       if (!publicClient || !address) {
-        throw new Error('Client blockchain ou adresse non disponible');
+        throw new Error(t('create.recurring.clientOrAddressUnavailable', { defaultValue: 'Blockchain client or address unavailable' }));
       }
 
       // ✅ FIX : TOUJOURS demander l'approbation pour les paiements récurrents
@@ -269,7 +269,7 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
 
       // ✅ FIX CRITIQUE : D'abord approuver la Factory (montant minimal)
       setStatus('approving_factory');
-      setProgressMessage(`Approbation de ${tokenData.symbol} pour la création...`);
+      setProgressMessage(t('create.modal.approvingFactoryForCreation', { token: tokenData.symbol, defaultValue: `Approving ${tokenData.symbol} for creation...` }));
 
       console.log('💳 [RECURRING] Étape 1/3: Approbation de la Factory...', {
         token: tokenData.address,
@@ -281,7 +281,7 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
       // Vérifier que le hook est bien initialisé
       if (!approvalFactoryHook || typeof approvalFactoryHook.approve !== 'function') {
         console.error('❌ [RECURRING] approvalFactoryHook non disponible');
-        throw new Error('Hook d\'approbation Factory non disponible');
+        throw new Error(t('create.recurring.approvalHookUnavailable', { defaultValue: 'Factory approval hook unavailable' }));
       }
 
       // Approuver la Factory avec montant minimal
@@ -299,7 +299,7 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
       console.error('Erreur createRecurringPayment:', err);
       setError(err as Error);
       setStatus('error');
-      setProgressMessage('Erreur lors de la création');
+      setProgressMessage(t('create.modal.errorCreating', { defaultValue: 'Error during creation' }));
     }
   };
 
@@ -370,11 +370,11 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
 
           const tokenData = getToken(currentParams.tokenSymbol);
           if (!tokenData.address) {
-            throw new Error('Token address manquante');
+            throw new Error(t('create.recurring.tokenAddressMissing', { defaultValue: 'Token address missing' }));
           }
 
           setStatus('creating');
-          setProgressMessage(`Création du paiement récurrent ${tokenData.symbol}...`);
+          setProgressMessage(t('create.modal.creatingRecurring', { token: tokenData.symbol, defaultValue: `Creating recurring ${tokenData.symbol} payment...` }));
 
           const now = Math.floor(Date.now() / 1000);
           console.log('🔍 [RECURRING] Arguments création:', {
@@ -406,7 +406,7 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
           console.error('❌ [RECURRING] Erreur lors de la création après approbation Factory:', err);
           setError(err as Error);
           setStatus('error');
-          setProgressMessage('Erreur lors de la création du contrat');
+          setProgressMessage(t('create.modal.errorCreatingContract', { defaultValue: 'Error during contract creation' }));
         }
       }
     };
@@ -449,7 +449,7 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
       if (isConfirmed && createTxHash && publicClient && !contractAddress && (status === 'confirming' || status === 'creating')) {
         try {
           console.log('✅ [RECURRING] Conditions remplies, extraction de l\'adresse...');
-          setProgressMessage('Récupération de l\'adresse du contrat...');
+          setProgressMessage(t('create.modal.retrievingContractAddress', { defaultValue: 'Retrieving contract address...' }));
 
           const receipt = await publicClient.getTransactionReceipt({
             hash: createTxHash,
@@ -523,7 +523,7 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
           console.error('❌ [RECURRING] Erreur lors de l\'extraction:', err);
           setError(err as Error);
           setStatus('error');
-          setProgressMessage('Erreur lors de l\'extraction de l\'adresse');
+          setProgressMessage(t('create.modal.errorExtractingAddress', { defaultValue: 'Error extracting address' }));
 
           if (timeoutRef.current) {
             clearTimeout(timeoutRef.current);
@@ -560,11 +560,11 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
         try {
           const tokenData = getToken(currentParams.tokenSymbol);
           if (!tokenData.address) {
-            throw new Error('Token address manquante');
+            throw new Error(t('create.recurring.tokenAddressMissing', { defaultValue: 'Token address missing' }));
           }
 
           if (!totalRequired) {
-            throw new Error('Total requis non calculé');
+            throw new Error(t('create.recurring.totalNotCalculated', { defaultValue: 'Total required not calculated' }));
           }
 
           console.log('💳 [RECURRING] Étape 3/3: Approbation du contrat créé...', {
@@ -616,7 +616,7 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
           console.log('   ✅ Étape 3: Contrat approuvé');
           console.log('   📤 Étape 4: Sauvegarde DB...');
 
-          setProgressMessage('Enregistrement dans la base de données...');
+          setProgressMessage(t('create.modal.savingToDatabase', { defaultValue: 'Saving to database...' }));
 
           const params = currentParams;
           const userAddress = capturedPayerAddress;
@@ -697,28 +697,28 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
       console.error('❌ [RECURRING] Erreur writeContract (création):', writeError);
       setError(writeError as Error);
       setStatus('error');
-      setProgressMessage('Transaction annulée ou échouée. Vérifiez MetaMask.');
+      setProgressMessage(t('create.modal.transactionCancelledOrFailed', { defaultValue: 'Transaction cancelled or failed. Check MetaMask.' }));
       hasCalledWriteContract.current = false;
     }
     if (confirmError) {
       console.error('❌ [RECURRING] Erreur confirmation création:', confirmError);
       setError(confirmError as Error);
       setStatus('error');
-      setProgressMessage('Erreur de confirmation de la transaction de création');
+      setProgressMessage(t('create.modal.errorConfirmingCreation', { defaultValue: 'Error confirming creation transaction' }));
     }
     // ✅ Détecter erreurs d'approbation Factory
     if (approvalFactoryHook.approveError && status === 'approving_factory') {
       console.error('❌ [RECURRING] Erreur approbation Factory:', approvalFactoryHook.approveError);
 
-      let errorMessage = 'Erreur lors de l\'approbation de la Factory';
+      let errorMessage = t('create.modal.errorApprovingFactory', { defaultValue: 'Error approving Factory' });
       if (approvalFactoryHook.approveError instanceof Error) {
         const errorMsg = approvalFactoryHook.approveError.message.toLowerCase();
         if (errorMsg.includes('user rejected') || errorMsg.includes('user denied') || errorMsg.includes('user cancelled')) {
-          errorMessage = 'Approbation Factory annulée par l\'utilisateur dans MetaMask';
+          errorMessage = t('create.modal.factoryApprovalCancelled', { defaultValue: 'Factory approval cancelled by user in MetaMask' });
         } else if (errorMsg.includes('insufficient funds') || errorMsg.includes('balance')) {
-          errorMessage = 'Fonds insuffisants pour payer les frais de transaction (gas)';
+          errorMessage = t('create.modal.insufficientFundsForGas', { defaultValue: 'Insufficient funds to pay transaction fees (gas)' });
         } else {
-          errorMessage = `Erreur: ${approvalFactoryHook.approveError.message}`;
+          errorMessage = `${t('common.error', { defaultValue: 'Error' })}: ${approvalFactoryHook.approveError.message}`;
         }
       }
 
@@ -730,15 +730,15 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
     if (approvalContractHook.approveError && status === 'approving_contract') {
       console.error('❌ [RECURRING] Erreur approbation Contrat:', approvalContractHook.approveError);
 
-      let errorMessage = 'Erreur lors de l\'approbation du contrat';
+      let errorMessage = t('create.modal.errorApprovingContract', { defaultValue: 'Error approving contract' });
       if (approvalContractHook.approveError instanceof Error) {
         const errorMsg = approvalContractHook.approveError.message.toLowerCase();
         if (errorMsg.includes('user rejected') || errorMsg.includes('user denied') || errorMsg.includes('user cancelled')) {
-          errorMessage = 'Approbation du contrat annulée par l\'utilisateur dans MetaMask';
+          errorMessage = t('create.modal.contractApprovalCancelled', { defaultValue: 'Contract approval cancelled by user in MetaMask' });
         } else if (errorMsg.includes('insufficient funds') || errorMsg.includes('balance')) {
-          errorMessage = 'Fonds insuffisants pour payer les frais de transaction (gas)';
+          errorMessage = t('create.modal.insufficientFundsForGas', { defaultValue: 'Insufficient funds to pay transaction fees (gas)' });
         } else {
-          errorMessage = `Erreur: ${approvalContractHook.approveError.message}`;
+          errorMessage = `${t('common.error', { defaultValue: 'Error' })}: ${approvalContractHook.approveError.message}`;
         }
       }
 

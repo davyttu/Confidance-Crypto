@@ -41,3 +41,29 @@ export interface EmailNotification {
   sent_at: string;
   status: 'sent' | 'failed';
 }
+
+export type PaymentLinkType = 'instant' | 'scheduled' | 'recurring';
+export type PaymentLinkFrequency = 'monthly' | 'weekly';
+export type PaymentLinkStatus = 'pending' | 'active' | 'paid' | 'expired' | 'cancelled';
+
+export interface PaymentLink {
+  id: string;
+  creator_address: string;
+  amount: string;
+  token_symbol: Currency;
+  token_address: string | null;
+  payment_type: PaymentLinkType;
+  frequency: PaymentLinkFrequency | null;
+  periods: number | null;
+  start_at: number | null;
+  execute_at: number | null;
+  chain_id: number;
+  description: string | null;
+  status: PaymentLinkStatus;
+  payer_address: string | null;
+  device_id: string | null;
+  user_agent: string | null;
+  ip_address: string | null;
+  created_at: string;
+  updated_at: string;
+}

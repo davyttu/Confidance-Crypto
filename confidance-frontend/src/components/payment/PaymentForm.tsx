@@ -936,10 +936,22 @@ export default function PaymentForm() {
                 <div className="flex items-start gap-3">
                   <span className="text-2xl">💡</span>
                   <div className="flex-1 text-sm text-green-800 dark:text-green-200">
-                    <p className="font-semibold mb-1">Votre trésorerie reste disponible</p>
+                    <p className="font-semibold mb-1">
+                      {isMounted && translationsReady ? t('create.date.treasuryRemainsAvailable') : 'Votre trésorerie reste disponible'}
+                    </p>
                     <p>
-                      Seuls <span className="font-bold">{(parseFloat(formData.amount) * 1.0179).toFixed(2)} {formData.tokenSymbol}</span> seront 
-                      prélevés chaque mois sur votre wallet.
+                      {isMounted && translationsReady ? (
+                        <span dangerouslySetInnerHTML={{ __html: t('create.date.onlyAmountDebitedMonthly', { 
+                          amount: (parseFloat(formData.amount) * 1.0179).toFixed(2),
+                          token: formData.tokenSymbol,
+                          defaultValue: `Only <strong>${(parseFloat(formData.amount) * 1.0179).toFixed(2)} ${formData.tokenSymbol}</strong> will be debited each month from your wallet.`
+                        }) }} />
+                      ) : (
+                        <>
+                          Seuls <span className="font-bold">{(parseFloat(formData.amount) * 1.0179).toFixed(2)} {formData.tokenSymbol}</span> seront 
+                          prélevés chaque mois sur votre wallet.
+                        </>
+                      )}
                     </p>
                   </div>
                 </div>

@@ -7,6 +7,7 @@
   },
   "common": {
     "connect": "Connect Wallet",
+    "connectWallet": "Connect your wallet",
     "disconnect": "Disconnect",
     "cancel": "Cancel",
     "confirm": "Confirm",
@@ -101,6 +102,13 @@
       "total": "Total sent",
       "pending": "Pending",
       "released": "Released",
+      "account": "My account",
+      "availableBalance": "Available balance",
+      "balanceUnavailable": "Balance unavailable",
+      "priceUnavailable": "Price unavailable",
+      "priceSource": "Price {{source}}",
+      "balanceSource": "Source {{source}}",
+      "balanceEstimated": "Estimate (ETH + stablecoins)",
       "totalPayments": "{{count}} payment{{plural}} in total",
       "scheduledPayments": "Scheduled payment{{plural}}",
       "releasedPayments": "Released payment{{plural}}"
@@ -127,6 +135,37 @@
       "released": "Released",
       "cancelled": "Cancelled",
       "failed": "Failed"
+    },
+    "recurringHistory": {
+      "title": "Monthly payment history",
+      "executed": "{{executed}} / {{total}} months executed",
+      "month": "Month {{number}}",
+      "status": {
+        "executed": "Executed",
+        "pending": "Pending",
+        "failed": "Failed",
+        "cancelled": "Cancelled"
+      }
+    },
+    "beneficiary": {
+      "unnamed": "Unnamed",
+      "beneficiary": "Beneficiary",
+      "beneficiaries": "Beneficiaries",
+      "main": "Main",
+      "clickToCopy": "Click to copy",
+      "copied": "Copied!",
+      "copyAddress": "Copy address",
+      "rename": "Rename"
+    },
+    "paymentType": {
+      "recurring": "Recurring",
+      "batch": "Batch",
+      "instant": "Instant",
+      "scheduled": "Scheduled"
+    },
+    "tooltips": {
+      "showHistory": "Show history",
+      "hideHistory": "Hide history"
     },
     "period": {
       "all": "All",
@@ -281,6 +320,8 @@
       "totalToApprove": "TOTAL to approve",
       "nextPaymentsContinue": "The <strong>next monthly payments will continue normally</strong> even if one month failed",
       "cancellableStopsPayments": "Only the \"Cancellable\" option in the payment type allows you to permanently stop the remaining monthly payments via the dashboard",
+      "treasuryRemainsAvailable": "Your treasury remains available",
+      "onlyAmountDebitedMonthly": "Only <strong>{{amount}} {{token}}</strong> will be debited each month from your wallet.",
       "timeUntil": {
         "past": "In the past",
         "days": "In {{days}}d {{hours}}h {{minutes}}min",
@@ -337,7 +378,40 @@
       "paymentCreatedSuccess": "Payment created successfully!",
       "paymentCreatedNotSaved": "Payment created! (Not saved in DB)",
       "savingToDatabase": "Saving to database...",
-      "creatingRecurringPayment": "Creating recurring {{token}} payment..."
+      "creatingRecurringPayment": "Creating recurring {{token}} payment...",
+      "approvalFactory": "1. Factory Approval",
+      "approvalContract": "3. Contract Approval",
+      "approvingContracts": "3-{{total}}. Approvals",
+      "approvingFactoryForCreation": "Approving {{token}} for creation...",
+      "creatingRecurring": "Creating recurring {{token}} payment...",
+      "errorCreating": "Error during creation",
+      "errorCreatingContract": "Error during contract creation",
+      "confirmingCreation": "Confirming creation...",
+      "retrievingContractAddress": "Retrieving contract address...",
+      "approvingContractForMonthly": "Approving contract for monthly payments...",
+      "errorExtractingAddress": "Error extracting address",
+      "errorApprovingContract": "Error approving contract",
+      "savingToDatabase": "Saving to database...",
+      "recurringCreatedSuccess": "Recurring payment created successfully!",
+      "recurringCreatedDbError": "Recurring payment created! (DB save error)",
+      "transactionCancelledOrFailed": "Transaction cancelled or failed. Check MetaMask.",
+      "errorConfirmingCreation": "Error confirming creation transaction",
+      "errorApprovingFactory": "Error approving Factory",
+      "factoryApprovalCancelled": "Factory approval cancelled by user in MetaMask",
+      "insufficientFundsForGas": "Insufficient funds to pay transaction fees (gas)",
+      "contractApprovalCancelled": "Contract approval cancelled by user in MetaMask"
+    },
+    "recurring": {
+      "onlyUSDCUSDT": "Recurring payments available only for USDC and USDT",
+      "tokenNoAddress": "Token {{token}} has no contract address",
+      "monthsRange": "Number of months must be between 1 and 12",
+      "futureDate": "First payment date must be in the future",
+      "dayOfMonthRange": "Day of month must be between 1 and 28",
+      "clientOrAddressUnavailable": "Blockchain client or address unavailable",
+      "approvalHookUnavailable": "Factory approval hook unavailable",
+      "tokenAddressMissing": "Token address missing",
+      "contractAddressNotFound": "Unable to find contract address in logs",
+      "totalNotCalculated": "Total required not calculated"
     },
     "features": {
       "secure": {
@@ -614,5 +688,101 @@
     "terms": "Terms",
     "privacy": "Privacy",
     "copyright": "© {{year}} Confidance Crypto. All rights reserved."
+  },
+  "beneficiary": {
+    "unnamed": "Unnamed",
+    "beneficiary": "Beneficiary",
+    "beneficiaries": "Beneficiaries",
+    "main": "Main",
+    "clickToCopy": "Click to copy",
+    "copied": "Copied!",
+    "copyAddress": "Copy address",
+    "rename": "Rename"
+  },
+  "links": {
+    "cta": "Create a payment link",
+    "create": {
+      "title": "Create a payment link",
+      "subtitle": "Generate a shareable link and get paid directly.",
+      "fields": {
+        "amount": "Amount",
+        "token": "Token",
+        "type": "Payment type",
+        "chain": "Network",
+        "executeAt": "Execution date",
+        "frequency": "Frequency",
+        "periods": "Periods",
+        "startAt": "Start date",
+        "description": "Description (optional)"
+      },
+      "placeholders": {
+        "description": "Rent, SaaS subscription, invoice..."
+      },
+      "errors": {
+        "connectWallet": "Connect your wallet first",
+        "amount": "Invalid amount",
+        "create": "Failed to generate link",
+        "executeAt": "Execution date required",
+        "startAt": "Start date required",
+        "periods": "Periods required"
+      },
+      "generate": "Generate link",
+      "generating": "Generating...",
+      "success": "Your payment link is ready",
+      "copy": "Copy"
+    },
+    "types": {
+      "instant": "Instant",
+      "scheduled": "Scheduled",
+      "recurring": "Recurring"
+    },
+    "frequency": {
+      "monthly": "Monthly",
+      "weekly": "Weekly"
+    },
+    "dashboard": {
+      "button": "My links",
+      "title": "My payment links",
+      "empty": "No payment links yet",
+      "status": "Status",
+      "amount": "Amount",
+      "type": "Type",
+      "created": "Created",
+      "link": "Link",
+      "copy": "Copy"
+    },
+    "status": {
+      "pending": "Pending",
+      "active": "Active",
+      "paid": "Paid",
+      "expired": "Expired",
+      "cancelled": "Cancelled"
+    },
+    "pay": {
+      "title": "Pay a link",
+      "subtitle": "Review the payment details and pay securely.",
+      "loading": "Loading payment link...",
+      "cta": "Pay now",
+      "summary": {
+        "amount": "Amount",
+        "type": "Type",
+        "network": "Network",
+        "beneficiary": "Beneficiary",
+        "description": "Description"
+      },
+      "errors": {
+        "notFound": "Payment link not found",
+        "chainMismatch": "Please switch to {{network}}",
+        "chainUnsupported": "This network is not supported yet.",
+        "recurringToken": "Recurring requires USDC or USDT",
+        "weeklyUnsupported": "Weekly recurring not supported yet.",
+        "recurringMissing": "Missing recurring info",
+        "executeMissing": "Missing execution date"
+      }
+    }
+  },
+  "tooltips": {
+    "showHistory": "Show history",
+    "hideHistory": "Hide history"
   }
 }

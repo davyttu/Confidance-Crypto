@@ -244,9 +244,9 @@ export function useCreatePayment(): UseCreatePaymentReturn {
     
     if (!address) {
       console.error('❌ [createPayment] Wallet non connecté');
-      setError(new Error('Wallet non connecté'));
+      setError(new Error(t('dashboard.auth.walletNotConnected.title', { defaultValue: 'Wallet not connected' })));
       setStatus('error');
-      setProgressMessage('Veuillez connecter votre wallet');
+      setProgressMessage(t('dashboard.auth.walletNotConnected.description', { defaultValue: 'Please connect your wallet to access your dashboard.' }));
       return;
     }
     

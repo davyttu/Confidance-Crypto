@@ -2,6 +2,7 @@
 // VERSION 2 : Fees s'ajoutent au montant (pas dÃ©duites)
 
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   useAccount,
   useChainId,
@@ -95,6 +96,7 @@ function calculateTotalRequired(amounts: bigint[]): {
 }
 
 export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
+  const { t } = useTranslation();
   const { address, isConnected, connector } = useAccount();
   const chainId = useChainId();
   const publicClient = usePublicClient();
@@ -325,9 +327,9 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
                 // ✅ Vérifier que le wallet est connecté et prêt
                 if (!address || !isConnected) {
                   console.error('❌ Wallet non connecté pour approbation:', { address, isConnected });
-                  setError(new Error('Wallet non connecté'));
+                  setError(new Error(t('dashboard.auth.walletNotConnected.title', { defaultValue: 'Wallet not connected' })));
                   setStatus('error');
-                  setProgressMessage('Veuillez connecter votre wallet');
+                  setProgressMessage(t('dashboard.auth.walletNotConnected.description', { defaultValue: 'Please connect your wallet to access your dashboard.' }));
                   pendingPaymentParamsRef.current = null;
                   return;
                 }
@@ -514,9 +516,9 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
                 // ✅ Vérifier que le wallet est connecté et prêt
                 if (!address || !isConnected) {
                   console.error('❌ Wallet non connecté pour approbation:', { address, isConnected });
-                  setError(new Error('Wallet non connecté'));
+                  setError(new Error(t('dashboard.auth.walletNotConnected.title', { defaultValue: 'Wallet not connected' })));
                   setStatus('error');
-                  setProgressMessage('Veuillez connecter votre wallet');
+                  setProgressMessage(t('dashboard.auth.walletNotConnected.description', { defaultValue: 'Please connect your wallet to access your dashboard.' }));
                   pendingPaymentParamsRef.current = null;
                   return;
                 }

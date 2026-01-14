@@ -78,8 +78,181 @@
     "stats": {
       "total": "Total enviado",
       "pending": "Pendientes",
-      "released": "Ejecutados"
+      "released": "Ejecutados",
+      "account": "Mi cuenta",
+      "availableBalance": "Saldo disponible",
+      "balanceUnavailable": "Saldo no disponible",
+      "priceUnavailable": "Precio no disponible",
+      "priceSource": "Precio {{source}}",
+      "balanceSource": "Fuente {{source}}",
+      "balanceEstimated": "Estimación (ETH + stablecoins)",
+      "totalPayments": "{{count}} pago{{plural}} en total",
+      "scheduledPayments": "Pago{{plural}} programado{{plural}}",
+      "releasedPayments": "Pago{{plural}} liberado{{plural}}"
+    },
+    "status": {
+      "pending": "Pendiente",
+      "released": "Liberado",
+      "cancelled": "Cancelado",
+      "failed": "Fallido"
+    },
+    "recurringHistory": {
+      "title": "Historial de pagos mensuales",
+      "executed": "{{executed}} / {{total}} meses ejecutados",
+      "month": "Mes {{number}}",
+      "status": {
+        "executed": "Ejecutado",
+        "pending": "Pendiente",
+        "failed": "Fallido",
+        "cancelled": "Cancelado"
+      }
     },
     "nopayments": "Sin pagos programados"
+  },
+  "beneficiary": {
+    "unnamed": "Sin nombre",
+    "beneficiary": "Beneficiario",
+    "beneficiaries": "Beneficiarios",
+    "main": "Principal",
+    "clickToCopy": "Hacer clic para copiar",
+    "copied": "¡Copiado!",
+    "copyAddress": "Copiar dirección",
+    "rename": "Renombrar"
+  },
+  "paymentType": {
+    "recurring": "Recurrente",
+    "batch": "Lote",
+    "instant": "Instantáneo",
+    "scheduled": "Programado"
+  },
+  "tooltips": {
+    "showHistory": "Mostrar historial",
+    "hideHistory": "Ocultar historial"
+  },
+  "links": {
+    "cta": "Crear un enlace de pago",
+    "create": {
+      "title": "Crear un enlace de pago",
+      "subtitle": "Genera un enlace compartible y recibe pagos directamente.",
+      "fields": {
+        "amount": "Monto",
+        "token": "Token",
+        "type": "Tipo de pago",
+        "chain": "Red",
+        "executeAt": "Fecha de ejecución",
+        "frequency": "Frecuencia",
+        "periods": "Períodos",
+        "startAt": "Fecha de inicio",
+        "description": "Descripción (opcional)"
+      },
+      "placeholders": {
+        "description": "Alquiler, suscripción SaaS, factura..."
+      },
+      "errors": {
+        "connectWallet": "Conecta tu wallet",
+        "amount": "Monto inválido",
+        "create": "No se pudo generar el enlace",
+        "executeAt": "Fecha de ejecución requerida",
+        "startAt": "Fecha de inicio requerida",
+        "periods": "Períodos requeridos"
+      },
+      "generate": "Generar enlace",
+      "generating": "Generando...",
+      "success": "Tu enlace de pago está listo",
+      "copy": "Copiar"
+    },
+    "types": {
+      "instant": "Instantáneo",
+      "scheduled": "Programado",
+      "recurring": "Recurrente"
+    },
+    "frequency": {
+      "monthly": "Mensual",
+      "weekly": "Semanal"
+    },
+    "dashboard": {
+      "button": "Mis enlaces",
+      "title": "Mis enlaces de pago",
+      "empty": "No hay enlaces de pago",
+      "status": "Estado",
+      "amount": "Monto",
+      "type": "Tipo",
+      "created": "Creado",
+      "link": "Enlace",
+      "copy": "Copiar"
+    },
+    "status": {
+      "pending": "Pendiente",
+      "active": "Activo",
+      "paid": "Pagado",
+      "expired": "Expirado",
+      "cancelled": "Cancelado"
+    },
+    "pay": {
+      "title": "Pagar un enlace",
+      "subtitle": "Revisa los detalles y paga de forma segura.",
+      "loading": "Cargando enlace...",
+      "cta": "Pagar ahora",
+      "summary": {
+        "amount": "Monto",
+        "type": "Tipo",
+        "network": "Red",
+        "beneficiary": "Beneficiario",
+        "description": "Descripción"
+      },
+      "errors": {
+        "notFound": "Enlace de pago no encontrado",
+        "chainMismatch": "Cambia a {{network}}",
+        "chainUnsupported": "Esta red no está soportada aún.",
+        "recurringToken": "Recurrente requiere USDC o USDT",
+        "weeklyUnsupported": "Recurrente semanal no soportado.",
+        "recurringMissing": "Faltan datos recurrentes",
+        "executeMissing": "Falta la fecha de ejecución"
+      }
+    }
+  },
+  "create": {
+    "modal": {
+      "approvingFactoryForCreation": "Aprobando {{token}} para la creación...",
+      "creatingRecurring": "Creando pago recurrente {{token}}...",
+      "errorCreating": "Error durante la creación",
+      "errorCreatingContract": "Error durante la creación del contrato",
+      "confirmingCreation": "Confirmando creación...",
+      "retrievingContractAddress": "Recuperando dirección del contrato...",
+      "approvingContractForMonthly": "Aprobando contrato para pagos mensuales...",
+      "errorExtractingAddress": "Error al extraer la dirección",
+      "errorApprovingContract": "Error al aprobar el contrato",
+      "savingToDatabase": "Guardando en la base de datos...",
+      "recurringCreatedSuccess": "¡Pago recurrente creado con éxito!",
+      "recurringCreatedDbError": "¡Pago recurrente creado! (Error al guardar en DB)",
+      "transactionCancelledOrFailed": "Transacción cancelada o fallida. Verifique MetaMask.",
+      "errorConfirmingCreation": "Error al confirmar la transacción de creación",
+      "errorApprovingFactory": "Error al aprobar la Factory",
+      "factoryApprovalCancelled": "Aprobación de Factory cancelada por el usuario en MetaMask",
+      "insufficientFundsForGas": "Fondos insuficientes para pagar las tarifas de transacción (gas)",
+      "contractApprovalCancelled": "Aprobación del contrato cancelada por el usuario en MetaMask",
+      "approvalFactory": "1. Aprobación Factory",
+      "approvalContract": "3. Autorización Contrato",
+      "approvingContracts": "3-{{total}}. Autorizaciones"
+    },
+    "recurring": {
+      "onlyUSDCUSDT": "Pagos recurrentes disponibles solo para USDC y USDT",
+      "tokenNoAddress": "El token {{token}} no tiene dirección de contrato",
+      "monthsRange": "El número de meses debe estar entre 1 y 12",
+      "futureDate": "La fecha del primer pago debe estar en el futuro",
+      "dayOfMonthRange": "El día del mes debe estar entre 1 y 28",
+      "clientOrAddressUnavailable": "Cliente blockchain o dirección no disponible",
+      "approvalHookUnavailable": "Hook de aprobación de Factory no disponible",
+      "tokenAddressMissing": "Dirección del token faltante",
+      "contractAddressNotFound": "No se pudo encontrar la dirección del contrato en los logs",
+      "totalNotCalculated": "Total requerido no calculado"
+    },
+    "date": {
+      "treasuryRemainsAvailable": "Su tesorería permanece disponible",
+      "onlyAmountDebitedMonthly": "Solo <strong>{{amount}} {{token}}</strong> se debitarán cada mes de su cartera."
+    }
+  },
+  "common": {
+    "connectWallet": "Por favor, conecte su cartera"
   }
 }

@@ -6,6 +6,7 @@ const cookieParser = require('cookie-parser');
 const authRoutes = require('./routes/auth');
 const usersRoutes = require('./routes/users');
 const recurringPaymentsRoutes = require('./routes/recurringPayments'); // ✅ AJOUTÉ
+const paymentLinksRoutes = require('./routes/paymentLinks');
 const chatRoutes = require('./routes/chat'); // ✅ Chat Agent
 const { optionalAuth } = require('./middleware/auth');
 const app = express();
@@ -38,6 +39,7 @@ console.log('━━━━━━━━━━━━━━━━━━━━━━�
 app.use('/api/auth', authRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/chat', chatRoutes); // ✅ Chat Agent
+app.use('/api/payment-links', paymentLinksRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

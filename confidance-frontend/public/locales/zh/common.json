@@ -78,8 +78,181 @@
     "stats": {
       "total": "总发送额",
       "pending": "待处理",
-      "released": "已释放"
+      "released": "已释放",
+      "account": "我的账户",
+      "availableBalance": "可用余额",
+      "balanceUnavailable": "余额不可用",
+      "priceUnavailable": "价格不可用",
+      "priceSource": "价格 {{source}}",
+      "balanceSource": "来源 {{source}}",
+      "balanceEstimated": "估算 (ETH + stablecoins)",
+      "totalPayments": "共 {{count}} 笔支付",
+      "scheduledPayments": "已计划支付",
+      "releasedPayments": "已释放支付"
+    },
+    "status": {
+      "pending": "待处理",
+      "released": "已释放",
+      "cancelled": "已取消",
+      "failed": "失败"
+    },
+    "recurringHistory": {
+      "title": "月度支付历史",
+      "executed": "{{executed}} / {{total}} 个月已执行",
+      "month": "第 {{number}} 个月",
+      "status": {
+        "executed": "已执行",
+        "pending": "待处理",
+        "failed": "失败",
+        "cancelled": "已取消"
+      }
     },
     "nopayments": "没有预定支付"
+  },
+  "beneficiary": {
+    "unnamed": "未命名",
+    "beneficiary": "受益人",
+    "beneficiaries": "受益人",
+    "main": "主要",
+    "clickToCopy": "点击复制",
+    "copied": "已复制！",
+    "copyAddress": "复制地址",
+    "rename": "重命名"
+  },
+  "paymentType": {
+    "recurring": "定期",
+    "batch": "批量",
+    "instant": "即时",
+    "scheduled": "预定"
+  },
+  "tooltips": {
+    "showHistory": "显示历史",
+    "hideHistory": "隐藏历史"
+  },
+  "links": {
+    "cta": "创建支付链接",
+    "create": {
+      "title": "创建支付链接",
+      "subtitle": "生成可分享链接并直接收款。",
+      "fields": {
+        "amount": "金额",
+        "token": "代币",
+        "type": "支付类型",
+        "chain": "网络",
+        "executeAt": "执行日期",
+        "frequency": "频率",
+        "periods": "期数",
+        "startAt": "开始日期",
+        "description": "描述（可选）"
+      },
+      "placeholders": {
+        "description": "房租，SaaS 订阅，账单..."
+      },
+      "errors": {
+        "connectWallet": "请先连接钱包",
+        "amount": "金额无效",
+        "create": "无法生成链接",
+        "executeAt": "需要执行日期",
+        "startAt": "需要开始日期",
+        "periods": "需要期数"
+      },
+      "generate": "生成链接",
+      "generating": "生成中...",
+      "success": "您的支付链接已准备好",
+      "copy": "复制"
+    },
+    "types": {
+      "instant": "即时",
+      "scheduled": "预定",
+      "recurring": "定期"
+    },
+    "frequency": {
+      "monthly": "每月",
+      "weekly": "每周"
+    },
+    "dashboard": {
+      "button": "我的链接",
+      "title": "我的支付链接",
+      "empty": "暂无支付链接",
+      "status": "状态",
+      "amount": "金额",
+      "type": "类型",
+      "created": "创建时间",
+      "link": "链接",
+      "copy": "复制"
+    },
+    "status": {
+      "pending": "待处理",
+      "active": "进行中",
+      "paid": "已支付",
+      "expired": "已过期",
+      "cancelled": "已取消"
+    },
+    "pay": {
+      "title": "支付链接",
+      "subtitle": "确认详情并安全支付。",
+      "loading": "正在加载链接...",
+      "cta": "立即支付",
+      "summary": {
+        "amount": "金额",
+        "type": "类型",
+        "network": "网络",
+        "beneficiary": "收款人",
+        "description": "描述"
+      },
+      "errors": {
+        "notFound": "未找到支付链接",
+        "chainMismatch": "请切换到 {{network}}",
+        "chainUnsupported": "该网络暂不支持。",
+        "recurringToken": "定期仅支持 USDC 或 USDT",
+        "weeklyUnsupported": "暂不支持每周定期。",
+        "recurringMissing": "缺少定期信息",
+        "executeMissing": "缺少执行日期"
+      }
+    }
+  },
+  "create": {
+    "modal": {
+      "approvingFactoryForCreation": "正在批准 {{token}} 用于创建...",
+      "creatingRecurring": "正在创建定期 {{token}} 支付...",
+      "errorCreating": "创建时出错",
+      "errorCreatingContract": "创建合约时出错",
+      "confirmingCreation": "正在确认创建...",
+      "retrievingContractAddress": "正在检索合约地址...",
+      "approvingContractForMonthly": "正在批准合约用于月度支付...",
+      "errorExtractingAddress": "提取地址时出错",
+      "errorApprovingContract": "批准合约时出错",
+      "savingToDatabase": "正在保存到数据库...",
+      "recurringCreatedSuccess": "定期支付创建成功！",
+      "recurringCreatedDbError": "定期支付已创建！(数据库保存错误)",
+      "transactionCancelledOrFailed": "交易已取消或失败。请检查 MetaMask。",
+      "errorConfirmingCreation": "确认创建交易时出错",
+      "errorApprovingFactory": "批准 Factory 时出错",
+      "factoryApprovalCancelled": "Factory 批准已被用户在 MetaMask 中取消",
+      "insufficientFundsForGas": "资金不足，无法支付交易费用 (gas)",
+      "contractApprovalCancelled": "合约批准已被用户在 MetaMask 中取消",
+      "approvalFactory": "1. Factory 批准",
+      "approvalContract": "3. 合约授权",
+      "approvingContracts": "3-{{total}}. 授权"
+    },
+    "recurring": {
+      "onlyUSDCUSDT": "定期支付仅适用于 USDC 和 USDT",
+      "tokenNoAddress": "代币 {{token}} 没有合约地址",
+      "monthsRange": "月数必须在 1 到 12 之间",
+      "futureDate": "首次支付日期必须在未来",
+      "dayOfMonthRange": "月份中的日期必须在 1 到 28 之间",
+      "clientOrAddressUnavailable": "区块链客户端或地址不可用",
+      "approvalHookUnavailable": "Factory 批准钩子不可用",
+      "tokenAddressMissing": "代币地址缺失",
+      "contractAddressNotFound": "无法在日志中找到合约地址",
+      "totalNotCalculated": "未计算所需总额"
+    },
+    "date": {
+      "treasuryRemainsAvailable": "您的资金仍然可用",
+      "onlyAmountDebitedMonthly": "每月只会从您的钱包中扣除 <strong>{{amount}} {{token}}</strong>。"
+    }
+  },
+  "common": {
+    "connectWallet": "请连接您的钱包"
   }
 }

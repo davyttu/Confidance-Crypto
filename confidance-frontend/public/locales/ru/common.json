@@ -78,8 +78,181 @@
     "stats": {
       "total": "Всего отправлено",
       "pending": "В ожидании",
-      "released": "Выполнено"
+      "released": "Выполнено",
+      "account": "Мой аккаунт",
+      "availableBalance": "Доступный баланс",
+      "balanceUnavailable": "Баланс недоступен",
+      "priceUnavailable": "Цена недоступна",
+      "priceSource": "Цена {{source}}",
+      "balanceSource": "Источник {{source}}",
+      "balanceEstimated": "Оценка (ETH + stablecoins)",
+      "totalPayments": "{{count}} платеж{{plural}} всего",
+      "scheduledPayments": "Запланирован{{plural}} платеж{{plural}}",
+      "releasedPayments": "Выполнен{{plural}} платеж{{plural}}"
+    },
+    "status": {
+      "pending": "В ожидании",
+      "released": "Выполнен",
+      "cancelled": "Отменён",
+      "failed": "Неудача"
+    },
+    "recurringHistory": {
+      "title": "История ежемесячных платежей",
+      "executed": "{{executed}} / {{total}} месяцев выполнено",
+      "month": "Месяц {{number}}",
+      "status": {
+        "executed": "Выполнен",
+        "pending": "В ожидании",
+        "failed": "Неудача",
+        "cancelled": "Отменён"
+      }
     },
     "nopayments": "Нет запланированных платежей"
+  },
+  "beneficiary": {
+    "unnamed": "Без имени",
+    "beneficiary": "Получатель",
+    "beneficiaries": "Получатели",
+    "main": "Основной",
+    "clickToCopy": "Нажмите, чтобы скопировать",
+    "copied": "Скопировано!",
+    "copyAddress": "Копировать адрес",
+    "rename": "Переименовать"
+  },
+  "paymentType": {
+    "recurring": "Повторяющийся",
+    "batch": "Пакетный",
+    "instant": "Мгновенный",
+    "scheduled": "Запланированный"
+  },
+  "tooltips": {
+    "showHistory": "Показать историю",
+    "hideHistory": "Скрыть историю"
+  },
+  "links": {
+    "cta": "Создать платежную ссылку",
+    "create": {
+      "title": "Создать платежную ссылку",
+      "subtitle": "Создайте ссылку для оплаты и получайте платежи напрямую.",
+      "fields": {
+        "amount": "Сумма",
+        "token": "Токен",
+        "type": "Тип платежа",
+        "chain": "Сеть",
+        "executeAt": "Дата исполнения",
+        "frequency": "Частота",
+        "periods": "Периоды",
+        "startAt": "Дата начала",
+        "description": "Описание (опционально)"
+      },
+      "placeholders": {
+        "description": "Аренда, SaaS подписка, счет..."
+      },
+      "errors": {
+        "connectWallet": "Подключите ваш кошелек",
+        "amount": "Неверная сумма",
+        "create": "Не удалось создать ссылку",
+        "executeAt": "Нужна дата исполнения",
+        "startAt": "Нужна дата начала",
+        "periods": "Нужны периоды"
+      },
+      "generate": "Сгенерировать ссылку",
+      "generating": "Генерация...",
+      "success": "Ваша платежная ссылка готова",
+      "copy": "Копировать"
+    },
+    "types": {
+      "instant": "Мгновенный",
+      "scheduled": "Запланированный",
+      "recurring": "Повторяющийся"
+    },
+    "frequency": {
+      "monthly": "Ежемесячно",
+      "weekly": "Еженедельно"
+    },
+    "dashboard": {
+      "button": "Мои ссылки",
+      "title": "Мои платежные ссылки",
+      "empty": "Платежных ссылок нет",
+      "status": "Статус",
+      "amount": "Сумма",
+      "type": "Тип",
+      "created": "Создано",
+      "link": "Ссылка",
+      "copy": "Копировать"
+    },
+    "status": {
+      "pending": "В ожидании",
+      "active": "Активен",
+      "paid": "Оплачен",
+      "expired": "Истек",
+      "cancelled": "Отменён"
+    },
+    "pay": {
+      "title": "Оплатить ссылку",
+      "subtitle": "Проверьте детали и оплатите безопасно.",
+      "loading": "Загрузка ссылки...",
+      "cta": "Оплатить сейчас",
+      "summary": {
+        "amount": "Сумма",
+        "type": "Тип",
+        "network": "Сеть",
+        "beneficiary": "Получатель",
+        "description": "Описание"
+      },
+      "errors": {
+        "notFound": "Ссылка не найдена",
+        "chainMismatch": "Переключитесь на {{network}}",
+        "chainUnsupported": "Эта сеть пока не поддерживается.",
+        "recurringToken": "Рекуррентный только USDC или USDT",
+        "weeklyUnsupported": "Еженедельный рекуррентный не поддерживается.",
+        "recurringMissing": "Недостаточно данных",
+        "executeMissing": "Нет даты исполнения"
+      }
+    }
+  },
+  "create": {
+    "modal": {
+      "approvingFactoryForCreation": "Одобрение {{token}} для создания...",
+      "creatingRecurring": "Создание повторяющегося платежа {{token}}...",
+      "errorCreating": "Ошибка при создании",
+      "errorCreatingContract": "Ошибка при создании контракта",
+      "confirmingCreation": "Подтверждение создания...",
+      "retrievingContractAddress": "Получение адреса контракта...",
+      "approvingContractForMonthly": "Одобрение контракта для ежемесячных платежей...",
+      "errorExtractingAddress": "Ошибка извлечения адреса",
+      "errorApprovingContract": "Ошибка одобрения контракта",
+      "savingToDatabase": "Сохранение в базу данных...",
+      "recurringCreatedSuccess": "Повторяющийся платёж успешно создан!",
+      "recurringCreatedDbError": "Повторяющийся платёж создан! (Ошибка сохранения в DB)",
+      "transactionCancelledOrFailed": "Транзакция отменена или не удалась. Проверьте MetaMask.",
+      "errorConfirmingCreation": "Ошибка подтверждения транзакции создания",
+      "errorApprovingFactory": "Ошибка одобрения Factory",
+      "factoryApprovalCancelled": "Одобрение Factory отменено пользователем в MetaMask",
+      "insufficientFundsForGas": "Недостаточно средств для оплаты комиссии транзакции (gas)",
+      "contractApprovalCancelled": "Одобрение контракта отменено пользователем в MetaMask",
+      "approvalFactory": "1. Одобрение Factory",
+      "approvalContract": "3. Авторизация Контракта",
+      "approvingContracts": "3-{{total}}. Авторизации"
+    },
+    "recurring": {
+      "onlyUSDCUSDT": "Повторяющиеся платежи доступны только для USDC и USDT",
+      "tokenNoAddress": "Токен {{token}} не имеет адреса контракта",
+      "monthsRange": "Количество месяцев должно быть от 1 до 12",
+      "futureDate": "Дата первого платежа должна быть в будущем",
+      "dayOfMonthRange": "День месяца должен быть от 1 до 28",
+      "clientOrAddressUnavailable": "Клиент блокчейна или адрес недоступен",
+      "approvalHookUnavailable": "Хук одобрения Factory недоступен",
+      "tokenAddressMissing": "Адрес токена отсутствует",
+      "contractAddressNotFound": "Не удалось найти адрес контракта в логах",
+      "totalNotCalculated": "Общая требуемая сумма не рассчитана"
+    },
+    "date": {
+      "treasuryRemainsAvailable": "Ваша казна остается доступной",
+      "onlyAmountDebitedMonthly": "Только <strong>{{amount}} {{token}}</strong> будут списываться каждый месяц с вашего кошелька."
+    }
+  },
+  "common": {
+    "connectWallet": "Пожалуйста, подключите кошелёк"
   }
 }

@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAccount } from 'wagmi';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -30,6 +31,7 @@ interface UseBeneficiariesReturn {
 }
 
 export function useBeneficiaries(): UseBeneficiariesReturn {
+  const { t } = useTranslation();
   const { address } = useAccount();
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -71,7 +73,7 @@ export function useBeneficiaries(): UseBeneficiariesReturn {
     displayName: string,
     category?: BeneficiaryCategory
   ) => {
-    if (!address) throw new Error('Wallet non connecté');
+    if (!address) throw new Error(t('dashboard.auth.walletNotConnected.title', { defaultValue: 'Wallet not connected' }));
 
     const response = await fetch(`${API_URL}/api/beneficiaries`, {
       method: 'POST',

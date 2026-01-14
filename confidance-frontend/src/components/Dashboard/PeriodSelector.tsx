@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
 import { getCurrentYearMonths, getAvailableYears } from '@/lib/utils/dateFormatter';
 
@@ -46,7 +47,7 @@ export function PeriodSelector({ onChange, oldestTimestamp }: PeriodSelectorProp
     <div className="bg-white rounded-lg shadow p-4 mb-6">
       <div className="flex flex-col sm:flex-row gap-4">
         {/* Type de période */}
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => handlePeriodTypeChange('all')}
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
@@ -79,6 +80,13 @@ export function PeriodSelector({ onChange, oldestTimestamp }: PeriodSelectorProp
           >
             {isMounted && translationsReady ? t('dashboard.period.byYear') : 'Par année'}
           </button>
+
+          <Link
+            href="/dashboard/links"
+            className="px-4 py-2 rounded-lg font-medium bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
+          >
+            {isMounted && translationsReady ? t('links.dashboard.button') : 'Mes liens'}
+          </Link>
         </div>
 
         {/* Sélecteur de mois */}

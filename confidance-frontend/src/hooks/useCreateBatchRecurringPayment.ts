@@ -138,7 +138,7 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
   // Fonction principale
   const createBatchRecurringPayment = async (params: CreateBatchRecurringPaymentParams) => {
     if (!address) {
-      setError(new Error('Wallet non connecté'));
+      setError(new Error(t('dashboard.auth.walletNotConnected.title', { defaultValue: 'Wallet not connected' })));
       return;
     }
 
@@ -364,21 +364,10 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
             client: { public: publicClient },
           });
 
-          // Vérifier l'allowance actuelle
-          const currentAllowance = await publicClient.readContract({
-            address: tokenData.address as `0x${string}`,
-            abi: erc20Abi,
-            functionName: 'allowance',
-            args: [address, contractToApprove],
-          }) as bigint;
-
-          console.log(`🔍 [BATCH RECURRING] Allowance actuelle pour contrat ${currentApprovingIndex + 1}:`, currentAllowance.toString());
-
-          if (currentAllowance >= totalRequired) {
-            console.log(`✅ [BATCH RECURRING] Allowance déjà suffisante pour contrat ${currentApprovingIndex + 1}, passage au suivant`);
-            setCurrentApprovingIndex(currentApprovingIndex + 1);
-            return;
-          }
+          // ✅ FIX: Toujours demander l'approbation pour que l'utilisateur voie toutes les fenêtres MetaMask
+          // Même si l'allowance est déjà suffisante, on doit toujours demander l'approbation
+          // pour garantir 2 + N transactions MetaMask (2 initiales + N pour chaque destinataire)
+          console.log(`💳 [BATCH RECURRING] Approbation contrat ${currentApprovingIndex + 1}/${contractAddresses.length} requise...`);
 
           // Demander l'approbation via wagmi
           const { writeContract: writeApprove } = await import('wagmi/actions');

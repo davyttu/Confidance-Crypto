@@ -2,12 +2,13 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Payment } from '@/hooks/useDashboard';
 
 interface MonthlyPayment {
   monthNumber: number;
   date: number; // Timestamp
-  status: 'executed' | 'pending' | 'failed';
+  status: 'executed' | 'pending' | 'failed' | 'cancelled';
 }
 
 interface RecurringPaymentHistoryProps {
@@ -17,6 +18,8 @@ interface RecurringPaymentHistoryProps {
 const MONTH_IN_SECONDS = 2592000; // 30 jours
 
 export function RecurringPaymentHistory({ payment }: RecurringPaymentHistoryProps) {
+  const { t, i18n } = useTranslation();
+  
   // Calculer l'historique des paiements mensuels
   const monthlyPayments = useMemo<MonthlyPayment[]>(() => {
     if (!payment.is_recurring || !payment.total_months || !payment.first_payment_time) {
@@ -27,6 +30,7 @@ export function RecurringPaymentHistory({ payment }: RecurringPaymentHistoryProp
     const executedMonths = payment.executed_months || 0;
     const startTime = payment.first_payment_time;
     const now = Math.floor(Date.now() / 1000);
+    const isCancelled = payment.status === 'cancelled';
 
     const payments: MonthlyPayment[] = [];
 
@@ -34,14 +38,18 @@ export function RecurringPaymentHistory({ payment }: RecurringPaymentHistoryProp
     // - executedMonths = nombre de mois RÉUSSIS (confirmé par le contrat)
     // - On ne peut pas savoir quels mois spécifiques ont échoué sans parser les events
     // - Donc on affiche : exécutés (premiers mois) et pending (le reste)
+    // ✅ FIX : Si le paiement récurrent est annulé, tous les mois non exécutés sont "cancelled"
     for (let monthIndex = 0; monthIndex < totalMonths; monthIndex++) {
       const paymentDate = startTime + (monthIndex * MONTH_IN_SECONDS);
 
-      let status: 'executed' | 'pending' | 'failed';
+      let status: 'executed' | 'pending' | 'failed' | 'cancelled';
 
       if (monthIndex < executedMonths) {
         // ✅ Les premiers N mois ont été exécutés avec succès
         status = 'executed';
+      } else if (isCancelled) {
+        // ✅ Si le paiement récurrent est annulé, tous les mois non exécutés sont annulés
+        status = 'cancelled';
       } else if (paymentDate > now) {
         // Date dans le futur
         status = 'pending';
@@ -60,12 +68,24 @@ export function RecurringPaymentHistory({ payment }: RecurringPaymentHistoryProp
     }
 
     return payments;
-  }, [payment.is_recurring, payment.total_months, payment.first_payment_time, payment.executed_months]);
+  }, [payment.is_recurring, payment.total_months, payment.first_payment_time, payment.executed_months, payment.status]);
 
-  // Formater la date
+  // Formater la date avec la locale actuelle
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp * 1000);
-    return date.toLocaleDateString('fr-FR', {
+    // Mapper les langues i18n vers les locales de formatage
+    const localeMap: Record<string, string> = {
+      'fr': 'fr-FR',
+      'en': 'en-GB',
+      'es': 'es-ES',
+      'ru': 'ru-RU',
+      'zh': 'zh-CN',
+    };
+    const currentLang = i18n.language || 'fr';
+    const baseLang = currentLang.split('-')[0];
+    const locale = localeMap[baseLang] || localeMap['en'];
+    
+    return date.toLocaleDateString(locale, {
       day: 'numeric',
       month: 'long',
       year: 'numeric'
@@ -78,17 +98,14 @@ export function RecurringPaymentHistory({ payment }: RecurringPaymentHistoryProp
       executed: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
       pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
       failed: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+      cancelled: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
     };
 
-    const labels = {
-      executed: 'Exécuté',
-      pending: 'En attente',
-      failed: 'Échoué',
-    };
+    const label = t(`dashboard.recurringHistory.status.${status}`, status);
 
     return (
       <span className={`px-2 py-1 rounded-full text-xs font-medium ${styles[status as keyof typeof styles] || styles.pending}`}>
-        {labels[status as keyof typeof labels] || status}
+        {label}
       </span>
     );
   };
@@ -102,10 +119,13 @@ export function RecurringPaymentHistory({ payment }: RecurringPaymentHistoryProp
       <div className="px-6 py-4">
         <div className="mb-3">
           <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
-            Historique des paiements mensuels
+            {t('dashboard.recurringHistory.title')}
           </h4>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            {payment.executed_months || 0} / {payment.total_months} mois exécutés
+            {t('dashboard.recurringHistory.executed', {
+              executed: payment.executed_months || 0,
+              total: payment.total_months
+            })}
           </p>
         </div>
         
@@ -121,7 +141,7 @@ export function RecurringPaymentHistory({ payment }: RecurringPaymentHistoryProp
                 </div>
                 <div>
                   <div className="text-sm font-medium text-gray-900 dark:text-white">
-                    Mois {monthlyPayment.monthNumber}
+                    {t('dashboard.recurringHistory.month', { number: monthlyPayment.monthNumber })}
                   </div>
                   <div className="text-xs text-gray-500 dark:text-gray-400">
                     {formatDate(monthlyPayment.date)}

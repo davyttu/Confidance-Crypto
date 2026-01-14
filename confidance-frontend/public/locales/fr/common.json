@@ -92,6 +92,13 @@
       "total": "Total envoyé",
       "pending": "En cours",
       "released": "Exécutés",
+      "account": "Mon compte",
+      "availableBalance": "Solde disponible",
+      "balanceUnavailable": "Solde indisponible",
+      "priceUnavailable": "Prix indisponible",
+      "priceSource": "Prix {{source}}",
+      "balanceSource": "Source {{source}}",
+      "balanceEstimated": "Estimation (ETH + stablecoins)",
       "totalPayments": "{{count}} paiement{{plural}} au total",
       "scheduledPayments": "Paiement{{plural}} programmé{{plural}}",
       "releasedPayments": "Paiement{{plural}} libéré{{plural}}"
@@ -118,6 +125,37 @@
       "released": "Exécuté",
       "cancelled": "Annulé",
       "failed": "Échoué"
+    },
+    "recurringHistory": {
+      "title": "Historique des paiements mensuels",
+      "executed": "{{executed}} / {{total}} mois exécutés",
+      "month": "Mois {{number}}",
+      "status": {
+        "executed": "Exécuté",
+        "pending": "En attente",
+        "failed": "Échoué",
+        "cancelled": "Annulé"
+      }
+    },
+    "beneficiary": {
+      "unnamed": "Non nommé",
+      "beneficiary": "Bénéficiaire",
+      "beneficiaries": "Bénéficiaires",
+      "main": "Principal",
+      "clickToCopy": "Cliquer pour copier",
+      "copied": "Copié !",
+      "copyAddress": "Copier l'adresse",
+      "rename": "Renommer"
+    },
+    "paymentType": {
+      "recurring": "Récurrent",
+      "batch": "Batch",
+      "instant": "Instantané",
+      "scheduled": "Programmé"
+    },
+    "tooltips": {
+      "showHistory": "Afficher l'historique",
+      "hideHistory": "Masquer l'historique"
     },
     "period": {
       "all": "Tout",
@@ -269,6 +307,8 @@
       "totalToApprove": "TOTAL à approuver",
       "nextPaymentsContinue": "Les <strong>prochaines mensualités continueront normalement</strong> même si un mois a échoué",
       "cancellableStopsPayments": "Seule l'option \"Annulable\" dans le type de paiement permet de stopper définitivement la suite des mensualités via le dashboard",
+      "treasuryRemainsAvailable": "Votre trésorerie reste disponible",
+      "onlyAmountDebitedMonthly": "Seuls <strong>{{amount}} {{token}}</strong> seront prélevés chaque mois sur votre wallet.",
       "timeUntil": {
         "past": "Dans le passé",
         "days": "Dans {{days}}j {{hours}}h {{minutes}}min",
@@ -325,7 +365,40 @@
       "paymentCreatedSuccess": "Paiement créé avec succès !",
       "paymentCreatedNotSaved": "Paiement créé ! (Non enregistré dans la DB)",
       "savingToDatabase": "Enregistrement dans la base de données...",
-      "creatingRecurringPayment": "Création du paiement récurrent {{token}}..."
+      "creatingRecurringPayment": "Création du paiement récurrent {{token}}...",
+      "approvalFactory": "1. Approbation Factory",
+      "approvalContract": "3. Autorisation Contrat",
+      "approvingContracts": "3-{{total}}. Autorisations",
+      "approvingFactoryForCreation": "Approbation de {{token}} pour la création...",
+      "creatingRecurring": "Création du paiement récurrent {{token}}...",
+      "errorCreating": "Erreur lors de la création",
+      "errorCreatingContract": "Erreur lors de la création du contrat",
+      "confirmingCreation": "Confirmation de la création...",
+      "retrievingContractAddress": "Récupération de l'adresse du contrat...",
+      "approvingContractForMonthly": "Approbation du contrat pour les paiements mensuels...",
+      "errorExtractingAddress": "Erreur lors de l'extraction de l'adresse",
+      "errorApprovingContract": "Erreur lors de l'approbation du contrat",
+      "savingToDatabase": "Enregistrement dans la base de données...",
+      "recurringCreatedSuccess": "Paiement récurrent créé avec succès !",
+      "recurringCreatedDbError": "Paiement récurrent créé ! (Erreur enregistrement DB)",
+      "transactionCancelledOrFailed": "Transaction annulée ou échouée. Vérifiez MetaMask.",
+      "errorConfirmingCreation": "Erreur de confirmation de la transaction de création",
+      "errorApprovingFactory": "Erreur lors de l'approbation de la Factory",
+      "factoryApprovalCancelled": "Approbation Factory annulée par l'utilisateur dans MetaMask",
+      "insufficientFundsForGas": "Fonds insuffisants pour payer les frais de transaction (gas)",
+      "contractApprovalCancelled": "Approbation Contrat annulée par l'utilisateur dans MetaMask"
+    },
+    "recurring": {
+      "onlyUSDCUSDT": "Paiements récurrents disponibles uniquement pour USDC et USDT",
+      "tokenNoAddress": "Le token {{token}} n'a pas d'adresse de contrat",
+      "monthsRange": "Le nombre de mois doit être entre 1 et 12",
+      "futureDate": "La première échéance doit être dans le futur",
+      "dayOfMonthRange": "Le jour du mois doit être entre 1 et 28",
+      "clientOrAddressUnavailable": "Client blockchain ou adresse non disponible",
+      "approvalHookUnavailable": "Hook d'approbation Factory non disponible",
+      "tokenAddressMissing": "Adresse du token manquante",
+      "contractAddressNotFound": "Impossible de trouver l'adresse du contrat dans les logs",
+      "totalNotCalculated": "Total requis non calculé"
     },
     "features": {
       "secure": {
@@ -591,6 +664,88 @@
     "toUseApp": "pour utiliser cette application",
     "currentNetwork": "Réseau actuel : ChainID {{chainId}}",
     "switchNetworkHint": "💡 Cliquez sur votre wallet et changez de réseau vers Base Mainnet"
+  },
+  "links": {
+    "cta": "Créer un lien de paiement",
+    "create": {
+      "title": "Créer un lien de paiement",
+      "subtitle": "Générez un lien partageable et faites-vous payer directement.",
+      "fields": {
+        "amount": "Montant",
+        "token": "Token",
+        "type": "Type de paiement",
+        "chain": "Réseau",
+        "executeAt": "Date d'exécution",
+        "frequency": "Fréquence",
+        "periods": "Périodes",
+        "startAt": "Date de départ",
+        "description": "Description (optionnel)"
+      },
+      "placeholders": {
+        "description": "Loyer, abonnement SaaS, facture..."
+      },
+      "errors": {
+        "connectWallet": "Connectez votre wallet",
+        "amount": "Montant invalide",
+        "create": "Impossible de générer le lien",
+        "executeAt": "Date d'exécution requise",
+        "startAt": "Date de départ requise",
+        "periods": "Périodes requises"
+      },
+      "generate": "Générer le lien",
+      "generating": "Génération...",
+      "success": "Votre lien de paiement est prêt",
+      "copy": "Copier"
+    },
+    "types": {
+      "instant": "Instantané",
+      "scheduled": "Programmé",
+      "recurring": "Récurrent"
+    },
+    "frequency": {
+      "monthly": "Mensuel",
+      "weekly": "Hebdomadaire"
+    },
+    "dashboard": {
+      "button": "Mes liens",
+      "title": "Mes liens de paiement",
+      "empty": "Aucun lien de paiement",
+      "status": "Statut",
+      "amount": "Montant",
+      "type": "Type",
+      "created": "Créé le",
+      "link": "Lien",
+      "copy": "Copier"
+    },
+    "status": {
+      "pending": "En attente",
+      "active": "Actif",
+      "paid": "Payé",
+      "expired": "Expiré",
+      "cancelled": "Annulé"
+    },
+    "pay": {
+      "title": "Payer un lien",
+      "subtitle": "Vérifiez les détails et payez en toute sécurité.",
+      "loading": "Chargement du lien...",
+      "cta": "Payer maintenant",
+      "summary": {
+        "amount": "Montant",
+        "type": "Type",
+        "network": "Réseau",
+        "beneficiary": "Bénéficiaire",
+        "description": "Description"
+      },
+      "errors": {
+        "notFound": "Lien de paiement introuvable",
+        "chainMismatch": "Veuillez passer sur {{network}}",
+        "chainUnsupported": "Ce réseau n'est pas encore supporté.",
+        "recurringToken": "Le récurrent nécessite USDC ou USDT",
+        "weeklyUnsupported": "Le récurrent hebdo n'est pas supporté.",
+        "recurringMissing": "Infos récurrentes manquantes",
+        "executeMissing": "Date d'exécution manquante"
+      }
+    }
   },
   "footer": {
     "description": "Paiements programmés décentralisés sur Base Mainnet. Simple, sécurisé, automatique.",

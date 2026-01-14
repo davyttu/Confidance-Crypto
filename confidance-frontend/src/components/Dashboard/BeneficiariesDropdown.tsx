@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Copy, Check, Edit2 } from 'lucide-react';
 import { Payment } from '@/hooks/useDashboard';
 import { useBeneficiaries } from '@/hooks/useBeneficiaries';
@@ -12,6 +13,7 @@ interface BeneficiariesDropdownProps {
 }
 
 export function BeneficiariesDropdown({ payment, onRename }: BeneficiariesDropdownProps) {
+  const { t, i18n } = useTranslation();
   const { getBeneficiaryName } = useBeneficiaries();
   const [isOpen, setIsOpen] = useState(false);
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
@@ -102,7 +104,7 @@ export function BeneficiariesDropdown({ payment, onRename }: BeneficiariesDropdo
       <div className="flex items-center gap-2">
         <div>
           <div className="text-sm font-medium text-gray-900 dark:text-white">
-            {beneficiaryName || 'Non nommé'}
+            {beneficiaryName || t('beneficiary.unnamed')}
           </div>
           <div className="text-xs text-gray-500 dark:text-gray-400 font-mono">
             {payment.payee_address.slice(0, 6)}...{payment.payee_address.slice(-4)}
@@ -112,7 +114,7 @@ export function BeneficiariesDropdown({ payment, onRename }: BeneficiariesDropdo
           <button
             onClick={() => onRename(payment.payee_address)}
             className="text-gray-400 hover:text-blue-600 transition-colors"
-            title="Renommer"
+            title={t('beneficiary.rename')}
           >
             <Edit2 className="w-4 h-4" />
           </button>
@@ -121,11 +123,23 @@ export function BeneficiariesDropdown({ payment, onRename }: BeneficiariesDropdo
     );
   }
 
-  // Formater le montant
+  // Formater le montant avec la locale actuelle
   const formatAmount = (amount: string | number, symbol: string) => {
+    // Mapper les langues i18n vers les locales de formatage
+    const localeMap: Record<string, string> = {
+      'fr': 'fr-FR',
+      'en': 'en-GB',
+      'es': 'es-ES',
+      'ru': 'ru-RU',
+      'zh': 'zh-CN',
+    };
+    const currentLang = i18n.language || 'fr';
+    const baseLang = currentLang.split('-')[0];
+    const locale = localeMap[baseLang] || localeMap['en'];
+    
     // Si c'est déjà un nombre, le retourner formaté
     if (typeof amount === 'number') {
-      return amount.toLocaleString('fr-FR', {
+      return amount.toLocaleString(locale, {
         minimumFractionDigits: symbol === 'ETH' ? 4 : 2,
         maximumFractionDigits: symbol === 'ETH' ? 4 : 2,
       });
@@ -137,7 +151,7 @@ export function BeneficiariesDropdown({ payment, onRename }: BeneficiariesDropdo
     if (isDecimal) {
       // C'est déjà un nombre décimal formaté, le retourner tel quel
       const numValue = parseFloat(amount.replace(',', '.'));
-      return numValue.toLocaleString('fr-FR', {
+      return numValue.toLocaleString(locale, {
         minimumFractionDigits: symbol === 'ETH' ? 4 : 2,
         maximumFractionDigits: symbol === 'ETH' ? 4 : 2,
       });
@@ -147,14 +161,14 @@ export function BeneficiariesDropdown({ payment, onRename }: BeneficiariesDropdo
     try {
       const decimals = symbol === 'ETH' ? 18 : 6;
       const amountNum = Number(BigInt(amount)) / Math.pow(10, decimals);
-      return amountNum.toLocaleString('fr-FR', {
+      return amountNum.toLocaleString(locale, {
         minimumFractionDigits: symbol === 'ETH' ? 4 : 2,
         maximumFractionDigits: symbol === 'ETH' ? 4 : 2,
       });
     } catch (error) {
       // Si la conversion BigInt échoue, essayer de parser comme nombre
       const numValue = parseFloat(amount);
-      return isNaN(numValue) ? '0' : numValue.toLocaleString('fr-FR', {
+      return isNaN(numValue) ? '0' : numValue.toLocaleString(locale, {
         minimumFractionDigits: symbol === 'ETH' ? 4 : 2,
         maximumFractionDigits: symbol === 'ETH' ? 4 : 2,
       });
@@ -182,7 +196,7 @@ export function BeneficiariesDropdown({ payment, onRename }: BeneficiariesDropdo
         <div>
           <div className="flex items-center gap-2">
             <div className="text-sm font-medium text-gray-900 dark:text-white">
-              {mainBeneficiaryName || 'Non nommé'}
+              {mainBeneficiaryName || t('beneficiary.unnamed')}
             </div>
             {/* Badge +X */}
             <div className="relative">
@@ -215,18 +229,18 @@ export function BeneficiariesDropdown({ payment, onRename }: BeneficiariesDropdo
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 mb-1.5">
                                 <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                                  {name || `Bénéficiaire ${index + 1}`}
+                                  {name || `${t('beneficiary.beneficiary')} ${index + 1}`}
                                 </div>
                                 {beneficiary.isMain && (
                                   <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full">
-                                    Principal
+                                    {t('beneficiary.main')}
                                   </span>
                                 )}
                               </div>
                               <div 
                                 className="text-xs font-mono text-gray-500 dark:text-gray-400 break-all cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                                 onClick={() => copyToClipboard(beneficiary.address)}
-                                title="Cliquer pour copier"
+                                title={t('beneficiary.clickToCopy')}
                               >
                                 {beneficiary.address}
                               </div>
@@ -238,7 +252,7 @@ export function BeneficiariesDropdown({ payment, onRename }: BeneficiariesDropdo
                             <button
                               onClick={() => copyToClipboard(beneficiary.address)}
                               className="flex-shrink-0 p-2 rounded-md hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors group/button"
-                              title={isCopied ? "Copié !" : "Copier l'adresse"}
+                              title={isCopied ? t('beneficiary.copied') : t('beneficiary.copyAddress')}
                             >
                               {isCopied ? (
                                 <Check className="w-4 h-4 text-green-600 dark:text-green-400" />

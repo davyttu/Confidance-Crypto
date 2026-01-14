@@ -19,7 +19,7 @@ interface TransactionRowProps {
 }
 
 export function TransactionRow({ payment, onRename, onCancel, onEmailClick }: TransactionRowProps) {
-  const { t, ready: translationsReady } = useTranslation();
+  const { t, i18n, ready: translationsReady } = useTranslation();
   const { getBeneficiaryName } = useBeneficiaries();
   const [copied, setCopied] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -30,29 +30,54 @@ export function TransactionRow({ payment, onRename, onCancel, onEmailClick }: Tr
   const beneficiaryName = getBeneficiaryName(payment.payee_address);
   const displayName = beneficiaryName || `${payment.payee_address.slice(0, 6)}...${payment.payee_address.slice(-4)}`;
 
-  // Formater le montant
+  // Formater le montant avec la locale actuelle
   const formatAmount = (amount: string, symbol: string) => {
     const decimals = symbol === 'ETH' ? 18 : 6;
     const amountNum = Number(BigInt(amount)) / Math.pow(10, decimals);
-    return amountNum.toLocaleString('fr-FR', {
+    
+    // Mapper les langues i18n vers les locales de formatage
+    const localeMap: Record<string, string> = {
+      'fr': 'fr-FR',
+      'en': 'en-GB',
+      'es': 'es-ES',
+      'ru': 'ru-RU',
+      'zh': 'zh-CN',
+    };
+    const currentLang = i18n.language || 'fr';
+    const baseLang = currentLang.split('-')[0];
+    const locale = localeMap[baseLang] || localeMap['en'];
+    
+    return amountNum.toLocaleString(locale, {
       minimumFractionDigits: symbol === 'ETH' ? 4 : 2,
       maximumFractionDigits: symbol === 'ETH' ? 4 : 2,
     });
   };
 
-  // Formater la date et l'heure
+  // Formater la date et l'heure avec la locale actuelle
   const formatDateAndTime = (timestamp: number) => {
     const date = new Date(timestamp * 1000);
     
-    // Formater la date (ex: "15 janvier 2026")
-    const dateFormatted = date.toLocaleDateString('fr-FR', {
+    // Mapper les langues i18n vers les locales de formatage
+    const localeMap: Record<string, string> = {
+      'fr': 'fr-FR',
+      'en': 'en-GB',
+      'es': 'es-ES',
+      'ru': 'ru-RU',
+      'zh': 'zh-CN',
+    };
+    const currentLang = i18n.language || 'fr';
+    const baseLang = currentLang.split('-')[0];
+    const locale = localeMap[baseLang] || localeMap['en'];
+    
+    // Formater la date
+    const dateFormatted = date.toLocaleDateString(locale, {
       day: 'numeric',
       month: 'long',
       year: 'numeric'
     });
     
-    // Formater l'heure (ex: "14:30")
-    const timeFormatted = date.toLocaleTimeString('fr-FR', {
+    // Formater l'heure
+    const timeFormatted = date.toLocaleTimeString(locale, {
       hour: '2-digit',
       minute: '2-digit'
     });
@@ -114,7 +139,7 @@ export function TransactionRow({ payment, onRename, onCancel, onEmailClick }: Tr
               <button
                 onClick={() => setIsExpanded(!isExpanded)}
                 className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
-                title={isExpanded ? 'Masquer l\'historique' : 'Afficher l\'historique'}
+                title={isExpanded ? t('tooltips.hideHistory') : t('tooltips.showHistory')}
               >
                 {isExpanded ? (
                   <ChevronDown className="w-4 h-4 text-gray-600 dark:text-gray-400" />

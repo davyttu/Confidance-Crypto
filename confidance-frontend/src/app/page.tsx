@@ -96,7 +96,7 @@ export default function Home() {
   return (
     <>
         {/* Hero Section */}
-        <section className="relative overflow-hidden py-20 sm:py-32">
+        <section className="relative overflow-hidden py-12 sm:py-20">
           {/* Background decorations */}
           <div className="absolute inset-0 -z-10">
             <div className="absolute top-0 left-1/4 w-96 h-96 gradient-primary rounded-full blur-3xl opacity-20 animate-float" />
@@ -168,7 +168,7 @@ export default function Home() {
         </section>
 
         {/* Stats Section */}
-        <section className="py-16 border-y border-gray-200 dark:border-gray-800">
+        <section className="py-10 sm:py-12 border-y border-gray-200 dark:border-gray-800">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {stats.map((stat, i) => (
@@ -248,6 +248,16 @@ export default function Home() {
                   <CheckCircle2 className="h-6 w-6 text-green-500 flex-shrink-0" />
                 </div>
               ))}
+            </div>
+
+            <div className="mt-8 text-center">
+              <Link
+                href="/links/new"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-white border border-gray-200 rounded-xl font-semibold text-gray-800 shadow-sm hover:shadow-md transition"
+              >
+                {isMounted && ready ? t('links.cta') : 'Créer un lien de paiement'}
+                <ArrowRight className="h-4 w-4" />
+              </Link>
             </div>
           </div>
         </section>
