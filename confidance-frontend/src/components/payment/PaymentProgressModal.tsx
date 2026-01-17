@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { type TokenSymbol } from '@/config/tokens';
 
@@ -34,6 +34,36 @@ export default function PaymentProgressModal({
   onViewPayment,
 }: PaymentProgressModalProps) {
   const { t } = useTranslation();
+  const scrollingWords = useMemo(
+    () => [
+      'Préparation de la transaction',
+      'Estimation du gas',
+      'Sélection du nonce',
+      'Signature ECDSA',
+      'Broadcast via RPC',
+      'Propagation P2P',
+      'Entrée en mempool',
+      'Sélection du block',
+      'Exécution EVM',
+      'Déploiement bytecode',
+      'Initialisation du contrat',
+      'Écriture storage',
+      'Émission events',
+      'Calcul du state root',
+      'Preuve et consensus L2',
+      'Finalité on-chain',
+      'Indexation BaseScan',
+    ],
+    []
+  );
+  const [wordIndex, setWordIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setWordIndex((prev) => (prev + 1) % scrollingWords.length);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [scrollingWords.length]);
 
   // 🔔 L'envoi de l'événement payment_registered est maintenant géré par le backend
   // après l'insertion en base de données pour garantir la cohérence des données
@@ -209,6 +239,13 @@ export default function PaymentProgressModal({
               </p>
             </div>
 
+            {/* Airport board style words */}
+            <div className="board text-xs text-gray-600 dark:text-gray-300">
+              <span key={wordIndex} className="board__word">
+                {scrollingWords[wordIndex]}
+              </span>
+            </div>
+
             {/* Progress bar */}
             <div className="space-y-3">
               {/* Barre de progression */}
@@ -310,6 +347,38 @@ export default function PaymentProgressModal({
           </div>
         )}
       </div>
+      <style jsx>{`
+        .board {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 70%;
+          padding: 0.35rem 0.75rem;
+          border-radius: 0.5rem;
+          background: linear-gradient(180deg, rgba(17, 24, 39, 0.06), rgba(17, 24, 39, 0.02));
+          font-variant-numeric: tabular-nums;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+        }
+        .board__word {
+          display: inline-block;
+          animation: flipBoard 0.6s ease-in-out;
+        }
+        @keyframes flipBoard {
+          0% {
+            transform: rotateX(90deg);
+            opacity: 0;
+          }
+          40% {
+            transform: rotateX(-10deg);
+            opacity: 1;
+          }
+          100% {
+            transform: rotateX(0deg);
+            opacity: 1;
+          }
+        }
+      `}</style>
     </div>
   );
 }

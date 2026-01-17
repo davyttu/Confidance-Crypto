@@ -1,4 +1,3 @@
-// components/Auth/RegisterModal.tsx
 'use client';
 
 import { useState } from 'react';
@@ -8,7 +7,7 @@ interface RegisterModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSwitchToLogin: () => void;
-  onSuccess: (email: string, code: string) => void;
+  onSuccess: (email: string, code: string, accountType: 'particular' | 'professional') => void; // MODIFIED
 }
 
 export function RegisterModal({ isOpen, onClose, onSwitchToLogin, onSuccess }: RegisterModalProps) {
@@ -51,7 +50,7 @@ export function RegisterModal({ isOpen, onClose, onSwitchToLogin, onSuccess }: R
       );
 
       // Passer au modal de vérification
-      onSuccess(formData.email, verificationCode);
+      onSuccess(formData.email, verificationCode, formData.accountType); // MODIFIED
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors de l\'inscription');
     } finally {
@@ -147,7 +146,7 @@ export function RegisterModal({ isOpen, onClose, onSwitchToLogin, onSuccess }: R
             </div>
             {formData.accountType === 'professional' && (
               <p className="text-xs text-gray-500 mt-2">
-                * KYC requis pour bénéficier des fees réduits
+                * Informations entreprise requises pour bénéficier des fees réduits
               </p>
             )}
           </div>

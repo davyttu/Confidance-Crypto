@@ -2,12 +2,13 @@ require("dotenv").config();
 const hre = require("hardhat");
 
 /**
- * Script pour vérifier un contrat ScheduledPayment sur Basescan
- * 
+ * Script pour vérifier un contrat ScheduledPayment / Batch / ERC20 sur Basescan
+ *
  * Usage:
- *   npx hardhat run scripts/verifyScheduledPayment.js --network base_mainnet
- * 
- * Le script lit automatiquement les paramètres du contrat depuis la blockchain
+ *   npx hardhat run scripts/verifyScheduledPayment.js --network base_mainnet -- 0x...
+ *
+ * Le script détecte automatiquement le type de contrat et lit les paramètres
+ * directement depuis la blockchain.
  */
 
 async function main() {
@@ -15,8 +16,12 @@ async function main() {
   console.log("🔍 VÉRIFICATION CONTRAT ScheduledPayment");
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
-  // ⚠️ MODIFIEZ CETTE ADRESSE avec le contrat que vous voulez vérifier
-  const CONTRACT_ADDRESS = "0xf4043298c5aeb66ea85ef7da5c30955e26c253c2";
+  // Adresse à vérifier : argument CLI ou variable d'env
+  const CONTRACT_ADDRESS =
+    process.env.VERIFY_ADDRESS ||
+    process.env.CONTRACT_ADDRESS ||
+    process.argv[2] ||
+    "";
 
   if (!CONTRACT_ADDRESS || CONTRACT_ADDRESS === "0x0000000000000000000000000000000000000000") {
     throw new Error("❌ Veuillez modifier CONTRACT_ADDRESS dans le script");
@@ -27,50 +32,110 @@ async function main() {
   console.log("\n🔍 Lecture des paramètres depuis le contrat...\n");
 
   try {
-    // Charger l'ABI du ScheduledPayment
-    const ScheduledPayment = await hre.ethers.getContractFactory("ScheduledPayment");
-    const contract = ScheduledPayment.attach(CONTRACT_ADDRESS);
+    const detectAndRead = async () => {
+      const readBatch = async (factoryName, isErc20) => {
+        const Factory = await hre.ethers.getContractFactory(factoryName);
+        const contract = Factory.attach(CONTRACT_ADDRESS);
+        const [payer, releaseTime, cancellable, protocolOwner] = await Promise.all([
+          contract.payer(),
+          contract.releaseTime(),
+          contract.cancellable(),
+          isErc20 ? contract.protocolOwner() : Promise.resolve(null),
+        ]);
+        const [payees, amounts] = await contract.getAllPayees();
+        const tokenAddress = isErc20 ? await contract.tokenAddress() : null;
 
-    // Lire tous les paramètres du contrat
-    const [payee, amountToPayee, protocolFee, releaseTime, cancellable, payer] = await Promise.all([
-      contract.payee(),
-      contract.amountToPayee(),
-      contract.protocolFee(),
-      contract.releaseTime(),
-      contract.cancellable(),
-      contract.payer(),
-    ]);
+        return {
+          type: isErc20 ? "BATCH_ERC20" : "BATCH_ETH",
+          contract,
+          contractPath: isErc20
+            ? "contracts/BatchScheduledPaymentERC20.sol:BatchScheduledPaymentERC20"
+            : "contracts/BatchScheduledPayment_V2.sol:BatchScheduledPayment",
+          args: isErc20
+            ? [payer, tokenAddress, payees, amounts, releaseTime, cancellable, protocolOwner]
+            : [payer, payees, amounts, releaseTime, cancellable],
+          meta: { payer, tokenAddress, payees, amounts, releaseTime, cancellable, protocolOwner },
+        };
+      };
 
+      const readSingle = async (factoryName, isErc20) => {
+        const Factory = await hre.ethers.getContractFactory(factoryName);
+        const contract = Factory.attach(CONTRACT_ADDRESS);
+        const [payer, payee, amountToPayee, releaseTime, cancellable, protocolOwner] =
+          await Promise.all([
+            contract.payer(),
+            contract.payee(),
+            contract.amountToPayee(),
+            contract.releaseTime(),
+            contract.cancellable(),
+            contract.protocolOwner(),
+          ]);
+        const tokenAddress = isErc20 ? await contract.tokenAddress() : null;
+
+        return {
+          type: isErc20 ? "SINGLE_ERC20" : "SINGLE_ETH",
+          contract,
+          contractPath: isErc20
+            ? "contracts/ScheduledPaymentERC20.sol:ScheduledPaymentERC20"
+            : "contracts/ScheduledPayment_V2.sol:ScheduledPayment",
+          args: isErc20
+            ? [payer, payee, tokenAddress, amountToPayee, releaseTime, cancellable, protocolOwner]
+            : [payer, payee, amountToPayee, releaseTime, cancellable, protocolOwner],
+          meta: { payer, payee, tokenAddress, amountToPayee, releaseTime, cancellable, protocolOwner },
+        };
+      };
+
+      // 1) Batch ERC20
+      try {
+        return await readBatch("BatchScheduledPaymentERC20", true);
+      } catch (_) {}
+
+      // 2) Batch ETH
+      try {
+        return await readBatch("BatchScheduledPayment", false);
+      } catch (_) {}
+
+      // 3) Single ERC20
+      try {
+        return await readSingle("ScheduledPaymentERC20", true);
+      } catch (_) {}
+
+      // 4) Single ETH
+      return await readSingle("ScheduledPayment", false);
+    };
+
+    const detected = await detectAndRead();
+
+    console.log("✅ Type détecté :", detected.type);
     console.log("📋 Paramètres lus depuis le contrat :");
-    console.log("   👤 Payee :", payee);
-    console.log("   💰 Amount to Payee :", hre.ethers.formatEther(amountToPayee), "ETH");
-    console.log("   💸 Protocol Fee :", hre.ethers.formatEther(protocolFee), "ETH");
-    console.log("   ⏰ Release Time :", releaseTime.toString(), `(${new Date(Number(releaseTime) * 1000).toLocaleString()})`);
-    console.log("   🔒 Cancellable :", cancellable);
-    console.log("   👤 Payer :", payer);
-    
-    // ⚠️ Avertissement si payer = Factory
-    const FACTORY_ADDRESS = "0xd8e57052142b62081687137c44C54F78306547f8";
-    if (payer.toLowerCase() === FACTORY_ADDRESS.toLowerCase()) {
-      console.log("\n⚠️  ATTENTION : Le payer du contrat est la Factory !");
-      console.log("   Cela signifie que ce contrat a été créé par une ancienne version");
-      console.log("   qui ne transmet pas le msg.sender réel au constructeur.");
-      console.log("   L'annulation pourrait ne pas fonctionner correctement.\n");
+    console.log("   👤 Payer :", detected.meta.payer);
+    if (detected.meta.payee) console.log("   👤 Payee :", detected.meta.payee);
+    if (detected.meta.tokenAddress) console.log("   🪙 Token :", detected.meta.tokenAddress);
+    if (detected.meta.amountToPayee !== undefined) {
+      console.log(
+        "   💰 Amount to Payee :",
+        detected.meta.amountToPayee.toString()
+      );
     }
-    
+    if (detected.meta.payees) {
+      console.log("   👥 Payees count :", detected.meta.payees.length);
+    }
+    console.log(
+      "   ⏰ Release Time :",
+      detected.meta.releaseTime.toString(),
+      `(${new Date(Number(detected.meta.releaseTime) * 1000).toLocaleString()})`
+    );
+    console.log("   🔒 Cancellable :", detected.meta.cancellable);
+    if (detected.meta.protocolOwner) {
+      console.log("   🛡️  Protocol Owner :", detected.meta.protocolOwner);
+    }
+
     console.log("\n🔄 Vérification sur Basescan...\n");
 
-    // Vérifier le contrat avec les paramètres
-    // Hardhat gère automatiquement les imports OpenZeppelin
     await hre.run("verify:verify", {
       address: CONTRACT_ADDRESS,
-      constructorArguments: [
-        payee,
-        amountToPayee,
-        releaseTime,
-        cancellable,
-      ],
-      // Ne pas spécifier le contrat, Hardhat le trouve automatiquement
+      constructorArguments: detected.args,
+      contract: detected.contractPath,
     });
 
     console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -105,9 +170,10 @@ async function main() {
         console.log("\n   Pour la vérification manuelle :");
         console.log("   - Compiler Version: 0.8.20");
         console.log("   - License: MIT");
-        console.log("   - Optimization: Yes, Runs: 200");
-        console.log("   - Constructor Arguments (ABI-encoded):");
-        console.log("     Utilisez le script pour voir les valeurs ci-dessus");
+        console.log("   - Optimization: Yes, Runs: 1");
+        console.log("   - viaIR: true");
+        console.log("   - Bytecode Hash: none");
+        console.log("   - Constructor Arguments: utilisez la sortie du script");
       }
       process.exit(1);
     }

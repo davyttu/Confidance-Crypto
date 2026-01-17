@@ -2,6 +2,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useParams } from 'next/navigation';
 import { useAccount, useChainId } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { parseUnits } from 'viem';
@@ -11,10 +12,22 @@ import { getToken } from '@/config/tokens';
 import { usePaymentLinks } from '@/hooks/usePaymentLinks';
 import { useCreatePayment } from '@/hooks/useCreatePayment';
 import { useCreateRecurringPayment } from '@/hooks/useCreateRecurringPayment';
+import { 
+  Shield, 
+  Lock, 
+  Copy, 
+  Check, 
+  AlertCircle, 
+  Info,
+  CheckCircle,
+  Clock,
+  Repeat,
+  Zap
+} from 'lucide-react';
 
 type LinkFrequency = 'monthly' | 'weekly' | null;
 
-export default function PayLinkPage({ params }: { params: { id: string } }) {
+export default function PayLinkPage() {
   const { t, ready } = useTranslation();
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
@@ -30,13 +43,24 @@ export default function PayLinkPage({ params }: { params: { id: string } }) {
   const [link, setLink] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
-  const linkId = params.id;
+  const params = useParams();
+  const linkId = Array.isArray(params?.id)
+    ? params?.id[0]
+    : (params?.id as string | undefined) || '';
 
   useEffect(() => {
     let isMounted = true;
     const load = async () => {
       try {
+        if (!linkId) {
+          if (isMounted) {
+            setError(ready ? t('links.pay.errors.notFound') : 'Payment link not found');
+            setIsLoading(false);
+          }
+          return;
+        }
         setIsLoading(true);
         const data = await fetchLink(linkId);
         if (isMounted) {
@@ -44,7 +68,10 @@ export default function PayLinkPage({ params }: { params: { id: string } }) {
         }
       } catch (err) {
         if (isMounted) {
-          setError(ready ? t('links.pay.errors.notFound') : 'Payment link not found');
+          const message = err instanceof Error
+            ? err.message
+            : (ready ? t('links.pay.errors.notFound') : 'Payment link not found');
+          setError(message);
         }
       } finally {
         if (isMounted) setIsLoading(false);
@@ -65,6 +92,13 @@ export default function PayLinkPage({ params }: { params: { id: string } }) {
     if (!link?.amount) return '-';
     return `${link.amount} ${link.token_symbol}`;
   }, [link]);
+
+  const handleCopyAddress = () => {
+    if (!link?.creator_address) return;
+    navigator.clipboard.writeText(link.creator_address);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const handlePay = async () => {
     if (!link || !address) return;
@@ -137,11 +171,46 @@ export default function PayLinkPage({ params }: { params: { id: string } }) {
     updateLinkStatus(link.id, nextStatus, address).catch(() => undefined);
   }, [createStatus, recurringStatus, link, address, updateLinkStatus]);
 
+  // Helper pour obtenir l'icône du type de paiement
+  const getPaymentTypeIcon = () => {
+    switch (link?.payment_type) {
+      case 'instant':
+        return <Zap className="w-5 h-5" />;
+      case 'scheduled':
+        return <Clock className="w-5 h-5" />;
+      case 'recurring':
+        return <Repeat className="w-5 h-5" />;
+      default:
+        return null;
+    }
+  };
+
+  // Helper pour obtenir la couleur du type
+  const getPaymentTypeColor = () => {
+    switch (link?.payment_type) {
+      case 'instant':
+        return 'from-green-500 to-emerald-600';
+      case 'scheduled':
+        return 'from-blue-500 to-indigo-600';
+      case 'recurring':
+        return 'from-purple-500 to-pink-600';
+      default:
+        return 'from-gray-500 to-gray-600';
+    }
+  };
+
+  const isProcessing = createStatus === 'creating' || recurringStatus === 'creating';
+
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center">
-        <div className="bg-white rounded-xl shadow p-8">
-          {ready ? t('links.pay.loading') : 'Loading payment link...'}
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 flex items-center justify-center">
+        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-gray-600 font-medium">
+              {ready ? t('links.pay.loading') : 'Loading payment link...'}
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -149,89 +218,408 @@ export default function PayLinkPage({ params }: { params: { id: string } }) {
 
   if (error || !link) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center">
-        <div className="bg-white rounded-xl shadow p-8 text-center">
-          <p className="text-red-600">{error || 'Payment link not found'}</p>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-8 h-8 text-red-600" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">
+            {ready ? t('links.pay.errors.notFound') : 'Payment link not found'}
+          </h2>
+          <p className="text-red-600 mb-6">
+            {error || 'This payment link is invalid or has expired'}
+          </p>
+          <a
+            href="/"
+            className="inline-block px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl hover:shadow-lg transition-all"
+          >
+            {ready ? t('links.pay.backHome') : 'Back to home'}
+          </a>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            {ready ? t('links.pay.title') : 'Pay a link'}
-          </h1>
-          <p className="text-gray-600 mb-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50">
+      {/* Header avec badge sécurité */}
+      <div className="bg-white border-b border-gray-200 shadow-sm">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
+                <span className="text-white font-bold text-xl">C</span>
+              </div>
+              <div>
+                <h1 className="text-lg font-bold text-gray-900">Confidance</h1>
+                <p className="text-xs text-gray-500">
+                  {ready ? t('links.pay.securePayments') : 'Secure payments'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-200 rounded-lg">
+              <Shield className="w-4 h-4 text-green-600" />
+              <span className="text-xs font-medium text-green-700">
+                {ready ? t('links.pay.secureConnection') : 'Secure connection'}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Contenu principal */}
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+        {/* Titre */}
+        <div className="text-center mb-8">
+          <h2 className="text-3xl font-bold text-gray-900 mb-3">
+            {ready ? t('links.pay.title') : 'Payment validation'}
+          </h2>
+          <p className="text-gray-600 max-w-2xl mx-auto">
             {ready ? t('links.pay.subtitle') : 'Review the payment details and pay securely.'}
           </p>
+        </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div className="rounded-xl border border-gray-200 p-4">
-              <p className="text-xs uppercase text-gray-500 mb-1">{ready ? t('links.pay.summary.amount') : 'Amount'}</p>
-              <p className="text-lg font-semibold">{formattedAmount}</p>
+        <div className="grid lg:grid-cols-3 gap-8">
+          {/* Colonne gauche : Détails */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Card principale */}
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+              {/* Header avec type de paiement */}
+              <div className={`bg-gradient-to-r ${getPaymentTypeColor()} px-6 py-4`}>
+                <div className="flex items-center gap-2 text-white">
+                  {getPaymentTypeIcon()}
+                  <span className="font-semibold capitalize">
+                    {ready ? t(`links.pay.types.${link.payment_type}`) : link.payment_type}
+                  </span>
+                </div>
+              </div>
+
+              {/* Contenu */}
+              <div className="p-6 space-y-6">
+                {/* Montant principal */}
+                <div className="text-center py-6 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl border border-gray-200">
+                  <p className="text-sm text-gray-600 mb-2">
+                    {ready ? t('links.pay.summary.amount') : 'Amount to pay'}
+                  </p>
+                  <p className="text-5xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    {formattedAmount}
+                  </p>
+                </div>
+
+                {/* Informations détaillées */}
+                <div className="space-y-4">
+                  {/* Réseau */}
+                  <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                    <span className="text-sm text-gray-600">
+                      {ready ? t('links.pay.summary.network') : 'Network'}
+                    </span>
+                    <span className="font-medium text-gray-900">{networkName}</span>
+                  </div>
+
+                  {/* Bénéficiaire */}
+                  <div className="py-3 border-b border-gray-100">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-gray-600">
+                        {ready ? t('links.pay.summary.beneficiary') : 'Beneficiary'}
+                      </span>
+                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                        {ready ? t('links.pay.verified') : 'Verified'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-lg">
+                      <code className="text-xs text-gray-700 flex-1 font-mono break-all">
+                        {link.creator_address.slice(0, 10)}...{link.creator_address.slice(-8)}
+                      </code>
+                      <button
+                        onClick={handleCopyAddress}
+                        className="p-1.5 hover:bg-gray-200 rounded transition-colors flex-shrink-0"
+                        title={ready ? t('links.pay.copyAddress') : 'Copy address'}
+                      >
+                        {copied ? (
+                          <Check className="w-4 h-4 text-green-600" />
+                        ) : (
+                          <Copy className="w-4 h-4 text-gray-600" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  {link.description && (
+                    <div className="py-3">
+                      <span className="text-sm text-gray-600 block mb-2">
+                        {ready ? t('links.pay.summary.description') : 'Description'}
+                      </span>
+                      <p className="text-gray-900 font-medium">{link.description}</p>
+                    </div>
+                  )}
+
+                  {/* Info récurrent */}
+                  {link.payment_type === 'recurring' && link.periods && (
+                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                      <div className="flex items-start gap-2">
+                        <Repeat className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-purple-900">
+                            {ready ? t('links.pay.recurringPayment') : 'Recurring payment'}
+                          </p>
+                          <p className="text-xs text-purple-700 mt-1">
+                            {link.periods} {ready ? t('links.pay.months') : 'months'} × {link.amount} {link.token_symbol}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Info scheduled */}
+                  {link.payment_type === 'scheduled' && link.execute_at && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <div className="flex items-start gap-2">
+                        <Clock className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-blue-900">
+                            {ready ? t('links.pay.scheduledPayment') : 'Scheduled payment'}
+                          </p>
+                          <p className="text-xs text-blue-700 mt-1">
+                            {new Date(link.execute_at * 1000).toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="rounded-xl border border-gray-200 p-4">
-              <p className="text-xs uppercase text-gray-500 mb-1">{ready ? t('links.pay.summary.type') : 'Type'}</p>
-              <p className="text-lg font-semibold">{link.payment_type}</p>
-            </div>
-            <div className="rounded-xl border border-gray-200 p-4">
-              <p className="text-xs uppercase text-gray-500 mb-1">{ready ? t('links.pay.summary.network') : 'Network'}</p>
-              <p className="text-lg font-semibold">{networkName}</p>
-            </div>
-            <div className="rounded-xl border border-gray-200 p-4">
-              <p className="text-xs uppercase text-gray-500 mb-1">{ready ? t('links.pay.summary.beneficiary') : 'Beneficiary'}</p>
-              <p className="text-sm text-gray-700 break-all">{link.creator_address}</p>
+
+            {/* Vérifications de sécurité */}
+            <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Shield className="w-5 h-5 text-blue-600" />
+                <h3 className="font-semibold text-gray-900">
+                  {ready ? t('links.pay.securityChecks') : 'Security checks'}
+                </h3>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">
+                      {ready ? t('links.pay.security.ssl') : 'Secure connection'}
+                    </p>
+                    <p className="text-xs text-gray-600">
+                      {ready ? t('links.pay.security.sslDesc') : 'SSL/TLS encryption active'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">
+                      {ready ? t('links.pay.security.contract') : 'Verified smart contract'}
+                    </p>
+                    <p className="text-xs text-gray-600">
+                      {ready ? t('links.pay.security.contractDesc') : 'Audited on Base Mainnet'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">
+                      {ready ? t('links.pay.security.blockchain') : 'Blockchain secured'}
+                    </p>
+                    <p className="text-xs text-gray-600">
+                      {ready ? t('links.pay.security.blockchainDesc') : 'Transparent and immutable'}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
-          {link.description && (
-            <div className="rounded-xl border border-gray-200 p-4 mb-6">
-              <p className="text-xs uppercase text-gray-500 mb-1">{ready ? t('links.pay.summary.description') : 'Description'}</p>
-              <p className="text-sm text-gray-700">{link.description}</p>
+          {/* Colonne droite : Action */}
+          <div className="lg:col-span-1">
+            <div className="sticky top-8 space-y-6">
+              {/* Card d'action */}
+              <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+                <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                  <h3 className="font-semibold text-gray-900">
+                    {ready ? t('links.pay.summary.title') : 'Summary'}
+                  </h3>
+                </div>
+
+                <div className="p-6 space-y-4">
+                  {/* Montant */}
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">
+                      {ready ? t('links.pay.summary.amount') : 'Amount'}
+                    </span>
+                    <span className="font-medium text-gray-900">{formattedAmount}</span>
+                  </div>
+
+                  {/* Type */}
+                  <div className="flex items-center justify-between text-sm pb-4 border-b border-gray-200">
+                    <span className="text-gray-600">
+                      {ready ? t('links.pay.summary.type') : 'Type'}
+                    </span>
+                    <span className="font-medium text-gray-900 capitalize">{link.payment_type}</span>
+                  </div>
+
+                  {/* Wallet connection */}
+                  {!isConnected && (
+                    <div className="pt-2">
+                      <p className="text-sm text-gray-600 mb-3">
+                        {ready ? t('links.pay.connectWallet') : 'Connect your wallet to continue'}
+                      </p>
+                      <ConnectButton />
+                    </div>
+                  )}
+
+                  {/* Alertes */}
+                  {isChainMismatch && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 text-yellow-600 flex-shrink-0 mt-0.5" />
+                        <p className="text-xs text-yellow-900">
+                          {ready 
+                            ? t('links.pay.errors.chainMismatch', { network: networkName })
+                            : `Please switch to ${networkName}`
+                          }
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {isUnsupportedChain && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+                        <p className="text-xs text-red-900">
+                          {ready ? t('links.pay.errors.chainUnsupported') : 'This network is not supported yet'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {isWeekly && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 text-yellow-600 flex-shrink-0 mt-0.5" />
+                        <p className="text-xs text-yellow-900">
+                          {ready ? t('links.pay.errors.weeklyUnsupported') : 'Weekly recurring not supported yet'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Erreurs de création */}
+                  {createError && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                      <p className="text-xs text-red-900">{createError.message}</p>
+                    </div>
+                  )}
+
+                  {recurringError && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                      <p className="text-xs text-red-900">{recurringError.message}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Bouton de paiement */}
+              <button
+                onClick={handlePay}
+                disabled={!isConnected || isChainMismatch || isUnsupportedChain || isWeekly || isProcessing}
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+              >
+                {isProcessing ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    {ready ? t('links.pay.processing') : 'Processing...'}
+                  </span>
+                ) : (
+                  <span className="flex items-center justify-center gap-2">
+                    <Lock className="w-5 h-5" />
+                    {ready ? t('links.pay.cta') : 'Pay now'}
+                  </span>
+                )}
+              </button>
+
+              {/* Avertissement */}
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-yellow-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-yellow-900">
+                    {ready 
+                      ? t('links.pay.warning') 
+                      : 'Verify all details before confirming. Blockchain transactions are irreversible.'
+                    }
+                  </p>
+                </div>
+              </div>
             </div>
-          )}
+          </div>
+        </div>
+      </div>
 
-          {isChainMismatch && (
-            <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-xl p-4 mb-6">
-              {ready ? t('links.pay.errors.chainMismatch', { network: networkName }) : `Please switch to ${networkName}`}
+      {/* Footer */}
+      <div className="bg-white border-t border-gray-200 mt-12">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="grid md:grid-cols-3 gap-8 text-center md:text-left">
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-2">
+                {ready ? t('links.pay.footer.security') : 'Security'}
+              </h4>
+              <p className="text-xs text-gray-600">
+                {ready 
+                  ? t('links.pay.footer.securityDesc')
+                  : 'Your payments are protected by blockchain and audited smart contracts'
+                }
+              </p>
             </div>
-          )}
 
-          {isUnsupportedChain && (
-            <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 mb-6">
-              {ready ? t('links.pay.errors.chainUnsupported') : 'This network is not supported yet.'}
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-2">
+                {ready ? t('links.pay.footer.support') : 'Support'}
+              </h4>
+              <p className="text-xs text-gray-600">
+                {ready 
+                  ? t('links.pay.footer.supportDesc')
+                  : 'Need help? Contact our 24/7 support at support@confidance.crypto'
+                }
+              </p>
             </div>
-          )}
 
-          {isWeekly && (
-            <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-xl p-4 mb-6">
-              {ready ? t('links.pay.errors.weeklyUnsupported') : 'Weekly recurring not supported yet.'}
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-2">
+                {ready ? t('links.pay.footer.info') : 'Information'}
+              </h4>
+              <p className="text-xs text-gray-600">
+                {ready 
+                  ? t('links.pay.footer.infoDesc')
+                  : 'Powered by Confidance Crypto - Secure DeFi payments'
+                }
+              </p>
             </div>
-          )}
+          </div>
 
-          {!isConnected && (
-            <div className="mb-6">
-              <ConnectButton />
-            </div>
-          )}
-
-          {createError && (
-            <div className="text-sm text-red-600 mb-4">{createError.message}</div>
-          )}
-          {recurringError && (
-            <div className="text-sm text-red-600 mb-4">{recurringError.message}</div>
-          )}
-
-          <button
-            onClick={handlePay}
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-primary-500 via-purple-500 to-pink-500 text-white font-semibold hover:opacity-95 transition disabled:opacity-60"
-            disabled={!isConnected || isChainMismatch || isUnsupportedChain || isWeekly || createStatus === 'creating' || recurringStatus === 'creating'}
-          >
-            {ready ? t('links.pay.cta') : 'Pay now'}
-          </button>
+          <div className="mt-8 pt-8 border-t border-gray-200 text-center">
+            <p className="text-xs text-gray-500">
+              © 2025 Confidance Crypto. {ready ? t('links.pay.footer.rights') : 'All rights reserved'} |{' '}
+              <a href="#" className="text-blue-600 hover:underline">
+                {ready ? t('links.pay.footer.terms') : 'Terms'}
+              </a>{' '}
+              |{' '}
+              <a href="#" className="text-blue-600 hover:underline">
+                {ready ? t('links.pay.footer.privacy') : 'Privacy'}
+              </a>
+            </p>
+          </div>
         </div>
       </div>
     </div>

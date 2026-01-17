@@ -37,7 +37,12 @@ export interface EmailNotification {
   id: string;
   payment_id: string;
   email: string;
-  type: 'payment_created' | 'payment_reminder' | 'payment_executed' | 'payment_failed';
+  type:
+    | 'payment_created'
+    | 'payment_reminder'
+    | 'payment_executed'
+    | 'payment_failed'
+    | 'contact_form';
   sent_at: string;
   status: 'sent' | 'failed';
 }

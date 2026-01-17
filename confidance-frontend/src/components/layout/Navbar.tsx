@@ -1,6 +1,6 @@
 'use client';
 
-import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { ConnectButton, useAccountModal, useConnectModal } from '@rainbow-me/rainbowkit';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Menu, X } from 'lucide-react';
@@ -12,6 +12,8 @@ import { VerifyEmailModal } from '@/components/Auth/VerifyEmailModal';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { useTranslation } from 'react-i18next';
 import { useEffect, useState as useStateReact } from 'react';
+import { useAccount } from 'wagmi';
+import { ProAccountModal } from '@/components/Pro/ProAccountModal'; // ADDED
 
 export function Navbar() {
   const { t, ready: translationsReady } = useTranslation();
@@ -19,13 +21,20 @@ export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isMounted, setIsMounted] = useStateReact(false);
 
-  const { user, isAuthenticated, logout, isLoading } = useAuth();
+  const { user, isAuthenticated, logout, isLoading, refreshUser } = useAuth();
+  const { address } = useAccount();
+  const { openAccountModal } = useAccountModal();
+  const { openConnectModal: openConnectModalHook } = useConnectModal();
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [verifyEmail, setVerifyEmail] = useState('');
   const [verifyCode, setVerifyCode] = useState('');
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+
+  // ADDED — ouverture auto du formulaire Pro après inscription + vérification email
+  const [pendingAccountType, setPendingAccountType] = useState<'particular' | 'professional' | null>(null);
+  const [showProModal, setShowProModal] = useState(false);
 
   // ✅ FIX : Éviter le mismatch d'hydratation en attendant que les traductions soient chargées
   useEffect(() => {
@@ -43,11 +52,15 @@ export function Navbar() {
     { href: '/dashboard', label: 'Dashboard' },
   ];
 
-  const handleRegisterSuccess = (email: string, code: string) => {
+  // MODIFIED — on récupère aussi accountType choisi à l’inscription
+  const handleRegisterSuccess = (email: string, code: string, accountType: 'particular' | 'professional') => {
     setShowRegisterModal(false);
     setVerifyEmail(email);
     setVerifyCode(code);
     setShowVerifyModal(true);
+
+    // ADDED
+    setPendingAccountType(accountType);
   };
 
   const handleNeedsVerification = (email: string) => {
@@ -60,6 +73,30 @@ export function Navbar() {
   const handleLogout = () => {
     logout();
     setShowUserDropdown(false);
+  };
+
+  // ADDED — valeurs “safe” pour ProAccountModal (sans casser si le type user évolue)
+  const userId = (user as any)?.id;
+  const proStatus = (user as any)?.proStatus;
+  const isProVerified = proStatus === 'verified';
+  const canUpgradeToPro = !!userId && !isProVerified;
+  const primaryWallet =
+    (user as any)?.walletAddress ||
+    (user as any)?.primaryWallet ||
+    (user as any)?.primary_wallet ||
+    (user as any)?.primaryWalletAddress ||
+    address ||
+    '';
+
+  const handleWalletModalOpen = (e?: React.SyntheticEvent) => {
+    e?.preventDefault();
+    if (openAccountModal) {
+      openAccountModal();
+      return;
+    }
+    if (openConnectModalHook) {
+      openConnectModalHook();
+    }
   };
 
   return (
@@ -133,11 +170,11 @@ export function Navbar() {
                           </div>
                           {/* Badge type de compte */}
                           <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white dark:border-gray-900 flex items-center justify-center text-xs ${
-                            user?.accountType === 'professional' 
+                            isProVerified
                               ? 'bg-purple-500' 
                               : 'bg-blue-500'
                           }`}>
-                            {user?.accountType === 'professional' ? '💼' : '👤'}
+                            {isProVerified ? '💼' : '👤'}
                           </div>
                         </div>
 
@@ -148,7 +185,7 @@ export function Navbar() {
                               {user?.email.split('@')[0]}
                             </p>
                             <p className="text-xs text-gray-500 dark:text-gray-400">
-                              {isMounted && translationsReady ? (user?.accountType === 'professional' ? t('common.accountType.professional') : t('common.accountType.individual')) : (user?.accountType === 'professional' ? 'Pro' : 'Particulier')}
+                              {isMounted && translationsReady ? (isProVerified ? t('common.accountType.professional') : t('common.accountType.individual')) : (isProVerified ? 'Pro' : 'Particulier')}
                             </p>
                           </div>
                           <svg 
@@ -176,11 +213,11 @@ export function Navbar() {
                               <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{user?.email}</p>
                               <div className="flex items-center gap-1.5 mt-1.5">
                                 <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium ${
-                                  user?.accountType === 'professional'
+                                  isProVerified
                                     ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
                                     : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
                                 }`}>
-                                  {user?.accountType === 'professional' ? '💼 Pro' : '👤 Perso'}
+                                  {isProVerified ? '💼 Pro' : '👤 Perso'}
                                 </span>
                                 {user?.kycVerified && (
                                   <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
@@ -192,6 +229,30 @@ export function Navbar() {
 
                             {/* Menu items */}
                             <div className="py-1.5">
+                              {canUpgradeToPro && (
+                                <button
+                                  onClick={() => {
+                                    setShowUserDropdown(false);
+                                    setShowProModal(true);
+                                  }}
+                                  className="flex items-center gap-2.5 w-full px-4 py-2 text-sm text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
+                                >
+                                  <span>💼</span>
+                                  Passer en compte Pro
+                                </button>
+                              )}
+                              {isProVerified && (
+                                <button
+                                  onClick={() => {
+                                    setShowUserDropdown(false);
+                                    setShowProModal(true);
+                                  }}
+                                  className="flex items-center gap-2.5 w-full px-4 py-2 text-sm text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
+                                >
+                                  <span>📝</span>
+                                  Modifier mes infos Pro
+                                </button>
+                              )}
                               <Link
                                 href="/dashboard"
                                 onClick={() => setShowUserDropdown(false)}
@@ -214,7 +275,7 @@ export function Navbar() {
                                 {isMounted && translationsReady ? t('payment.create') : 'Créer un paiement'}
                               </Link>
 
-                              <div className="border-t border-gray-200 dark:border-gray-700 my-1.5"></div>
+                            <div className="border-t border-gray-200 dark:border-gray-700 my-1.5"></div>
 
                               <button
                                 onClick={handleLogout}
@@ -246,25 +307,14 @@ export function Navbar() {
                     authenticationStatus,
                     mounted,
                   }) => {
-                    const ready = mounted && authenticationStatus !== 'loading';
+                    const ready = mounted;
                     const connected =
                       ready &&
                       account &&
-                      chain &&
-                      (!authenticationStatus ||
-                        authenticationStatus === 'authenticated');
+                      chain;
 
                     return (
-                      <div
-                        {...(!ready && {
-                          'aria-hidden': true,
-                          'style': {
-                            opacity: 0,
-                            pointerEvents: 'none',
-                            userSelect: 'none',
-                          },
-                        })}
-                      >
+                      <div>
                         {(() => {
                           if (!connected) {
                             return (
@@ -292,6 +342,7 @@ export function Navbar() {
                                 onClick={openChainModal}
                                 style={{ display: 'flex', alignItems: 'center' }}
                                 type="button"
+                                title={isMounted && translationsReady ? t('common.connect') : 'Réseau'}
                               >
                                 {chain.hasIcon && (
                                   <div
@@ -316,7 +367,12 @@ export function Navbar() {
                                 {chain.name}
                               </button>
 
-                              <button onClick={openAccountModal} type="button">
+                              <button
+                                onClick={handleWalletModalOpen}
+                                onPointerDown={handleWalletModalOpen}
+                                type="button"
+                                className="cursor-pointer"
+                              >
                                 {account.displayName}
                                 {account.displayBalance
                                   ? ` (${account.displayBalance})`
@@ -397,9 +453,31 @@ export function Navbar() {
                     <div className="px-4 py-2.5 bg-gradient-to-r from-primary-50 to-purple-50 dark:from-primary-900/20 dark:to-purple-900/20 rounded-lg">
                       <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{user?.email}</p>
                       <span className="text-xs text-gray-600 dark:text-gray-400">
-                        {isMounted && translationsReady ? (user?.accountType === 'professional' ? `💼 ${t('common.accountType.professional')}` : `👤 ${t('common.accountType.individual')}`) : (user?.accountType === 'professional' ? '💼 Professionnel' : '👤 Particulier')}
+                      {isMounted && translationsReady ? (isProVerified ? `💼 ${t('common.accountType.professional')}` : `👤 ${t('common.accountType.individual')}`) : (isProVerified ? '💼 Professionnel' : '👤 Particulier')}
                       </span>
                     </div>
+                    {canUpgradeToPro && (
+                      <button
+                        onClick={() => {
+                          setMobileMenuOpen(false);
+                          setShowProModal(true);
+                        }}
+                        className="w-full px-4 py-2.5 text-sm font-medium text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors text-left"
+                      >
+                        💼 Passer en compte Pro
+                      </button>
+                    )}
+                    {isProVerified && (
+                      <button
+                        onClick={() => {
+                          setMobileMenuOpen(false);
+                          setShowProModal(true);
+                        }}
+                        className="w-full px-4 py-2.5 text-sm font-medium text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors text-left"
+                      >
+                        📝 Modifier mes infos Pro
+                      </button>
+                    )}
                     <button
                       onClick={() => {
                         setMobileMenuOpen(false);
@@ -421,25 +499,14 @@ export function Navbar() {
                     authenticationStatus,
                     mounted,
                   }) => {
-                    const ready = mounted && authenticationStatus !== 'loading';
+                    const ready = mounted;
                     const connected =
                       ready &&
                       account &&
-                      chain &&
-                      (!authenticationStatus ||
-                        authenticationStatus === 'authenticated');
+                      chain;
 
                     return (
-                      <div
-                        {...(!ready && {
-                          'aria-hidden': true,
-                          'style': {
-                            opacity: 0,
-                            pointerEvents: 'none',
-                            userSelect: 'none',
-                          },
-                        })}
-                      >
+                      <div>
                         {(() => {
                           if (!connected) {
                             return (
@@ -482,10 +549,11 @@ export function Navbar() {
                                 {chain.name}
                               </button>
 
-                              <button 
-                                onClick={openAccountModal} 
+                              <button
+                                onClick={handleWalletModalOpen}
+                                onPointerDown={handleWalletModalOpen}
                                 type="button"
-                                className="w-full px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 rounded-lg text-left"
+                                className="w-full px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 rounded-lg text-left cursor-pointer"
                               >
                                 {account.displayName}
                                 {account.displayBalance
@@ -513,7 +581,7 @@ export function Navbar() {
           setShowRegisterModal(false);
           setShowLoginModal(true);
         }}
-        onSuccess={handleRegisterSuccess}
+        onSuccess={handleRegisterSuccess} // MODIFIED
       />
 
       <LoginModal
@@ -528,10 +596,32 @@ export function Navbar() {
 
       <VerifyEmailModal
         isOpen={showVerifyModal}
-        onClose={() => setShowVerifyModal(false)}
+        onClose={() => {
+          setShowVerifyModal(false);
+
+          // ADDED — si l’utilisateur vient de créer un compte pro, ouvrir le formulaire pro
+          if (pendingAccountType === 'professional') {
+            setShowProModal(true);
+          }
+        }}
         email={verifyEmail}
         verificationCode={verifyCode}
       />
+
+      {/* ADDED — Modal Compte Pro */}
+      {userId && (
+        <ProAccountModal
+          isOpen={showProModal}
+          onClose={() => setShowProModal(false)}
+          userId={userId}
+          primaryWallet={primaryWallet}
+          mode={isProVerified ? 'update' : 'create'}
+          onVerified={() => {
+            setPendingAccountType(null);
+            refreshUser();
+          }}
+        />
+      )}
     </>
   );
 }

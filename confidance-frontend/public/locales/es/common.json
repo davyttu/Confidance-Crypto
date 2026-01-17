@@ -17,7 +17,8 @@
   },
   "home": {
     "title": "Programa tus pagos cripto con confianza",
-    "subtitle": "Bloquea tus criptomonedas y libéralas automáticamente en una fecha específica.",
+    "subtitle": "Libéralas automáticamente en una fecha específica.",
+    "badge": "Protocolo DeFi multichain.",
     "tagline": "Sin intermediarios. 100% on-chain.",
     "cta": "Crear un pago",
     "features": {
@@ -27,7 +28,7 @@
       },
       "secure": {
         "title": "Seguro",
-        "description": "Contratos inteligentes auditados. Tus fondos están bloqueados on-chain"
+        "description": "Contratos inteligentes auditados. Tus fondos están asegurados on-chain"
       },
       "flexible": {
         "title": "Flexible",

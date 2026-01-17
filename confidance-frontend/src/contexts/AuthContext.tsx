@@ -9,6 +9,7 @@ export interface User {
   id: string;
   email: string;
   accountType: 'particular' | 'professional';
+  proStatus?: 'pending' | 'verified' | 'rejected' | null;
   emailVerified: boolean;
   kycVerified: boolean;
   createdAt: string;

@@ -8,6 +8,7 @@ import { WalletSyncProvider } from '@/components/WalletSyncProvider';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { HelpWidget } from '@/components/HelpWidget';
+import { Toaster } from '@/components/ui/sonner';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -33,6 +34,7 @@ export default function RootLayout({
               </main>
               <Footer />
               <HelpWidget />
+              <Toaster />
             </WalletSyncProvider>
           </AuthProvider>
         </Providers>

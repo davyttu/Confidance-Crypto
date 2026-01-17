@@ -1,16 +1,36 @@
 // src/hooks/usePaymentLinks.ts
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import type { PaymentLink } from '@/lib/Supabase/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const DEFAULT_TIMEOUT_MS = 10000;
+
+const fetchWithTimeout = async (
+  input: RequestInfo | URL,
+  init?: RequestInit,
+  timeoutMs: number = DEFAULT_TIMEOUT_MS
+) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (err) {
+    if ((err as Error).name === 'AbortError') {
+      throw new Error('Request timeout. Please retry.');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
 
 export function usePaymentLinks() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  const createLink = async (payload: {
+  const createLink = useCallback(async (payload: {
     creator: string;
     amount: string;
     token: string;
@@ -29,7 +49,7 @@ export function usePaymentLinks() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${API_URL}/api/payment-links`, {
+      const response = await fetchWithTimeout(`${API_URL}/api/payment-links`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -45,13 +65,13 @@ export function usePaymentLinks() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const fetchLink = async (id: string): Promise<PaymentLink> => {
+  const fetchLink = useCallback(async (id: string): Promise<PaymentLink> => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${API_URL}/api/payment-links/${id}`);
+      const response = await fetchWithTimeout(`${API_URL}/api/payment-links/${id}`);
       if (!response.ok) {
         throw new Error('Payment link not found');
       }
@@ -63,13 +83,15 @@ export function usePaymentLinks() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const listLinks = async (creator: string): Promise<PaymentLink[]> => {
+  const listLinks = useCallback(async (creator: string): Promise<PaymentLink[]> => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${API_URL}/api/payment-links?creator=${encodeURIComponent(creator)}`);
+      const response = await fetchWithTimeout(
+        `${API_URL}/api/payment-links?creator=${encodeURIComponent(creator)}`
+      );
       if (!response.ok) {
         throw new Error('Failed to load payment links');
       }
@@ -81,13 +103,13 @@ export function usePaymentLinks() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const updateLinkStatus = async (id: string, status: string, payer_address?: string) => {
+  const updateLinkStatus = useCallback(async (id: string, status: string, payer_address?: string) => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${API_URL}/api/payment-links/${id}`, {
+      const response = await fetchWithTimeout(`${API_URL}/api/payment-links/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status, payer_address }),
@@ -103,7 +125,7 @@ export function usePaymentLinks() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   return {
     isLoading,

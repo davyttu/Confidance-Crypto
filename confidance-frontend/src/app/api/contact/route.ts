@@ -1,6 +1,7 @@
 // app/api/contact/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
+import { createClient } from '@supabase/supabase-js';
 
 // Adresse email de destination officielle
 const CONTACT_EMAIL = process.env.CONTACT_EMAIL || 'davyes0101@gmail.com';
@@ -40,7 +41,61 @@ const createTransporter = () => {
   return nodemailer.createTransport(config);
 };
 
+const createSupabaseAdminClient = () => {
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseServiceKey =
+    process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+    console.warn(
+      '⚠️ Supabase admin client non configuré (SUPABASE_URL et SUPABASE_SERVICE_KEY requis).'
+    );
+    return null;
+  }
+
+  return createClient(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      persistSession: false,
+    },
+  });
+};
+
+const logEmailNotification = async ({
+  paymentId,
+  email,
+  type,
+  status,
+}: {
+  paymentId?: string | null;
+  email: string;
+  type: string;
+  status: 'sent' | 'failed';
+}) => {
+  try {
+    const supabase = createSupabaseAdminClient();
+    if (!supabase) return;
+
+    const { error } = await supabase.from('email_notifications').insert([
+      {
+        payment_id: paymentId ?? null,
+        email,
+        type,
+        status,
+      },
+    ]);
+
+    if (error) {
+      console.error('❌ Erreur insertion email_notifications:', error);
+    } else {
+      console.log('✅ Notification email enregistrée en base');
+    }
+  } catch (logError) {
+    console.error('❌ Erreur logging email notification:', logError);
+  }
+};
+
 export async function POST(request: NextRequest) {
+  let senderEmail = '';
   try {
     // Vérifier que SMTP est configuré
     const smtpHost = process.env.SMTP_HOST || 'smtp-relay.brevo.com';
@@ -77,11 +132,8 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     
-    const {
-      email,
-      subject,
-      message,
-    } = body;
+    const { email, subject, message } = body;
+    senderEmail = email;
 
     // Validation des champs requis
     if (!email || !subject || !message) {
@@ -247,6 +299,12 @@ export async function POST(request: NextRequest) {
     const info = await transporter.sendMail(mailOptions);
 
     console.log('✅ Email de contact envoyé:', info.messageId);
+    await logEmailNotification({
+      paymentId: null,
+      email: senderEmail,
+      type: 'contact_form',
+      status: 'sent',
+    });
 
     return NextResponse.json({
       success: true,
@@ -255,6 +313,14 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('❌ Erreur API contact:', error);
+    if (senderEmail) {
+      await logEmailNotification({
+        paymentId: null,
+        email: senderEmail,
+        type: 'contact_form',
+        status: 'failed',
+      });
+    }
     
     let errorMessage = 'Erreur lors de l\'envoi de l\'email';
     let detailedMessage = '';

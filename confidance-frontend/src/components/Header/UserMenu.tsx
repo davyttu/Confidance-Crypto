@@ -110,11 +110,11 @@ export function UserMenu() {
         {/* Info utilisateur */}
         <div className="text-left hidden md:block">
           <div className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-            {user.accountType === 'professional' && '💼'}
+            {user.proStatus === 'verified' && '💼'}
             {user.email.split('@')[0]}
           </div>
           <div className="text-xs text-gray-500">
-            {user.accountType === 'professional' ? 'Pro' : 'Particulier'}
+            {user.proStatus === 'verified' ? 'Pro' : 'Particulier'}
           </div>
         </div>
 
@@ -145,11 +145,11 @@ export function UserMenu() {
               <p className="text-sm font-semibold text-gray-900">{user.email}</p>
               <div className="flex items-center gap-2 mt-1">
                 <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                  user.accountType === 'professional'
+                  user.proStatus === 'verified'
                     ? 'bg-purple-100 text-purple-800'
                     : 'bg-blue-100 text-blue-800'
                 }`}>
-                  {user.accountType === 'professional' ? '💼 Professionnel' : '👤 Particulier'}
+                  {user.proStatus === 'verified' ? '💼 Professionnel' : '👤 Particulier'}
                 </span>
                 {user.kycVerified && (
                   <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">

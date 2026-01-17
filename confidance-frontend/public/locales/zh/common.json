@@ -17,7 +17,8 @@
   },
   "home": {
     "title": "安心安排您的加密货币支付",
-    "subtitle": "锁定您的加密货币并在指定日期自动释放。",
+    "subtitle": "在指定日期自动释放。",
+    "badge": "多链 DeFi 协议。",
     "tagline": "无中介。100% 链上。",
     "cta": "创建支付",
     "features": {
@@ -27,7 +28,7 @@
       },
       "secure": {
         "title": "安全",
-        "description": "经过审计的智能合约。您的资金锁定在链上"
+        "description": "经过审计的智能合约。您的资金安全存放在链上"
       },
       "flexible": {
         "title": "灵活",

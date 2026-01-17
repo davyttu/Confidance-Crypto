@@ -29,8 +29,11 @@ export default function NewPaymentLinkPage() {
   const [copied, setCopied] = useState(false);
 
   const shareUrl = useMemo(() => {
-    if (!createdId || typeof window === 'undefined') return '';
-    return `${window.location.origin}/pay/${createdId}`;
+    if (!createdId) return '';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL
+      || (typeof window !== 'undefined' ? window.location.origin : '');
+    if (!baseUrl) return '';
+    return `${baseUrl}/pay/${createdId}`;
   }, [createdId]);
 
   const handleCopy = async () => {

@@ -2,7 +2,8 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { useAccount } from 'wagmi';
+import { useAccount, useDisconnect } from 'wagmi';
+import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { useDashboard, type Payment } from '@/hooks/useDashboard';
@@ -24,6 +25,8 @@ export default function DashboardPage() {
   const { t, ready: translationsReady } = useTranslation();
   const [isMounted, setIsMounted] = useState(false);
   const { address, isConnected } = useAccount();
+  const { disconnect } = useDisconnect();
+  const { openConnectModal } = useConnectModal();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { payments, isLoading, refetch } = useDashboard();
   const { beneficiaries } = useBeneficiaries();
@@ -39,6 +42,14 @@ export default function DashboardPage() {
   const [selectedPaymentToCancel, setSelectedPaymentToCancel] = useState<Payment | null>(null);
   const [beneficiaryToEdit, setBeneficiaryToEdit] = useState<Beneficiary | null>(null);
   const [beneficiaryAddressToAdd, setBeneficiaryAddressToAdd] = useState<string | undefined>();
+  const walletConnected = Boolean(address);
+
+  const handleReconnectWallet = () => {
+    disconnect();
+    if (openConnectModal) {
+      setTimeout(() => openConnectModal(), 50);
+    }
+  };
 
   // 🆕 AJOUT : Rafraîchir automatiquement après annulation réussie
   useEffect(() => {
@@ -182,7 +193,7 @@ export default function DashboardPage() {
   }
 
   // Vérifier la connexion wallet
-  if (!isConnected) {
+  if (!walletConnected) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-6">
         <div className="bg-white rounded-xl shadow-xl p-8 max-w-md w-full text-center">
@@ -198,6 +209,20 @@ export default function DashboardPage() {
           <p className="text-sm text-gray-500">
             {isMounted && translationsReady ? t('dashboard.auth.walletNotConnected.hint') : 'Utilisez le bouton "Connect Wallet" en haut à droite'}
           </p>
+          <div className="mt-6 flex flex-col gap-3">
+            <button
+              onClick={() => openConnectModal?.()}
+              className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all"
+            >
+              {isMounted && translationsReady ? t('common.connectWallet', { defaultValue: 'Connect Wallet' }) : 'Connect Wallet'}
+            </button>
+            <button
+              onClick={handleReconnectWallet}
+              className="w-full px-6 py-3 bg-gray-100 text-gray-700 font-semibold rounded-lg hover:bg-gray-200 transition-all"
+            >
+              {isMounted && translationsReady ? t('common.resetWallet', { defaultValue: 'Reset wallet connection' }) : 'Reset wallet connection'}
+            </button>
+          </div>
         </div>
       </div>
     );

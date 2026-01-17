@@ -18,6 +18,7 @@ const supabase = createClient(
 router.post('/register', async (req, res) => {
   try {
     const { email, password, confirmPassword, accountType = 'particular' } = req.body;
+    const isProfessionalSignup = accountType === 'professional';
 
     // Validations
     if (!email || !password || !confirmPassword) {
@@ -56,7 +57,9 @@ router.post('/register', async (req, res) => {
       .insert({
         email: email.toLowerCase(),
         password_hash: passwordHash,
-        account_type: accountType,
+        // Ne pas activer "pro" avant validation du formulaire
+        account_type: isProfessionalSignup ? 'particular' : accountType,
+        pro_status: isProfessionalSignup ? 'pending' : null,
         verification_code: verificationCode,
         verification_code_expires_at: expiresAt.toISOString(),
         email_verified: false
@@ -172,13 +175,19 @@ router.post('/verify', async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 jours
     });
 
+    const resolvedAccountType =
+      user.account_type === 'professional' && user.pro_status === 'verified'
+        ? 'professional'
+        : 'particular';
+
     res.json({
       success: true,
       message: 'Email vérifié avec succès',
       user: {
         id: user.id,
         email: user.email,
-        accountType: user.account_type,
+        accountType: resolvedAccountType,
+        proStatus: user.pro_status || null,
         emailVerified: true
       },
       token
@@ -241,13 +250,19 @@ router.post('/login', async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
+    const resolvedAccountType =
+      user.account_type === 'professional' && user.pro_status === 'verified'
+        ? 'professional'
+        : 'particular';
+
     res.json({
       success: true,
       message: 'Connexion réussie',
       user: {
         id: user.id,
         email: user.email,
-        accountType: user.account_type,
+        accountType: resolvedAccountType,
+        proStatus: user.pro_status || null,
         emailVerified: user.email_verified,
         kycVerified: user.kyc_verified
       },
@@ -297,7 +312,7 @@ router.get('/me', async (req, res) => {
     // Récupérer l'utilisateur complet
     const { data: user, error } = await supabase
       .from('users')
-      .select('id, email, account_type, email_verified, kyc_verified, created_at')
+      .select('id, email, account_type, pro_status, email_verified, kyc_verified, created_at')
       .eq('id', decoded.userId)
       .single();
 
@@ -305,11 +320,17 @@ router.get('/me', async (req, res) => {
       return res.status(404).json({ error: 'Utilisateur non trouvé' });
     }
 
+    const resolvedAccountType =
+      user.account_type === 'professional' && user.pro_status === 'verified'
+        ? 'professional'
+        : 'particular';
+
     res.json({
       user: {
         id: user.id,
         email: user.email,
-        accountType: user.account_type,
+        accountType: resolvedAccountType,
+        proStatus: user.pro_status || null,
         emailVerified: user.email_verified,
         kycVerified: user.kyc_verified,
         createdAt: user.created_at

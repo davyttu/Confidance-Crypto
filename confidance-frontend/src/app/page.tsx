@@ -1,7 +1,8 @@
 // src/app/page.tsx
 'use client';
 
-import { useAccount, useChainId } from 'wagmi';
+import { useAccount, useChainId, useDisconnect } from 'wagmi';
+import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { useEffect, useState } from 'react';
 import { testSupabaseConnection } from '@/lib/supabase/test';
 import Link from 'next/link';
@@ -21,14 +22,24 @@ import { useTranslation } from 'react-i18next';
 export default function Home() {
   const { t, ready } = useTranslation();
   const [isMounted, setIsMounted] = useState(false);
-  const { isConnected } = useAccount();
+  const { address } = useAccount();
+  const { disconnect } = useDisconnect();
+  const { openConnectModal } = useConnectModal();
   const chainId = useChainId();
+  const walletConnected = Boolean(address);
   const [supabaseOk, setSupabaseOk] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
     testSupabaseConnection().then(setSupabaseOk);
   }, []);
+
+  const handleReconnectWallet = () => {
+    disconnect();
+    if (openConnectModal) {
+      setTimeout(() => openConnectModal(), 50);
+    }
+  };
 
   // ✅ FIX : Utiliser des valeurs par défaut pendant l'hydratation
   const features = isMounted && ready ? [
@@ -108,7 +119,7 @@ export default function Home() {
               {/* Badge */}
               <div className="inline-flex items-center gap-2 px-4 py-2 glass rounded-full">
                 <Sparkles className="h-4 w-4 text-primary-500" />
-                <span className="text-sm font-medium">{isMounted && ready ? t('home.tagline') : 'Paiements programmés DeFi'}</span>
+                <span className="text-sm font-medium">{isMounted && ready ? t('home.badge') : 'Paiements programmés DeFi'}</span>
               </div>
 
               {/* Title */}
@@ -134,7 +145,7 @@ export default function Home() {
                   {isMounted && ready ? (supabaseOk ? t('home.status.operational') : t('home.status.maintenance')) : (supabaseOk ? 'Système opérationnel' : 'Maintenance')}
                 </div>
                 
-                {isConnected && chainId === 8453 && (
+                {walletConnected && chainId === 8453 && (
                   <div className="glass px-4 py-2 rounded-full text-sm font-medium text-blue-600 dark:text-blue-400">
                     <span className="inline-block w-2 h-2 rounded-full mr-2 bg-current animate-pulse" />
                     Base Mainnet
@@ -146,7 +157,7 @@ export default function Home() {
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
                 <Link
                   href="/create"
-                  className="group relative px-8 py-4 bg-gradient-to-r from-primary-500 via-purple-500 to-pink-500 text-white rounded-xl font-semibold shadow-2xl shadow-primary-500/50 hover:shadow-primary-500/70 transition-all hover:scale-105"
+                  className="group relative px-8 py-4 bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-2xl transition-all hover:scale-105"
                 >
                   <span className="flex items-center gap-2">
                     {isMounted && ready ? t('home.cta') : 'Créer un paiement'}
@@ -154,7 +165,7 @@ export default function Home() {
                   </span>
                 </Link>
                 
-                {isConnected && (
+                {walletConnected && (
                   <Link
                     href="/dashboard"
                     className="px-8 py-4 glass rounded-xl font-semibold hover:scale-105 transition-all"
@@ -163,6 +174,25 @@ export default function Home() {
                   </Link>
                 )}
               </div>
+
+              {!walletConnected && (
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                  <button
+                    onClick={() => openConnectModal?.()}
+                    className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all"
+                    type="button"
+                  >
+                    {isMounted && ready ? t('common.connectWallet', { defaultValue: 'Connect Wallet' }) : 'Connect Wallet'}
+                  </button>
+                  <button
+                    onClick={handleReconnectWallet}
+                    className="px-6 py-3 bg-gray-100 text-gray-700 font-semibold rounded-lg hover:bg-gray-200 transition-all"
+                    type="button"
+                  >
+                    {isMounted && ready ? t('common.resetWallet', { defaultValue: 'Reset wallet connection' }) : 'Reset wallet connection'}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </section>
@@ -220,7 +250,7 @@ export default function Home() {
         </section>
 
         {/* Use Cases Section */}
-        <section className="py-20 sm:py-32 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-950">
+        <section className="pt-12 pb-20 sm:pt-16 sm:pb-28 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-950">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl">
             <div className="text-center mb-16 space-y-4">
               <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white">
@@ -253,7 +283,7 @@ export default function Home() {
             <div className="mt-8 text-center">
               <Link
                 href="/links/new"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-white border border-gray-200 rounded-xl font-semibold text-gray-800 shadow-sm hover:shadow-md transition"
+                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 text-white font-semibold shadow-lg hover:shadow-2xl hover:scale-105 transition-all"
               >
                 {isMounted && ready ? t('links.cta') : 'Créer un lien de paiement'}
                 <ArrowRight className="h-4 w-4" />

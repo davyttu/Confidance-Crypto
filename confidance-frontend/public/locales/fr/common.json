@@ -23,7 +23,8 @@
   },
   "home": {
     "title": "Programmez vos paiements crypto en toute confiance",
-    "subtitle": "Verrouillez vos cryptos et libérez-les automatiquement à une date précise.",
+    "subtitle": "Libérez-les automatiquement à une date précise.",
+    "badge": "Protocole DeFi multi-chaînes.",
     "tagline": "Sans intermédiaire. 100% on-chain.",
     "cta": "Créer un paiement",
     "features": {
@@ -33,7 +34,7 @@
       },
       "secure": {
         "title": "Sécurisé",
-        "description": "Smart contracts audités. Vos fonds sont verrouillés on-chain"
+        "description": "Smart contracts audités. Vos fonds sont sécurisés on-chain"
       },
       "flexible": {
         "title": "Flexible",
@@ -336,7 +337,7 @@
       "protocolFees": "Frais protocole ({{percentage}}%)",
       "totalToSend": "TOTAL à envoyer",
       "secureTitle": "🔒 Paiement sécurisé et automatique",
-      "secureDescription": "Vos fonds sont verrouillés dans un smart contract et seront automatiquement libérés à la date choisie. Aucune action manuelle nécessaire.",
+      "secureDescription": "Vos fonds sont sécurisés dans un smart contract et seront automatiquement libérés à la date choisie. Aucune action manuelle nécessaire.",
       "feesTooltip": "Ces frais maintiennent la plateforme et le keeper 24/7"
     },
     "submit": "Créer le paiement programmé",
@@ -403,7 +404,7 @@
     "features": {
       "secure": {
         "title": "100% Sécurisé",
-        "description": "Vos fonds sont verrouillés dans un smart contract vérifié"
+        "description": "Vos fonds sont sécurisés dans un smart contract vérifié"
       },
       "automatic": {
         "title": "Automatique",
@@ -575,7 +576,7 @@
           "questions": {
             "fundsSafe": {
               "q": "Mes fonds sont-ils en sécurité ?",
-              "a": "Oui ! Vos fonds sont verrouillés dans un smart contract audité sur la blockchain Base. Personne (même pas nous) ne peut y toucher avant la date programmée. Vous gardez le contrôle à 100%."
+              "a": "Oui ! Vos fonds sont sécurisés dans un smart contract audité sur la blockchain Base. Personne (même pas nous) ne peut y toucher avant la date programmée. Vous gardez le contrôle à 100%."
             },
             "ifConfidanceDisappears": {
               "q": "Que se passe-t-il si Confidance disparaît ?",
@@ -748,7 +749,7 @@
     }
   },
   "footer": {
-    "description": "Paiements programmés décentralisés sur Base Mainnet. Simple, sécurisé, automatique.",
+    "description": "Because payments shouldn't depend on trust. They should depend on code.",
     "product": "Produit",
     "resources": "Ressources",
     "legal": "Légal",
