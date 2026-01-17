@@ -240,6 +240,36 @@
     }
   },
   "create": {
+    "title": "创建即时、定期或循环支付",
+    "subtitle": "发送加密货币，将在指定日期自动释放",
+    "beneficiary": {
+      "address": "收款地址",
+      "addMultiple": "添加多个收款人",
+      "additional": "附加收款人",
+      "recentTitle": "最近地址",
+      "recentEmpty": "暂无最近地址",
+      "favoritesTitle": "收藏",
+      "toggleFavorite": "加入收藏",
+      "remove": "移除",
+      "addTitle": "➕ 添加收款人",
+      "addDescription": "最多可添加 4 个附加收款人（金额相同）",
+      "beneficiaryLabel": "收款人 {{number}}（可选）",
+      "invalidAddress": "地址无效",
+      "addAtLeastOne": "至少添加一个有效地址",
+      "cancel": "取消",
+      "validate": "✅ 确认"
+    },
+    "validation": {
+      "amountRequired": "请输入金额",
+      "amountInvalid": "金额无效",
+      "insufficientBalance": "余额不足",
+      "dateRequired": "请选择日期",
+      "datePast": "该日期已过去，请选择未来日期。",
+      "dateMin": "日期必须至少在未来 10 分钟",
+      "invalidAddress": "地址无效",
+      "firstMonthRequired": "请输入首月金额",
+      "firstMonthInvalid": "金额无效"
+    },
     "modal": {
       "approvingFactoryForCreation": "正在批准 {{token}} 用于创建...",
       "creatingRecurring": "正在创建定期 {{token}} 支付...",
@@ -278,7 +308,21 @@
     "date": {
       "paymentTypeLabel": "支付类型",
       "treasuryRemainsAvailable": "您的资金仍然可用",
-      "onlyAmountDebitedMonthly": "每月只会从您的钱包中扣除 <strong>{{amount}} {{token}}</strong>。"
+      "onlyAmountDebitedMonthly": "每月只会从您的钱包中扣除 <strong>{{amount}} {{token}}</strong>。",
+      "importantTitle": "重要信息：",
+      "important": {
+        "balanceMonthly": "请确保你的钱包每个月都有足够余额 <strong>以覆盖扣款</strong>",
+        "failedMonth": "如果扣款失败（余额不足），该月将被 <strong class=\"text-red-600 dark:text-red-400\">视为失效</strong>，系统会自动进入下一月",
+        "firstMonthFailed": "重要：如果首月扣款失败，合约将 <strong class=\"text-red-600 dark:text-red-400\">停止</strong>，后续月份将不会执行。",
+        "nextMonthsContinue": "即便某个月失败，后续月份仍会正常继续"
+      },
+      "timeUntil": {
+        "past": "已过期",
+        "pastError": "该日期已过去，请选择未来日期。",
+        "days": "还剩 {{days}}天 {{hours}}小时 {{minutes}}分钟",
+        "hours": "还剩 {{hours}}小时 {{minutes}}分钟",
+        "minutes": "还剩 {{minutes}}分钟"
+      }
     },
     "firstMonth": {
       "title": "首期月度付款",

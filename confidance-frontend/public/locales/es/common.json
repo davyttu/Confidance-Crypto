@@ -240,6 +240,62 @@
     }
   },
   "create": {
+    "title": "Crear un pago instantáneo, programado o recurrente",
+    "subtitle": "Envía cripto que se liberará automáticamente en la fecha elegida",
+    "beneficiary": {
+      "address": "Dirección del beneficiario",
+      "addMultiple": "Añadir varios beneficiarios",
+      "additional": "Beneficiarios adicionales",
+      "recentTitle": "Direcciones recientes",
+      "recentEmpty": "Sin direcciones recientes",
+      "favoritesTitle": "Favoritos",
+      "toggleFavorite": "Marcar como favorito",
+      "remove": "Eliminar",
+      "addTitle": "➕ Añadir beneficiarios",
+      "addDescription": "Añade hasta 4 beneficiarios adicionales (recibirán el mismo monto)",
+      "beneficiaryLabel": "Beneficiario {{number}} (opcional)",
+      "invalidAddress": "Dirección inválida",
+      "addAtLeastOne": "Añade al menos una dirección válida",
+      "cancel": "Cancelar",
+      "validate": "✅ Validar"
+    },
+    "amount": {
+      "label": "Monto",
+      "perBeneficiary": "(por beneficiario)",
+      "monthly": "(mensual)",
+      "total": "Total",
+      "forBeneficiaries": "para {{count}} beneficiarios",
+      "totalMonths": "Total en {{months}} meses"
+    },
+    "validation": {
+      "amountRequired": "Introduce un monto",
+      "amountInvalid": "Monto inválido",
+      "insufficientBalance": "Saldo insuficiente",
+      "dateRequired": "Elige una fecha",
+      "datePast": "Esta fecha está en el pasado. Elige una fecha futura.",
+      "dateMin": "La fecha debe ser al menos 10 minutos en el futuro",
+      "invalidAddress": "Dirección inválida",
+      "firstMonthRequired": "Introduce un monto para el primer pago mensual",
+      "firstMonthInvalid": "Monto inválido"
+    },
+    "paymentType": {
+      "label": "🔒 Tipo de pago",
+      "instantDetected": "Pago instantáneo detectado",
+      "instantDisabled": "Las opciones de cancelación están desactivadas porque el pago se ejecutará inmediatamente.",
+      "cancellable": {
+        "title": "Cancelable (antes de la fecha)",
+        "description": "Podrás cancelar el pago desde el panel antes de la fecha de liberación"
+      },
+      "definitive": {
+        "title": "Definitivo (no cancelable)",
+        "description": "Una vez creado, es imposible cancelarlo. Los fondos se liberarán automáticamente en la fecha elegida"
+      }
+    },
+    "summary": {
+      "title": "💰 Resumen",
+      "protocolFees": "Comisiones del protocolo ({{percentage}}%)"
+    },
+    "submit": "Crear pago programado",
     "modal": {
       "approvingFactoryForCreation": "Aprobando {{token}} para la creación...",
       "creatingRecurring": "Creando pago recurrente {{token}}...",
@@ -278,7 +334,31 @@
     "date": {
       "paymentTypeLabel": "Tipo de pago",
       "treasuryRemainsAvailable": "Su tesorería permanece disponible",
-      "onlyAmountDebitedMonthly": "Solo <strong>{{amount}} {{token}}</strong> se debitarán cada mes de su cartera."
+      "onlyAmountDebitedMonthly": "Solo <strong>{{amount}} {{token}}</strong> se debitarán cada mes de su cartera.",
+      "importantTitle": "Información importante:",
+      "important": {
+        "balanceMonthly": "Asegúrate de tener saldo suficiente <strong>CADA MES</strong> en tu wallet para cubrir los débitos",
+        "failedMonth": "Si un débito falla (saldo insuficiente), ese mes se <strong class=\"text-red-600 dark:text-red-400\">PIERDE</strong> y el sistema pasa automáticamente al siguiente mes",
+        "firstMonthFailed": "Importante: si el primer pago mensual falla, el contrato <strong class=\"text-red-600 dark:text-red-400\">se detiene</strong> y no se ejecutarán los siguientes pagos.",
+        "nextMonthsContinue": "Los próximos pagos mensuales continuarán normalmente incluso si un mes falló"
+      },
+      "beneficiaryWillReceive": "El beneficiario recibirá (por mes)",
+      "numberOfMonths": "Número de meses",
+      "firstDueDate": "Primer vencimiento:",
+      "lastDueDate": "Último vencimiento:",
+      "totalPerMonth": "TOTAL por pago mensual",
+      "totalToApprove": "TOTAL a aprobar",
+      "monthsLabel": "Número de pagos mensuales",
+      "dayOfMonth": "Los débitos se realizarán el día {{day}} de cada mes",
+      "autoRelease": "💡 El pago se liberará automáticamente en esta fecha",
+      "cancellableStopsPayments": "Solo la opción \"Cancelable\" en el tipo de pago permite detener definitivamente los pagos mensuales restantes desde el panel",
+      "timeUntil": {
+        "past": "En el pasado",
+        "pastError": "Esta fecha está en el pasado. Elige una fecha futura.",
+        "days": "En {{days}}d {{hours}}h {{minutes}}min",
+        "hours": "En {{hours}}h {{minutes}}min",
+        "minutes": "En {{minutes}}min"
+      }
     },
     "firstMonth": {
       "title": "Primer pago mensual",

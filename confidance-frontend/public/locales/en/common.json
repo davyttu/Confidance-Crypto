@@ -269,7 +269,7 @@
     "nopayments": "No scheduled payments"
   },
   "create": {
-    "title": "Create a scheduled payment",
+    "title": "Create an instant, scheduled or recurring payment",
     "subtitle": "Send crypto that will be automatically released on the chosen date",
     "wallet": {
       "connectFirst": "To create a scheduled payment, first connect your wallet"
@@ -285,6 +285,10 @@
       "address": "Beneficiary address",
       "addMultiple": "Add multiple beneficiaries",
       "additional": "Additional beneficiaries",
+      "recentTitle": "Recent addresses",
+      "recentEmpty": "No recent addresses",
+      "favoritesTitle": "Favorites",
+      "toggleFavorite": "Toggle favorite",
       "remove": "Remove",
       "addTitle": "➕ Add beneficiaries",
       "addDescription": "Add up to 4 additional beneficiaries (they will receive the same amount)",
@@ -302,11 +306,29 @@
       "forBeneficiaries": "for {{count}} beneficiaries",
       "totalMonths": "Total over {{months}} months"
     },
+    "validation": {
+      "amountRequired": "Enter an amount",
+      "amountInvalid": "Invalid amount",
+      "insufficientBalance": "Insufficient balance",
+      "dateRequired": "Choose a date",
+      "datePast": "This date is in the past. Please choose a future date.",
+      "dateMin": "The date must be at least 10 minutes in the future",
+      "invalidAddress": "Invalid address",
+      "firstMonthRequired": "Enter an amount for the first monthly payment",
+      "firstMonthInvalid": "Invalid amount"
+    },
     "date": {
       "label": "Release date and time",
       "paymentTypeLabel": "Payment type",
       "firstDue": "Release date and time (first due date)",
       "instant": "⚡Instant",
+      "importantTitle": "Important information:",
+      "important": {
+        "balanceMonthly": "Make sure you have enough balance <strong>EACH MONTH</strong> in your wallet to cover the debits",
+        "failedMonth": "If a debit fails (insufficient balance), that month is <strong class=\"text-red-600 dark:text-red-400\">LOST</strong> and the system moves to the next month automatically",
+        "firstMonthFailed": "Important: if the first monthly payment fails, the contract <strong class=\"text-red-600 dark:text-red-400\">stops</strong> and no further monthly payments will be executed.",
+        "nextMonthsContinue": "Next monthly payments will continue normally even if one month failed"
+      },
       "6hours": "6 hours",
       "1day": "1 day",
       "1week": "1 week",
@@ -330,6 +352,7 @@
       "onlyAmountDebitedMonthly": "Only <strong>{{amount}} {{token}}</strong> will be debited each month from your wallet.",
       "timeUntil": {
         "past": "In the past",
+        "pastError": "This date is in the past. Please choose a future date.",
         "days": "In {{days}}d {{hours}}h {{minutes}}min",
         "hours": "In {{hours}}h {{minutes}}min",
         "minutes": "In {{minutes}}min"

@@ -240,6 +240,36 @@
     }
   },
   "create": {
+    "title": "Создать мгновенный, запланированный или регулярный платеж",
+    "subtitle": "Отправьте криптовалюту, которая будет автоматически выпущена в выбранную дату",
+    "beneficiary": {
+      "address": "Адрес получателя",
+      "addMultiple": "Добавить нескольких получателей",
+      "additional": "Дополнительные получатели",
+      "recentTitle": "Недавние адреса",
+      "recentEmpty": "Нет недавних адресов",
+      "favoritesTitle": "Избранное",
+      "toggleFavorite": "Добавить в избранное",
+      "remove": "Удалить",
+      "addTitle": "➕ Добавить получателей",
+      "addDescription": "Добавьте до 4 дополнительных получателей (они получат ту же сумму)",
+      "beneficiaryLabel": "Получатель {{number}} (необязательно)",
+      "invalidAddress": "Неверный адрес",
+      "addAtLeastOne": "Добавьте хотя бы один действительный адрес",
+      "cancel": "Отмена",
+      "validate": "✅ Подтвердить"
+    },
+    "validation": {
+      "amountRequired": "Введите сумму",
+      "amountInvalid": "Неверная сумма",
+      "insufficientBalance": "Недостаточно средств",
+      "dateRequired": "Выберите дату",
+      "datePast": "Эта дата в прошлом. Выберите будущую дату.",
+      "dateMin": "Дата должна быть минимум на 10 минут позже текущего времени",
+      "invalidAddress": "Неверный адрес",
+      "firstMonthRequired": "Введите сумму для первого ежемесячного платежа",
+      "firstMonthInvalid": "Неверная сумма"
+    },
     "modal": {
       "approvingFactoryForCreation": "Одобрение {{token}} для создания...",
       "creatingRecurring": "Создание повторяющегося платежа {{token}}...",
@@ -278,7 +308,21 @@
     "date": {
       "paymentTypeLabel": "Тип платежа",
       "treasuryRemainsAvailable": "Ваша казна остается доступной",
-      "onlyAmountDebitedMonthly": "Только <strong>{{amount}} {{token}}</strong> будут списываться каждый месяц с вашего кошелька."
+      "onlyAmountDebitedMonthly": "Только <strong>{{amount}} {{token}}</strong> будут списываться каждый месяц с вашего кошелька.",
+      "importantTitle": "Важная информация:",
+      "important": {
+        "balanceMonthly": "Убедитесь, что на вашем кошельке достаточно средств <strong>КАЖДЫЙ МЕСЯЦ</strong> для списаний",
+        "failedMonth": "Если списание не удаётся (недостаточно средств), этот месяц будет <strong class=\"text-red-600 dark:text-red-400\">ПОТЕРЯН</strong> и система автоматически перейдёт к следующему",
+        "firstMonthFailed": "Важно: если первый ежемесячный платеж не удаётся, контракт <strong class=\"text-red-600 dark:text-red-400\">останавливается</strong> и следующие платежи не будут выполнены.",
+        "nextMonthsContinue": "Следующие ежемесячные платежи будут продолжаться нормально, даже если один месяц не прошёл"
+      },
+      "timeUntil": {
+        "past": "В прошлом",
+        "pastError": "Эта дата в прошлом. Выберите будущую дату.",
+        "days": "Через {{days}}д {{hours}}ч {{minutes}}мин",
+        "hours": "Через {{hours}}ч {{minutes}}мин",
+        "minutes": "Через {{minutes}}мин"
+      }
     },
     "firstMonth": {
       "title": "Первый ежемесячный платеж",

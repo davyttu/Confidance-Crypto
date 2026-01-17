@@ -97,9 +97,17 @@ export function BeneficiariesDropdown({ payment, onRename }: BeneficiariesDropdo
   const beneficiaries = getAllBeneficiaries();
   const additionalCount = beneficiaries.length - 1; // Nombre de bénéficiaires supplémentaires
 
+  // Copier dans le presse-papier
+  const copyToClipboard = (address: string) => {
+    navigator.clipboard.writeText(address);
+    setCopiedAddress(address);
+    setTimeout(() => setCopiedAddress(null), 2000);
+  };
+
   // Si un seul bénéficiaire, pas besoin du dropdown
   if (additionalCount === 0) {
     const beneficiaryName = getBeneficiaryName(payment.payee_address);
+    const isCopied = copiedAddress === payment.payee_address;
     return (
       <div className="flex items-center gap-2">
         <div>
@@ -110,6 +118,17 @@ export function BeneficiariesDropdown({ payment, onRename }: BeneficiariesDropdo
             {payment.payee_address.slice(0, 6)}...{payment.payee_address.slice(-4)}
           </div>
         </div>
+        <button
+          onClick={() => copyToClipboard(payment.payee_address)}
+          className="flex-shrink-0 p-2 rounded-md hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
+          title={isCopied ? t('beneficiary.copied') : t('beneficiary.copyAddress')}
+        >
+          {isCopied ? (
+            <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
+          ) : (
+            <Copy className="w-4 h-4 text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors" />
+          )}
+        </button>
         {!beneficiaryName && (
           <button
             onClick={() => onRename(payment.payee_address)}
@@ -173,13 +192,6 @@ export function BeneficiariesDropdown({ payment, onRename }: BeneficiariesDropdo
         maximumFractionDigits: symbol === 'ETH' ? 4 : 2,
       });
     }
-  };
-
-  // Copier dans le presse-papier
-  const copyToClipboard = (address: string) => {
-    navigator.clipboard.writeText(address);
-    setCopiedAddress(address);
-    setTimeout(() => setCopiedAddress(null), 2000);
   };
 
   const mainBeneficiary = beneficiaries[0];
@@ -273,6 +285,17 @@ export function BeneficiariesDropdown({ payment, onRename }: BeneficiariesDropdo
             <div className="text-xs text-gray-500 dark:text-gray-400 font-mono">
               {payment.payee_address.slice(0, 6)}...{payment.payee_address.slice(-4)}
             </div>
+          <button
+            onClick={() => copyToClipboard(payment.payee_address)}
+            className="flex-shrink-0 p-1.5 rounded-md hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
+            title={copiedAddress === payment.payee_address ? t('beneficiary.copied') : t('beneficiary.copyAddress')}
+          >
+            {copiedAddress === payment.payee_address ? (
+              <Check className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
+            ) : (
+              <Copy className="w-3.5 h-3.5 text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors" />
+            )}
+          </button>
             {!mainBeneficiaryName && (
               <button
                 onClick={() => onRename(payment.payee_address)}

@@ -64,8 +64,8 @@ export default function DateTimePicker({
       if (diff < 0) {
         setIsPastDate(true);
         setTimeUntil(isMounted && ready 
-          ? t('create.date.timeUntil.pastError', { defaultValue: 'Cette date est dans le passé. Veuillez choisir une date future.' })
-          : 'Cette date est dans le passé. Veuillez choisir une date future.');
+          ? t('create.date.timeUntil.pastError', { defaultValue: 'This date is in the past. Please choose a future date.' })
+          : 'This date is in the past. Please choose a future date.');
         return;
       }
 

@@ -25,14 +25,42 @@ interface PaymentFormData {
 
 type PaymentTiming = 'instant' | 'scheduled' | 'recurring';
 
+interface BeneficiaryHistoryItem {
+  address: string;
+  name?: string;
+}
+
 export default function PaymentForm() {
-  const { t, ready: translationsReady } = useTranslation();
+  const { t, ready: translationsReady, i18n } = useTranslation();
   const [isMounted, setIsMounted] = useState(false);
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
   const { openConnectModal } = useConnectModal();
   const router = useRouter();
   const walletConnected = Boolean(address);
+
+  const translate = (
+    key: string,
+    defaultValue: string,
+    options?: Record<string, string | number>
+  ) => (translationsReady ? t(key, { defaultValue, ...(options || {}) }) : defaultValue);
+
+  const locale = (() => {
+    const language = i18n?.language?.toLowerCase() || 'en';
+    const base = language.split('-')[0];
+    switch (base) {
+      case 'fr':
+        return 'fr-FR';
+      case 'es':
+        return 'es-ES';
+      case 'ru':
+        return 'ru-RU';
+      case 'zh':
+        return 'zh-CN';
+      default:
+        return 'en-US';
+    }
+  })();
 
   const handleReconnectWallet = () => {
     disconnect();
@@ -43,6 +71,42 @@ export default function PaymentForm() {
 
   useEffect(() => {
     setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    setCancellable(true);
+  }, []);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('beneficiaryHistory');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          const normalized = parsed
+            .map((item) => {
+              if (typeof item === 'string') {
+                return { address: item };
+              }
+              if (item && typeof item === 'object' && typeof item.address === 'string') {
+                return { address: item.address, name: item.name };
+              }
+              return null;
+            })
+            .filter((item): item is BeneficiaryHistoryItem => Boolean(item));
+          setBeneficiaryHistory(normalized);
+        }
+      }
+      const storedFavorites = localStorage.getItem('beneficiaryFavorites');
+      if (storedFavorites) {
+        const parsedFavorites = JSON.parse(storedFavorites);
+        if (Array.isArray(parsedFavorites)) {
+          setFavoriteAddresses(parsedFavorites.filter((item) => typeof item === 'string'));
+        }
+      }
+    } catch (error) {
+      console.error('Error loading beneficiary history:', error);
+    }
   }, []);
 
   // Hooks de création
@@ -75,7 +139,11 @@ export default function PaymentForm() {
   const [firstMonthAmountInput, setFirstMonthAmountInput] = useState<string>('');
 
   // État: type de paiement (annulable ou définitif)
-  const [cancellable, setCancellable] = useState(false);
+  const [cancellable, setCancellable] = useState(true);
+
+  const [beneficiaryHistory, setBeneficiaryHistory] = useState<BeneficiaryHistoryItem[]>([]);
+  const [favoriteAddresses, setFavoriteAddresses] = useState<string[]>([]);
+  const [showBeneficiaryHistory, setShowBeneficiaryHistory] = useState(false);
 
   // Erreurs de validation
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -132,12 +200,12 @@ export default function PaymentForm() {
   // Validation montant
   const validateAmount = (amount: string): string | null => {
     if (!amount || amount === '0') {
-      return 'Entrez un montant';
+      return translate('create.validation.amountRequired', 'Enter an amount');
     }
 
     const amountNum = parseFloat(amount);
     if (isNaN(amountNum) || amountNum <= 0) {
-      return 'Montant invalide';
+      return translate('create.validation.amountInvalid', 'Invalid amount');
     }
 
     if (balance) {
@@ -148,7 +216,7 @@ export default function PaymentForm() {
       const amountBigInt = BigInt(Math.floor(totalAmount * 10 ** decimals));
       
       if (amountBigInt > balance) {
-        return 'Balance insuffisante';
+        return translate('create.validation.insufficientBalance', 'Insufficient balance');
       }
     }
 
@@ -158,7 +226,7 @@ export default function PaymentForm() {
   // Validation date
   const validateDate = (date: Date | null): string | null => {
     if (!date) {
-      return 'Choisissez une date';
+      return translate('create.validation.dateRequired', 'Choose a date');
     }
 
     const now = new Date();
@@ -166,7 +234,10 @@ export default function PaymentForm() {
     
     // Vérifier si la date est dans le passé
     if (diffInSeconds < 0) {
-      return 'Cette date est dans le passé. Veuillez choisir une date future.';
+      return translate(
+        'create.validation.datePast',
+        'This date is in the past. Please choose a future date.'
+      );
     }
     
     // Si c'est un paiement instantané (moins d'1 minute), on ne valide pas
@@ -177,7 +248,10 @@ export default function PaymentForm() {
     const minDate = new Date(now.getTime() + 10 * 60 * 1000);
 
     if (date < minDate) {
-      return 'La date doit être au moins 10 minutes dans le futur';
+      return translate(
+        'create.validation.dateMin',
+        'The date must be at least 10 minutes in the future'
+      );
     }
 
     return null;
@@ -206,6 +280,13 @@ export default function PaymentForm() {
       date.setSeconds(date.getSeconds() + 30);
       handleDateChange(date);
     }
+
+    if (nextTiming === 'scheduled') {
+      const date = new Date();
+      date.setMinutes(date.getMinutes() + 20);
+      date.setSeconds(0, 0);
+      handleDateChange(date);
+    }
   };
 
   useEffect(() => {
@@ -223,6 +304,15 @@ export default function PaymentForm() {
     if (paymentTiming === 'instant' && !formData.releaseDate) {
       const date = new Date();
       date.setSeconds(date.getSeconds() + 30);
+      setFormData((prev) => ({ ...prev, releaseDate: date }));
+    }
+  }, [paymentTiming, formData.releaseDate]);
+
+  useEffect(() => {
+    if (paymentTiming === 'scheduled' && !formData.releaseDate) {
+      const date = new Date();
+      date.setMinutes(date.getMinutes() + 20);
+      date.setSeconds(0, 0);
       setFormData((prev) => ({ ...prev, releaseDate: date }));
     }
   }, [paymentTiming, formData.releaseDate]);
@@ -247,10 +337,49 @@ export default function PaymentForm() {
     setFormData((prev) => ({ ...prev, beneficiary: value }));
 
     if (value && !isValidAddress(value)) {
-      setErrors((prev) => ({ ...prev, beneficiary: 'Adresse invalide' }));
+      setErrors((prev) => ({
+        ...prev,
+        beneficiary: translate('create.validation.invalidAddress', 'Invalid address')
+      }));
     } else {
       setErrors((prev) => ({ ...prev, beneficiary: '' }));
     }
+  };
+
+  const updateBeneficiaryHistory = (address: string) => {
+    const normalized = address.trim();
+    if (!normalized) return;
+    setBeneficiaryHistory((prev) => {
+      const existing = prev.find(
+        (item) => item.address.toLowerCase() === normalized.toLowerCase()
+      );
+      const next = [
+        { address: normalized, name: existing?.name },
+        ...prev.filter((item) => item.address.toLowerCase() !== normalized.toLowerCase()),
+      ].slice(0, 5);
+      localStorage.setItem('beneficiaryHistory', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const persistFavorites = (next: string[]) => {
+    setFavoriteAddresses(next);
+    localStorage.setItem('beneficiaryFavorites', JSON.stringify(next));
+  };
+
+  const toggleFavorite = (address: string) => {
+    const normalized = address.toLowerCase();
+    if (favoriteAddresses.some((item) => item.toLowerCase() === normalized)) {
+      persistFavorites(favoriteAddresses.filter((item) => item.toLowerCase() !== normalized));
+    } else {
+      persistFavorites([address, ...favoriteAddresses]);
+    }
+  };
+
+  const handleSelectBeneficiary = (address: string) => {
+    setFormData((prev) => ({ ...prev, beneficiary: address }));
+    setErrors((prev) => ({ ...prev, beneficiary: '' }));
+    setShowBeneficiaryHistory(false);
   };
 
   // Handler changement montant
@@ -318,7 +447,7 @@ export default function PaymentForm() {
     const newErrors: Record<string, string> = {};
 
     if (!isValidAddress(formData.beneficiary)) {
-      newErrors.beneficiary = 'Adresse invalide';
+      newErrors.beneficiary = translate('create.validation.invalidAddress', 'Invalid address');
     }
 
     const amountError = validateAmount(formData.amount);
@@ -334,12 +463,18 @@ export default function PaymentForm() {
     // ⭐ Validation: première mensualité différente (uniquement si mensualisation)
     if (isRecurringMode && isFirstMonthDifferent) {
       if (!firstMonthAmountInput || firstMonthAmountInput === '0') {
-        newErrors.firstMonthAmount = 'Entrez un montant pour la première mensualité';
+        newErrors.firstMonthAmount = translate(
+          'create.validation.firstMonthRequired',
+          'Enter an amount for the first monthly payment'
+        );
       } else {
         const firstNum = parseFloat(firstMonthAmountInput);
         const monthlyNum = parseFloat(formData.amount);
         if (isNaN(firstNum) || firstNum <= 0) {
-          newErrors.firstMonthAmount = 'Montant invalide';
+          newErrors.firstMonthAmount = translate(
+            'create.validation.firstMonthInvalid',
+            'Invalid amount'
+          );
         }
         // Si identique au montant mensuel, on n'a pas besoin d'une première mensualité personnalisée
         if (!isNaN(firstNum) && !isNaN(monthlyNum) && firstNum === monthlyNum) {
@@ -355,6 +490,10 @@ export default function PaymentForm() {
     }
 
     console.log('✅ [FORM SUBMIT] Validation passée, préparation des données...');
+
+    if (isValidAddress(formData.beneficiary)) {
+      updateBeneficiaryHistory(formData.beneficiary);
+    }
 
     const token = getToken(formData.tokenSymbol);
     const amountBigInt = BigInt(
@@ -496,6 +635,38 @@ export default function PaymentForm() {
     ? batchPayment
     : singlePayment;
 
+  const beneficiaryQuery = formData.beneficiary.trim().toLowerCase();
+  const favorites = favoriteAddresses
+    .map((fav) => {
+      const item = beneficiaryHistory.find(
+        (entry) => entry.address.toLowerCase() === fav.toLowerCase()
+      );
+      return item || { address: fav };
+    })
+    .filter((item) => {
+      if (!beneficiaryQuery) return true;
+      return (
+        item.address.toLowerCase().includes(beneficiaryQuery) ||
+        (item.name ? item.name.toLowerCase().includes(beneficiaryQuery) : false)
+      );
+    });
+
+  const filteredBeneficiaryHistory = beneficiaryHistory
+    .filter((item) => {
+      if (!beneficiaryQuery) return true;
+      return (
+        item.address.toLowerCase().includes(beneficiaryQuery) ||
+        (item.name ? item.name.toLowerCase().includes(beneficiaryQuery) : false)
+      );
+    })
+    .filter(
+      (item) =>
+        !favoriteAddresses.some(
+          (fav) => fav.toLowerCase() === item.address.toLowerCase()
+        )
+    )
+    .slice(0, 5);
+
   if (!walletConnected) {
     return (
       <div className="text-center p-12 glass rounded-2xl">
@@ -518,7 +689,7 @@ export default function PaymentForm() {
           {isMounted && translationsReady ? t('common.connectWallet') : 'Connectez votre wallet'}
         </h3>
         <p className="text-gray-600 dark:text-gray-400">
-          {isMounted && translationsReady ? t('create.wallet.connectFirst') : 'Pour créer un paiement programmé, connectez d\'abord votre wallet'}
+          {isMounted && translationsReady ? t('create.wallet.connectFirst') : 'To create a scheduled payment, first connect your wallet'}
         </p>
         <div className="mt-6 flex flex-col gap-3">
           <button
@@ -550,33 +721,162 @@ export default function PaymentForm() {
         />
         
         <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
-          {isMounted && translationsReady ? t('create.summary.balance') : 'Balance disponible'} : <span className="font-medium">{balanceFormatted}</span>
+          {isMounted && translationsReady ? t('create.summary.balance') : 'Available balance'} : <span className="font-medium">{balanceFormatted}</span>
         </div>
       </div>
 
       {/* Section 2 : Bénéficiaire(s) */}
       <div className="glass rounded-2xl p-6 space-y-4">
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          {isMounted && translationsReady ? t('create.beneficiary.address') : 'Adresse du bénéficiaire'}
+          {isMounted && translationsReady ? t('create.beneficiary.address') : 'Beneficiary address'}
         </label>
-        <input
-          type="text"
-          value={formData.beneficiary}
-          onChange={handleBeneficiaryChange}
-          placeholder="0x..."
-          className={`
-            w-full px-4 py-3 rounded-xl border-2 
-            bg-white dark:bg-gray-800
-            text-gray-900 dark:text-white
-            transition-all
-            ${
-              errors.beneficiary
-                ? 'border-red-500 focus:border-red-600'
-                : 'border-gray-200 dark:border-gray-700 focus:border-primary-500'
-            }
-            focus:outline-none focus:ring-4 focus:ring-primary-500/20
-          `}
-        />
+        <div className="relative">
+          <input
+            type="text"
+            value={formData.beneficiary}
+            onChange={handleBeneficiaryChange}
+            onFocus={() => setShowBeneficiaryHistory(true)}
+            onBlur={() => setTimeout(() => setShowBeneficiaryHistory(false), 120)}
+            placeholder="0x..."
+            className={`
+              w-full px-4 py-3 rounded-xl border-2 
+              bg-white dark:bg-gray-800
+              text-gray-900 dark:text-white
+              transition-all
+              ${
+                errors.beneficiary
+                  ? 'border-red-500 focus:border-red-600'
+                  : 'border-gray-200 dark:border-gray-700 focus:border-primary-500'
+              }
+              focus:outline-none focus:ring-4 focus:ring-primary-500/20
+            `}
+          />
+
+          <div
+            className={`
+              mt-2 overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700
+              bg-white/90 dark:bg-gray-900/90 backdrop-blur
+              shadow-sm transition-all duration-200
+              ${showBeneficiaryHistory ? 'max-h-56 opacity-100' : 'max-h-0 opacity-0 pointer-events-none'}
+            `}
+          >
+            <div className="max-h-52 overflow-auto">
+              {favorites.length > 0 && (
+                <>
+                  <div className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400">
+                    {translate('create.beneficiary.favoritesTitle', 'Favorites')}
+                  </div>
+                  {favorites.map((item) => {
+                    const isFavorite = favoriteAddresses.some(
+                      (fav) => fav.toLowerCase() === item.address.toLowerCase()
+                    );
+                    return (
+                      <div
+                        key={`fav-${item.address}`}
+                        className="flex items-center justify-between gap-3 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800"
+                      >
+                        <button
+                          type="button"
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => handleSelectBeneficiary(item.address)}
+                          className="flex-1 text-left"
+                        >
+                          <div className="flex flex-col">
+                            {item.name && (
+                              <span className="text-sm font-medium text-gray-800 dark:text-gray-100">
+                                {item.name}
+                              </span>
+                            )}
+                            <span className="text-xs font-mono text-gray-500 dark:text-gray-400">
+                              {item.address}
+                            </span>
+                          </div>
+                        </button>
+                        <button
+                          type="button"
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => toggleFavorite(item.address)}
+                          className="p-1 rounded-full hover:bg-yellow-100/60 dark:hover:bg-yellow-500/10"
+                          title={translate('create.beneficiary.toggleFavorite', 'Toggle favorite')}
+                        >
+                          <svg
+                            className={`w-4 h-4 ${
+                              isFavorite ? 'text-yellow-500 fill-yellow-400' : 'text-gray-400'
+                            }`}
+                            viewBox="0 0 24 24"
+                            fill={isFavorite ? 'currentColor' : 'none'}
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          >
+                            <path d="M12 17.3l-6.18 3.24 1.18-6.88L1 8.96l6.91-1 3.09-6.26 3.09 6.26 6.91 1-5 4.7 1.18 6.88L12 17.3z" />
+                          </svg>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </>
+              )}
+
+              <div className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400">
+                {translate('create.beneficiary.recentTitle', 'Recent addresses')}
+              </div>
+              {filteredBeneficiaryHistory.length > 0 ? (
+                filteredBeneficiaryHistory.map((item) => {
+                  const isFavorite = favoriteAddresses.some(
+                    (fav) => fav.toLowerCase() === item.address.toLowerCase()
+                  );
+                  return (
+                    <div
+                      key={item.address}
+                      className="flex items-center justify-between gap-3 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800"
+                    >
+                      <button
+                        type="button"
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => handleSelectBeneficiary(item.address)}
+                        className="flex-1 text-left"
+                      >
+                        <div className="flex flex-col">
+                          {item.name && (
+                            <span className="text-sm font-medium text-gray-800 dark:text-gray-100">
+                              {item.name}
+                            </span>
+                          )}
+                          <span className="text-xs font-mono text-gray-500 dark:text-gray-400">
+                            {item.address}
+                          </span>
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => toggleFavorite(item.address)}
+                        className="p-1 rounded-full hover:bg-yellow-100/60 dark:hover:bg-yellow-500/10"
+                        title={translate('create.beneficiary.toggleFavorite', 'Toggle favorite')}
+                      >
+                        <svg
+                          className={`w-4 h-4 ${
+                            isFavorite ? 'text-yellow-500 fill-yellow-400' : 'text-gray-400'
+                          }`}
+                          viewBox="0 0 24 24"
+                          fill={isFavorite ? 'currentColor' : 'none'}
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path d="M12 17.3l-6.18 3.24 1.18-6.88L1 8.96l6.91-1 3.09-6.26 3.09 6.26 6.91 1-5 4.7 1.18 6.88L12 17.3z" />
+                        </svg>
+                      </button>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
+                  {translate('create.beneficiary.recentEmpty', 'No recent addresses')}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
         {errors.beneficiary && (
           <p className="text-sm text-red-600 dark:text-red-400">
             {errors.beneficiary}
@@ -586,7 +886,9 @@ export default function PaymentForm() {
         {isBatchMode && additionalBeneficiaries.length > 0 && (
           <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-950/30 rounded-xl">
             <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-              👥 Bénéficiaires supplémentaires ({additionalBeneficiaries.length})
+              👥 {isMounted && translationsReady
+                ? t('create.beneficiary.additional')
+                : 'Additional beneficiaries'} ({additionalBeneficiaries.length})
             </h4>
             <div className="space-y-2">
               {additionalBeneficiaries.map((addr, index) => (
@@ -599,7 +901,7 @@ export default function PaymentForm() {
                     onClick={() => handleRemoveBeneficiary(index)}
                     className="text-red-500 hover:text-red-700 text-xs"
                   >
-                    ✕ {isMounted && translationsReady ? t('create.beneficiary.remove') : 'Supprimer'}
+                    ✕ {isMounted && translationsReady ? t('create.beneficiary.remove') : 'Remove'}
                   </button>
                 </div>
               ))}
@@ -629,7 +931,7 @@ export default function PaymentForm() {
               >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              <span className="text-sm">{isMounted && translationsReady ? t('create.beneficiary.addMultiple') : 'Ajouter plusieurs bénéficiaires'}</span>
+              <span className="text-sm">{isMounted && translationsReady ? t('create.beneficiary.addMultiple') : 'Add multiple beneficiaries'}</span>
               {isBatchAvailable && (
                 <svg 
                   className="w-4 h-4 ml-auto opacity-50 group-hover:opacity-100 transition-opacity" 
@@ -649,7 +951,7 @@ export default function PaymentForm() {
       {/* Section 3 : Montant */}
       <div className="glass rounded-2xl p-6 space-y-4">
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          {isMounted && translationsReady ? t('create.amount.label') : 'Montant'} {isBatchMode && (isMounted && translationsReady ? t('create.amount.perBeneficiary') : '(par bénéficiaire)')} {isRecurringMode && (isMounted && translationsReady ? t('create.amount.monthly') : '(mensuel)')}
+          {isMounted && translationsReady ? t('create.amount.label') : 'Amount'} {isBatchMode && (isMounted && translationsReady ? t('create.amount.perBeneficiary') : '(per beneficiary)')} {isRecurringMode && (isMounted && translationsReady ? t('create.amount.monthly') : '(monthly)')}
         </label>
         <div className="relative">
           <input
@@ -657,6 +959,7 @@ export default function PaymentForm() {
             step="any"
             value={formData.amount}
             onChange={handleAmountChange}
+            onWheel={(event) => (event.currentTarget as HTMLInputElement).blur()}
             placeholder="0.0"
             className={`
               w-full px-4 py-3 pr-20 rounded-xl border-2 
@@ -687,13 +990,16 @@ export default function PaymentForm() {
             {isMounted && translationsReady ? t('create.amount.total') : 'Total'} : <span className="font-semibold">
               {(parseFloat(formData.amount) * (additionalBeneficiaries.length + 1)).toFixed(4)} {formData.tokenSymbol}
             </span>
-            {' '}{isMounted && translationsReady ? t('create.amount.forBeneficiaries', { count: additionalBeneficiaries.length + 1 }) : `pour ${additionalBeneficiaries.length + 1} bénéficiaires`}
+            {' '}{isMounted && translationsReady ? t('create.amount.forBeneficiaries', { count: additionalBeneficiaries.length + 1 }) : `for ${additionalBeneficiaries.length + 1} beneficiaries`}
           </div>
         )}
 
         {isRecurringMode && formData.amount && parseFloat(formData.amount) > 0 && (
           <div className="text-sm text-gray-600 dark:text-gray-400">
-            Total sur {recurringMonths} mois : <span className="font-semibold">
+            {translate('create.amount.totalMonths', 'Total over {{months}} months', {
+              months: recurringMonths
+            })}{' '}
+            <span className="font-semibold">
               {(parseFloat(formData.amount) * recurringMonths).toFixed(4)} {formData.tokenSymbol}
             </span>
           </div>
@@ -912,7 +1218,7 @@ export default function PaymentForm() {
       <div className="glass rounded-2xl p-6">
         <div className="space-y-3">
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            {isMounted && translationsReady ? t('create.paymentType.label') : '🔒 Type de paiement'}
+            {isMounted && translationsReady ? t('create.paymentType.label') : '🔒 Payment type'}
           </label>
           
           {/* ✅ Message si paiement instantané */}
@@ -920,10 +1226,15 @@ export default function PaymentForm() {
             <div className="p-3 bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 rounded-lg">
               <div className="flex items-center gap-2 text-sm text-yellow-800 dark:text-yellow-200">
                 <span className="text-lg">⚡</span>
-                <span className="font-medium">Paiement instantané détecté</span>
+                <span className="font-medium">
+                  {translate('create.paymentType.instantDetected', 'Instant payment detected')}
+                </span>
               </div>
               <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1 ml-7">
-                Les options d'annulation sont désactivées car le paiement sera exécuté immédiatement.
+                {translate(
+                  'create.paymentType.instantDisabled',
+                  'Cancellation options are disabled because the payment will be executed immediately.'
+                )}
               </p>
             </div>
           )}
@@ -951,11 +1262,11 @@ export default function PaymentForm() {
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-lg">🔓</span>
                   <span className="font-semibold text-gray-900 dark:text-white">
-                    {isMounted && translationsReady ? t('create.paymentType.cancellable.title') : 'Annulable (avant la date)'}
+                    {isMounted && translationsReady ? t('create.paymentType.cancellable.title') : 'Cancellable (before the date)'}
                   </span>
                 </div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {isMounted && translationsReady ? t('create.paymentType.cancellable.description') : 'Vous pourrez annuler le paiement depuis le dashboard avant la date de libération'}
+                  {isMounted && translationsReady ? t('create.paymentType.cancellable.description') : 'You will be able to cancel the payment from the dashboard before the release date'}
                 </p>
               </div>
             </label>
@@ -982,11 +1293,11 @@ export default function PaymentForm() {
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-lg">🔒</span>
                   <span className="font-semibold text-gray-900 dark:text-white">
-                    {isMounted && translationsReady ? t('create.paymentType.definitive.title') : 'Définitif (non annulable)'}
+                    {isMounted && translationsReady ? t('create.paymentType.definitive.title') : 'Definitive (non-cancellable)'}
                   </span>
                 </div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {isMounted && translationsReady ? t('create.paymentType.definitive.description') : 'Une fois créé, impossible d\'annuler. Les fonds seront automatiquement libérés à la date choisie'}
+                  {isMounted && translationsReady ? t('create.paymentType.definitive.description') : 'Once created, impossible to cancel. Funds will be automatically released on the chosen date'}
                 </p>
               </div>
             </label>
@@ -1002,14 +1313,14 @@ export default function PaymentForm() {
             <div className="space-y-4">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {isMounted && translationsReady ? t('create.summary.title') : '💰 Récapitulatif'}
+                  {isMounted && translationsReady ? t('create.summary.title') : '💰 Summary'}
                 </h3>
               </div>
               {/* Détails par mensualité */}
               <div className="bg-blue-50 dark:bg-blue-950/30 rounded-xl p-4 space-y-3">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-700 dark:text-gray-300">
-                    {isMounted && translationsReady ? t('create.date.beneficiaryWillReceive') : 'Bénéficiaire recevra (par mois)'}
+                    {isMounted && translationsReady ? t('create.date.beneficiaryWillReceive') : 'Beneficiary will receive (per month)'}
                   </span>
                   <span className="font-semibold text-gray-900 dark:text-white">
                     {parseFloat(formData.amount).toFixed(2)} {formData.tokenSymbol}
@@ -1020,7 +1331,7 @@ export default function PaymentForm() {
                   <span className="text-gray-600 dark:text-gray-400">
                     + {isMounted && translationsReady 
                       ? t('create.summary.protocolFees', { percentage: '1.79' })
-                      : 'Frais protocole (1.79%)'}
+                      : 'Protocol fees (1.79%)'}
                   </span>
                   <span className="font-medium text-orange-600 dark:text-orange-400">
                     {(parseFloat(formData.amount) * 0.0179).toFixed(2)} {formData.tokenSymbol}
@@ -1029,7 +1340,7 @@ export default function PaymentForm() {
 
                 <div className="border-t border-blue-200 dark:border-blue-800 pt-3 flex justify-between">
                   <span className="font-semibold text-gray-900 dark:text-white">
-                    {isMounted && translationsReady ? t('create.date.totalPerMonth') : 'TOTAL par mensualité'}
+                    {isMounted && translationsReady ? t('create.date.totalPerMonth') : 'TOTAL per monthly payment'}
                   </span>
                   <span className="font-bold text-blue-600 dark:text-blue-400">
                     {(parseFloat(formData.amount) * 1.0179).toFixed(2)} {formData.tokenSymbol}
@@ -1041,7 +1352,7 @@ export default function PaymentForm() {
               <div className="space-y-3">
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-gray-700 dark:text-gray-300">
-                    {isMounted && translationsReady ? t('create.date.numberOfMonths') : 'Nombre de mois'}
+                    {isMounted && translationsReady ? t('create.date.numberOfMonths') : 'Number of months'}
                   </span>
                   <span className="font-semibold text-gray-900 dark:text-white">
                     × {recurringMonths}
@@ -1050,7 +1361,7 @@ export default function PaymentForm() {
 
                 <div className="border-t-2 border-gray-300 dark:border-gray-600 pt-3 flex justify-between items-center">
                   <span className="text-lg font-bold text-gray-900 dark:text-white">
-                    {isMounted && translationsReady ? t('create.date.totalToApprove') : 'TOTAL à approuver'}
+                    {isMounted && translationsReady ? t('create.date.totalToApprove') : 'TOTAL to approve'}
                   </span>
                   <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                     {(parseFloat(formData.amount) * 1.0179 * recurringMonths).toFixed(2)} {formData.tokenSymbol}
@@ -1064,10 +1375,10 @@ export default function PaymentForm() {
                   <div className="flex items-center gap-2 text-sm">
                     <span className="text-lg">🗓️</span>
                     <span className="text-gray-700 dark:text-gray-300">
-                      {isMounted && translationsReady ? t('create.date.firstDueDate') : 'Première échéance :'}
+                      {isMounted && translationsReady ? t('create.date.firstDueDate') : 'First due date:'}
                     </span>
                     <span className="font-semibold text-gray-900 dark:text-white">
-                      {formData.releaseDate.toLocaleDateString('fr-FR', {
+                      {formData.releaseDate.toLocaleDateString(locale, {
                         day: '2-digit',
                         month: 'long',
                         year: 'numeric'
@@ -1078,13 +1389,13 @@ export default function PaymentForm() {
                   <div className="flex items-center gap-2 text-sm">
                     <span className="text-lg">📅</span>
                     <span className="text-gray-700 dark:text-gray-300">
-                      {isMounted && translationsReady ? t('create.date.lastDueDate') : 'Dernière échéance :'}
+                      {isMounted && translationsReady ? t('create.date.lastDueDate') : 'Last due date:'}
                     </span>
                     <span className="font-semibold text-gray-900 dark:text-white">
                       {(() => {
                         const lastDate = new Date(formData.releaseDate);
                         lastDate.setMonth(lastDate.getMonth() + recurringMonths - 1);
-                        return lastDate.toLocaleDateString('fr-FR', {
+                        return lastDate.toLocaleDateString(locale, {
                           day: '2-digit',
                           month: 'long',
                           year: 'numeric'
@@ -1101,7 +1412,7 @@ export default function PaymentForm() {
                   <span className="text-2xl">💡</span>
                   <div className="flex-1 text-sm text-green-800 dark:text-green-200">
                     <p className="font-semibold mb-1">
-                      {isMounted && translationsReady ? t('create.date.treasuryRemainsAvailable') : 'Votre trésorerie reste disponible'}
+                      {isMounted && translationsReady ? t('create.date.treasuryRemainsAvailable') : 'Your treasury remains available'}
                     </p>
                     <p>
                       {isMounted && translationsReady ? (
@@ -1112,8 +1423,7 @@ export default function PaymentForm() {
                         }) }} />
                       ) : (
                         <>
-                          Seuls <span className="font-bold">{(parseFloat(formData.amount) * 1.0179).toFixed(2)} {formData.tokenSymbol}</span> seront 
-                          prélevés chaque mois sur votre wallet.
+                          Only <span className="font-bold">{(parseFloat(formData.amount) * 1.0179).toFixed(2)} {formData.tokenSymbol}</span> will be debited each month from your wallet.
                         </>
                       )}
                     </p>
@@ -1126,39 +1436,67 @@ export default function PaymentForm() {
                 <div className="flex items-start gap-3">
                   <span className="text-2xl flex-shrink-0">⚠️</span>
                   <div className="flex-1 space-y-2 text-sm text-orange-900 dark:text-orange-100">
-                    <p className="font-bold text-base">Informations importantes :</p>
+                    <p className="font-bold text-base">
+                      {isMounted && translationsReady
+                        ? t('create.date.importantTitle', { defaultValue: 'Important information:' })
+                        : 'Important information:'}
+                    </p>
                     
                     <ul className="space-y-2 list-none">
                       <li className="flex items-start gap-2">
                         <span className="text-orange-600 dark:text-orange-400 flex-shrink-0">•</span>
-                        <span>
-                          <strong>Assurez-vous d'avoir suffisamment de balance CHAQUE MOIS</strong> sur votre 
-                          wallet pour couvrir les prélèvements
-                        </span>
+                        <span
+                          dangerouslySetInnerHTML={{
+                            __html: isMounted && translationsReady
+                              ? t('create.date.important.balanceMonthly', {
+                                  defaultValue:
+                                    'Make sure you have enough balance <strong>EACH MONTH</strong> in your wallet to cover the debits'
+                                })
+                              : 'Make sure you have enough balance <strong>EACH MONTH</strong> in your wallet to cover the debits'
+                          }}
+                        />
                       </li>
                       
                       <li className="flex items-start gap-2">
                         <span className="text-orange-600 dark:text-orange-400 flex-shrink-0">•</span>
-                        <span>
-                          <strong>Si un prélèvement échoue</strong> (balance insuffisante), ce mois sera
-                          <strong className="text-red-600 dark:text-red-400"> PERDU</strong> et le système passera
-                          automatiquement au mois suivant
-                        </span>
+                        <span
+                          dangerouslySetInnerHTML={{
+                            __html: isMounted && translationsReady
+                              ? t('create.date.important.failedMonth', {
+                                  defaultValue:
+                                    'If a debit fails (insufficient balance), that month is <strong class="text-red-600 dark:text-red-400">LOST</strong> and the system moves to the next month automatically'
+                                })
+                              : 'If a debit fails (insufficient balance), that month is <strong class="text-red-600 dark:text-red-400">LOST</strong> and the system moves to the next month automatically'
+                          }}
+                        />
                       </li>
 
                       <li className="flex items-start gap-2">
                         <span className="text-orange-600 dark:text-orange-400 flex-shrink-0">•</span>
-                        <span>
-                          <strong>Important :</strong> si <strong>la première mensualité</strong> échoue, le contrat est
-                          <strong className="text-red-600 dark:text-red-400"> arrêté</strong> et aucune mensualité suivante ne sera exécutée.
-                        </span>
+                        <span
+                          dangerouslySetInnerHTML={{
+                            __html: isMounted && translationsReady
+                              ? t('create.date.important.firstMonthFailed', {
+                                  defaultValue:
+                                    'Important: if the first monthly payment fails, the contract <strong class="text-red-600 dark:text-red-400">stops</strong> and no further monthly payments will be executed.'
+                                })
+                              : 'Important: if the first monthly payment fails, the contract <strong class="text-red-600 dark:text-red-400">stops</strong> and no further monthly payments will be executed.'
+                          }}
+                        />
                       </li>
                       
                       <li className="flex items-start gap-2">
                         <span className="text-orange-600 dark:text-orange-400 flex-shrink-0">•</span>
-                        <span>
-                          Les <strong>prochaines mensualités continueront normalement</strong> même si un mois a échoué
-                        </span>
+                        <span
+                          dangerouslySetInnerHTML={{
+                            __html: isMounted && translationsReady
+                              ? t('create.date.important.nextMonthsContinue', {
+                                  defaultValue:
+                                    'Next monthly payments will continue normally even if one month failed'
+                                })
+                              : 'Next monthly payments will continue normally even if one month failed'
+                          }}
+                        />
                       </li>
                       
                       <li className="flex items-start gap-2">
@@ -1192,12 +1530,12 @@ export default function PaymentForm() {
         className="w-full py-4 px-6 rounded-xl font-bold text-lg bg-gradient-to-r from-primary-500 via-purple-500 to-pink-500 text-white hover:shadow-xl hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
       >
         {activePayment.status !== 'idle' 
-          ? (isMounted && translationsReady ? t('common.loading') : 'Création en cours...')
+          ? (isMounted && translationsReady ? t('common.loading') : 'Creating...')
           : isRecurringMode
-          ? (isMounted && translationsReady ? t('create.submit') + ` (${recurringMonths} ${isMounted && translationsReady ? t('create.date.monthsLabel').toLowerCase() : 'mois'})` : `Créer le paiement récurrent (${recurringMonths} mois)`)
+          ? (isMounted && translationsReady ? t('create.submit') + ` (${recurringMonths} ${isMounted && translationsReady ? t('create.date.monthsLabel').toLowerCase() : 'months'})` : `Create recurring payment (${recurringMonths} months)`)
           : isBatchMode 
-          ? (isMounted && translationsReady ? t('create.submit') + ` (${additionalBeneficiaries.length + 1} ${isMounted && translationsReady ? t('create.beneficiary.additional').toLowerCase() : 'bénéficiaires'})` : `Créer le paiement multiple (${additionalBeneficiaries.length + 1} bénéficiaires)`)
-          : (isMounted && translationsReady ? t('create.submit') : 'Créer le paiement programmé')}
+          ? (isMounted && translationsReady ? t('create.submit') + ` (${additionalBeneficiaries.length + 1} ${isMounted && translationsReady ? t('create.beneficiary.additional').toLowerCase() : 'beneficiaries'})` : `Create batch payment (${additionalBeneficiaries.length + 1} beneficiaries)`)
+          : (isMounted && translationsReady ? t('create.submit') : 'Create scheduled payment')}
       </button>
 
       {/* Modal de progression */}

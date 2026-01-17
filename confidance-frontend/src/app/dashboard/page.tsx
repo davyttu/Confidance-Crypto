@@ -36,6 +36,46 @@ export default function DashboardPage() {
     setIsMounted(true);
   }, []);
 
+  useEffect(() => {
+    if (!payments || payments.length === 0) return;
+    const byCreatedAtDesc = [...payments].sort((a, b) => {
+      const aTime = new Date(a.created_at).getTime() || 0;
+      const bTime = new Date(b.created_at).getTime() || 0;
+      return bTime - aTime;
+    });
+
+    const recent: { address: string; name?: string }[] = [];
+    const seen = new Set<string>();
+
+    const getName = (address: string) => {
+      const entry = beneficiaries.find(
+        (b) => b.beneficiary_address.toLowerCase() === address.toLowerCase()
+      );
+      return entry?.display_name;
+    };
+
+    for (const payment of byCreatedAtDesc) {
+      const addresses: string[] = [payment.payee_address];
+      if (payment.batch_beneficiaries?.length) {
+        addresses.push(...payment.batch_beneficiaries.map((b) => b.address));
+      }
+
+      for (const address of addresses) {
+        const normalized = address?.toLowerCase();
+        if (!normalized || seen.has(normalized)) continue;
+        seen.add(normalized);
+        recent.push({ address, name: getName(address) || undefined });
+        if (recent.length >= 5) break;
+      }
+
+      if (recent.length >= 5) break;
+    }
+
+    if (recent.length > 0) {
+      localStorage.setItem('beneficiaryHistory', JSON.stringify(recent));
+    }
+  }, [payments, beneficiaries]);
+
   // États locaux
   const [periodType, setPeriodType] = useState<'all' | 'month' | 'year'>('all');
   const [periodValue, setPeriodValue] = useState<string | number>();

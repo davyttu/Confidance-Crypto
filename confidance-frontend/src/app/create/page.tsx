@@ -22,8 +22,8 @@ export default function CreatePaymentPage() {
         <GuestBanner />
 
         <div className="max-w-2xl mx-auto text-center mb-12">
-        <h1 className="text-4xl md:text-5xl font-bold mb-8 gradient-text leading-relaxed pb-2">
-            {isMounted && ready ? t('create.title') : 'Créer un paiement programmé'}
+          <h1 className="text-4xl md:text-5xl font-bold mb-8 gradient-text leading-relaxed pb-2">
+            {isMounted && ready ? t('create.title') : 'Créer un paiement instantané, programmé ou récurrent'}
           </h1>
           <p className="text-lg text-gray-600 dark:text-gray-400">
             {isMounted && ready ? t('create.subtitle') : 'Envoyez de la crypto qui sera automatiquement libérée à la date choisie'}

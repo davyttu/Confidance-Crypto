@@ -259,7 +259,7 @@
     "nopayments": "Aucun paiement programmé"
   },
   "create": {
-    "title": "Créer un paiement programmé",
+    "title": "Créer un paiement instantané, programmé ou récurrent",
     "subtitle": "Envoyez de la crypto qui sera automatiquement libérée à la date choisie",
     "wallet": {
       "connectFirst": "Pour créer un paiement programmé, connectez d'abord votre wallet"
@@ -275,6 +275,10 @@
       "address": "Adresse du bénéficiaire",
       "addMultiple": "Ajouter plusieurs bénéficiaires",
       "additional": "Bénéficiaires supplémentaires",
+      "recentTitle": "Adresses récentes",
+      "recentEmpty": "Aucune adresse récente",
+      "favoritesTitle": "Favoris",
+      "toggleFavorite": "Ajouter aux favoris",
       "remove": "Supprimer",
       "addTitle": "➕ Ajouter des bénéficiaires",
       "addDescription": "Ajoutez jusqu'à 4 bénéficiaires supplémentaires (ils recevront le même montant)",
@@ -292,11 +296,29 @@
       "forBeneficiaries": "pour {{count}} bénéficiaires",
       "totalMonths": "Total sur {{months}} mois"
     },
+    "validation": {
+      "amountRequired": "Entrez un montant",
+      "amountInvalid": "Montant invalide",
+      "insufficientBalance": "Balance insuffisante",
+      "dateRequired": "Choisissez une date",
+      "datePast": "Cette date est dans le passé. Veuillez choisir une date future.",
+      "dateMin": "La date doit être au moins 10 minutes dans le futur",
+      "invalidAddress": "Adresse invalide",
+      "firstMonthRequired": "Entrez un montant pour la première mensualité",
+      "firstMonthInvalid": "Montant invalide"
+    },
     "date": {
       "label": "Date et heure de libération",
       "paymentTypeLabel": "Type de paiement",
       "firstDue": "Date et heure de libération (première échéance)",
       "instant": "⚡Instantané",
+      "importantTitle": "Informations importantes :",
+      "important": {
+        "balanceMonthly": "Assurez-vous d'avoir suffisamment de balance <strong>CHAQUE MOIS</strong> sur votre wallet pour couvrir les prélèvements",
+        "failedMonth": "Si un prélèvement échoue (balance insuffisante), ce mois sera <strong class=\"text-red-600 dark:text-red-400\">PERDU</strong> et le système passera automatiquement au mois suivant",
+        "firstMonthFailed": "Important : si la première mensualité échoue, le contrat <strong class=\"text-red-600 dark:text-red-400\">s'arrête</strong> et aucune mensualité suivante ne sera exécutée.",
+        "nextMonthsContinue": "Les prochaines mensualités continueront normalement même si un mois a échoué"
+      },
       "6hours": "6 heures",
       "1day": "1 jour",
       "1week": "1 semaine",
@@ -317,6 +339,7 @@
       "onlyAmountDebitedMonthly": "Seuls <strong>{{amount}} {{token}}</strong> seront prélevés chaque mois sur votre wallet.",
       "timeUntil": {
         "past": "Dans le passé",
+        "pastError": "Cette date est dans le passé. Veuillez choisir une date future.",
         "days": "Dans {{days}}j {{hours}}h {{minutes}}min",
         "hours": "Dans {{hours}}h {{minutes}}min",
         "minutes": "Dans {{minutes}}min"
