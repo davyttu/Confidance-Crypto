@@ -97,6 +97,61 @@ contract PaymentFactory_Recurring {
             _payee,
             _tokenAddress,
             _monthlyAmount,
+            0,
+            _startDate,
+            _totalMonths,
+            _dayOfMonth,
+            PROTOCOL_WALLET
+        );
+
+        emit RecurringPaymentCreatedERC20(
+            msg.sender,
+            _payee,
+            _tokenAddress,
+            address(newRecurringPayment),
+            _monthlyAmount,
+            protocolFeePerMonth,
+            _startDate,
+            _totalMonths
+        );
+
+        return address(newRecurringPayment);
+    }
+
+    // ============================================================
+    // SINGLE RECURRING ERC20 (V2 - FIRST MONTH AMOUNT OPTIONAL)
+    // ============================================================
+
+    function createRecurringPaymentERC20_V2(
+        address _payee,
+        address _tokenAddress,
+        uint256 _monthlyAmount,
+        uint256 _firstMonthAmount,
+        uint256 _startDate,
+        uint256 _totalMonths,
+        uint256 _dayOfMonth
+    ) external returns (address) {
+        require(_payee != address(0), "Invalid payee");
+        require(_tokenAddress != address(0), "Invalid token");
+        require(_monthlyAmount > 0, "Monthly amount must be > 0");
+        require(_startDate > block.timestamp, "Start date must be in future");
+        require(_totalMonths >= 1 && _totalMonths <= 12, "Total months must be 1-12");
+        require(_dayOfMonth >= 1 && _dayOfMonth <= 28, "Day of month must be 1-28");
+
+        // Si = 0 => même montant que monthlyAmount
+        if (_firstMonthAmount > 0) {
+            require(_firstMonthAmount > 0, "First month amount must be > 0");
+        }
+
+        // Calculer les fees par mois (utilisé dans l'event)
+        uint256 protocolFeePerMonth = (_monthlyAmount * FEE_BASIS_POINTS) / BASIS_POINTS_DENOMINATOR;
+
+        RecurringPaymentERC20 newRecurringPayment = new RecurringPaymentERC20(
+            msg.sender,
+            _payee,
+            _tokenAddress,
+            _monthlyAmount,
+            _firstMonthAmount,
             _startDate,
             _totalMonths,
             _dayOfMonth,
@@ -148,6 +203,7 @@ contract PaymentFactory_Recurring {
                 _payees[i],
                 _tokenAddress,
                 _monthlyAmounts[i],
+                0,
                 _startDate,
                 _totalMonths,
                 _dayOfMonth,

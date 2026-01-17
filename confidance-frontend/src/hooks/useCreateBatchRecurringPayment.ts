@@ -52,6 +52,7 @@ interface CreateBatchRecurringPaymentParams {
   totalMonths: number; // 1-12
   dayOfMonth: number; // 1-28
   cancellable?: boolean;
+  firstMonthAmount?: bigint; // ⭐ ADD
 }
 
 type PaymentStatus =
@@ -82,9 +83,18 @@ interface UseCreateBatchRecurringPaymentReturn {
   setGuestEmail: (email: string) => void;
 }
 
-function calculateRecurringTotal(monthlyAmount: bigint, totalMonths: number): bigint {
+function calculateRecurringTotal(monthlyAmount: bigint, totalMonths: number, firstMonthAmount?: bigint): bigint {
   const monthlyFee = (monthlyAmount * BigInt(FEE_BASIS_POINTS)) / BigInt(BASIS_POINTS_DENOMINATOR);
   const totalPerMonth = monthlyAmount + monthlyFee;
+
+  // ⭐ ADD: première mensualité différente
+  if (firstMonthAmount && firstMonthAmount > 0n && firstMonthAmount !== monthlyAmount) {
+    const firstFee = (firstMonthAmount * BigInt(FEE_BASIS_POINTS)) / BigInt(BASIS_POINTS_DENOMINATOR);
+    const firstTotal = firstMonthAmount + firstFee;
+    const remaining = totalMonths > 1 ? BigInt(totalMonths - 1) : 0n;
+    return firstTotal + (totalPerMonth * remaining);
+  }
+
   return totalPerMonth * BigInt(totalMonths);
 }
 
@@ -348,7 +358,7 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
           }
 
           const monthlyAmount = BigInt(Math.floor(parseFloat(beneficiary.amount) * 10 ** tokenData.decimals));
-          const totalRequired = calculateRecurringTotal(monthlyAmount, currentParams.totalMonths);
+          const totalRequired = calculateRecurringTotal(monthlyAmount, currentParams.totalMonths, currentParams.firstMonthAmount); // ⭐ MOD
 
           console.log(`💳 [BATCH RECURRING] Approbation contrat ${currentApprovingIndex + 1}/${contractAddresses.length}...`, {
             contract: contractToApprove,
@@ -431,6 +441,8 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
                 token_symbol: currentParams.tokenSymbol,
                 token_address: tokenData?.address || null,
                 monthly_amount: monthlyAmount.toString(),
+                first_month_amount: currentParams.firstMonthAmount && currentParams.firstMonthAmount > 0n && currentParams.firstMonthAmount !== monthlyAmount ? currentParams.firstMonthAmount.toString() : null, // ⭐ ADD
+                is_first_month_custom: !!(currentParams.firstMonthAmount && currentParams.firstMonthAmount > 0n && currentParams.firstMonthAmount !== monthlyAmount), // ⭐ ADD
                 first_payment_time: currentParams.firstPaymentTime,
                 total_months: currentParams.totalMonths,
                 day_of_month: currentParams.dayOfMonth,

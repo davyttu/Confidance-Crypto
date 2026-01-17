@@ -45,7 +45,7 @@ export default function DateTimePicker({
 
   // Date minimale (maintenant + 10 minutes)
   const minDateTime = minDate || new Date(Date.now() + 10 * 60 * 1000);
-  const minDateTimeString = formatDateTimeLocal(minDateTime);
+  const minDateString = formatDateTimeLocal(minDateTime).split('T')[0];
 
   // Calculer le temps restant
   const [timeUntil, setTimeUntil] = useState<string>('');
@@ -110,12 +110,39 @@ export default function DateTimePicker({
     onChange(newDate);
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newDate = new Date(e.target.value);
-    if (!isNaN(newDate.getTime())) {
-      onChange(newDate);
+  const handleDateChange = (dateValue: string) => {
+    if (!dateValue) return;
+    const base = value ? new Date(value) : new Date();
+    const [year, month, day] = dateValue.split('-').map(Number);
+    if (!year || !month || !day) return;
+    const newDate = new Date(base);
+    newDate.setFullYear(year, month - 1, day);
+    if (!timeInputValue) {
+      const suggested = new Date();
+      suggested.setMinutes(suggested.getMinutes() + 15);
+      if (newDate.toDateString() === suggested.toDateString()) {
+        newDate.setHours(suggested.getHours(), suggested.getMinutes(), 0, 0);
+      }
     }
+    onChange(newDate);
   };
+
+  const handleTimeChange = (timeValue: string) => {
+    if (!timeValue) return;
+    const base = value ? new Date(value) : new Date();
+    const [hours, minutes] = timeValue.split(':').map(Number);
+    if (hours === undefined || minutes === undefined) return;
+    const newDate = new Date(base);
+    newDate.setHours(hours, minutes, 0, 0);
+    const minTarget = new Date(Date.now() + 10 * 60 * 1000);
+    if (newDate < minTarget) {
+      newDate.setTime(minTarget.getTime());
+    }
+    onChange(newDate);
+  };
+
+  const dateInputValue = value ? formatDateTimeLocal(value).split('T')[0] : '';
+  const timeInputValue = value ? formatDateTimeLocal(value).split('T')[1] : '';
 
   return (
     <div className="space-y-4">
@@ -142,13 +169,51 @@ export default function DateTimePicker({
         </div>
       )}
 
-      {/* Input datetime */}
-      <div className="relative">
+      {/* Date + Time inputs */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="relative col-span-2">
+          <input
+            type="date"
+            value={dateInputValue}
+            onChange={(e) => handleDateChange(e.target.value)}
+            min={minDateString}
+            disabled={disabled}
+            className={`
+              w-full px-4 py-3 rounded-xl border-2
+              bg-white dark:bg-gray-800
+              text-gray-900 dark:text-white
+              transition-all
+              ${disabled ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-900' : ''}
+              ${
+                error
+                  ? 'border-red-500 focus:border-red-600'
+                  : 'border-gray-200 dark:border-gray-700 focus:border-primary-500'
+              }
+              focus:outline-none focus:ring-4 focus:ring-primary-500/20
+            `}
+          />
+
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+            <svg
+              className="w-5 h-5 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+              />
+            </svg>
+          </div>
+        </div>
+
         <input
-          type="datetime-local"
-          value={formatDateTimeLocal(value)}
-          onChange={handleInputChange}
-          min={minDateTimeString}
+          type="time"
+          value={timeInputValue}
+          onChange={(e) => handleTimeChange(e.target.value)}
           disabled={disabled}
           className={`
             w-full px-4 py-3 rounded-xl border-2
@@ -164,23 +229,6 @@ export default function DateTimePicker({
             focus:outline-none focus:ring-4 focus:ring-primary-500/20
           `}
         />
-
-        {/* Icône calendrier */}
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-          <svg
-            className="w-5 h-5 text-gray-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-            />
-          </svg>
-        </div>
       </div>
 
       {/* Info temps restant ou erreur date passée */}

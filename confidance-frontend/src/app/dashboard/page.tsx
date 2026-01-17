@@ -43,6 +43,7 @@ export default function DashboardPage() {
   const [beneficiaryToEdit, setBeneficiaryToEdit] = useState<Beneficiary | null>(null);
   const [beneficiaryAddressToAdd, setBeneficiaryAddressToAdd] = useState<string | undefined>();
   const walletConnected = Boolean(address);
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
   const handleReconnectWallet = () => {
     disconnect();
@@ -143,6 +144,44 @@ export default function DashboardPage() {
     } catch (error) {
       console.error('❌ Erreur annulation:', error);
       // L'erreur s'affiche déjà dans la notification en bas à droite
+    }
+  };
+
+  const handleDeletePayment = async (payment: Payment) => {
+    if (!address) return;
+
+    const isRecurring = payment.is_recurring || payment.payment_type === 'recurring';
+    const endpoint = isRecurring
+      ? `${API_URL}/api/payments/recurring/${payment.id}/remove`
+      : `${API_URL}/api/payments/${payment.id}/remove`;
+
+    const confirmMessage = isMounted && translationsReady
+      ? t('dashboard.payments.deleteConfirm', { defaultValue: 'Supprimer ce paiement du dashboard ?' })
+      : 'Supprimer ce paiement du dashboard ?';
+
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(endpoint, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet_address: address }),
+      });
+
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || 'Erreur suppression');
+      }
+
+      await refetch();
+    } catch (error) {
+      console.error('❌ Erreur suppression paiement:', error);
+      alert(isMounted && translationsReady
+        ? t('dashboard.payments.deleteError', { defaultValue: 'Erreur lors de la suppression' })
+        : 'Erreur lors de la suppression'
+      );
     }
   };
 
@@ -285,20 +324,14 @@ export default function DashboardPage() {
                 payments={filteredPayments}
                 onRename={handleRenameBeneficiary}
                 onCancel={setSelectedPaymentToCancel}
+                onDelete={handleDeletePayment}
               />
             </div>
 
             {/* Liste des bénéficiaires */}
-            {beneficiaries.length > 0 && (
-              <div className="mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                  👥 {isMounted && translationsReady ? t('dashboard.beneficiaries.title') : 'Mes bénéficiaires'}
-                </h2>
-                <BeneficiaryList 
-                  onEdit={setBeneficiaryToEdit}
-                />
-              </div>
-            )}
+            <div className="mb-8">
+              <BeneficiaryList onEdit={setBeneficiaryToEdit} />
+            </div>
           </>
         )}
       </div>

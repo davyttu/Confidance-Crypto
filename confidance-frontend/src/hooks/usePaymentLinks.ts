@@ -33,6 +33,8 @@ export function usePaymentLinks() {
   const createLink = useCallback(async (payload: {
     creator: string;
     amount: string;
+    first_month_amount?: string | null;
+    is_first_month_custom?: boolean | null;
     token: string;
     token_address?: string | null;
     payment_type: 'instant' | 'scheduled' | 'recurring';

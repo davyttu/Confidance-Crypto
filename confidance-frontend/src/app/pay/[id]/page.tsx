@@ -88,10 +88,18 @@ export default function PayLinkPage() {
   const isUnsupportedChain = link?.chain_id && link.chain_id !== 8453;
   const isWeekly = link?.frequency === 'weekly';
 
-  const formattedAmount = useMemo(() => {
+  const isFirstMonthCustom =
+    link?.is_first_month_custom === true || link?.is_first_month_custom === 'true';
+  const monthlyAmountLabel = useMemo(() => {
     if (!link?.amount) return '-';
     return `${link.amount} ${link.token_symbol}`;
   }, [link]);
+  const firstMonthAmountLabel = useMemo(() => {
+    if (isFirstMonthCustom && link?.first_month_amount) {
+      return `${link.first_month_amount} ${link.token_symbol}`;
+    }
+    return monthlyAmountLabel;
+  }, [isFirstMonthCustom, link, monthlyAmountLabel]);
 
   const handleCopyAddress = () => {
     if (!link?.creator_address) return;
@@ -127,6 +135,9 @@ export default function PayLinkPage() {
 
       const token = getToken(link.token_symbol);
       const amount = parseUnits(link.amount, token.decimals);
+      const firstMonthAmount = isFirstMonthCustom && link.first_month_amount
+        ? parseUnits(link.first_month_amount, token.decimals)
+        : undefined;
       const startDate = new Date(link.start_at * 1000);
       const dayOfMonth = startDate.getUTCDate();
       const totalMonths = Math.min(Number(link.periods), 12);
@@ -135,6 +146,7 @@ export default function PayLinkPage() {
         tokenSymbol: link.token_symbol,
         beneficiary: link.creator_address,
         monthlyAmount: amount,
+        firstMonthAmount,
         firstPaymentTime: link.start_at,
         totalMonths,
         dayOfMonth,
@@ -303,7 +315,7 @@ export default function PayLinkPage() {
                     {ready ? t('links.pay.summary.amount') : 'Amount to pay'}
                   </p>
                   <p className="text-5xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                    {formattedAmount}
+                    {firstMonthAmountLabel}
                   </p>
                 </div>
 
@@ -365,8 +377,22 @@ export default function PayLinkPage() {
                             {ready ? t('links.pay.recurringPayment') : 'Recurring payment'}
                           </p>
                           <p className="text-xs text-purple-700 mt-1">
-                            {link.periods} {ready ? t('links.pay.months') : 'months'} × {link.amount} {link.token_symbol}
+                            {link.periods} {ready ? t('links.pay.months') : 'months'} × {monthlyAmountLabel}
                           </p>
+                          {isFirstMonthCustom && link.first_month_amount && (
+                            <div className="mt-2 space-y-1 text-xs text-purple-700">
+                              <div>
+                                {ready
+                                  ? t('links.pay.recurringDetails.firstMonth')
+                                  : 'First month'}: {firstMonthAmountLabel}
+                              </div>
+                              <div>
+                                {ready
+                                  ? t('links.pay.recurringDetails.nextMonths')
+                                  : 'Next months'}: {monthlyAmountLabel}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -458,8 +484,23 @@ export default function PayLinkPage() {
                     <span className="text-gray-600">
                       {ready ? t('links.pay.summary.amount') : 'Amount'}
                     </span>
-                    <span className="font-medium text-gray-900">{formattedAmount}</span>
+                    <span className="font-medium text-gray-900">{firstMonthAmountLabel}</span>
                   </div>
+
+                  {link.payment_type === 'recurring' && isFirstMonthCustom && link.first_month_amount && (
+                    <div className="text-xs text-gray-600 bg-purple-50 border border-purple-100 rounded-lg px-3 py-2">
+                      <div>
+                        {ready
+                          ? t('links.pay.recurringDetails.firstMonth')
+                          : 'First month'}: <span className="font-medium text-gray-900">{firstMonthAmountLabel}</span>
+                      </div>
+                      <div>
+                        {ready
+                          ? t('links.pay.recurringDetails.nextMonths')
+                          : 'Next months'}: <span className="font-medium text-gray-900">{monthlyAmountLabel}</span>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Type */}
                   <div className="flex items-center justify-between text-sm pb-4 border-b border-gray-200">

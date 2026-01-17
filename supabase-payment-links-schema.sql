@@ -15,6 +15,8 @@ create table if not exists public.payment_links (
   chain_id integer not null,
   description text,
   status text not null default 'pending', -- pending | active | paid | expired | cancelled
+  first_month_amount text,
+  is_first_month_custom boolean not null default false,
   payer_address text,
   device_id text,
   user_agent text,

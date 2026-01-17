@@ -36,11 +36,17 @@ contract RecurringPaymentERC20 is ReentrancyGuard {
     address public tokenAddress;
 
     uint256 public monthlyAmount;
+    // 0 = même montant que monthlyAmount
+    uint256 public firstMonthAmount;
     uint256 public protocolFeePerMonth;
+    // fee du premier mois si firstMonthAmount > 0, sinon = protocolFeePerMonth
+    uint256 public firstProtocolFee;
     uint256 public startDate;
     uint256 public totalMonths;
     uint256 public dayOfMonth;
     uint256 public executedMonths;
+
+    uint256 public totalPaid;
 
     bool public cancelled;
 
@@ -104,6 +110,7 @@ contract RecurringPaymentERC20 is ReentrancyGuard {
         address _payee,
         address _tokenAddress,
         uint256 _monthlyAmount,
+        uint256 _firstMonthAmount,
         uint256 _startDate,
         uint256 _totalMonths,
         uint256 _dayOfMonth,
@@ -126,6 +133,14 @@ contract RecurringPaymentERC20 is ReentrancyGuard {
         protocolFeePerMonth =
             (_monthlyAmount * FEE_BASIS_POINTS) / BASIS_POINTS_DENOMINATOR;
 
+        firstMonthAmount = _firstMonthAmount;
+        if (_firstMonthAmount > 0) {
+            firstProtocolFee =
+                (_firstMonthAmount * FEE_BASIS_POINTS) / BASIS_POINTS_DENOMINATOR;
+        } else {
+            firstProtocolFee = protocolFeePerMonth;
+        }
+
         startDate = _startDate;
         totalMonths = _totalMonths;
         dayOfMonth = _dayOfMonth;
@@ -133,6 +148,7 @@ contract RecurringPaymentERC20 is ReentrancyGuard {
         protocolOwner = _protocolOwner;
 
         nextMonthToProcess = 0;
+        totalPaid = 0;
 
         emit RecurringPaymentCreated(
             payer,
@@ -162,10 +178,21 @@ contract RecurringPaymentERC20 is ReentrancyGuard {
             startDate + (currentMonthIndex * SECONDS_PER_MONTH);
         require(block.timestamp >= scheduledDate, "Too early for this payment");
 
+        // Montant & fee (mois 1 peut être différent)
+        uint256 amountToPay =
+            (currentMonthIndex == 0 && firstMonthAmount > 0)
+                ? firstMonthAmount
+                : monthlyAmount;
+
+        uint256 feeToPay =
+            (currentMonthIndex == 0 && firstMonthAmount > 0)
+                ? firstProtocolFee
+                : protocolFeePerMonth;
+
         // ================================
         // ✅ PATCH: PRE-CHECK + REQUIRE
         // ================================
-        uint256 totalDebit = monthlyAmount + protocolFeePerMonth;
+        uint256 totalDebit = amountToPay + feeToPay;
 
         if (IERC20(tokenAddress).balanceOf(payer) < totalDebit) {
             emit MonthlyPaymentFailed(
@@ -173,6 +200,16 @@ contract RecurringPaymentERC20 is ReentrancyGuard {
                 payer,
                 "Insufficient balance"
             );
+
+            // ❗ Si le mois 1 échoue : arrêt définitif
+            if (currentMonthIndex == 0) {
+                monthExecuted[currentMonthIndex] = true;
+                nextMonthToProcess = currentMonthIndex + 1;
+                cancelled = true;
+                emit RecurringPaymentCancelled(payer, executedMonths, totalMonths - nextMonthToProcess);
+                return;
+            }
+
             // Strict skip conservé
             monthExecuted[currentMonthIndex] = true;
             nextMonthToProcess++;
@@ -185,6 +222,16 @@ contract RecurringPaymentERC20 is ReentrancyGuard {
                 payer,
                 "Insufficient allowance"
             );
+
+            // ❗ Si le mois 1 échoue : arrêt définitif
+            if (currentMonthIndex == 0) {
+                monthExecuted[currentMonthIndex] = true;
+                nextMonthToProcess = currentMonthIndex + 1;
+                cancelled = true;
+                emit RecurringPaymentCancelled(payer, executedMonths, totalMonths - nextMonthToProcess);
+                return;
+            }
+
             // Strict skip conservé
             monthExecuted[currentMonthIndex] = true;
             nextMonthToProcess++;
@@ -200,11 +247,11 @@ contract RecurringPaymentERC20 is ReentrancyGuard {
         // ✅ FIX CRITIQUE : Faire les transferts AVANT de marquer le mois comme exécuté
         // Utiliser SafeERC20 pour éviter les échecs silencieux
         // Utiliser une fonction externe helper pour permettre l'utilisation de try/catch
-        try this._executeTransfers(payer, payee, monthlyAmount, protocolFeePerMonth) {
+        try this._executeTransfers(payer, payee, amountToPay, feeToPay) {
             // ✅ TOUS les transferts réussis : marquer le mois comme exécuté
             monthExecuted[currentMonthIndex] = true;
             nextMonthToProcess = currentMonthIndex + 1;
-            _onSuccess(currentMonthIndex);
+            _onSuccess(currentMonthIndex, amountToPay, feeToPay);
         } catch Error(string memory reason) {
             // Transfert échoué : skip strict (le mois est perdu)
             emit MonthlyPaymentFailed(
@@ -212,6 +259,16 @@ contract RecurringPaymentERC20 is ReentrancyGuard {
                 payer,
                 string.concat("Transfer failed: ", reason)
             );
+
+            // ❗ Si le mois 1 échoue : arrêt définitif
+            if (currentMonthIndex == 0) {
+                monthExecuted[currentMonthIndex] = true;
+                nextMonthToProcess = currentMonthIndex + 1;
+                cancelled = true;
+                emit RecurringPaymentCancelled(payer, executedMonths, totalMonths - nextMonthToProcess);
+                return;
+            }
+
             monthExecuted[currentMonthIndex] = true;
             nextMonthToProcess = currentMonthIndex + 1;
         } catch {
@@ -221,6 +278,16 @@ contract RecurringPaymentERC20 is ReentrancyGuard {
                 payer,
                 "Transfer failed (unknown error)"
             );
+
+            // ❗ Si le mois 1 échoue : arrêt définitif
+            if (currentMonthIndex == 0) {
+                monthExecuted[currentMonthIndex] = true;
+                nextMonthToProcess = currentMonthIndex + 1;
+                cancelled = true;
+                emit RecurringPaymentCancelled(payer, executedMonths, totalMonths - nextMonthToProcess);
+                return;
+            }
+
             monthExecuted[currentMonthIndex] = true;
             nextMonthToProcess = currentMonthIndex + 1;
         }
@@ -257,8 +324,9 @@ contract RecurringPaymentERC20 is ReentrancyGuard {
         }
     }
 
-    function _onSuccess(uint256 monthIndex) internal {
+    function _onSuccess(uint256 monthIndex, uint256 amountPaid_, uint256 protocolFeePaid_) internal {
         executedMonths++;
+        totalPaid += amountPaid_;
 
         uint256 nextDate =
             (nextMonthToProcess < totalMonths)
@@ -268,8 +336,8 @@ contract RecurringPaymentERC20 is ReentrancyGuard {
         emit MonthlyPaymentExecuted(
             monthIndex + 1,
             payee,
-            monthlyAmount,
-            protocolFeePerMonth,
+            amountPaid_,
+            protocolFeePaid_,
             nextDate
         );
 
@@ -277,7 +345,7 @@ contract RecurringPaymentERC20 is ReentrancyGuard {
             emit RecurringPaymentCompleted(
                 payee,
                 executedMonths,
-                monthlyAmount * executedMonths
+                totalPaid
             );
         }
     }
@@ -432,7 +500,7 @@ contract RecurringPaymentERC20 is ReentrancyGuard {
                 "cancelled",
                 executedMonths,
                 remaining,
-                monthlyAmount * executedMonths,
+                totalPaid,
                 failed
             );
         }
@@ -447,7 +515,7 @@ contract RecurringPaymentERC20 is ReentrancyGuard {
                 "completed",
                 executedMonths,
                 0,
-                monthlyAmount * executedMonths,
+                totalPaid,
                 failedAll
             );
         }
@@ -462,7 +530,7 @@ contract RecurringPaymentERC20 is ReentrancyGuard {
             "active",
             executedMonths,
             remainingActive,
-            monthlyAmount * executedMonths,
+            totalPaid,
             failedActive
         );
     }

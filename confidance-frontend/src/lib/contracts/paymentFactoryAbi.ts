@@ -86,6 +86,25 @@ export const paymentFactoryAbi = [
   },
 
   // ============================================================
+  // 🆕 RECURRING PAYMENT ERC20 V2 (1er mois personnalisé)
+  // ============================================================
+  {
+    inputs: [
+      { name: '_payee', type: 'address' },
+      { name: '_tokenAddress', type: 'address' },
+      { name: '_monthlyAmount', type: 'uint256' },
+      { name: '_firstMonthAmount', type: 'uint256' },
+      { name: '_startDate', type: 'uint256' },
+      { name: '_totalMonths', type: 'uint256' },
+      { name: '_dayOfMonth', type: 'uint256' },
+    ],
+    name: 'createRecurringPaymentERC20_V2',
+    outputs: [{ name: '', type: 'address' }],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+
+  // ============================================================
   // 🆕 BATCH RECURRING PAYMENT ERC20
   // ============================================================
   {

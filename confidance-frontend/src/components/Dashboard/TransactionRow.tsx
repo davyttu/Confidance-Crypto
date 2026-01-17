@@ -1,7 +1,8 @@
 // components/Dashboard/TransactionRow.tsx
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { Payment } from '@/hooks/useDashboard';
 import { useBeneficiaries } from '@/hooks/useBeneficiaries';
@@ -15,17 +16,23 @@ interface TransactionRowProps {
   payment: Payment;
   onRename: (address: string) => void;
   onCancel: (payment: Payment) => void;
+  onDelete: (payment: Payment) => void;
   onEmailClick?: (payment: Payment) => void;
 }
 
-export function TransactionRow({ payment, onRename, onCancel, onEmailClick }: TransactionRowProps) {
+export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailClick }: TransactionRowProps) {
   const { t, i18n, ready: translationsReady } = useTranslation();
   const { getBeneficiaryName } = useBeneficiaries();
   const [copied, setCopied] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const [showContractTooltip, setShowContractTooltip] = useState(false);
+  const tooltipHideTimeoutRef = useRef<number | null>(null);
 
   // Vérifier si c'est un paiement récurrent
   const isRecurring = payment.is_recurring || payment.payment_type === 'recurring';
+  const deletableStatuses = new Set(['released', 'cancelled', 'failed', 'completed']);
+  const canDelete = deletableStatuses.has(payment.status);
 
   const beneficiaryName = getBeneficiaryName(payment.payee_address);
   const displayName = beneficiaryName || `${payment.payee_address.slice(0, 6)}...${payment.payee_address.slice(-4)}`;
@@ -48,9 +55,18 @@ export function TransactionRow({ payment, onRename, onCancel, onEmailClick }: Tr
     const locale = localeMap[baseLang] || localeMap['en'];
     
     return amountNum.toLocaleString(locale, {
-      minimumFractionDigits: symbol === 'ETH' ? 4 : 2,
-      maximumFractionDigits: symbol === 'ETH' ? 4 : 2,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: symbol === 'ETH' ? 5 : 2,
     });
+  };
+
+  const getRecurringDisplayAmount = () => {
+    const isFirstMonthCustom =
+      payment.is_first_month_custom === true || payment.is_first_month_custom === 'true';
+    if (isFirstMonthCustom && payment.first_month_amount) {
+      return payment.first_month_amount;
+    }
+    return payment.amount;
   };
 
   // Formater la date et l'heure avec la locale actuelle
@@ -92,24 +108,67 @@ export function TransactionRow({ payment, onRename, onCancel, onEmailClick }: Tr
     setTimeout(() => setCopied(false), 2000);
   };
 
+  useEffect(() => {
+    if (!contextMenu) return;
+    const handleClose = () => setContextMenu(null);
+    window.addEventListener('click', handleClose);
+    window.addEventListener('scroll', handleClose, true);
+    return () => {
+      window.removeEventListener('click', handleClose);
+      window.removeEventListener('scroll', handleClose, true);
+    };
+  }, [contextMenu]);
+
+  const contextMenuPortal =
+    contextMenu && canDelete && typeof document !== 'undefined'
+      ? createPortal(
+          <div
+            className="fixed z-50 min-w-[180px] rounded-lg border border-gray-200 bg-white shadow-xl"
+            style={{ top: contextMenu.y, left: contextMenu.x }}
+            role="menu"
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setContextMenu(null);
+                onDelete(payment);
+              }}
+              className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+            >
+              Supprimer du dashboard
+            </button>
+          </div>,
+          document.body
+        )
+      : null;
+
   // Déterminer le type de paiement avec emoji et texte
   const getPaymentType = () => {
-    if (payment.payment_type === 'recurring') {
-      return { emoji: '🔄', text: 'Récurrent' };
-    }
+    const types: Array<{ emoji: string; text: string }> = [];
+
     if (payment.is_batch) {
-      return { emoji: '👥', text: `Batch (${payment.batch_count || 0})` };
+      types.push({ emoji: '👥', text: `Batch (${payment.batch_count || 0})` });
+    }
+    if (payment.payment_type === 'recurring') {
+      types.push({ emoji: '🔄', text: 'Récurrent' });
     }
     if (payment.is_instant || payment.payment_type === 'instant') {
-      return { emoji: '⚡', text: 'Instantané' };
+      types.push({ emoji: '⚡', text: 'Instantané' });
     }
-    return { emoji: '🕐', text: 'Programmé' };
+
+    // Par défaut: programmé si rien de spécifique
+    if (types.length === 0) {
+      types.push({ emoji: '🕐', text: 'Programmé' });
+    }
+
+    return types;
   };
 
   // Statut avec badge
   const getStatusBadge = () => {
     const statusClass = {
       pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+      active: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
       released: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
       cancelled: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
       failed: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
@@ -117,6 +176,7 @@ export function TransactionRow({ payment, onRename, onCancel, onEmailClick }: Tr
 
     const statusLabels = {
       pending: translationsReady ? t('dashboard.status.pending') : 'En attente',
+      active: translationsReady ? t('dashboard.status.active', { defaultValue: 'Actif' }) : 'Actif',
       released: translationsReady ? t('dashboard.status.released') : 'Libéré',
       cancelled: translationsReady ? t('dashboard.status.cancelled') : 'Annulé',
       failed: translationsReady ? t('dashboard.status.failed') : 'Échoué',
@@ -131,7 +191,14 @@ export function TransactionRow({ payment, onRename, onCancel, onEmailClick }: Tr
 
   return (
     <>
-      <tr className="border-b border-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+      <tr
+        className="border-b border-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+        onContextMenu={(event) => {
+          if (!canDelete) return;
+          event.preventDefault();
+          setContextMenu({ x: event.clientX, y: event.clientY });
+        }}
+      >
         {/* Bénéficiaire */}
         <td className="px-6 py-4 whitespace-nowrap">
           <div className="flex items-center gap-2">
@@ -152,50 +219,33 @@ export function TransactionRow({ payment, onRename, onCancel, onEmailClick }: Tr
           </div>
         </td>
 
-      {/* Blockchain */}
-      <td className="px-4 py-4 whitespace-nowrap">
-        <div className="flex items-center justify-center">
-          <div className="group relative">
-            {/* Logo Base officiel */}
-            <img 
-              src="/blockchains/base.svg" 
-              alt="Base" 
-              className="w-6 h-6"
-              onError={(e) => {
-                // Fallback si le logo ne charge pas
-                const target = e.target as HTMLImageElement;
-                target.style.display = 'none';
-                const parent = target.parentElement;
-                if (parent) {
-                  parent.innerHTML = '<div class="w-6 h-6 rounded bg-blue-500 flex items-center justify-center"><span class="text-white text-xs font-bold">B</span></div>';
-                }
-              }}
-            />
-            {/* Tooltip */}
-            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
-              Base Mainnet
-              <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900 dark:border-t-gray-700"></div>
-            </div>
-          </div>
-        </div>
-      </td>
-
       {/* Montant */}
       <td className="px-6 py-4 whitespace-nowrap">
         <div className="text-sm font-medium text-gray-900 dark:text-white">
-          {formatAmount(payment.amount, payment.token_symbol || 'ETH')} {payment.token_symbol || 'ETH'}
+          {formatAmount(
+            isRecurring ? getRecurringDisplayAmount() : payment.amount,
+            payment.token_symbol || 'ETH'
+          )}{' '}
+          {payment.token_symbol || 'ETH'}
         </div>
       </td>
 
       {/* Type */}
       <td className="px-6 py-4 whitespace-nowrap">
         <div className="group relative inline-block">
-          <span className="text-lg cursor-help" title={getPaymentType().text}>
-            {getPaymentType().emoji}
+          <span
+            className="text-lg cursor-help inline-flex items-center gap-1"
+            title={getPaymentType().map((type) => type.text).join(' • ')}
+          >
+            {getPaymentType().map((type, index) => (
+              <span key={`${type.text}-${index}`} aria-label={type.text}>
+                {type.emoji}
+              </span>
+            ))}
           </span>
           {/* Tooltip */}
           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
-            {getPaymentType().text}
+            {getPaymentType().map((type) => type.text).join(' • ')}
             <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900 dark:border-t-gray-700"></div>
           </div>
         </div>
@@ -219,32 +269,86 @@ export function TransactionRow({ payment, onRename, onCancel, onEmailClick }: Tr
       </td>
 
       {/* Contrat */}
-      <td className="px-6 py-4 whitespace-nowrap">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-mono text-gray-500 dark:text-gray-400">
-            {payment.contract_address?.slice(0, 8)}...{payment.contract_address?.slice(-6)}
-          </span>
-          {payment.contract_address && (
-            <>
-              <button
-                onClick={() => copyToClipboard(payment.contract_address!)}
-                className="text-gray-400 hover:text-blue-600 transition-colors"
-                title="Copier l'adresse"
+      <td className="px-6 py-4 whitespace-nowrap text-center">
+        {payment.contract_address ? (
+          <div
+            className="relative inline-flex items-center justify-center"
+            onMouseEnter={() => {
+              if (tooltipHideTimeoutRef.current) {
+                window.clearTimeout(tooltipHideTimeoutRef.current);
+                tooltipHideTimeoutRef.current = null;
+              }
+              setShowContractTooltip(true);
+            }}
+            onMouseLeave={() => {
+              tooltipHideTimeoutRef.current = window.setTimeout(() => {
+                setShowContractTooltip(false);
+                tooltipHideTimeoutRef.current = null;
+              }, 250);
+            }}
+          >
+            <a
+              href={`https://basescan.org/address/${payment.contract_address}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center"
+              title="Voir sur Basescan"
+            >
+              <img
+                src="/blockchains/base.svg"
+                alt="Base"
+                className="w-6 h-6"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  const parent = target.parentElement;
+                  if (parent) {
+                    parent.innerHTML = '<div class="w-6 h-6 rounded bg-blue-500 flex items-center justify-center"><span class="text-white text-xs font-bold">B</span></div>';
+                  }
+                }}
+              />
+            </a>
+            {/* Tooltip */}
+            {showContractTooltip && (
+              <div
+                className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 min-w-[220px] px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg shadow-lg z-10"
+                onMouseEnter={() => {
+                  if (tooltipHideTimeoutRef.current) {
+                    window.clearTimeout(tooltipHideTimeoutRef.current);
+                    tooltipHideTimeoutRef.current = null;
+                  }
+                  setShowContractTooltip(true);
+                }}
+                onMouseLeave={() => {
+                  tooltipHideTimeoutRef.current = window.setTimeout(() => {
+                    setShowContractTooltip(false);
+                    tooltipHideTimeoutRef.current = null;
+                  }, 250);
+                }}
               >
-                <Copy className={`w-4 h-4 ${copied ? 'text-green-600' : ''}`} />
-              </button>
-              <a
-                href={`https://basescan.org/address/${payment.contract_address}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-gray-400 hover:text-blue-600 transition-colors"
-                title="Voir sur Basescan"
-              >
-                <ExternalLink className="w-4 h-4" />
-              </a>
-            </>
-          )}
-        </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-mono">
+                    {payment.contract_address.slice(0, 10)}...{payment.contract_address.slice(-8)}
+                  </span>
+                  <button
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      copyToClipboard(payment.contract_address!);
+                    }}
+                    className="text-gray-200 hover:text-white transition-colors"
+                    title="Copier l'adresse"
+                  >
+                    <Copy className={`w-4 h-4 ${copied ? 'text-green-400' : ''}`} />
+                  </button>
+                </div>
+                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900 dark:border-t-gray-700"></div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <span className="text-xs text-gray-400">—</span>
+        )}
       </td>
 
       {/* Actions */}
@@ -271,9 +375,10 @@ export function TransactionRow({ payment, onRename, onCancel, onEmailClick }: Tr
         </div>
       </td>
     </tr>
+    {contextMenuPortal}
     {isRecurring && isExpanded && (
       <tr className="border-b border-gray-200">
-        <td colSpan={8} className="p-0">
+        <td colSpan={7} className="p-0">
           <RecurringPaymentHistory payment={payment} />
         </td>
       </tr>

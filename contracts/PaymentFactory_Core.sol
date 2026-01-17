@@ -52,7 +52,7 @@ contract PaymentFactory_Core {
         require(_totalMonths >= 1 && _totalMonths <= 12);
         require(_dayOfMonth >= 1 && _dayOfMonth <= 28);
         uint256 protocolFeePerMonth = (_monthlyAmount * FEE_BASIS_POINTS) / BASIS_POINTS_DENOMINATOR;
-        RecurringPaymentERC20 newRecurringPayment = new RecurringPaymentERC20(msg.sender,_payee,_tokenAddress,_monthlyAmount,_startDate,_totalMonths,_dayOfMonth,PROTOCOL_WALLET);
+        RecurringPaymentERC20 newRecurringPayment = new RecurringPaymentERC20(msg.sender,_payee,_tokenAddress,_monthlyAmount,0,_startDate,_totalMonths,_dayOfMonth,PROTOCOL_WALLET);
         emit RecurringPaymentCreatedERC20(msg.sender,_payee,_tokenAddress,address(newRecurringPayment),_monthlyAmount,protocolFeePerMonth,_startDate,_totalMonths);
         return address(newRecurringPayment);
     }

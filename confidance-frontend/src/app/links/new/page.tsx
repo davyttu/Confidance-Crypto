@@ -1,14 +1,36 @@
 // src/app/links/new/page.tsx
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAccount } from 'wagmi';
 import { useTranslation } from 'react-i18next';
 import { CHAINS } from '@/config/chains';
+import { TOKEN_LIST, type Token } from '@/config/tokens';
 import { usePaymentLinks } from '@/hooks/usePaymentLinks';
 
 type PaymentType = 'instant' | 'scheduled' | 'recurring';
 type Frequency = 'monthly' | 'weekly';
+
+function TokenIcon({ token }: { token: Token }) {
+  if (!token.icon) {
+    return (
+      <div
+        className="w-full h-full flex items-center justify-center text-white text-xs font-semibold"
+        style={{ backgroundColor: token.color }}
+      >
+        {token.symbol.charAt(0)}
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={token.icon}
+      alt={token.name}
+      className="w-full h-full object-contain"
+    />
+  );
+}
 
 export default function NewPaymentLinkPage() {
   const { t, ready } = useTranslation();
@@ -24,9 +46,19 @@ export default function NewPaymentLinkPage() {
   const [frequency, setFrequency] = useState<Frequency>('monthly');
   const [periods, setPeriods] = useState<number>(6);
   const [startAt, setStartAt] = useState('');
+  const [isFirstMonthCustom, setIsFirstMonthCustom] = useState(false);
+  const [firstMonthAmount, setFirstMonthAmount] = useState('');
   const [createdId, setCreatedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const selectedToken = TOKEN_LIST.find((item) => item.symbol === token) || TOKEN_LIST[0];
+
+  useEffect(() => {
+    if (paymentType !== 'recurring' || frequency !== 'monthly') {
+      setIsFirstMonthCustom(false);
+      setFirstMonthAmount('');
+    }
+  }, [paymentType, frequency]);
 
   const shareUrl = useMemo(() => {
     if (!createdId) return '';
@@ -66,6 +98,12 @@ export default function NewPaymentLinkPage() {
         setError(ready ? t('links.create.errors.periods') : 'Periods required');
         return;
       }
+      if (frequency === 'monthly' && isFirstMonthCustom) {
+        if (!firstMonthAmount || Number(firstMonthAmount) <= 0) {
+          setError(ready ? t('links.create.errors.firstMonthAmount') : 'Invalid first month amount');
+          return;
+        }
+      }
     }
     setError(null);
 
@@ -76,6 +114,10 @@ export default function NewPaymentLinkPage() {
       const paymentLink = await createLink({
         creator: address,
         amount,
+        first_month_amount: paymentType === 'recurring' && frequency === 'monthly' && isFirstMonthCustom
+          ? firstMonthAmount
+          : null,
+        is_first_month_custom: paymentType === 'recurring' && frequency === 'monthly' && isFirstMonthCustom,
         token,
         payment_type: paymentType,
         frequency: paymentType === 'recurring' ? frequency : null,
@@ -118,301 +160,378 @@ export default function NewPaymentLinkPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-purple-900/20 dark:to-gray-900">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-full mb-6 shadow-lg">
-            <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="max-w-lg mx-auto px-4 py-8">
+        {/* Header compact */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-full mb-4 shadow-lg">
+            <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
             </svg>
-            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+            <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
               {ready ? t('links.create.badge') : 'Payment Link Generator'}
             </span>
           </div>
           
-          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-transparent mb-4">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-transparent mb-2">
             {ready ? t('links.create.title') : 'Create a payment link'}
           </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
             {ready ? t('links.create.subtitle') : 'Generate a shareable link and get paid directly in crypto'}
           </p>
         </div>
 
-        {/* Formulaire principal */}
-        <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl shadow-2xl p-8 mb-8">
-          <div className="space-y-8">
-            {/* Montant et Token */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Montant & Token
-              </h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    {ready ? t('links.create.fields.amount') : 'Amount'}
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.0001"
-                      value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                      className="w-full px-4 py-3 pl-12 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white transition-all"
-                      placeholder="0.00"
-                    />
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                      💰
-                    </div>
-                  </div>
+        {/* Formulaire compact - Card unique */}
+        <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 space-y-6">
+          
+          {/* Amount & Token */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+              <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {ready ? t('links.create.sections.amountToken', { defaultValue: 'Amount & Token' }) : 'Amount & Token'}
+            </h3>
+            
+            <div className="grid grid-cols-2 gap-3">
+              {/* Amount */}
+              <div>
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                  {ready ? t('links.create.fields.amount') : 'Amount'}
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.0001"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    className="w-full px-3 py-2 border-2 border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white font-semibold transition-all"
+                    placeholder="0.00"
+                  />
                 </div>
+              </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    {ready ? t('links.create.fields.token') : 'Token'}
-                  </label>
+              {/* Token */}
+              <div>
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                  {ready ? t('links.create.fields.token') : 'Token'}
+                </label>
+                <div className="relative">
+                  <div className="absolute left-2 top-1/2 -translate-y-1/2 h-6 w-6 rounded-full overflow-hidden bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
+                    <TokenIcon token={selectedToken} />
+                  </div>
                   <select
                     value={token}
                     onChange={(e) => setToken(e.target.value as 'ETH' | 'USDC' | 'USDT')}
-                    className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white transition-all cursor-pointer"
+                    className="w-full px-3 py-2 pl-10 border-2 border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white font-semibold transition-all cursor-pointer"
                   >
-                    <option value="ETH">💎 ETH</option>
-                    <option value="USDC">💵 USDC</option>
-                    <option value="USDT">💲 USDT</option>
+                    <option value="ETH">ETH</option>
+                    <option value="USDC">USDC</option>
+                    <option value="USDT">USDT</option>
                   </select>
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* Type de paiement */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                </svg>
-                Type de paiement
-              </h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {(['instant', 'scheduled', 'recurring'] as PaymentType[]).map((type) => (
-                  <button
-                    key={type}
-                    onClick={() => setPaymentType(type)}
-                    className={`p-4 rounded-xl border-2 transition-all ${
-                      paymentType === type
-                        ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
-                        : 'border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-700'
-                    }`}
-                  >
-                    <div className={`flex items-center gap-3 ${
-                      paymentType === type ? 'text-purple-600 dark:text-purple-400' : 'text-gray-600 dark:text-gray-400'
-                    }`}>
-                      {getPaymentTypeIcon(type)}
-                      <span className="font-medium">
-                        {ready ? t(`links.types.${type}`) : type.charAt(0).toUpperCase() + type.slice(1)}
-                      </span>
-                    </div>
-                  </button>
-                ))}
-              </div>
+          {/* Network */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+              <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+              </svg>
+              {ready ? t('links.create.sections.network', { defaultValue: 'Network' }) : 'Network'}
+            </h3>
+            
+            <select
+              value={chainId}
+              onChange={(e) => setChainId(Number(e.target.value))}
+              className="w-full px-3 py-2 border-2 border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm font-semibold transition-all cursor-pointer"
+            >
+              {Object.values(CHAINS).map((chain) => (
+                <option key={chain.chainId} value={chain.chainId}>
+                  🌐 {chain.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Payment type - Horizontal compact */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+              <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+              </svg>
+              {ready ? t('links.create.sections.paymentType', { defaultValue: 'Payment type' }) : 'Payment type'}
+            </h3>
+
+            <div className="grid grid-cols-3 gap-2">
+              {(['instant', 'scheduled', 'recurring'] as PaymentType[]).map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => setPaymentType(type)}
+                  className={`p-3 rounded-xl border-2 transition-all ${
+                    paymentType === type
+                      ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30 shadow-md'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-purple-300'
+                  }`}
+                >
+                  <div className={`flex items-center gap-2 ${
+                    paymentType === type ? 'text-purple-600 dark:text-purple-400' : 'text-gray-500'
+                  }`}>
+                    {getPaymentTypeIcon(type)}
+                    <span className="text-xs font-semibold">
+                      {ready ? t(`links.types.${type}`) : type.charAt(0).toUpperCase() + type.slice(1)}
+                    </span>
+                  </div>
+                </button>
+              ))}
             </div>
+          </div>
 
-            {/* Network */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+          {/* Scheduled options */}
+          {paymentType === 'scheduled' && (
+            <div className="pt-4 border-t border-gray-200 dark:border-gray-700 animate-in fade-in duration-300">
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                Réseau
-              </h3>
-              
-              <select
-                value={chainId}
-                onChange={(e) => setChainId(Number(e.target.value))}
-                className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white transition-all cursor-pointer"
-              >
-                {Object.values(CHAINS).map((chain) => (
-                  <option key={chain.chainId} value={chain.chainId}>
-                    🌐 {chain.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Date d'exécution (scheduled) */}
-            {paymentType === 'scheduled' && (
-              <div className="space-y-4 animate-in fade-in duration-300">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                  <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Planification
-                </h3>
-                
-                <input
-                  type="datetime-local"
-                  value={executeAt}
-                  onChange={(e) => setExecuteAt(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white transition-all"
-                />
-              </div>
-            )}
-
-            {/* Configuration récurrente */}
-            {paymentType === 'recurring' && (
-              <div className="space-y-4 animate-in fade-in duration-300">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                  <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  Configuration récurrente
-                </h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      {ready ? t('links.create.fields.frequency') : 'Frequency'}
-                    </label>
-                    <select
-                      value={frequency}
-                      onChange={(e) => setFrequency(e.target.value as Frequency)}
-                      className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white transition-all cursor-pointer"
-                    >
-                      <option value="monthly">📅 {ready ? t('links.frequency.monthly') : 'Monthly'}</option>
-                      <option value="weekly">📆 {ready ? t('links.frequency.weekly') : 'Weekly'}</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      {ready ? t('links.create.fields.periods') : 'Periods'}
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={periods}
-                      onChange={(e) => setPeriods(Number(e.target.value))}
-                      className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white transition-all"
-                      placeholder="6"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      {ready ? t('links.create.fields.startAt') : 'Start date'}
-                    </label>
-                    <input
-                      type="date"
-                      value={startAt}
-                      onChange={(e) => setStartAt(e.target.value)}
-                      className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white transition-all"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Description */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-                </svg>
-                Description
-                <span className="text-sm text-gray-500 font-normal">
-                  (optionnel)
-                </span>
+                {ready ? t('links.create.sections.schedule', { defaultValue: 'Schedule' }) : 'Schedule'}
               </h3>
               
               <input
-                type="text"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white transition-all"
-                placeholder={ready ? t('links.create.placeholders.description') : 'e.g., Monthly rent, SaaS subscription...'}
+                type="datetime-local"
+                value={executeAt}
+                onChange={(e) => setExecuteAt(e.target.value)}
+                className="w-full px-3 py-2 border-2 border-purple-200 dark:border-purple-800 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm transition-all"
               />
             </div>
+          )}
 
-            {/* Erreur */}
-            {error && (
-              <div className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-xl animate-in fade-in duration-300">
-                <svg className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          {/* Recurring options */}
+          {paymentType === 'recurring' && (
+            <div className="pt-4 border-t border-gray-200 dark:border-gray-700 space-y-4 animate-in fade-in duration-300">
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-                <p className="text-sm text-red-800 dark:text-red-300">{error}</p>
-              </div>
-            )}
+                {ready ? t('links.create.sections.recurringConfig', { defaultValue: 'Recurring configuration' }) : 'Recurring configuration'}
+              </h3>
+              
+              <div className="grid grid-cols-3 gap-3">
+                {/* Frequency */}
+                <div>
+                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                    {ready ? t('links.create.fields.frequency') : 'Frequency'}
+                  </label>
+                  <select
+                    value={frequency}
+                    onChange={(e) => setFrequency(e.target.value as Frequency)}
+                    className="w-full px-2 py-2 border-2 border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-xs transition-all cursor-pointer"
+                  >
+                    <option value="monthly">📅 {ready ? t('links.frequency.monthly') : 'Monthly'}</option>
+                    <option value="weekly">📆 {ready ? t('links.frequency.weekly') : 'Weekly'}</option>
+                  </select>
+                </div>
 
-            {/* Bouton de génération */}
-            <button
-              onClick={handleSubmit}
-              disabled={isLoading}
-              className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 text-white font-bold text-lg hover:shadow-2xl hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-3"
-            >
-              {isLoading ? (
-                <>
-                  <svg className="animate-spin w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  {ready ? t('links.create.generating') : 'Generating...'}
-                </>
-              ) : (
-                <>
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                  </svg>
-                  {ready ? t('links.create.generate') : 'Generate payment link'}
-                </>
+                {/* Periods */}
+                <div>
+                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                    {ready ? t('links.create.fields.periods') : 'Periods'}
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={periods}
+                    onChange={(e) => setPeriods(Number(e.target.value))}
+                    className="w-full px-2 py-2 border-2 border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-xs transition-all"
+                    placeholder="6"
+                  />
+                </div>
+
+                {/* Start date */}
+                <div>
+                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                    {ready ? t('links.create.fields.startAt') : 'Start date'}
+                  </label>
+                  <input
+                    type="date"
+                    value={startAt}
+                    onChange={(e) => setStartAt(e.target.value)}
+                    className="w-full px-2 py-2 border-2 border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-xs transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* First month custom - Option Same/Custom */}
+              {frequency === 'monthly' && (
+                <div className="p-3 bg-indigo-50 dark:bg-indigo-950/30 rounded-lg border border-indigo-200 dark:border-indigo-800 space-y-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">
+                        {ready ? t('links.create.firstMonth.title') : 'First monthly payment'}
+                      </p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                        {ready
+                          ? t('links.create.firstMonth.description')
+                          : 'By default, it is the same as the following months.'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsFirstMonthCustom(false);
+                          setFirstMonthAmount('');
+                        }}
+                        className={`px-3 py-1 rounded-lg text-xs font-medium transition-all border ${
+                          !isFirstMonthCustom
+                            ? 'bg-indigo-600 text-white border-indigo-600'
+                            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/30'
+                        }`}
+                      >
+                        {ready ? t('links.create.firstMonth.same') : 'Same'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsFirstMonthCustom(true);
+                          setFirstMonthAmount(amount || '');
+                        }}
+                        className={`px-3 py-1 rounded-lg text-xs font-medium transition-all border ${
+                          isFirstMonthCustom
+                            ? 'bg-indigo-600 text-white border-indigo-600'
+                            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/30'
+                        }`}
+                      >
+                        {ready ? t('links.create.firstMonth.custom') : 'Custom'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {isFirstMonthCustom && (
+                    <div className="space-y-2">
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
+                        {ready ? t('links.create.firstMonth.amountLabel') : 'First monthly amount'}
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.0001"
+                        value={firstMonthAmount}
+                        onChange={(e) => setFirstMonthAmount(e.target.value)}
+                        placeholder="0.00"
+                        className="w-full px-3 py-2 border-2 border-indigo-300 dark:border-indigo-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm transition-all"
+                      />
+                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                        {ready
+                          ? t('links.create.firstMonth.info')
+                          : '💡 If you enter the same amount as the monthly payment, this option will be ignored automatically.'}
+                      </p>
+                    </div>
+                  )}
+                </div>
               )}
-            </button>
+            </div>
+          )}
+
+          {/* Description */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+              <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+              </svg>
+              {ready ? t('links.create.sections.description', { defaultValue: 'Description' }) : 'Description'}
+              <span className="text-xs text-gray-400 font-normal">
+                {ready ? t('links.create.sections.optional', { defaultValue: '(optional)' }) : '(optional)'}
+              </span>
+            </h3>
+            
+            <input
+              type="text"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full px-3 py-2 border-2 border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm transition-all"
+              placeholder={ready ? t('links.create.placeholders.description') : 'e.g., Monthly rent, SaaS subscription...'}
+            />
           </div>
+
+          {/* Erreur */}
+          {error && (
+            <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg animate-in fade-in duration-300">
+              <svg className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-xs text-red-800 dark:text-red-300">{error}</p>
+            </div>
+          )}
+
+          {/* Bouton Generate */}
+          <button
+            onClick={handleSubmit}
+            disabled={isLoading}
+            className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 text-white font-bold text-base hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
+          >
+            {isLoading ? (
+              <>
+                <svg className="animate-spin w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                {ready ? t('links.create.generating') : 'Generating...'}
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+                {ready ? t('links.create.generate') : 'Generate payment link'}
+              </>
+            )}
+          </button>
         </div>
 
         {/* Lien généré */}
         {createdId && (
-          <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border-2 border-purple-200 dark:border-purple-800 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="mt-6 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-2xl shadow-xl p-6 border-2 border-purple-200 dark:border-purple-800 animate-in fade-in slide-in-from-bottom duration-500">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
               <div>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">
                   {ready ? t('links.create.success') : 'Payment link created!'}
                 </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="text-xs text-gray-600 dark:text-gray-400">
                   {ready ? t('links.create.successDescription') : 'Share this link to receive payments'}
                 </p>
               </div>
             </div>
             
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
                 <input
                   type="text"
                   value={shareUrl}
                   readOnly
-                  className="flex-1 px-4 py-3 bg-white dark:bg-gray-800 border-2 border-purple-200 dark:border-purple-700 rounded-xl text-sm font-mono text-gray-700 dark:text-gray-300"
+                  className="flex-1 px-3 py-2 bg-white dark:bg-gray-800 border-2 border-purple-200 dark:border-purple-700 rounded-lg text-xs font-mono text-gray-700 dark:text-gray-300"
                 />
                 <button
                   onClick={handleCopy}
-                  className="px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold hover:shadow-lg transition-all flex items-center gap-2"
+                  className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold text-sm hover:shadow-lg transition-all flex items-center gap-1.5"
                 >
                   {copied ? (
                     <>
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
                       {ready ? t('links.create.copied') : 'Copied!'}
                     </>
                   ) : (
                     <>
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                       </svg>
                       {ready ? t('links.create.copy') : 'Copy'}
@@ -421,8 +540,8 @@ export default function NewPaymentLinkPage() {
                 </button>
               </div>
 
-              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <span>

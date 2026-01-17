@@ -57,6 +57,10 @@
       "subscriptions": {
         "title": "Abonnements",
         "desc": "Versements récurrents automatiques"
+      },
+      "insurance": {
+        "title": "Assurances & garanties",
+        "desc": "Frais d’activation, puis couverture mensuelle"
       }
     },
     "stats": {
@@ -290,6 +294,7 @@
     },
     "date": {
       "label": "Date et heure de libération",
+      "paymentTypeLabel": "Type de paiement",
       "firstDue": "Date et heure de libération (première échéance)",
       "instant": "⚡Instantané",
       "6hours": "6 heures",
@@ -316,6 +321,14 @@
         "hours": "Dans {{hours}}h {{minutes}}min",
         "minutes": "Dans {{minutes}}min"
       }
+    },
+    "firstMonth": {
+      "title": "Première mensualité",
+      "description": "Par défaut, elle est identique aux suivantes. Utile pour un premier loyer différent ou des frais d'entrée.",
+      "same": "Identique",
+      "custom": "Personnalisée",
+      "amountLabel": "Montant de la première mensualité",
+      "info": "💡 Si tu mets le même montant que le mensuel, l'option sera ignorée automatiquement."
     },
     "paymentType": {
       "label": "🔒 Type de paiement",
@@ -669,8 +682,18 @@
   "links": {
     "cta": "Créer un lien de paiement",
     "create": {
+      "badge": "Générateur de lien de paiement",
       "title": "Créer un lien de paiement",
       "subtitle": "Générez un lien partageable et faites-vous payer directement.",
+      "sections": {
+        "amountToken": "Montant & Token",
+        "paymentType": "Type de paiement",
+        "network": "Réseau",
+        "schedule": "Planification",
+        "recurringConfig": "Configuration récurrente",
+        "description": "Description",
+        "optional": "(optionnel)"
+      },
       "fields": {
         "amount": "Montant",
         "token": "Token",
@@ -679,8 +702,16 @@
         "executeAt": "Date d'exécution",
         "frequency": "Fréquence",
         "periods": "Périodes",
-        "startAt": "Date de départ",
+        "startAt": "Date de début",
         "description": "Description (optionnel)"
+      },
+      "firstMonth": {
+        "title": "Première mensualité",
+        "description": "Par défaut, elle est identique aux suivantes. Utile pour un premier loyer différent ou des frais d'entrée.",
+        "same": "Identique",
+        "custom": "Personnalisée",
+        "amountLabel": "Montant de la première mensualité",
+        "info": "💡 Si tu mets le même montant que le mensuel, l'option sera ignorée automatiquement."
       },
       "placeholders": {
         "description": "Loyer, abonnement SaaS, facture..."
@@ -690,8 +721,9 @@
         "amount": "Montant invalide",
         "create": "Impossible de générer le lien",
         "executeAt": "Date d'exécution requise",
-        "startAt": "Date de départ requise",
-        "periods": "Périodes requises"
+        "startAt": "Date de début requise",
+        "periods": "Périodes requises",
+        "firstMonthAmount": "Montant de première mensualité invalide"
       },
       "generate": "Générer le lien",
       "generating": "Génération...",
@@ -711,6 +743,7 @@
       "button": "Mes liens",
       "title": "Mes liens de paiement",
       "empty": "Aucun lien de paiement",
+      "hint": "Une fois un paiement validé, vous le retrouvez directement dans votre dashboard.",
       "status": "Statut",
       "amount": "Montant",
       "type": "Type",
@@ -730,6 +763,10 @@
       "subtitle": "Vérifiez les détails et payez en toute sécurité.",
       "loading": "Chargement du lien...",
       "cta": "Payer maintenant",
+      "recurringDetails": {
+        "firstMonth": "Premier mois",
+        "nextMonths": "Mois suivants"
+      },
       "summary": {
         "amount": "Montant",
         "type": "Type",

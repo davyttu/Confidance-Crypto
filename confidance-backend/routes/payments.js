@@ -225,14 +225,19 @@ router.get('/:walletAddress', async (req, res) => {
         payment_type: 'simple' 
       })),
       // Paiements récurrents (is_recurring = true)
-      ...(recurringPayments || []).map(p => ({ 
-        ...p, 
-        is_recurring: true,
-        payment_type: 'recurring',
-        // Mapper les champs pour compatibilité avec le frontend
-        amount: p.monthly_amount, // Le frontend attend "amount"
-        release_time: p.first_payment_time // Le frontend attend "release_time"
-      }))
+      ...(recurringPayments || []).map(p => {
+        const isFirstMonthCustom = p.is_first_month_custom === true || p.is_first_month_custom === 'true';
+        const displayAmount = isFirstMonthCustom && p.first_month_amount ? p.first_month_amount : p.monthly_amount;
+
+        return { 
+          ...p, 
+          is_recurring: true,
+          payment_type: 'recurring',
+          // Mapper les champs pour compatibilité avec le frontend
+          amount: displayAmount, // Afficher le montant du mois 1 si personnalisé
+          release_time: p.first_payment_time // Le frontend attend "release_time"
+        };
+      })
     ];
 
     // ✅ ÉTAPE 4 : Trier par date de création (plus récent en premier)
@@ -249,6 +254,64 @@ router.get('/:walletAddress', async (req, res) => {
 
   } catch (error) {
     console.error('❌ Erreur /api/payments/:wallet:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
+ * DELETE /api/payments/:id/remove
+ * Supprimer un paiement du dashboard (soft delete côté UI)
+ * Autorisé uniquement si le paiement est terminé ou annulé
+ */
+router.delete('/:id/remove', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { wallet_address } = req.body;
+
+    if (!id) {
+      return res.status(400).json({ error: 'ID requis' });
+    }
+    if (!wallet_address) {
+      return res.status(400).json({ error: 'wallet_address requis' });
+    }
+
+    const { data: payment, error: fetchError } = await supabase
+      .from('scheduled_payments')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !payment) {
+      return res.status(404).json({ error: 'Paiement non trouvé' });
+    }
+
+    const wallet = wallet_address.toLowerCase();
+    const isOwner =
+      payment.payer_address?.toLowerCase() === wallet ||
+      payment.payee_address?.toLowerCase() === wallet;
+
+    if (!isOwner) {
+      return res.status(403).json({ error: 'Non autorisé' });
+    }
+
+    const allowedStatuses = ['released', 'cancelled', 'failed'];
+    if (!allowedStatuses.includes(payment.status)) {
+      return res.status(400).json({ error: 'Paiement non supprimable' });
+    }
+
+    const { error: deleteError } = await supabase
+      .from('scheduled_payments')
+      .delete()
+      .eq('id', id);
+
+    if (deleteError) {
+      console.error('❌ Erreur Supabase delete scheduled:', deleteError);
+      return res.status(500).json({ error: 'Erreur lors de la suppression' });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ Erreur DELETE /api/payments/:id/remove:', error);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });

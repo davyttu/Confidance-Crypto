@@ -350,6 +350,7 @@ contract PaymentFactory_Scheduled {
             _payee,
             _tokenAddress,
             _monthlyAmount,
+            0,
             _startDate,
             _totalMonths,
             _dayOfMonth,

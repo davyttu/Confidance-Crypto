@@ -31,7 +31,10 @@ export function StatsCards({ payments }: StatsCardsProps) {
   }, BigInt(0));
 
   const pending = payments.filter(p => p.status === 'pending').length;
-  const released = payments.filter(p => p.status === 'released').length;
+  const recurringPending = payments.filter(p => {
+    const isRecurring = p.is_recurring || p.payment_type === 'recurring';
+    return isRecurring && p.status === 'pending';
+  }).length;
 
   const ethAmount = useMemo(() => {
     if (!ethBalance.balance) return 0;
@@ -139,18 +142,22 @@ export function StatsCards({ payments }: StatsCardsProps) {
         <p className="text-xs opacity-85">{ready ? t('dashboard.stats.scheduledPayments', { plural: pending > 1 ? 's' : '' }) : `Paiement${pending > 1 ? 's' : ''} programmé${pending > 1 ? 's' : ''}`}</p>
       </div>
 
-      {/* Exécutés */}
+      {/* Actifs (paiements récurrents en attente) */}
       <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-4 text-white border border-green-400/30 shadow-md md:col-span-1">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wide opacity-95">{ready ? t('dashboard.stats.released') : 'Exécutés'}</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wide opacity-95">
+            {ready ? t('dashboard.stats.active', { defaultValue: 'Actif' }) : 'Actif'}
+          </h3>
           <div className="w-12 h-12 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
             <svg className="w-6 h-6 opacity-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
         </div>
-        <p className="text-3xl font-bold mb-1">{released}</p>
-        <p className="text-xs opacity-85">{ready ? t('dashboard.stats.releasedPayments', { plural: released > 1 ? 's' : '' }) : `Paiement${released > 1 ? 's' : ''} libéré${released > 1 ? 's' : ''}`}</p>
+        <p className="text-3xl font-bold mb-1">{recurringPending}</p>
+        <p className="text-xs opacity-85">
+          {ready ? t('dashboard.stats.recurringPayments', { defaultValue: 'Recurring payment' }) : 'Recurring payment'}
+        </p>
       </div>
 
       {/* Total envoyé */}

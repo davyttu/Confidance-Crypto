@@ -26,6 +26,7 @@ function validatePayload(body) {
     frequency,
     periods,
     start_at,
+    first_month_amount,
   } = body;
 
   if (!creator || !amount || !token || !payment_type || !chain_id) {
@@ -42,6 +43,10 @@ function validatePayload(body) {
     }
   }
 
+  if (first_month_amount && Number(first_month_amount) <= 0) {
+    return 'Invalid first_month_amount';
+  }
+
   return null;
 }
 
@@ -56,6 +61,8 @@ router.post('/', async (req, res) => {
     const {
       creator,
       amount,
+      first_month_amount,
+      is_first_month_custom,
       token,
       token_address,
       payment_type,
@@ -79,6 +86,8 @@ router.post('/', async (req, res) => {
         id: paymentLinkId,
         creator_address: creatorAddress,
         amount: String(amount),
+        first_month_amount: first_month_amount ? String(first_month_amount) : null,
+        is_first_month_custom: !!is_first_month_custom,
         token_symbol: token,
         token_address: token_address || null,
         payment_type,

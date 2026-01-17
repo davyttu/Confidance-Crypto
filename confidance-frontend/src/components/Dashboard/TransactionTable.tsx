@@ -12,12 +12,13 @@ interface TransactionTableProps {
   payments: Payment[];
   onRename: (address: string) => void;
   onCancel: (payment: Payment) => void;
+  onDelete: (payment: Payment) => void;
 }
 
 type SortField = 'beneficiary' | 'amount' | 'date' | 'status';
 type SortDirection = 'asc' | 'desc';
 
-export function TransactionTable({ payments, onRename, onCancel }: TransactionTableProps) {
+export function TransactionTable({ payments, onRename, onCancel, onDelete }: TransactionTableProps) {
   const { t, ready: translationsReady } = useTranslation();
   const [isMounted, setIsMounted] = useState(false);
   const { getBeneficiaryName } = useBeneficiaries();
@@ -158,11 +159,6 @@ export function TransactionTable({ payments, onRename, onCancel }: TransactionTa
                 </div>
               </th>
               
-              {/* 🆕 BLOCKCHAIN */}
-              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
-                Blockchain
-              </th>
-              
               {/* Montant */}
               <th
                 onClick={() => handleSort('amount')}
@@ -202,8 +198,8 @@ export function TransactionTable({ payments, onRename, onCancel }: TransactionTa
               </th>
               
               {/* Contrat */}
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                {isMounted && translationsReady ? t('dashboard.table.contract') : 'Contrat'}
+              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                {isMounted && translationsReady ? t('dashboard.table.blockchain', { defaultValue: 'Blockchain' }) : 'Blockchain'}
               </th>
               
               {/* Actions */}
@@ -220,6 +216,7 @@ export function TransactionTable({ payments, onRename, onCancel }: TransactionTa
                 payment={payment}
                 onRename={onRename}
                 onCancel={onCancel}
+                onDelete={onDelete}
                 onEmailClick={(payment) => setEmailModalPayment(payment)}
               />
             ))}

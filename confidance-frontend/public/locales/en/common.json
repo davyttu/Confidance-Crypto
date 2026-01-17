@@ -63,6 +63,10 @@
       "subscriptions": {
         "title": "Subscriptions",
         "desc": "Automatic recurring payments"
+      },
+      "insurance": {
+        "title": "Insurance & guarantees",
+        "desc": "Policy activation fee, then monthly coverage"
       }
     },
     "status": {
@@ -300,6 +304,7 @@
     },
     "date": {
       "label": "Release date and time",
+      "paymentTypeLabel": "Payment type",
       "firstDue": "Release date and time (first due date)",
       "instant": "⚡Instant",
       "6hours": "6 hours",
@@ -329,6 +334,14 @@
         "hours": "In {{hours}}h {{minutes}}min",
         "minutes": "In {{minutes}}min"
       }
+    },
+    "firstMonth": {
+      "title": "First monthly payment",
+      "description": "By default, it is the same as the following months. Useful for a different first rent or upfront fees.",
+      "same": "Same",
+      "custom": "Custom",
+      "amountLabel": "First monthly amount",
+      "info": "💡 If you enter the same amount as the monthly payment, this option will be ignored automatically."
     },
     "paymentType": {
       "label": "🔒 Payment type",
@@ -703,8 +716,18 @@
   "links": {
     "cta": "Create a payment link",
     "create": {
+      "badge": "Payment link generator",
       "title": "Create a payment link",
       "subtitle": "Generate a shareable link and get paid directly.",
+      "sections": {
+        "amountToken": "Amount & Token",
+        "paymentType": "Payment type",
+        "network": "Network",
+        "schedule": "Schedule",
+        "recurringConfig": "Recurring configuration",
+        "description": "Description",
+        "optional": "(optional)"
+      },
       "fields": {
         "amount": "Amount",
         "token": "Token",
@@ -716,6 +739,14 @@
         "startAt": "Start date",
         "description": "Description (optional)"
       },
+      "firstMonth": {
+        "title": "First monthly payment",
+        "description": "By default, it is the same as the following months. Useful for a different first rent or upfront fees.",
+        "same": "Same",
+        "custom": "Custom",
+        "amountLabel": "First monthly amount",
+        "info": "💡 If you enter the same amount as the monthly payment, this option will be ignored automatically."
+      },
       "placeholders": {
         "description": "Rent, SaaS subscription, invoice..."
       },
@@ -725,7 +756,8 @@
         "create": "Failed to generate link",
         "executeAt": "Execution date required",
         "startAt": "Start date required",
-        "periods": "Periods required"
+        "periods": "Periods required",
+        "firstMonthAmount": "Invalid first month amount"
       },
       "generate": "Generate link",
       "generating": "Generating...",
@@ -745,6 +777,7 @@
       "button": "My links",
       "title": "My payment links",
       "empty": "No payment links yet",
+      "hint": "Once a payment is validated, you can find it directly in your dashboard.",
       "status": "Status",
       "amount": "Amount",
       "type": "Type",
@@ -764,6 +797,10 @@
       "subtitle": "Review the payment details and pay securely.",
       "loading": "Loading payment link...",
       "cta": "Pay now",
+      "recurringDetails": {
+        "firstMonth": "First month",
+        "nextMonths": "Next months"
+      },
       "summary": {
         "amount": "Amount",
         "type": "Type",

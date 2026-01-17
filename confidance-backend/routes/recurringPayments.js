@@ -78,6 +78,10 @@ function validateRecurringPayment(body) {
     errors.push('monthly_amount doit être > 0');
   }
 
+  if (body.first_month_amount && parseFloat(body.first_month_amount) <= 0) {
+    errors.push('first_month_amount doit être > 0');
+  }
+
   return errors;
 }
 
@@ -97,6 +101,8 @@ router.post('/', async (req, res) => {
       payee_address,
       token_symbol,
       monthly_amount,
+      first_month_amount,
+      is_first_month_custom,
       total_months,
       first_payment_time,
       network,
@@ -144,6 +150,8 @@ router.post('/', async (req, res) => {
         token_symbol,
         token_address,
         monthly_amount,
+        first_month_amount: first_month_amount || null,
+        is_first_month_custom: !!is_first_month_custom,
         total_months,
         executed_months: 0,
         first_payment_time,
@@ -162,7 +170,10 @@ router.post('/', async (req, res) => {
 
     if (error) {
       console.error('❌ Erreur Supabase recurring:', error);
-      return res.status(500).json({ error: 'Erreur lors de l\'enregistrement' });
+      return res.status(500).json({ 
+        error: 'Erreur lors de l\'enregistrement',
+        details: error.message
+      });
     }
 
     console.log('✅ Paiement récurrent enregistré:', recurringPayment.id);
@@ -376,6 +387,64 @@ router.delete('/:id', async (req, res) => {
 
   } catch (error) {
     console.error('❌ Erreur DELETE /api/payments/recurring/:id:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
+ * DELETE /api/payments/recurring/:id/remove
+ * Supprimer un paiement récurrent du dashboard (sans toucher au smart contract)
+ * Autorisé uniquement si annulé ou terminé
+ */
+router.delete('/:id/remove', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { wallet_address } = req.body;
+
+    if (!id) {
+      return res.status(400).json({ error: 'ID requis' });
+    }
+    if (!wallet_address) {
+      return res.status(400).json({ error: 'wallet_address requis' });
+    }
+
+    const { data: payment, error: fetchError } = await supabase
+      .from('recurring_payments')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !payment) {
+      return res.status(404).json({ error: 'Paiement non trouvé' });
+    }
+
+    const wallet = wallet_address.toLowerCase();
+    const isOwner =
+      payment.payer_address?.toLowerCase() === wallet ||
+      payment.payee_address?.toLowerCase() === wallet;
+
+    if (!isOwner) {
+      return res.status(403).json({ error: 'Non autorisé' });
+    }
+
+    const allowedStatuses = ['cancelled', 'completed', 'released', 'failed'];
+    if (!allowedStatuses.includes(payment.status)) {
+      return res.status(400).json({ error: 'Paiement non supprimable' });
+    }
+
+    const { error: deleteError } = await supabase
+      .from('recurring_payments')
+      .delete()
+      .eq('id', id);
+
+    if (deleteError) {
+      console.error('❌ Erreur Supabase delete recurring:', deleteError);
+      return res.status(500).json({ error: 'Erreur lors de la suppression' });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ Erreur DELETE /api/payments/recurring/:id/remove:', error);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });

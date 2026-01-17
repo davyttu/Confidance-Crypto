@@ -47,6 +47,7 @@ interface CreateRecurringPaymentParams {
   tokenSymbol: TokenSymbol; // USDC ou USDT uniquement
   beneficiary: `0x${string}`;
   monthlyAmount: bigint; // Montant EXACT par mois
+  firstMonthAmount?: bigint; // (Optionnel) Montant du 1er mois si différent
   firstPaymentTime: number; // Timestamp Unix première échéance
   totalMonths: number; // 1-12
   dayOfMonth: number; // Jour du mois (1-28)
@@ -95,14 +96,23 @@ interface UseCreateRecurringPaymentReturn {
 /**
  * Calcule le montant total à approuver
  */
-function calculateRecurringTotal(monthlyAmount: bigint, totalMonths: number): {
+function calculateRecurringTotal(monthlyAmount: bigint, totalMonths: number, firstMonthAmount?: bigint): {
   monthlyFee: bigint;
   totalPerMonth: bigint;
   totalRequired: bigint;
 } {
   const monthlyFee = (monthlyAmount * BigInt(FEE_BASIS_POINTS)) / BigInt(BASIS_POINTS_DENOMINATOR);
   const totalPerMonth = monthlyAmount + monthlyFee;
-  const totalRequired = totalPerMonth * BigInt(totalMonths);
+  // Si firstMonthAmount est fourni (>0), on calcule un total exact :
+  // (1er mois) + (mois suivants)
+  // NOTE: on reste compatible avec l'ancien comportement (firstMonthAmount absent)
+  let totalRequired = totalPerMonth * BigInt(totalMonths);
+  if (typeof firstMonthAmount === 'bigint' && firstMonthAmount > 0n) {
+    const firstFee = (firstMonthAmount * BigInt(FEE_BASIS_POINTS)) / BigInt(BASIS_POINTS_DENOMINATOR);
+    const firstTotal = firstMonthAmount + firstFee;
+    const remainingMonths = totalMonths > 1 ? (totalMonths - 1) : 0;
+    totalRequired = firstTotal + (totalPerMonth * BigInt(remainingMonths));
+  }
 
   return { monthlyFee, totalPerMonth, totalRequired };
 }
@@ -219,7 +229,7 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
         monthlyFee: fee, 
         totalPerMonth: perMonth, 
         totalRequired: total 
-      } = calculateRecurringTotal(params.monthlyAmount, params.totalMonths);
+      } = calculateRecurringTotal(params.monthlyAmount, params.totalMonths, params.firstMonthAmount);
 
       setMonthlyFee(fee);
       setTotalPerMonth(perMonth);
@@ -387,18 +397,30 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
             timeUntilFirst: currentParams.firstPaymentTime - now,
           });
 
+          const useV2 = typeof currentParams.firstMonthAmount === 'bigint' && currentParams.firstMonthAmount > 0n;
+
           writeContract({
             abi: paymentFactoryAbi,
             address: FACTORY_ADDRESS,
-            functionName: 'createRecurringPaymentERC20',
-            args: [
-              currentParams.beneficiary,
-              tokenData.address as `0x${string}`,
-              currentParams.monthlyAmount,
-              BigInt(currentParams.firstPaymentTime),
-              BigInt(currentParams.totalMonths),
-              BigInt(currentParams.dayOfMonth),
-            ],
+            functionName: useV2 ? 'createRecurringPaymentERC20_V2' : 'createRecurringPaymentERC20',
+            args: useV2
+              ? [
+                  currentParams.beneficiary,
+                  tokenData.address as `0x${string}`,
+                  currentParams.monthlyAmount,
+                  currentParams.firstMonthAmount as bigint,
+                  BigInt(currentParams.firstPaymentTime),
+                  BigInt(currentParams.totalMonths),
+                  BigInt(currentParams.dayOfMonth),
+                ]
+              : [
+                  currentParams.beneficiary,
+                  tokenData.address as `0x${string}`,
+                  currentParams.monthlyAmount,
+                  BigInt(currentParams.firstPaymentTime),
+                  BigInt(currentParams.totalMonths),
+                  BigInt(currentParams.dayOfMonth),
+                ],
           });
 
           console.log('📤 [RECURRING] writeContract appelé pour la création...');
@@ -652,6 +674,12 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
               token_symbol: params.tokenSymbol,
               token_address: tokenData?.address || null,
               monthly_amount: params.monthlyAmount.toString(),
+              first_month_amount:
+                typeof params.firstMonthAmount === 'bigint' && params.firstMonthAmount > 0n
+                  ? params.firstMonthAmount.toString()
+                  : null,
+              is_first_month_custom:
+                typeof params.firstMonthAmount === 'bigint' && params.firstMonthAmount > 0n,
               first_payment_time: params.firstPaymentTime,
               total_months: params.totalMonths,
               day_of_month: params.dayOfMonth,

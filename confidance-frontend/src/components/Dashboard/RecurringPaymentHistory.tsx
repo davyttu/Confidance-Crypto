@@ -9,6 +9,7 @@ interface MonthlyPayment {
   monthNumber: number;
   date: number; // Timestamp
   status: 'executed' | 'pending' | 'failed' | 'cancelled';
+  amount: string;
 }
 
 interface RecurringPaymentHistoryProps {
@@ -39,6 +40,11 @@ export function RecurringPaymentHistory({ payment }: RecurringPaymentHistoryProp
     // - On ne peut pas savoir quels mois spécifiques ont échoué sans parser les events
     // - Donc on affiche : exécutés (premiers mois) et pending (le reste)
     // ✅ FIX : Si le paiement récurrent est annulé, tous les mois non exécutés sont "cancelled"
+    const isFirstMonthCustom =
+      payment.is_first_month_custom === true || payment.is_first_month_custom === 'true';
+    const firstMonthAmount = payment.first_month_amount || '';
+    const monthlyAmount = payment.monthly_amount || payment.amount || '';
+
     for (let monthIndex = 0; monthIndex < totalMonths; monthIndex++) {
       const paymentDate = startTime + (monthIndex * MONTH_IN_SECONDS);
 
@@ -60,15 +66,31 @@ export function RecurringPaymentHistory({ payment }: RecurringPaymentHistoryProp
         status = 'pending';
       }
 
+      const amount =
+        monthIndex === 0 && isFirstMonthCustom && firstMonthAmount
+          ? firstMonthAmount
+          : monthlyAmount;
+
       payments.push({
         monthNumber: monthIndex + 1,
         date: paymentDate,
         status,
+        amount,
       });
     }
 
     return payments;
-  }, [payment.is_recurring, payment.total_months, payment.first_payment_time, payment.executed_months, payment.status]);
+  }, [
+    payment.is_recurring,
+    payment.total_months,
+    payment.first_payment_time,
+    payment.executed_months,
+    payment.status,
+    payment.first_month_amount,
+    payment.is_first_month_custom,
+    payment.monthly_amount,
+    payment.amount,
+  ]);
 
   // Formater la date avec la locale actuelle
   const formatDate = (timestamp: number) => {
@@ -89,6 +111,28 @@ export function RecurringPaymentHistory({ payment }: RecurringPaymentHistoryProp
       day: 'numeric',
       month: 'long',
       year: 'numeric'
+    });
+  };
+
+  const formatAmount = (amount: string) => {
+    const symbol = payment.token_symbol || 'ETH';
+    const decimals = symbol === 'ETH' ? 18 : 6;
+    const amountNum = Number(BigInt(amount || '0')) / Math.pow(10, decimals);
+
+    const localeMap: Record<string, string> = {
+      'fr': 'fr-FR',
+      'en': 'en-GB',
+      'es': 'es-ES',
+      'ru': 'ru-RU',
+      'zh': 'zh-CN',
+    };
+    const currentLang = i18n.language || 'fr';
+    const baseLang = currentLang.split('-')[0];
+    const locale = localeMap[baseLang] || localeMap['en'];
+
+    return amountNum.toLocaleString(locale, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: symbol === 'ETH' ? 5 : 2,
     });
   };
 
@@ -148,7 +192,12 @@ export function RecurringPaymentHistory({ payment }: RecurringPaymentHistoryProp
                   </div>
                 </div>
               </div>
-              {getStatusBadge(monthlyPayment.status)}
+              <div className="flex items-center gap-3">
+                <div className="text-sm font-medium text-gray-900 dark:text-white">
+                  {formatAmount(monthlyPayment.amount)} {payment.token_symbol || 'ETH'}
+                </div>
+                {getStatusBadge(monthlyPayment.status)}
+              </div>
             </div>
           ))}
         </div>

@@ -2,8 +2,8 @@
   "version": "RECURRING_ONLY",
   "network": "base_mainnet",
   "chainId": "8453",
-  "factoryAddress": "0x2eD61AE2e31D5F42676815922d262a88c64fabA9",
-  "deployedAt": "2026-01-13T17:17:26.410Z",
+  "factoryAddress": "0xf0B85B0F560bC560bee804272e27D74c4Bcf0a26",
+  "deployedAt": "2026-01-17T13:37:38.319Z",
   "deployedBy": "0x9DE23D58d4064Fcf7347E64D19FE64BB4aac2Bf6",
   "features": [
     "✅ Single Recurring Payment ERC20 (USDC/USDT)",

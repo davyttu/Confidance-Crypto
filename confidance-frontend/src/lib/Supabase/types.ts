@@ -55,6 +55,8 @@ export interface PaymentLink {
   id: string;
   creator_address: string;
   amount: string;
+  first_month_amount?: string | null;
+  is_first_month_custom?: boolean | null;
   token_symbol: Currency;
   token_address: string | null;
   payment_type: PaymentLinkType;

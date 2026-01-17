@@ -23,10 +23,12 @@ interface PaymentFormData {
   releaseDate: Date | null;
 }
 
+type PaymentTiming = 'instant' | 'scheduled' | 'recurring';
+
 export default function PaymentForm() {
   const { t, ready: translationsReady } = useTranslation();
   const [isMounted, setIsMounted] = useState(false);
-  const { address } = useAccount();
+  const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
   const { openConnectModal } = useConnectModal();
   const router = useRouter();
@@ -55,7 +57,7 @@ export default function PaymentForm() {
 
   // État du formulaire
   const [formData, setFormData] = useState<PaymentFormData>({
-    tokenSymbol: 'ETH',
+    tokenSymbol: 'USDC',
     beneficiary: '',
     amount: '',
     releaseDate: null,
@@ -64,6 +66,13 @@ export default function PaymentForm() {
   // État: paiement récurrent
   const [isRecurringMode, setIsRecurringMode] = useState(false);
   const [recurringMonths, setRecurringMonths] = useState<number>(1);
+
+  // État: type de paiement (instant / programmé / récurrent)
+  const [paymentTiming, setPaymentTiming] = useState<PaymentTiming>('instant');
+
+  // ⭐ Option: première mensualité différente
+  const [isFirstMonthDifferent, setIsFirstMonthDifferent] = useState(false);
+  const [firstMonthAmountInput, setFirstMonthAmountInput] = useState<string>('');
 
   // État: type de paiement (annulable ou définitif)
   const [cancellable, setCancellable] = useState(false);
@@ -174,6 +183,50 @@ export default function PaymentForm() {
     return null;
   };
 
+  const handlePaymentTimingChange = (nextTiming: PaymentTiming) => {
+    if (nextTiming === 'recurring' && !isRecurringAvailable) {
+      return;
+    }
+
+    setPaymentTiming(nextTiming);
+
+    if (nextTiming === 'recurring') {
+      setIsRecurringMode(true);
+      return;
+    }
+
+    if (isRecurringMode) {
+      setIsRecurringMode(false);
+      setIsFirstMonthDifferent(false);
+      setFirstMonthAmountInput('');
+    }
+
+    if (nextTiming === 'instant') {
+      const date = new Date();
+      date.setSeconds(date.getSeconds() + 30);
+      handleDateChange(date);
+    }
+  };
+
+  useEffect(() => {
+    if (paymentTiming === 'recurring' && !isRecurringMode) {
+      setIsRecurringMode(true);
+    }
+    if (paymentTiming !== 'recurring' && isRecurringMode) {
+      setIsRecurringMode(false);
+      setIsFirstMonthDifferent(false);
+      setFirstMonthAmountInput('');
+    }
+  }, [paymentTiming, isRecurringMode]);
+
+  useEffect(() => {
+    if (paymentTiming === 'instant' && !formData.releaseDate) {
+      const date = new Date();
+      date.setSeconds(date.getSeconds() + 30);
+      setFormData((prev) => ({ ...prev, releaseDate: date }));
+    }
+  }, [paymentTiming, formData.releaseDate]);
+
   // Handler changement token
   const handleTokenChange = (token: TokenSymbol) => {
     setFormData((prev) => ({ ...prev, tokenSymbol: token }));
@@ -182,6 +235,9 @@ export default function PaymentForm() {
     // Désactiver la mensualisation si on passe à ETH
     if (token === 'ETH' && isRecurringMode) {
       setIsRecurringMode(false);
+      setPaymentTiming('scheduled');
+      setIsFirstMonthDifferent(false);
+      setFirstMonthAmountInput('');
     }
   };
 
@@ -275,6 +331,23 @@ export default function PaymentForm() {
       newErrors.date = dateError;
     }
 
+    // ⭐ Validation: première mensualité différente (uniquement si mensualisation)
+    if (isRecurringMode && isFirstMonthDifferent) {
+      if (!firstMonthAmountInput || firstMonthAmountInput === '0') {
+        newErrors.firstMonthAmount = 'Entrez un montant pour la première mensualité';
+      } else {
+        const firstNum = parseFloat(firstMonthAmountInput);
+        const monthlyNum = parseFloat(formData.amount);
+        if (isNaN(firstNum) || firstNum <= 0) {
+          newErrors.firstMonthAmount = 'Montant invalide';
+        }
+        // Si identique au montant mensuel, on n'a pas besoin d'une première mensualité personnalisée
+        if (!isNaN(firstNum) && !isNaN(monthlyNum) && firstNum === monthlyNum) {
+          // Pas d'erreur, mais le paramètre sera ignoré
+        }
+      }
+    }
+
     if (Object.keys(newErrors).length > 0) {
       console.log('❌ [FORM SUBMIT] Erreurs de validation:', newErrors);
       setErrors(newErrors);
@@ -287,6 +360,18 @@ export default function PaymentForm() {
     const amountBigInt = BigInt(
       Math.floor(parseFloat(formData.amount) * 10 ** token.decimals)
     );
+
+    // ⭐ Calcul optionnel: première mensualité personnalisée
+    const firstMonthAmountBigInt = (() => {
+      if (!isRecurringMode || !isFirstMonthDifferent) return undefined;
+      const firstNum = parseFloat(firstMonthAmountInput);
+      const monthlyNum = parseFloat(formData.amount);
+      if (!firstMonthAmountInput || isNaN(firstNum) || firstNum <= 0) return undefined;
+      // Si identique au montant mensuel, on ignore l'option
+      if (!isNaN(monthlyNum) && firstNum === monthlyNum) return undefined;
+      return BigInt(Math.floor(firstNum * 10 ** token.decimals));
+    })();
+
     const releaseTime = Math.floor(formData.releaseDate!.getTime() / 1000);
 
     console.log('📋 [FORM SUBMIT] Données préparées:', {
@@ -314,6 +399,7 @@ export default function PaymentForm() {
         await batchRecurringPayment.createBatchRecurringPayment({
           tokenSymbol: formData.tokenSymbol as 'USDC' | 'USDT',
           beneficiaries: allBeneficiaries,
+          firstMonthAmount: firstMonthAmountBigInt,
           firstPaymentTime: releaseTime,
           totalMonths: recurringMonths,
           dayOfMonth: dayOfMonth,
@@ -329,6 +415,7 @@ export default function PaymentForm() {
           tokenSymbol: formData.tokenSymbol as 'USDC' | 'USDT',
           beneficiary: formData.beneficiary as `0x${string}`,
           monthlyAmount: amountBigInt,
+          firstMonthAmount: firstMonthAmountBigInt, // ⭐ optionnel
           firstPaymentTime: releaseTime,
           totalMonths: recurringMonths,
           dayOfMonth: dayOfMonth, // ✅ AJOUTÉ - Jour extrait automatiquement du calendrier
@@ -613,161 +700,211 @@ export default function PaymentForm() {
         )}
       </div>
 
-      {/* Section 4 : Date */}
-      <div className="glass rounded-2xl p-6">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
-          {isRecurringMode 
-            ? (isMounted && translationsReady ? t('create.date.firstDue') : 'Date et heure de libération (première échéance)')
-            : (isMounted && translationsReady ? t('create.date.label') : 'Date et heure de libération')}
+      {/* Section 4 : Timing */}
+      <div className="glass rounded-2xl p-6 space-y-4">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          {isMounted && translationsReady
+            ? t('create.date.paymentTypeLabel', { defaultValue: 'Payment type' })
+            : 'Payment type'}
         </label>
 
-        <div className="flex flex-wrap gap-2 mb-4">
+        <div className="grid grid-cols-3 gap-2">
           <button
             type="button"
-            onClick={() => {
-              const date = new Date();
-              date.setSeconds(date.getSeconds() + 30);
-              handleDateChange(date);
-            }}
-            className="px-4 py-2 rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-primary-500 dark:hover:border-primary-400 transition-colors text-sm font-medium"
+            onClick={() => handlePaymentTimingChange('instant')}
+            className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+              paymentTiming === 'instant'
+                ? 'bg-purple-600 text-white border-purple-600'
+                : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:border-purple-300'
+            }`}
           >
-            {isMounted && translationsReady ? t('create.date.instant') : '⚡Instantané'}
+            <span className="text-lg">⚡</span>
+            {isMounted && translationsReady ? t('links.types.instant', { defaultValue: 'Instant' }) : 'Instant'}
           </button>
 
           <button
             type="button"
-            onClick={() => {
-              const date = new Date();
-              date.setHours(date.getHours() + 6);
-              handleDateChange(date);
-            }}
-            className="px-4 py-2 rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-primary-500 dark:hover:border-primary-400 transition-colors text-sm font-medium"
+            onClick={() => handlePaymentTimingChange('scheduled')}
+            className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+              paymentTiming === 'scheduled'
+                ? 'bg-purple-600 text-white border-purple-600'
+                : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:border-purple-300'
+            }`}
           >
-            {isMounted && translationsReady ? t('create.date.6hours') : '6 heures'}
+            <span className="text-lg">🗓️</span>
+            {isMounted && translationsReady ? t('links.types.scheduled', { defaultValue: 'Scheduled' }) : 'Scheduled'}
           </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              const date = new Date();
-              date.setDate(date.getDate() + 1);
-              handleDateChange(date);
-            }}
-            className="px-4 py-2 rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-primary-500 dark:hover:border-primary-400 transition-colors text-sm font-medium"
-          >
-            {isMounted && translationsReady ? t('create.date.1day') : '1 jour'}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              const date = new Date();
-              date.setDate(date.getDate() + 7);
-              handleDateChange(date);
-            }}
-            className="px-4 py-2 rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-primary-500 dark:hover:border-primary-400 transition-colors text-sm font-medium"
-          >
-            {isMounted && translationsReady ? t('create.date.1week') : '1 semaine'}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              const date = new Date();
-              date.setMonth(date.getMonth() + 1);
-              handleDateChange(date);
-            }}
-            className="px-4 py-2 rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-primary-500 dark:hover:border-primary-400 transition-colors text-sm font-medium"
-          >
-            {isMounted && translationsReady ? t('create.date.1month') : '1 mois'}
-          </button>
-
-          {/* Bouton Mensualisation */}
           <div className="relative group">
             <button
               type="button"
-              onClick={() => {
-                if (isRecurringAvailable) {
-                  setIsRecurringMode(!isRecurringMode);
-                }
-              }}
+              onClick={() => handlePaymentTimingChange('recurring')}
               disabled={!isRecurringAvailable}
-              className={`
-                px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all
-                ${isRecurringMode 
-                  ? 'bg-blue-600 text-white border-blue-600' 
+              className={`w-full px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                paymentTiming === 'recurring'
+                  ? 'bg-purple-600 text-white border-purple-600'
                   : isRecurringAvailable
-                    ? 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-blue-500 dark:hover:border-blue-400 text-gray-900 dark:text-white'
+                    ? 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:border-purple-300'
                     : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-400 dark:text-gray-600 opacity-50 cursor-not-allowed'
-                }
-              `}
+              }`}
             >
-              {isMounted && translationsReady ? t('create.date.recurring') : '🔄 Mensualisation'}
+              <span className="text-lg">🔄</span>
+              {isMounted && translationsReady ? t('links.types.recurring', { defaultValue: 'Recurring' }) : 'Recurring'}
             </button>
 
-            {/* Tooltip si ETH sélectionné */}
             {!isRecurringAvailable && (
               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                {isMounted && translationsReady ? t('create.date.recurringTooltip') : '⚠️ Fonction uniquement disponible pour USDT/USDC'}
+                {isMounted && translationsReady ? t('create.date.recurringTooltip') : '⚠️ Feature only available for USDT/USDC'}
                 <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900"></div>
               </div>
             )}
           </div>
         </div>
 
-        {/* Sélecteur nombre de mois si mensualisation active */}
-        {isRecurringMode && (
-          <div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-xl space-y-3 mb-4">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              {isMounted && translationsReady ? t('create.date.monthsLabel') : 'Nombre de mensualités'}
-            </label>
-            <div className="grid grid-cols-6 gap-2">
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((month) => (
-                <button
-                  key={month}
-                  type="button"
-                  onClick={() => setRecurringMonths(month)}
-                  className={`
-                    py-2 rounded-lg text-sm font-medium transition-all
-                    ${recurringMonths === month
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-blue-100 dark:hover:bg-blue-900'
-                    }
-                  `}
-                >
-                  {month}
-                </button>
-              ))}
-            </div>
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              {isMounted && translationsReady ? t('create.date.monthsInfo', { months: recurringMonths }) : `💡 Le montant sera prélevé chaque mois pendant ${recurringMonths} mois. Votre trésorerie reste disponible.`}
-            </p>
-          </div>
-        )}
+        {paymentTiming !== 'instant' && (
+          <>
+            {/* Sélecteur nombre de mois si mensualisation active */}
+            {isRecurringMode && (
+              <>
+              <div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-xl space-y-3 mb-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {isMounted && translationsReady ? t('create.date.monthsLabel') : 'Number of monthly payments'}
+                </label>
+                <div className="grid grid-cols-6 gap-2">
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((month) => (
+                    <button
+                      key={month}
+                      type="button"
+                      onClick={() => setRecurringMonths(month)}
+                      className={`
+                        py-2 rounded-lg text-sm font-medium transition-all
+                        ${recurringMonths === month
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-blue-100 dark:hover:bg-blue-900'
+                        }
+                      `}
+                    >
+                      {month}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  {isMounted && translationsReady
+                    ? t('create.date.monthsInfo', { months: recurringMonths })
+                    : `💡 The amount will be debited each month for ${recurringMonths} months. Your treasury remains available.`}
+                </p>
+              </div>
 
-        <DateTimePicker
-          value={formData.releaseDate}
-          onChange={handleDateChange}
-          error={errors.date}
-          label=""
-          hidePresets={true}
-          disabled={
-            formData.releaseDate
-              ? (formData.releaseDate.getTime() - Date.now()) / 1000 < 60
-              : false
-          }
-        />
+              {/* ⭐ Option: première mensualité différente */}
+              <div className="p-4 bg-indigo-50 dark:bg-indigo-950/30 rounded-xl space-y-3 mb-4 border border-indigo-200 dark:border-indigo-800">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                      {isMounted && translationsReady ? t('create.firstMonth.title') : 'First monthly payment'}
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      {isMounted && translationsReady
+                        ? t('create.firstMonth.description')
+                        : 'By default, it is the same as the following months. Useful for a different first rent or upfront fees.'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsFirstMonthDifferent(false);
+                        setFirstMonthAmountInput('');
+                        setErrors((prev) => ({ ...prev, firstMonthAmount: '' }));
+                      }}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border ${
+                        !isFirstMonthDifferent
+                          ? 'bg-indigo-600 text-white border-indigo-600'
+                          : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/30'
+                      }`}
+                    >
+                      {isMounted && translationsReady ? t('create.firstMonth.same') : 'Same'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsFirstMonthDifferent(true);
+                        setFirstMonthAmountInput(formData.amount || '');
+                      }}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border ${
+                        isFirstMonthDifferent
+                          ? 'bg-indigo-600 text-white border-indigo-600'
+                          : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/30'
+                      }`}
+                    >
+                      {isMounted && translationsReady ? t('create.firstMonth.custom') : 'Custom'}
+                    </button>
+                  </div>
+                </div>
 
-        {/* Info jour du mois si mensualisation */}
-        {isRecurringMode && formData.releaseDate && (
-          <div className="mt-4 p-4 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-xl">
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-lg">📅</span>
-              <span className="text-gray-700 dark:text-gray-300">
-                Les prélèvements auront lieu le <span className="font-bold text-purple-600 dark:text-purple-400">{formData.releaseDate.getDate()}</span> de chaque mois
-              </span>
-            </div>
-          </div>
+                {isFirstMonthDifferent && (
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {isMounted && translationsReady ? t('create.firstMonth.amountLabel') : 'First monthly amount'}
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        step="any"
+                        value={firstMonthAmountInput}
+                        onChange={(e) => {
+                          setFirstMonthAmountInput(e.target.value);
+                          setErrors((prev) => ({ ...prev, firstMonthAmount: '' }));
+                        }}
+                        placeholder="0.0"
+                        className={`w-full px-4 py-3 pr-20 rounded-xl border-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-lg font-medium transition-all ${
+                          errors.firstMonthAmount
+                            ? 'border-red-500 focus:border-red-600'
+                            : 'border-indigo-200 dark:border-indigo-800 focus:border-indigo-500'
+                        } focus:outline-none focus:ring-4 focus:ring-indigo-500/20`}
+                      />
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">
+                        {formData.tokenSymbol}
+                      </div>
+                    </div>
+                    {errors.firstMonthAmount && (
+                      <p className="text-sm text-red-600 dark:text-red-400">
+                        {errors.firstMonthAmount}
+                      </p>
+                    )}
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      {isMounted && translationsReady
+                        ? t('create.firstMonth.info')
+                        : '💡 If you enter the same amount as the monthly payment, this option will be ignored automatically.'}
+                    </p>
+                  </div>
+                )}
+              </div>
+              </>
+            )}
+
+            <DateTimePicker
+              value={formData.releaseDate}
+              onChange={handleDateChange}
+              error={errors.date}
+              label=""
+              hidePresets={true}
+              disabled={paymentTiming === 'instant'}
+            />
+
+            {/* Info jour du mois si mensualisation */}
+            {isRecurringMode && formData.releaseDate && (
+              <div className="mt-4 p-4 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-xl">
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-lg">📅</span>
+                  <span className="text-gray-700 dark:text-gray-300">
+                    {isMounted && translationsReady
+                      ? t('create.date.dayOfMonth', { day: formData.releaseDate.getDate() })
+                      : `Debits will occur on the ${formData.releaseDate.getDate()} of each month`}
+                  </span>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -1003,9 +1140,17 @@ export default function PaymentForm() {
                       <li className="flex items-start gap-2">
                         <span className="text-orange-600 dark:text-orange-400 flex-shrink-0">•</span>
                         <span>
-                          <strong>Si un prélèvement échoue</strong> (balance insuffisante), ce mois sera 
-                          <strong className="text-red-600 dark:text-red-400"> PERDU</strong> et le système passera 
+                          <strong>Si un prélèvement échoue</strong> (balance insuffisante), ce mois sera
+                          <strong className="text-red-600 dark:text-red-400"> PERDU</strong> et le système passera
                           automatiquement au mois suivant
+                        </span>
+                      </li>
+
+                      <li className="flex items-start gap-2">
+                        <span className="text-orange-600 dark:text-orange-400 flex-shrink-0">•</span>
+                        <span>
+                          <strong>Important :</strong> si <strong>la première mensualité</strong> échoue, le contrat est
+                          <strong className="text-red-600 dark:text-red-400"> arrêté</strong> et aucune mensualité suivante ne sera exécutée.
                         </span>
                       </li>
                       

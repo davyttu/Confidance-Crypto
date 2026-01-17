@@ -51,6 +51,10 @@
       "subscriptions": {
         "title": "Suscripciones",
         "desc": "Pagos recurrentes automáticos"
+      },
+      "insurance": {
+        "title": "Seguros y garantías",
+        "desc": "Cuota de activación, luego cobertura mensual"
       }
     },
     "stats": {
@@ -133,8 +137,18 @@
   "links": {
     "cta": "Crear un enlace de pago",
     "create": {
+      "badge": "Generador de enlaces de pago",
       "title": "Crear un enlace de pago",
       "subtitle": "Genera un enlace compartible y recibe pagos directamente.",
+      "sections": {
+        "amountToken": "Monto y token",
+        "paymentType": "Tipo de pago",
+        "network": "Red",
+        "schedule": "Programación",
+        "recurringConfig": "Configuración recurrente",
+        "description": "Descripción",
+        "optional": "(opcional)"
+      },
       "fields": {
         "amount": "Monto",
         "token": "Token",
@@ -146,6 +160,14 @@
         "startAt": "Fecha de inicio",
         "description": "Descripción (opcional)"
       },
+      "firstMonth": {
+        "title": "Primer pago mensual",
+        "description": "Por defecto, es igual a los siguientes. Útil para un primer alquiler diferente o cargos de entrada.",
+        "same": "Igual",
+        "custom": "Personalizada",
+        "amountLabel": "Monto del primer pago mensual",
+        "info": "💡 Si introduces el mismo monto que el mensual, la opción se ignorará automáticamente."
+      },
       "placeholders": {
         "description": "Alquiler, suscripción SaaS, factura..."
       },
@@ -155,7 +177,8 @@
         "create": "No se pudo generar el enlace",
         "executeAt": "Fecha de ejecución requerida",
         "startAt": "Fecha de inicio requerida",
-        "periods": "Períodos requeridos"
+        "periods": "Períodos requeridos",
+        "firstMonthAmount": "Monto del primer pago mensual inválido"
       },
       "generate": "Generar enlace",
       "generating": "Generando...",
@@ -194,6 +217,10 @@
       "subtitle": "Revisa los detalles y paga de forma segura.",
       "loading": "Cargando enlace...",
       "cta": "Pagar ahora",
+      "recurringDetails": {
+        "firstMonth": "Primer mes",
+        "nextMonths": "Meses siguientes"
+      },
       "summary": {
         "amount": "Monto",
         "type": "Tipo",
@@ -249,8 +276,17 @@
       "totalNotCalculated": "Total requerido no calculado"
     },
     "date": {
+      "paymentTypeLabel": "Tipo de pago",
       "treasuryRemainsAvailable": "Su tesorería permanece disponible",
       "onlyAmountDebitedMonthly": "Solo <strong>{{amount}} {{token}}</strong> se debitarán cada mes de su cartera."
+    },
+    "firstMonth": {
+      "title": "Primer pago mensual",
+      "description": "Por defecto, es igual a los siguientes. Útil para un primer alquiler diferente o cargos de entrada.",
+      "same": "Igual",
+      "custom": "Personalizada",
+      "amountLabel": "Monto del primer pago mensual",
+      "info": "💡 Si introduces el mismo monto que el mensual, la opción se ignorará automáticamente."
     }
   },
   "common": {

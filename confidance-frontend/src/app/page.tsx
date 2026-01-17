@@ -87,11 +87,17 @@ export default function Home() {
     { icon: '🏠', title: t('home.useCases.rent.title'), desc: t('home.useCases.rent.desc') },
     { icon: '🎁', title: t('home.useCases.gifts.title'), desc: t('home.useCases.gifts.desc') },
     { icon: '💳', title: t('home.useCases.subscriptions.title'), desc: t('home.useCases.subscriptions.desc') },
+    {
+      icon: '🛡️',
+      title: t('home.useCases.insurance.title', { defaultValue: 'Insurance & guarantees' }),
+      desc: t('home.useCases.insurance.desc', { defaultValue: 'Upfront deposit at signature, then monthly premiums' }),
+    },
   ] : [
     { icon: '💼', title: 'Salaires automatiques', desc: 'Payez vos équipes à date fixe' },
     { icon: '🏠', title: 'Loyers programmés', desc: 'Plus besoin de penser à payer chaque mois' },
     { icon: '🎁', title: 'Cadeaux futurs', desc: 'Surprise garantie pour un anniversaire' },
     { icon: '💳', title: 'Abonnements', desc: 'Versements récurrents automatiques' },
+    { icon: '🛡️', title: 'Assurances & garanties', desc: 'Caution à la signature puis mensualités' },
   ];
 
   const stats = isMounted && ready ? [
