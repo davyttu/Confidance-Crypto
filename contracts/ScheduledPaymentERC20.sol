@@ -33,7 +33,8 @@ contract ScheduledPaymentERC20 is ReentrancyGuard {
     address public payee;
     address public tokenAddress;
     uint256 public amountToPayee;    // Montant EXACT pour bénéficiaire
-    uint256 public protocolFee;       // Fees (1.79%)
+    uint256 public protocolFee;       // Fees (variable)
+    uint256 public feeBps;
     uint256 public releaseTime;
     
     bool public released;
@@ -42,7 +43,6 @@ contract ScheduledPaymentERC20 is ReentrancyGuard {
 
     // Constantes
     address public constant PROTOCOL_WALLET = 0xa34eDf91Cc494450000Eef08e6563062B2F115a9;
-    uint256 public constant FEE_BASIS_POINTS = 179; // 1.79%
     uint256 public constant BASIS_POINTS_DENOMINATOR = 10000;
 
     // ============================================================
@@ -96,7 +96,8 @@ contract ScheduledPaymentERC20 is ReentrancyGuard {
         uint256 _amountToPayee,
         uint256 _releaseTime,
         bool _cancellable,
-        address _protocolOwner
+        address _protocolOwner,
+        uint256 _feeBps
     ) {
         require(_payee != address(0), "Invalid payee");
         require(_payer != address(0), "Invalid payer");
@@ -104,8 +105,10 @@ contract ScheduledPaymentERC20 is ReentrancyGuard {
         require(_amountToPayee > 0, "Amount must be > 0");
         require(_releaseTime > block.timestamp, "Release time must be in future");
 
+        require(_feeBps <= BASIS_POINTS_DENOMINATOR, "Invalid fee bps");
+
         // Calculer les fees
-        uint256 calculatedFee = (_amountToPayee * FEE_BASIS_POINTS) / BASIS_POINTS_DENOMINATOR;
+        uint256 calculatedFee = (_amountToPayee * _feeBps) / BASIS_POINTS_DENOMINATOR;
 
         // Stocker
         payer = _payer;
@@ -113,6 +116,7 @@ contract ScheduledPaymentERC20 is ReentrancyGuard {
         tokenAddress = _tokenAddress;
         amountToPayee = _amountToPayee;
         protocolFee = calculatedFee;
+        feeBps = _feeBps;
         releaseTime = _releaseTime;
         cancellable = _cancellable;
         released = false;

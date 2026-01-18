@@ -7,8 +7,9 @@ import {
   getToken,
   calculateFees,
   formatTokenAmount,
-  PROTOCOL_FEE_PERCENTAGE,
+  getProtocolFeeBps,
 } from '@/config/tokens';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface FeeDisplayProps {
   amount: bigint | null;
@@ -25,6 +26,7 @@ export default function FeeDisplay({
 }: FeeDisplayProps) {
   const { t, ready: translationsReady } = useTranslation();
   const [isMounted, setIsMounted] = useState(false);
+  const { user } = useAuth();
   const token = getToken(tokenSymbol);
 
   useEffect(() => {
@@ -40,7 +42,11 @@ export default function FeeDisplay({
     ? (releaseDate.getTime() - Date.now()) < 60 * 1000
     : false;
 
-  const fees = calculateFees(amount, token.decimals, isInstantPayment);
+  const isProVerified = user?.accountType === 'professional' && user?.proStatus === 'verified';
+  const feeBps = getProtocolFeeBps({ isInstantPayment, isProVerified });
+  const feePercent = feeBps / 100;
+
+  const fees = calculateFees(amount, token.decimals, { isInstantPayment, isProVerified });
 
   return (
     <div className="space-y-4">
@@ -70,11 +76,8 @@ export default function FeeDisplay({
               <div className="flex items-center gap-2">
                 <span className={`text-sm ${isInstantPayment ? 'text-green-600 dark:text-green-400 font-medium' : 'text-gray-600 dark:text-gray-400'}`}>
                   + {isMounted && translationsReady 
-                    ? t('create.summary.protocolFees', { percentage: isInstantPayment ? 0 : PROTOCOL_FEE_PERCENTAGE })
-                    : `Frais protocole (${isInstantPayment ? 0 : PROTOCOL_FEE_PERCENTAGE}%)`}
-                  {isInstantPayment && (
-                    <span className="ml-2 text-xs">⚡ Offerts</span>
-                  )}
+                    ? t('create.summary.protocolFees', { percentage: isInstantPayment ? 0 : feePercent })
+                    : `Frais protocole (${isInstantPayment ? 0 : feePercent}%)`}
                 </span>
                 <div className="group relative">
                   <svg

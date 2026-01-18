@@ -25,7 +25,15 @@ contract PaymentFactory_Core {
         uint256 protocolFee = (_amountToPayee * FEE_BASIS_POINTS) / BASIS_POINTS_DENOMINATOR;
         uint256 totalRequired = _amountToPayee + protocolFee;
         require(msg.value == totalRequired);
-        ScheduledPayment newPayment = new ScheduledPayment{value: msg.value}(msg.sender,_payee,_amountToPayee,_releaseTime,_cancellable,PROTOCOL_WALLET);
+        ScheduledPayment newPayment = new ScheduledPayment{value: msg.value}(
+            msg.sender,
+            _payee,
+            _amountToPayee,
+            _releaseTime,
+            _cancellable,
+            PROTOCOL_WALLET,
+            FEE_BASIS_POINTS
+        );
         emit PaymentCreatedETH(msg.sender,_payee,address(newPayment),_releaseTime,_amountToPayee,protocolFee,msg.value,_cancellable);
         return address(newPayment);
     }
@@ -38,7 +46,16 @@ contract PaymentFactory_Core {
         uint256 protocolFee = (_amountToPayee * FEE_BASIS_POINTS) / BASIS_POINTS_DENOMINATOR;
         uint256 totalRequired = _amountToPayee + protocolFee;
         IERC20(_tokenAddress).safeTransferFrom(msg.sender, address(this), totalRequired);
-        ScheduledPaymentERC20 newPayment = new ScheduledPaymentERC20(msg.sender,_payee,_tokenAddress,_amountToPayee,_releaseTime,_cancellable,PROTOCOL_WALLET);
+        ScheduledPaymentERC20 newPayment = new ScheduledPaymentERC20(
+            msg.sender,
+            _payee,
+            _tokenAddress,
+            _amountToPayee,
+            _releaseTime,
+            _cancellable,
+            PROTOCOL_WALLET,
+            FEE_BASIS_POINTS
+        );
         IERC20(_tokenAddress).safeTransfer(address(newPayment), totalRequired);
         emit PaymentCreatedERC20(msg.sender,_payee,_tokenAddress,address(newPayment),_releaseTime,_amountToPayee,protocolFee,_cancellable);
         return address(newPayment);
@@ -52,7 +69,18 @@ contract PaymentFactory_Core {
         require(_totalMonths >= 1 && _totalMonths <= 12);
         require(_dayOfMonth >= 1 && _dayOfMonth <= 28);
         uint256 protocolFeePerMonth = (_monthlyAmount * FEE_BASIS_POINTS) / BASIS_POINTS_DENOMINATOR;
-        RecurringPaymentERC20 newRecurringPayment = new RecurringPaymentERC20(msg.sender,_payee,_tokenAddress,_monthlyAmount,0,_startDate,_totalMonths,_dayOfMonth,PROTOCOL_WALLET);
+        RecurringPaymentERC20 newRecurringPayment = new RecurringPaymentERC20(
+            msg.sender,
+            _payee,
+            _tokenAddress,
+            _monthlyAmount,
+            0,
+            _startDate,
+            _totalMonths,
+            _dayOfMonth,
+            PROTOCOL_WALLET,
+            FEE_BASIS_POINTS
+        );
         emit RecurringPaymentCreatedERC20(msg.sender,_payee,_tokenAddress,address(newRecurringPayment),_monthlyAmount,protocolFeePerMonth,_startDate,_totalMonths);
         return address(newRecurringPayment);
     }

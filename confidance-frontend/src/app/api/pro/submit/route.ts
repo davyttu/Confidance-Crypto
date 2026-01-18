@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { createPublicClient, createWalletClient, http } from "viem";
+import { base } from "viem/chains";
+import { privateKeyToAccount } from "viem/accounts";
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey =
@@ -14,7 +17,69 @@ const supabase = createClient(
   supabaseServiceKey || '' // SERVER ONLY
 );
 
+const PRO_ALLOWLIST_PRIVATE_KEY =
+  process.env.PRO_ALLOWLIST_PRIVATE_KEY || process.env.PRIVATE_KEY;
+const PRO_ALLOWLIST_RPC =
+  process.env.PRO_ALLOWLIST_RPC || process.env.BASE_RPC || process.env.RPC_URL;
+const FACTORY_SCHEDULED_ADDRESS = process.env.FACTORY_SCHEDULED_ADDRESS;
+const FACTORY_RECURRING_ADDRESS = process.env.FACTORY_RECURRING_ADDRESS;
+
+const PRO_ALLOWLIST_ABI = [
+  {
+    type: "function",
+    name: "setProWallets",
+    inputs: [
+      { name: "wallets", type: "address[]" },
+      { name: "isPro", type: "bool" }
+    ],
+    outputs: [],
+    stateMutability: "nonpayable"
+  }
+] as const;
+
 const TIMEOUT_MS = 8000;
+
+async function setProWalletOnChain(wallet: string, isPro: boolean) {
+  if (!PRO_ALLOWLIST_PRIVATE_KEY || !PRO_ALLOWLIST_RPC) {
+    console.warn("Missing PRO allowlist env vars");
+    return { ok: false, reason: "MISSING_ENV" };
+  }
+
+  if (!FACTORY_SCHEDULED_ADDRESS && !FACTORY_RECURRING_ADDRESS) {
+    console.warn("No factory address configured for PRO allowlist");
+    return { ok: false, reason: "MISSING_FACTORY_ADDRESS" };
+  }
+
+  const privateKey = PRO_ALLOWLIST_PRIVATE_KEY.startsWith("0x")
+    ? PRO_ALLOWLIST_PRIVATE_KEY
+    : `0x${PRO_ALLOWLIST_PRIVATE_KEY}`;
+
+  const account = privateKeyToAccount(privateKey as `0x${string}`);
+  const transport = http(PRO_ALLOWLIST_RPC);
+  const walletClient = createWalletClient({ account, chain: base, transport });
+  const publicClient = createPublicClient({ chain: base, transport });
+
+  const targets = [
+    FACTORY_SCHEDULED_ADDRESS,
+    FACTORY_RECURRING_ADDRESS
+  ].filter(Boolean) as `0x${string}`[];
+
+  const results: Array<{ factory: string; txHash: string }> = [];
+
+  for (const factory of targets) {
+    const txHash = await walletClient.writeContract({
+      address: factory,
+      abi: PRO_ALLOWLIST_ABI,
+      functionName: "setProWallets",
+      args: [[wallet as `0x${string}`], isPro]
+    });
+
+    await publicClient.waitForTransactionReceipt({ hash: txHash });
+    results.push({ factory, txHash });
+  }
+
+  return { ok: true, results };
+}
 
 async function handleProSubmit(req: Request) {
   const body = await req.json();
@@ -128,8 +193,16 @@ async function handleProSubmit(req: Request) {
       );
     }
 
+    let allowlistResult: { ok: boolean; reason?: string; results?: Array<{ factory: string; txHash: string }> } | null = null;
+    try {
+      allowlistResult = await setProWalletOnChain(main_business_wallet, false);
+    } catch (allowlistError) {
+      console.error("Allowlist on-chain error (revoke):", allowlistError);
+      allowlistResult = { ok: false, reason: "ONCHAIN_ERROR" };
+    }
+
     return NextResponse.json(
-      { status: "REJECTED", errors },
+      { status: "REJECTED", errors, allowlist: allowlistResult },
       { status: 400 }
     );
   }
@@ -200,10 +273,19 @@ async function handleProSubmit(req: Request) {
     );
   }
 
+  let allowlistResult: { ok: boolean; reason?: string; results?: Array<{ factory: string; txHash: string }> } | null = null;
+  try {
+    allowlistResult = await setProWalletOnChain(main_business_wallet, true);
+  } catch (allowlistError) {
+    console.error("Allowlist on-chain error:", allowlistError);
+    allowlistResult = { ok: false, reason: "ONCHAIN_ERROR" };
+  }
+
   return NextResponse.json({
     status: "VERIFIED",
     fee_bps: 40,
-    risk_flags: riskFlags
+    risk_flags: riskFlags,
+    allowlist: allowlistResult
   });
 }
 

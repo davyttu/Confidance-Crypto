@@ -112,6 +112,28 @@
         "cancelled": "已取消"
       }
     },
+    "cancel": {
+      "title": "取消支付",
+      "warning": "⚠️ 你将取消此计划支付：",
+      "beneficiary": "受益人：",
+      "amount": "金额：",
+      "releaseDate": "计划释放：",
+      "important": "重要：",
+      "refund": "资金与协议费用将退回到你的钱包（批量按比例）",
+      "irreversible": "此操作不可逆",
+      "noFees": "取消时协议费用会退还",
+      "confirmText": "我理解此操作不可逆，并希望取消此计划支付。",
+      "close": "关闭",
+      "processing": "取消中...",
+      "confirm": "确认取消",
+      "confirmError": "请勾选确认框",
+      "error": "取消失败",
+      "success": {
+        "title": "支付已取消！",
+        "message": "资金已退回"
+      },
+      "errorTitle": "取消错误"
+    },
     "nopayments": "没有预定支付"
   },
   "beneficiary": {
@@ -309,6 +331,7 @@
       "paymentTypeLabel": "支付类型",
       "treasuryRemainsAvailable": "您的资金仍然可用",
       "onlyAmountDebitedMonthly": "每月只会从您的钱包中扣除 <strong>{{amount}} {{token}}</strong>。",
+      "refundRemainingMonths": "若在执行前取消，剩余月份及其费用会退还。",
       "importantTitle": "重要信息：",
       "important": {
         "balanceMonthly": "请确保你的钱包每个月都有足够余额 <strong>以覆盖扣款</strong>",

@@ -14,7 +14,7 @@ import { parseEther, parseUnits, decodeEventLog } from 'viem';
 import { paymentFactoryAbi } from '@/lib/contracts/paymentFactoryAbi';
 import { PAYMENT_FACTORY_SCHEDULED, PAYMENT_FACTORY_INSTANT } from '@/lib/contracts/addresses';
 import { useAuth } from '@/contexts/AuthContext';
-import { type TokenSymbol, getToken } from '@/config/tokens';
+import { type TokenSymbol, getToken, getProtocolFeeBps } from '@/config/tokens';
 import { useTokenApproval } from './useTokenApproval';
 import { erc20Abi } from '@/lib/contracts/erc20Abi';
 
@@ -42,7 +42,6 @@ const getNetworkFromChainId = (chainId: number): string => {
 };
 
 
-const FEE_PERCENTAGE = 179;
 const FEE_DENOMINATOR = 10000;
 
 export interface Beneficiary {
@@ -83,13 +82,13 @@ interface UseCreateBatchPaymentReturn {
   setGuestEmail: (email: string) => void;
 }
 
-function calculateTotalRequired(amounts: bigint[]): {
+function calculateTotalRequired(amounts: bigint[], feeBps: number): {
   totalToBeneficiaries: bigint;
   protocolFee: bigint;
   totalRequired: bigint;
 } {
   const totalToBeneficiaries = amounts.reduce((sum, amount) => sum + amount, BigInt(0));
-  const protocolFee = (totalToBeneficiaries * BigInt(FEE_PERCENTAGE)) / BigInt(FEE_DENOMINATOR);
+  const protocolFee = (totalToBeneficiaries * BigInt(feeBps)) / BigInt(FEE_DENOMINATOR);
   const totalRequired = totalToBeneficiaries + protocolFee;
 
   return { totalToBeneficiaries, protocolFee, totalRequired };
@@ -222,6 +221,8 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
       // ✅ Détecter si c'est un paiement instantané
       const now = Math.floor(Date.now() / 1000);
       const isInstantPayment = (params.releaseTime - now) < 60;
+      const isProVerified = user?.accountType === 'professional' && user?.proStatus === 'verified';
+      const feeBps = getProtocolFeeBps({ isInstantPayment, isProVerified });
       const factoryAddress = getFactoryAddress(isInstantPayment);
       
       // ✅ Calculer les montants selon le type de paiement
@@ -236,7 +237,7 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
         total = totalBenef;
       } else {
         // Paiement programmé : avec fees
-        const calculated = calculateTotalRequired(amounts);
+        const calculated = calculateTotalRequired(amounts, feeBps);
         totalBenef = calculated.totalToBeneficiaries;
         fee = calculated.protocolFee;
         total = calculated.totalRequired;

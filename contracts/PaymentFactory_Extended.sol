@@ -32,7 +32,14 @@ contract PaymentFactory_Extended {
         uint256 protocolFee = (totalToBeneficiaries * FEE_BASIS_POINTS) / BASIS_POINTS_DENOMINATOR;
         uint256 totalRequired = totalToBeneficiaries + protocolFee;
         require(msg.value == totalRequired);
-        BatchScheduledPayment batchPayment = new BatchScheduledPayment{value: msg.value}(msg.sender,_payees,_amounts,_releaseTime,_cancellable);
+        BatchScheduledPayment batchPayment = new BatchScheduledPayment{value: msg.value}(
+            msg.sender,
+            _payees,
+            _amounts,
+            _releaseTime,
+            _cancellable,
+            FEE_BASIS_POINTS
+        );
         emit BatchPaymentCreatedETH(msg.sender,address(batchPayment),_payees.length,totalToBeneficiaries,protocolFee,msg.value,_releaseTime,_cancellable);
         return address(batchPayment);
     }

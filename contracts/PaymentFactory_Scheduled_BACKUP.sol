@@ -29,6 +29,7 @@ contract PaymentFactory_Scheduled {
     // ============================================================
     
     address public constant PROTOCOL_WALLET = 0xa34eDf91Cc494450000Eef08e6563062B2F115a9;
+    uint256 public constant FEE_BASIS_POINTS = 179;
     
     // ============================================================
     // EVENTS
@@ -121,7 +122,8 @@ contract PaymentFactory_Scheduled {
             _amountToPayee,
             _releaseTime,
             _cancellable,
-            PROTOCOL_WALLET
+            PROTOCOL_WALLET,
+            FEE_BASIS_POINTS
         );
         
         emit PaymentCreatedETH(
@@ -174,7 +176,8 @@ contract PaymentFactory_Scheduled {
             _amountToPayee,
             _releaseTime,
             _cancellable,
-            PROTOCOL_WALLET
+            PROTOCOL_WALLET,
+            FEE_BASIS_POINTS
         );
         
         // ✅ ÉTAPE 3 : Factory transfère les tokens au nouveau contrat
@@ -232,7 +235,8 @@ contract PaymentFactory_Scheduled {
             _payees,
             _amounts,
             _releaseTime,
-            _cancellable
+            _cancellable,
+            FEE_BASIS_POINTS
         );
         
         emit BatchPaymentCreatedETH(
@@ -293,7 +297,8 @@ contract PaymentFactory_Scheduled {
             _amounts,
             _releaseTime,
             _cancellable,
-            PROTOCOL_WALLET
+            PROTOCOL_WALLET,
+            FEE_BASIS_POINTS
         );
         
         // ✅ ÉTAPE 3 : Factory transfère les tokens au nouveau contrat
@@ -354,7 +359,8 @@ contract PaymentFactory_Scheduled {
             _startDate,
             _totalMonths,
             _dayOfMonth,
-            PROTOCOL_WALLET
+            PROTOCOL_WALLET,
+            FEE_BASIS_POINTS
         );
         
         emit RecurringPaymentCreatedERC20(

@@ -50,7 +50,8 @@ export default function CancellableToggle({
             <p className="font-semibold mb-1">Paiement annulable :</p>
             <ul className="space-y-1 list-disc list-inside">
               <li>Vous pouvez annuler AVANT la date</li>
-              <li>Remboursement intégral (pas de fees)</li>
+              <li>Remboursement intégral (montant + fees)</li>
+              <li>Récurrent : mensualités restantes + fees remboursés</li>
               <li>Après la date : annulation impossible</li>
             </ul>
             <p className="mt-2 text-yellow-300">

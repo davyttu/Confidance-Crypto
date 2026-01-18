@@ -224,9 +224,9 @@
       "amount": "Montant :",
       "releaseDate": "Libération prévue :",
       "important": "Important :",
-      "refund": "Les fonds seront remboursés sur votre wallet",
+      "refund": "Les fonds et les fees protocole seront remboursés sur votre wallet (au prorata pour les batchs)",
       "irreversible": "Cette action est irréversible",
-      "noFees": "Aucun frais ne sera prélevé",
+      "noFees": "Les fees protocole sont remboursés en cas d'annulation",
       "confirmText": "Je comprends que cette action est irréversible et je souhaite annuler ce paiement programmé.",
       "close": "Fermer",
       "processing": "Annulation...",
@@ -337,6 +337,7 @@
       "cancellableStopsPayments": "Seule l'option \"Annulable\" dans le type de paiement permet de stopper définitivement la suite des mensualités via le dashboard",
       "treasuryRemainsAvailable": "Votre trésorerie reste disponible",
       "onlyAmountDebitedMonthly": "Seuls <strong>{{amount}} {{token}}</strong> seront prélevés chaque mois sur votre wallet.",
+      "refundRemainingMonths": "En cas d'annulation avant exécution, les mensualités restantes et leurs fees sont remboursées.",
       "timeUntil": {
         "past": "Dans le passé",
         "pastError": "Cette date est dans le passé. Veuillez choisir une date future.",
@@ -359,7 +360,7 @@
       "instantDisabled": "Les options d'annulation sont désactivées car le paiement sera exécuté immédiatement.",
       "cancellable": {
         "title": "Annulable (avant la date)",
-        "description": "Vous pourrez annuler le paiement depuis le dashboard avant la date de libération"
+        "description": "Vous pourrez annuler avant la date de libération et récupérer le montant + fees protocole"
       },
       "definitive": {
         "title": "Définitif (non annulable)",

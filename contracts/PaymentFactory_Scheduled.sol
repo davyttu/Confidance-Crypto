@@ -23,8 +23,46 @@ contract PaymentFactory_Scheduled {
     // ============================================================
 
     address public constant PROTOCOL_WALLET = 0xa34eDf91Cc494450000Eef08e6563062B2F115a9;
-    uint256 public constant FEE_BASIS_POINTS = 179; // 1.79%
+    uint256 public constant FEE_BPS_PARTICULAR = 179; // 1.79%
+    uint256 public constant FEE_BPS_PRO = 156; // 1.56%
     uint256 public constant BASIS_POINTS_DENOMINATOR = 10000;
+
+    // ============================================================
+    // OWNER + PRO ALLOWLIST
+    // ============================================================
+
+    address public immutable FACTORY_OWNER;
+    mapping(address => bool) public isProWallet;
+
+    event ProWalletUpdated(address indexed wallet, bool isPro);
+
+    modifier onlyOwner() {
+        require(msg.sender == FACTORY_OWNER, "Not owner");
+        _;
+    }
+
+    constructor() {
+        FACTORY_OWNER = msg.sender;
+    }
+
+    function setProWallet(address wallet, bool isPro) external onlyOwner {
+        require(wallet != address(0), "Invalid wallet");
+        isProWallet[wallet] = isPro;
+        emit ProWalletUpdated(wallet, isPro);
+    }
+
+    function setProWallets(address[] calldata wallets, bool isPro) external onlyOwner {
+        for (uint256 i = 0; i < wallets.length; i++) {
+            address wallet = wallets[i];
+            require(wallet != address(0), "Invalid wallet");
+            isProWallet[wallet] = isPro;
+            emit ProWalletUpdated(wallet, isPro);
+        }
+    }
+
+    function _feeBpsFor(address payer) internal view returns (uint256) {
+        return isProWallet[payer] ? FEE_BPS_PRO : FEE_BPS_PARTICULAR;
+    }
 
     // ============================================================
     // EVENTS
@@ -87,7 +125,7 @@ contract PaymentFactory_Scheduled {
      * @return Adresse du contrat créé
      *
      * @dev msg.value DOIT être = _amountToPayee + fees
-     *      Frontend calcule : totalRequired = amountToPayee * 10179 / 10000
+     *      Frontend calcule : totalRequired = amountToPayee * (10000 + feeBps) / 10000
      */
     function createPaymentETH(
         address _payee,
@@ -99,8 +137,10 @@ contract PaymentFactory_Scheduled {
         require(_payee != address(0), "Invalid payee");
         require(_releaseTime > block.timestamp, "Release time must be in future");
 
+        uint256 feeBps = _feeBpsFor(msg.sender);
+
         // Calculer total requis
-        uint256 protocolFee = (_amountToPayee * FEE_BASIS_POINTS) / BASIS_POINTS_DENOMINATOR;
+        uint256 protocolFee = (_amountToPayee * feeBps) / BASIS_POINTS_DENOMINATOR;
         uint256 totalRequired = _amountToPayee + protocolFee;
         require(msg.value == totalRequired, "Incorrect amount sent");
 
@@ -111,7 +151,8 @@ contract PaymentFactory_Scheduled {
             _amountToPayee,
             _releaseTime,
             _cancellable,
-            PROTOCOL_WALLET
+            PROTOCOL_WALLET,
+            feeBps
         );
 
         emit PaymentCreatedETH(
@@ -155,8 +196,10 @@ contract PaymentFactory_Scheduled {
         require(_tokenAddress != address(0), "Invalid token");
         require(_releaseTime > block.timestamp, "Release time must be in future");
 
+        uint256 feeBps = _feeBpsFor(msg.sender);
+
         // Calculer total
-        uint256 protocolFee = (_amountToPayee * FEE_BASIS_POINTS) / BASIS_POINTS_DENOMINATOR;
+        uint256 protocolFee = (_amountToPayee * feeBps) / BASIS_POINTS_DENOMINATOR;
         uint256 totalRequired = _amountToPayee + protocolFee;
 
         // ✅ ÉTAPE 1 : Factory reçoit les tokens de l'utilisateur
@@ -170,7 +213,8 @@ contract PaymentFactory_Scheduled {
             _amountToPayee,
             _releaseTime,
             _cancellable,
-            PROTOCOL_WALLET
+            PROTOCOL_WALLET,
+            feeBps
         );
 
         // ✅ ÉTAPE 3 : Factory transfère les tokens au nouveau contrat
@@ -203,7 +247,7 @@ contract PaymentFactory_Scheduled {
      * @return Adresse du contrat batch
      *
      * @dev msg.value = somme(_amounts) + fees
-     *      Frontend calcule : totalRequired = totalBenef * 10179 / 10000
+     *      Frontend calcule : totalRequired = totalBenef * (10000 + feeBps) / 10000
      */
     function createBatchPaymentETH(
         address[] memory _payees,
@@ -216,6 +260,8 @@ contract PaymentFactory_Scheduled {
         require(_payees.length == _amounts.length, "Length mismatch");
         require(_releaseTime > block.timestamp, "Release time must be in future");
 
+        uint256 feeBps = _feeBpsFor(msg.sender);
+
         // Calculer total
         uint256 totalToBeneficiaries = 0;
         for (uint256 i = 0; i < _amounts.length; i++) {
@@ -224,7 +270,7 @@ contract PaymentFactory_Scheduled {
             totalToBeneficiaries += _amounts[i];
         }
 
-        uint256 protocolFee = (totalToBeneficiaries * FEE_BASIS_POINTS) / BASIS_POINTS_DENOMINATOR;
+        uint256 protocolFee = (totalToBeneficiaries * feeBps) / BASIS_POINTS_DENOMINATOR;
         uint256 totalRequired = totalToBeneficiaries + protocolFee;
         require(msg.value == totalRequired, "Incorrect total sent");
 
@@ -234,7 +280,8 @@ contract PaymentFactory_Scheduled {
             _payees,
             _amounts,
             _releaseTime,
-            _cancellable
+            _cancellable,
+            feeBps
         );
 
         emit BatchPaymentCreatedETH(
@@ -280,6 +327,8 @@ contract PaymentFactory_Scheduled {
         require(_payees.length == _amounts.length, "Length mismatch");
         require(_releaseTime > block.timestamp, "Release time must be in future");
 
+        uint256 feeBps = _feeBpsFor(msg.sender);
+
         uint256 totalToBeneficiaries = 0;
         for (uint256 i = 0; i < _amounts.length; i++) {
             require(_amounts[i] > 0, "Amount must be > 0");
@@ -287,7 +336,7 @@ contract PaymentFactory_Scheduled {
             totalToBeneficiaries += _amounts[i];
         }
 
-        uint256 protocolFee = (totalToBeneficiaries * FEE_BASIS_POINTS) / BASIS_POINTS_DENOMINATOR;
+        uint256 protocolFee = (totalToBeneficiaries * feeBps) / BASIS_POINTS_DENOMINATOR;
         uint256 totalRequired = totalToBeneficiaries + protocolFee;
 
         // ✅ 1) Factory reçoit les tokens
@@ -301,7 +350,8 @@ contract PaymentFactory_Scheduled {
             _amounts,
             _releaseTime,
             _cancellable,
-            PROTOCOL_WALLET
+            PROTOCOL_WALLET,
+            feeBps
         );
 
         // ✅ 3) Factory transfère les tokens au contrat batch
@@ -325,5 +375,5 @@ contract PaymentFactory_Scheduled {
     // HELPERS (TEMPORAIREMENT DÉSACTIVÉES POUR RÉDUIRE LA TAILLE)
     // ============================================================
     // Ces fonctions peuvent être réintroduites plus tard via un upgrade
-    // Le frontend peut calculer les fees lui-même : fee = amount * 179 / 10000
+    // Le frontend peut calculer les fees : fee = amount * feeBps / 10000
 }

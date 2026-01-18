@@ -6,9 +6,8 @@
 import { useState } from 'react';
 import { useCreateBatchPayment, type Beneficiary } from '@/hooks/useCreateBatchPayment';
 import { formatEther } from 'viem';
-
-// Constantes pour calcul fees
-const FEE_PERCENTAGE = 0.0179; // 1.79%
+import { getProtocolFeeBps } from '@/config/tokens';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function BatchPaymentForm() {
   const { 
@@ -22,6 +21,10 @@ export function BatchPaymentForm() {
     protocolFee,
     totalRequired,
   } = useCreateBatchPayment();
+  const { user } = useAuth();
+  const isProVerified = user?.accountType === 'professional' && user?.proStatus === 'verified';
+  const feeBps = getProtocolFeeBps({ isInstantPayment: false, isProVerified });
+  const feePercent = feeBps / 100;
 
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([
     { address: '', amount: '', name: '' }
@@ -58,7 +61,7 @@ export function BatchPaymentForm() {
 
   const getProtocolFee = (): number => {
     const total = getTotalToBeneficiaries();
-    return total * FEE_PERCENTAGE;
+    return total * (feeBps / 10000);
   };
 
   const getTotalRequired = (): number => {
@@ -195,7 +198,7 @@ export function BatchPaymentForm() {
 
             <div className="p-3 bg-purple-50 rounded-lg">
               <div className="flex justify-between items-center text-sm">
-                <span className="font-medium">💎 Fees protocole (1.79%) :</span>
+                <span className="font-medium">💎 Fees protocole ({feePercent}%) :</span>
                 <span className="text-lg font-bold text-purple-600">
                   +{getProtocolFee().toFixed(4)} ETH
                 </span>
@@ -255,7 +258,7 @@ export function BatchPaymentForm() {
             className="w-5 h-5"
           />
           <label htmlFor="cancellable" className="text-sm">
-            ✅ Permettre l'annulation avant la date de libération
+            ✅ Permettre l'annulation avant la date de libération (montant + fees remboursés au prorata)
           </label>
         </div>
 

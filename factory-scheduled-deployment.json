@@ -2,15 +2,15 @@
   "version": "SCHEDULED_ONLY",
   "network": "base_mainnet",
   "chainId": "8453",
-  "factoryAddress": "0x479eFA3f706373a676F4489850bd414855D0941d",
-  "deployedAt": "2026-01-11T17:34:35.334Z",
+  "factoryAddress": "0x53D9F5d77155f9154791eF3221c74c8A2C394657",
+  "deployedAt": "2026-01-17T23:46:39.944Z",
   "deployedBy": "0x9DE23D58d4064Fcf7347E64D19FE64BB4aac2Bf6",
   "features": [
     "✅ Single Payment ETH (avec protocolOwner)",
     "✅ Single Payment ERC20 (avec protocolOwner)",
     "✅ Batch Payment ETH (avec protocolOwner)",
-    "✅ Batch Payment ERC20 (avec protocolOwner) - NOUVEAU",
-    "✅ Recurring Payment ERC20 (avec protocolOwner)",
+    "✅ Batch Payment ERC20 (avec protocolOwner)",
+    "✅ Fees dynamiques (PRO allowlist)",
     "❌ Instant Payments (disponibles dans PaymentFactory_Instant)"
   ],
   "changes": [
@@ -20,7 +20,9 @@
   ],
   "constants": {
     "protocolWallet": "0xa34eDf91Cc494450000Eef08e6563062B2F115a9",
-    "feeBasisPoints": 179,
-    "feePercentage": "1.79%"
+    "feeBpsParticular": 179,
+    "feeBpsPro": 156,
+    "feePercentParticular": "1.79%",
+    "feePercentPro": "1.56%"
   }
 }

@@ -40,9 +40,10 @@ async function main() {
   console.log("   ✅ createBatchRecurringPaymentERC20() - Batch recurring payment ERC20");
   console.log("   ✅ adminExecutePayment() - Admin fallback pour exécuter un paiement");
   console.log("   ✅ adminCancel() - Admin fallback pour annuler");
-  console.log("   ✅ previewFeePerMonth() - Helper pour calculer les fees");
+  console.log("   ✅ previewFeePerMonth(payer) - Helper pour calculer les fees");
   console.log("   ⚠️  Scheduled payments: utiliser PaymentFactory_Scheduled");
   console.log("   ⚠️  Instant payments: utiliser PaymentFactory_Instant\n");
+  console.log("   ⚙️  Fees dynamiques via allowlist PRO (owner)\n");
 
   const deploymentInfo = {
     version: "RECURRING_ONLY",
@@ -56,14 +57,17 @@ async function main() {
       "✅ Single Recurring Payment ERC20 (USDC/USDT)",
       "✅ Batch Recurring Payment ERC20 (multi-bénéficiaires)",
       "✅ Admin fallback functions (execute/cancel)",
+      "✅ Fees dynamiques (PRO allowlist)",
       "❌ Scheduled Payments (disponibles dans PaymentFactory_Scheduled)",
       "❌ Instant Payments (disponibles dans PaymentFactory_Instant)"
     ],
 
     constants: {
       protocolWallet: "0xa34eDf91Cc494450000Eef08e6563062B2F115a9",
-      feeBasisPoints: 179,
-      feePercentage: "1.79%"
+      feeBpsParticular: 179,
+      feeBpsPro: 156,
+      feePercentParticular: "1.79%",
+      feePercentPro: "1.56%"
     }
   };
 

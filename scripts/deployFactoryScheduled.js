@@ -24,7 +24,7 @@ async function main() {
 
   const PaymentFactory = await hre.ethers.getContractFactory("contracts/PaymentFactory_Scheduled.sol:PaymentFactory_Scheduled");
 
-  console.log("🚀 Déploiement PaymentFactory_Scheduled (Single + Batch + Recurring)...");
+  console.log("🚀 Déploiement PaymentFactory_Scheduled (Single + Batch)...");
   const factory = await PaymentFactory.deploy();
   await factory.waitForDeployment();
   const factoryAddress = await factory.getAddress();
@@ -39,9 +39,9 @@ async function main() {
   console.log("   ✅ createPaymentETH() - Single payment ETH");
   console.log("   ✅ createPaymentERC20() - Single payment ERC20");
   console.log("   ✅ createBatchPaymentETH() - Batch payment ETH");
-  console.log("   ✅ createBatchPaymentERC20() - Batch payment ERC20 (NOUVEAU)");
-  console.log("   ✅ createRecurringPaymentERC20() - Recurring payment ERC20");
+  console.log("   ✅ createBatchPaymentERC20() - Batch payment ERC20");
   console.log("   ⚠️  Instant payments: utiliser PaymentFactory_Instant séparée\n");
+  console.log("   ⚙️  Fees dynamiques via allowlist PRO (owner)\n");
 
   const deploymentInfo = {
     version: "SCHEDULED_ONLY",
@@ -55,8 +55,8 @@ async function main() {
       "✅ Single Payment ETH (avec protocolOwner)",
       "✅ Single Payment ERC20 (avec protocolOwner)",
       "✅ Batch Payment ETH (avec protocolOwner)",
-      "✅ Batch Payment ERC20 (avec protocolOwner) - NOUVEAU",
-      "✅ Recurring Payment ERC20 (avec protocolOwner)",
+      "✅ Batch Payment ERC20 (avec protocolOwner)",
+      "✅ Fees dynamiques (PRO allowlist)",
       "❌ Instant Payments (disponibles dans PaymentFactory_Instant)"
     ],
     
@@ -68,8 +68,10 @@ async function main() {
 
     constants: {
       protocolWallet: "0xa34eDf91Cc494450000Eef08e6563062B2F115a9",
-      feeBasisPoints: 179,
-      feePercentage: "1.79%"
+      feeBpsParticular: 179,
+      feeBpsPro: 156,
+      feePercentParticular: "1.79%",
+      feePercentPro: "1.56%"
     }
   };
 

@@ -13,7 +13,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
  * Exemple :
  * - msg.value = 1.0179 ETH
  * - Bénéficiaires : [0.5 ETH, 0.3 ETH, 0.2 ETH] = 1.0 ETH total
- * - Fees : 0.0179 ETH (1.79%)
+ * - Fees : 0.0179 ETH (variable)
  * - Chaque bénéficiaire reçoit son montant EXACT
  */
 contract BatchScheduledPayment is ReentrancyGuard {
@@ -33,11 +33,11 @@ contract BatchScheduledPayment is ReentrancyGuard {
     
     // Calculs fees V2
     uint256 public totalToBeneficiaries; // Somme des montants exacts
-    uint256 public protocolFee;          // 1.79% additionnel
+    uint256 public protocolFee;          // Fees additionnels (variable)
+    uint256 public feeBps;
     
     // Constantes
     address public constant PROTOCOL_WALLET = 0xa34eDf91Cc494450000Eef08e6563062B2F115a9;
-    uint256 public constant FEE_BASIS_POINTS = 179; // 1.79%
     uint256 public constant BASIS_POINTS_DENOMINATOR = 10000;
     
     // ============================================================
@@ -76,14 +76,15 @@ contract BatchScheduledPayment is ReentrancyGuard {
      * @param _cancellable Si true, payer peut annuler avant releaseTime
      * 
      * @dev msg.value DOIT être = somme(_amounts) + fees
-     *      Formule : msg.value = totalToBeneficiaries * 10179 / 10000
+     *      Formule : msg.value = totalToBeneficiaries * (10000 + feeBps) / 10000
      */
     constructor(
         address _payer,
         address[] memory _payees,
         uint256[] memory _amounts,
         uint256 _releaseTime,
-        bool _cancellable
+        bool _cancellable,
+        uint256 _feeBps
     ) payable {
         // Validations
         require(_payees.length > 0, "No payees");
@@ -101,9 +102,11 @@ contract BatchScheduledPayment is ReentrancyGuard {
             totalBenef += _amounts[i];
         }
         
+        require(_feeBps <= BASIS_POINTS_DENOMINATOR, "Invalid fee bps");
+
         // Calculer les fees (nouvelle logique V2)
         totalToBeneficiaries = totalBenef;
-        protocolFee = (totalToBeneficiaries * FEE_BASIS_POINTS) / BASIS_POINTS_DENOMINATOR;
+        protocolFee = (totalToBeneficiaries * _feeBps) / BASIS_POINTS_DENOMINATOR;
         uint256 expectedTotal = totalToBeneficiaries + protocolFee;
         
         require(msg.value == expectedTotal, "Incorrect total sent");
@@ -116,6 +119,7 @@ contract BatchScheduledPayment is ReentrancyGuard {
         cancellable = _cancellable;
         released = false;
         cancelled = false;
+        feeBps = _feeBps;
         
         emit BatchPaymentCreated(
             _payer,

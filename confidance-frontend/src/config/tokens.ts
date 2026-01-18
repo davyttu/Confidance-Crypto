@@ -91,13 +91,29 @@ export const RECOMMENDED_TOKENS: TokenSymbol[] = ['ETH', 'USDC'];
 export const BTC_TOKENS: TokenSymbol[] = ['cbBTC', 'WBTC'];
 
 // Protocole fees
-export const PROTOCOL_FEE_PERCENTAGE = 1.79; // 1.79%
+export const PROTOCOL_FEE_BPS_PARTICULAR = 179; // 1.79%
+export const PROTOCOL_FEE_BPS_PRO = 156; // 1.56%
+export const PROTOCOL_FEE_PERCENTAGE = 1.79; // Legacy default display
 export const PROTOCOL_WALLET = '0xa34eDf91Cc494450000Eef08e6563062B2F115a9' as const;
 
 // Helper pour calculer les fees
 // ✅ V2 - Fees additives
-export const calculateFees = (amountToPayee: bigint, decimals: number, isInstantPayment: boolean = false) => {
-  if (isInstantPayment) {
+export const getProtocolFeeBps = (params: {
+  isInstantPayment: boolean;
+  isProVerified: boolean;
+}): number => {
+  if (params.isInstantPayment) {
+    return 0;
+  }
+  return params.isProVerified ? PROTOCOL_FEE_BPS_PRO : PROTOCOL_FEE_BPS_PARTICULAR;
+};
+
+export const calculateFees = (
+  amountToPayee: bigint,
+  decimals: number,
+  params: { isInstantPayment: boolean; isProVerified: boolean }
+) => {
+  if (params.isInstantPayment) {
     // Paiement instantané : 0% de frais
     return {
       totalAmount: amountToPayee,      // Ce que l'user envoie (sans frais)
@@ -106,7 +122,7 @@ export const calculateFees = (amountToPayee: bigint, decimals: number, isInstant
     };
   }
   
-  const feeBasisPoints = BigInt(179); // 1.79%
+  const feeBasisPoints = BigInt(getProtocolFeeBps(params));
   const protocolFee = (amountToPayee * feeBasisPoints) / BigInt(10000);
   const totalRequired = amountToPayee + protocolFee;
   

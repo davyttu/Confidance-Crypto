@@ -5,7 +5,7 @@ import { useAccount, useDisconnect } from 'wagmi';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
-import { type TokenSymbol, getToken } from '@/config/tokens';
+import { type TokenSymbol, getToken, getProtocolFeeBps } from '@/config/tokens';
 import CurrencySelector from './CurrencySelector';
 import DateTimePicker from './DateTimePicker';
 import FeeDisplay from './FeeDisplay';
@@ -15,6 +15,7 @@ import { useCreatePayment } from '@/hooks/useCreatePayment';
 import { useCreateBatchPayment } from '@/hooks/useCreateBatchPayment';
 import { useCreateRecurringPayment } from '@/hooks/useCreateRecurringPayment';
 import { useCreateBatchRecurringPayment } from '@/hooks/useCreateBatchRecurringPayment';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface PaymentFormData {
   tokenSymbol: TokenSymbol;
@@ -38,6 +39,10 @@ export default function PaymentForm() {
   const { openConnectModal } = useConnectModal();
   const router = useRouter();
   const walletConnected = Boolean(address);
+  const { user } = useAuth();
+  const API_BASE_URL =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (typeof window !== 'undefined' ? window.location.origin : '');
 
   const translate = (
     key: string,
@@ -158,6 +163,43 @@ export default function PaymentForm() {
   
   // Vérifier si les paiements batch sont disponibles (ETH, USDC, USDT)
   const isBatchAvailable = formData.tokenSymbol === 'ETH' || formData.tokenSymbol === 'USDC' || formData.tokenSymbol === 'USDT';
+
+  const isProVerified = user?.accountType === 'professional' && user?.proStatus === 'verified';
+  const recurringFeeBps = getProtocolFeeBps({ isInstantPayment: false, isProVerified });
+  const recurringFeeRate = recurringFeeBps / 10000;
+  const recurringAmountValue = Number.isFinite(parseFloat(formData.amount)) ? parseFloat(formData.amount) : 0;
+  const recurringMonthlyFee = recurringAmountValue * recurringFeeRate;
+  const recurringTotalPerMonth = recurringAmountValue + recurringMonthlyFee;
+  const recurringTotalToApprove = recurringTotalPerMonth * recurringMonths;
+  const [hasSyncedPro, setHasSyncedPro] = useState(false);
+
+  useEffect(() => {
+    if (!user?.id || !address || hasSyncedPro) return;
+    if (user.proStatus !== 'verified' && user.accountType !== 'professional') return;
+
+    const syncPro = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/pro/sync`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: user.id,
+            wallet: address,
+          }),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data?.allowlist?.ok) {
+            setHasSyncedPro(true);
+          }
+        }
+      } catch (error) {
+        console.error('Erreur sync PRO:', error);
+      }
+    };
+
+    syncPro();
+  }, [user?.id, user?.proStatus, user?.accountType, address, API_BASE_URL, hasSyncedPro]);
 
   // Restaurer les données au retour de /create-batch
   useEffect(() => {
@@ -1266,7 +1308,9 @@ export default function PaymentForm() {
                   </span>
                 </div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {isMounted && translationsReady ? t('create.paymentType.cancellable.description') : 'You will be able to cancel the payment from the dashboard before the release date'}
+                  {isMounted && translationsReady
+                    ? t('create.paymentType.cancellable.description')
+                    : 'You will be able to cancel before the release date and recover the amount + protocol fees'}
                 </p>
               </div>
             </label>
@@ -1323,18 +1367,18 @@ export default function PaymentForm() {
                     {isMounted && translationsReady ? t('create.date.beneficiaryWillReceive') : 'Beneficiary will receive (per month)'}
                   </span>
                   <span className="font-semibold text-gray-900 dark:text-white">
-                    {parseFloat(formData.amount).toFixed(2)} {formData.tokenSymbol}
+                    {recurringAmountValue.toFixed(2)} {formData.tokenSymbol}
                   </span>
                 </div>
 
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600 dark:text-gray-400">
                     + {isMounted && translationsReady 
-                      ? t('create.summary.protocolFees', { percentage: '1.79' })
-                      : 'Protocol fees (1.79%)'}
+                      ? t('create.summary.protocolFees', { percentage: (recurringFeeBps / 100).toString() })
+                      : `Protocol fees (${recurringFeeBps / 100}%)`}
                   </span>
                   <span className="font-medium text-orange-600 dark:text-orange-400">
-                    {(parseFloat(formData.amount) * 0.0179).toFixed(2)} {formData.tokenSymbol}
+                    {recurringMonthlyFee.toFixed(6)} {formData.tokenSymbol}
                   </span>
                 </div>
 
@@ -1343,7 +1387,7 @@ export default function PaymentForm() {
                     {isMounted && translationsReady ? t('create.date.totalPerMonth') : 'TOTAL per monthly payment'}
                   </span>
                   <span className="font-bold text-blue-600 dark:text-blue-400">
-                    {(parseFloat(formData.amount) * 1.0179).toFixed(2)} {formData.tokenSymbol}
+                    {recurringTotalPerMonth.toFixed(6)} {formData.tokenSymbol}
                   </span>
                 </div>
               </div>
@@ -1364,7 +1408,7 @@ export default function PaymentForm() {
                     {isMounted && translationsReady ? t('create.date.totalToApprove') : 'TOTAL to approve'}
                   </span>
                   <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                    {(parseFloat(formData.amount) * 1.0179 * recurringMonths).toFixed(2)} {formData.tokenSymbol}
+                    {recurringTotalToApprove.toFixed(6)} {formData.tokenSymbol}
                   </span>
                 </div>
               </div>
@@ -1417,15 +1461,20 @@ export default function PaymentForm() {
                     <p>
                       {isMounted && translationsReady ? (
                         <span dangerouslySetInnerHTML={{ __html: t('create.date.onlyAmountDebitedMonthly', { 
-                          amount: (parseFloat(formData.amount) * 1.0179).toFixed(2),
+                          amount: recurringTotalPerMonth.toFixed(2),
                           token: formData.tokenSymbol,
-                          defaultValue: `Only <strong>${(parseFloat(formData.amount) * 1.0179).toFixed(2)} ${formData.tokenSymbol}</strong> will be debited each month from your wallet.`
+                          defaultValue: `Only <strong>${recurringTotalPerMonth.toFixed(2)} ${formData.tokenSymbol}</strong> will be debited each month from your wallet.`
                         }) }} />
                       ) : (
                         <>
-                          Only <span className="font-bold">{(parseFloat(formData.amount) * 1.0179).toFixed(2)} {formData.tokenSymbol}</span> will be debited each month from your wallet.
+                          Only <span className="font-bold">{recurringTotalPerMonth.toFixed(2)} {formData.tokenSymbol}</span> will be debited each month from your wallet.
                         </>
                       )}
+                    </p>
+                    <p className="mt-2">
+                      {isMounted && translationsReady
+                        ? t('create.date.refundRemainingMonths', { defaultValue: 'If you cancel before execution, remaining months and their protocol fees are refunded.' })
+                        : 'If you cancel before execution, remaining months and their protocol fees are refunded.'}
                     </p>
                   </div>
                 </div>

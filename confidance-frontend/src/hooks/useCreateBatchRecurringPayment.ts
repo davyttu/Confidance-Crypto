@@ -13,7 +13,7 @@ import {
   usePublicClient,
 } from 'wagmi';
 import { decodeEventLog, erc20Abi } from 'viem';
-import { type TokenSymbol, getToken } from '@/config/tokens';
+import { type TokenSymbol, getToken, getProtocolFeeBps } from '@/config/tokens';
 import { paymentFactoryAbi } from '@/lib/contracts/paymentFactoryAbi';
 import { PAYMENT_FACTORY_RECURRING } from '@/lib/contracts/addresses';
 import { useAuth } from '@/contexts/AuthContext';
@@ -37,7 +37,6 @@ const getNetworkFromChainId = (chainId: number): string => {
   }
 };
 
-const FEE_BASIS_POINTS = 179;
 const BASIS_POINTS_DENOMINATOR = 10000;
 
 interface BatchBeneficiary {
@@ -83,13 +82,18 @@ interface UseCreateBatchRecurringPaymentReturn {
   setGuestEmail: (email: string) => void;
 }
 
-function calculateRecurringTotal(monthlyAmount: bigint, totalMonths: number, firstMonthAmount?: bigint): bigint {
-  const monthlyFee = (monthlyAmount * BigInt(FEE_BASIS_POINTS)) / BigInt(BASIS_POINTS_DENOMINATOR);
+function calculateRecurringTotal(
+  monthlyAmount: bigint,
+  totalMonths: number,
+  feeBps: number,
+  firstMonthAmount?: bigint
+): bigint {
+  const monthlyFee = (monthlyAmount * BigInt(feeBps)) / BigInt(BASIS_POINTS_DENOMINATOR);
   const totalPerMonth = monthlyAmount + monthlyFee;
 
   // ⭐ ADD: première mensualité différente
   if (firstMonthAmount && firstMonthAmount > 0n && firstMonthAmount !== monthlyAmount) {
-    const firstFee = (firstMonthAmount * BigInt(FEE_BASIS_POINTS)) / BigInt(BASIS_POINTS_DENOMINATOR);
+    const firstFee = (firstMonthAmount * BigInt(feeBps)) / BigInt(BASIS_POINTS_DENOMINATOR);
     const firstTotal = firstMonthAmount + firstFee;
     const remaining = totalMonths > 1 ? BigInt(totalMonths - 1) : 0n;
     return firstTotal + (totalPerMonth * remaining);
@@ -358,7 +362,14 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
           }
 
           const monthlyAmount = BigInt(Math.floor(parseFloat(beneficiary.amount) * 10 ** tokenData.decimals));
-          const totalRequired = calculateRecurringTotal(monthlyAmount, currentParams.totalMonths, currentParams.firstMonthAmount); // ⭐ MOD
+          const isProVerified = user?.accountType === 'professional' && user?.proStatus === 'verified';
+          const feeBps = getProtocolFeeBps({ isInstantPayment: false, isProVerified });
+          const totalRequired = calculateRecurringTotal(
+            monthlyAmount,
+            currentParams.totalMonths,
+            feeBps,
+            currentParams.firstMonthAmount
+          ); // ⭐ MOD
 
           console.log(`💳 [BATCH RECURRING] Approbation contrat ${currentApprovingIndex + 1}/${contractAddresses.length}...`, {
             contract: contractToApprove,

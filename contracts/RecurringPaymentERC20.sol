@@ -53,10 +53,10 @@ contract RecurringPaymentERC20 is ReentrancyGuard {
     mapping(uint256 => bool) public monthExecuted;
 
     uint256 public nextMonthToProcess;
+    uint256 public feeBps;
 
     // Constantes
     address public constant PROTOCOL_WALLET = 0xa34eDf91Cc494450000Eef08e6563062B2F115a9;
-    uint256 public constant FEE_BASIS_POINTS = 179;
     uint256 public constant BASIS_POINTS_DENOMINATOR = 10000;
     uint256 public constant SECONDS_PER_MONTH = 30 days;
 
@@ -114,7 +114,8 @@ contract RecurringPaymentERC20 is ReentrancyGuard {
         uint256 _startDate,
         uint256 _totalMonths,
         uint256 _dayOfMonth,
-        address _protocolOwner
+        address _protocolOwner,
+        uint256 _feeBps
     ) {
         require(_payer != address(0), "Invalid payer");
         require(_payee != address(0), "Invalid payee");
@@ -129,14 +130,16 @@ contract RecurringPaymentERC20 is ReentrancyGuard {
         payee = _payee;
         tokenAddress = _tokenAddress;
 
+        require(_feeBps <= BASIS_POINTS_DENOMINATOR, "Invalid fee bps");
+
         monthlyAmount = _monthlyAmount;
         protocolFeePerMonth =
-            (_monthlyAmount * FEE_BASIS_POINTS) / BASIS_POINTS_DENOMINATOR;
+            (_monthlyAmount * _feeBps) / BASIS_POINTS_DENOMINATOR;
 
         firstMonthAmount = _firstMonthAmount;
         if (_firstMonthAmount > 0) {
             firstProtocolFee =
-                (_firstMonthAmount * FEE_BASIS_POINTS) / BASIS_POINTS_DENOMINATOR;
+                (_firstMonthAmount * _feeBps) / BASIS_POINTS_DENOMINATOR;
         } else {
             firstProtocolFee = protocolFeePerMonth;
         }
@@ -146,6 +149,7 @@ contract RecurringPaymentERC20 is ReentrancyGuard {
         dayOfMonth = _dayOfMonth;
 
         protocolOwner = _protocolOwner;
+        feeBps = _feeBps;
 
         nextMonthToProcess = 0;
         totalPaid = 0;
@@ -427,7 +431,7 @@ contract RecurringPaymentERC20 is ReentrancyGuard {
         uint256 _totalMonths
     )
         external
-        pure
+        view
         returns (
             uint256 protocolFeePerMonth_,
             uint256 totalPerMonth,
@@ -435,7 +439,7 @@ contract RecurringPaymentERC20 is ReentrancyGuard {
         )
     {
         protocolFeePerMonth_ =
-            (_monthlyAmount * FEE_BASIS_POINTS) /
+            (_monthlyAmount * feeBps) /
             BASIS_POINTS_DENOMINATOR;
         totalPerMonth = _monthlyAmount + protocolFeePerMonth_;
         totalRequired = totalPerMonth * _totalMonths;

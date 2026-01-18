@@ -25,7 +25,8 @@ contract PaymentFactory_Recurring {
     // ============================================================
 
     address public constant PROTOCOL_WALLET = 0xa34eDf91Cc494450000Eef08e6563062B2F115a9;
-    uint256 public constant FEE_BASIS_POINTS = 179; // 1.79%
+    uint256 public constant FEE_BPS_PARTICULAR = 179; // 1.79%
+    uint256 public constant FEE_BPS_PRO = 156; // 1.56%
     uint256 public constant BASIS_POINTS_DENOMINATOR = 10000;
 
     // ============================================================
@@ -33,6 +34,7 @@ contract PaymentFactory_Recurring {
     // ============================================================
 
     address public immutable FACTORY_OWNER;
+    mapping(address => bool) public isProWallet;
 
     modifier onlyOwner() {
         require(msg.sender == FACTORY_OWNER, "Not owner");
@@ -41,6 +43,27 @@ contract PaymentFactory_Recurring {
 
     constructor() {
         FACTORY_OWNER = msg.sender;
+    }
+
+    event ProWalletUpdated(address indexed wallet, bool isPro);
+
+    function setProWallet(address wallet, bool isPro) external onlyOwner {
+        require(wallet != address(0), "Invalid wallet");
+        isProWallet[wallet] = isPro;
+        emit ProWalletUpdated(wallet, isPro);
+    }
+
+    function setProWallets(address[] calldata wallets, bool isPro) external onlyOwner {
+        for (uint256 i = 0; i < wallets.length; i++) {
+            address wallet = wallets[i];
+            require(wallet != address(0), "Invalid wallet");
+            isProWallet[wallet] = isPro;
+            emit ProWalletUpdated(wallet, isPro);
+        }
+    }
+
+    function _feeBpsFor(address payer) internal view returns (uint256) {
+        return isProWallet[payer] ? FEE_BPS_PRO : FEE_BPS_PARTICULAR;
     }
 
     // ============================================================
@@ -88,8 +111,10 @@ contract PaymentFactory_Recurring {
         require(_totalMonths >= 1 && _totalMonths <= 12, "Total months must be 1-12");
         require(_dayOfMonth >= 1 && _dayOfMonth <= 28, "Day of month must be 1-28");
 
+        uint256 feeBps = _feeBpsFor(msg.sender);
+
         // Calculer les fees par mois (utilisé dans l'event)
-        uint256 protocolFeePerMonth = (_monthlyAmount * FEE_BASIS_POINTS) / BASIS_POINTS_DENOMINATOR;
+        uint256 protocolFeePerMonth = (_monthlyAmount * feeBps) / BASIS_POINTS_DENOMINATOR;
 
         // Déployer le contrat récurrent (le prélèvement mensuel se fait via transferFrom inside)
         RecurringPaymentERC20 newRecurringPayment = new RecurringPaymentERC20(
@@ -101,7 +126,8 @@ contract PaymentFactory_Recurring {
             _startDate,
             _totalMonths,
             _dayOfMonth,
-            PROTOCOL_WALLET
+            PROTOCOL_WALLET,
+            feeBps
         );
 
         emit RecurringPaymentCreatedERC20(
@@ -143,8 +169,10 @@ contract PaymentFactory_Recurring {
             require(_firstMonthAmount > 0, "First month amount must be > 0");
         }
 
+        uint256 feeBps = _feeBpsFor(msg.sender);
+
         // Calculer les fees par mois (utilisé dans l'event)
-        uint256 protocolFeePerMonth = (_monthlyAmount * FEE_BASIS_POINTS) / BASIS_POINTS_DENOMINATOR;
+        uint256 protocolFeePerMonth = (_monthlyAmount * feeBps) / BASIS_POINTS_DENOMINATOR;
 
         RecurringPaymentERC20 newRecurringPayment = new RecurringPaymentERC20(
             msg.sender,
@@ -155,7 +183,8 @@ contract PaymentFactory_Recurring {
             _startDate,
             _totalMonths,
             _dayOfMonth,
-            PROTOCOL_WALLET
+            PROTOCOL_WALLET,
+            feeBps
         );
 
         emit RecurringPaymentCreatedERC20(
@@ -194,6 +223,8 @@ contract PaymentFactory_Recurring {
 
         address[] memory payments = new address[](_payees.length);
 
+        uint256 feeBps = _feeBpsFor(msg.sender);
+
         for (uint256 i = 0; i < _payees.length; i++) {
             require(_payees[i] != address(0), "Invalid payee");
             require(_monthlyAmounts[i] > 0, "Monthly amount must be > 0");
@@ -207,13 +238,14 @@ contract PaymentFactory_Recurring {
                 _startDate,
                 _totalMonths,
                 _dayOfMonth,
-                PROTOCOL_WALLET
+                PROTOCOL_WALLET,
+                feeBps
             );
 
             payments[i] = address(p);
 
             // Event par payment (utile pour indexer côté DB)
-            uint256 protocolFeePerMonth = (_monthlyAmounts[i] * FEE_BASIS_POINTS) / BASIS_POINTS_DENOMINATOR;
+            uint256 protocolFeePerMonth = (_monthlyAmounts[i] * feeBps) / BASIS_POINTS_DENOMINATOR;
             emit RecurringPaymentCreatedERC20(
                 msg.sender,
                 _payees[i],
@@ -273,7 +305,8 @@ contract PaymentFactory_Recurring {
     // HELPERS (pour UI / front)
     // ============================================================
 
-    function previewFeePerMonth(uint256 monthlyAmount) external pure returns (uint256) {
-        return (monthlyAmount * FEE_BASIS_POINTS) / BASIS_POINTS_DENOMINATOR;
+    function previewFeePerMonth(uint256 monthlyAmount, address payer) external view returns (uint256) {
+        uint256 feeBps = _feeBpsFor(payer);
+        return (monthlyAmount * feeBps) / BASIS_POINTS_DENOMINATOR;
     }
 }

@@ -15,7 +15,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  * Exemple :
  * - totalRequired = 1.0179 USDC
  * - Bénéficiaires : [0.5 USDC, 0.3 USDC, 0.2 USDC] = 1.0 USDC total
- * - Fees : 0.0179 USDC (1.79%)
+ * - Fees : 0.0179 USDC (variable)
  * - Chaque bénéficiaire reçoit son montant EXACT
  * 
  * WORKFLOW FACTORY-INTERMEDIARY:
@@ -45,13 +45,13 @@ contract BatchScheduledPaymentERC20 is ReentrancyGuard {
     
     // Calculs fees V2
     uint256 public totalToBeneficiaries; // Somme des montants exacts
-    uint256 public protocolFee;          // 1.79% additionnel
+    uint256 public protocolFee;          // Fees additionnels (variable)
+    uint256 public feeBps;
     
     address public immutable protocolOwner;
     
     // Constantes
     address public constant PROTOCOL_WALLET = 0xa34eDf91Cc494450000Eef08e6563062B2F115a9;
-    uint256 public constant FEE_BASIS_POINTS = 179; // 1.79%
     uint256 public constant BASIS_POINTS_DENOMINATOR = 10000;
     
     // ============================================================
@@ -109,7 +109,8 @@ contract BatchScheduledPaymentERC20 is ReentrancyGuard {
         uint256[] memory _amounts,
         uint256 _releaseTime,
         bool _cancellable,
-        address _protocolOwner
+        address _protocolOwner,
+        uint256 _feeBps
     ) {
         // Validations
         require(_payees.length > 0, "No payees");
@@ -128,9 +129,11 @@ contract BatchScheduledPaymentERC20 is ReentrancyGuard {
             totalBenef += _amounts[i];
         }
         
+        require(_feeBps <= BASIS_POINTS_DENOMINATOR, "Invalid fee bps");
+
         // Calculer les fees (nouvelle logique V2)
         totalToBeneficiaries = totalBenef;
-        protocolFee = (totalToBeneficiaries * FEE_BASIS_POINTS) / BASIS_POINTS_DENOMINATOR;
+        protocolFee = (totalToBeneficiaries * _feeBps) / BASIS_POINTS_DENOMINATOR;
         
         // Stocker
         payer = _payer;
@@ -142,6 +145,7 @@ contract BatchScheduledPaymentERC20 is ReentrancyGuard {
         released = false;
         cancelled = false;
         protocolOwner = _protocolOwner;
+        feeBps = _feeBps;
         
         // ✅ FIX : SUPPRIMÉ la vérification balanceOf
         // Les tokens arrivent via Factory.safeTransfer() après new BatchScheduledPaymentERC20()

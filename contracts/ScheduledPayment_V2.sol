@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
  * Changement V2 :
  * - msg.value = amountToPayee + protocolFee
  * - Bénéficiaire reçoit exactement amountToPayee
- * - Protocole reçoit protocolFee (1.79%)
+ * - Protocole reçoit protocolFee (variable)
  */
 contract ScheduledPayment is ReentrancyGuard {
     // ============================================================
@@ -21,7 +21,8 @@ contract ScheduledPayment is ReentrancyGuard {
     address public payer;
     address public payee;
     uint256 public amountToPayee; // Montant EXACT pour le bénéficiaire
-    uint256 public protocolFee; // Fees (1.79%)
+    uint256 public protocolFee; // Fees (variable)
+    uint256 public feeBps;
     uint256 public releaseTime;
 
     bool public released;
@@ -39,7 +40,6 @@ contract ScheduledPayment is ReentrancyGuard {
     // Constantes
     address public constant PROTOCOL_WALLET =
         0xa34eDf91Cc494450000Eef08e6563062B2F115a9;
-    uint256 public constant FEE_BASIS_POINTS = 179; // 1.79%
     uint256 public constant BASIS_POINTS_DENOMINATOR = 10000;
 
     // ============================================================
@@ -74,7 +74,7 @@ contract ScheduledPayment is ReentrancyGuard {
      * @param _cancellable Si true, le payer peut annuler avant releaseTime
      *
      * @dev msg.value DOIT être égal à _amountToPayee + fees
-     *      La Factory calcule : totalRequired = amountToPayee * 10179 / 10000
+     *      La Factory calcule : totalRequired = amountToPayee * (10000 + feeBps) / 10000
      */
     constructor(
         address _payer,
@@ -82,7 +82,8 @@ contract ScheduledPayment is ReentrancyGuard {
         uint256 _amountToPayee,
         uint256 _releaseTime,
         bool _cancellable,
-        address _protocolOwner
+        address _protocolOwner,
+        uint256 _feeBps
     ) payable {
         require(_amountToPayee > 0, "Amount must be > 0");
         require(_payee != address(0), "Invalid payee");
@@ -93,8 +94,10 @@ contract ScheduledPayment is ReentrancyGuard {
         );
         require(msg.value > 0, "No funds sent");
 
+        require(_feeBps <= BASIS_POINTS_DENOMINATOR, "Invalid fee bps");
+
         // Calculer les fees
-        uint256 calculatedFee = (_amountToPayee * FEE_BASIS_POINTS) /
+        uint256 calculatedFee = (_amountToPayee * _feeBps) /
             BASIS_POINTS_DENOMINATOR;
         uint256 expectedTotal = _amountToPayee + calculatedFee;
 
@@ -105,6 +108,7 @@ contract ScheduledPayment is ReentrancyGuard {
         payee = _payee;
         amountToPayee = _amountToPayee;
         protocolFee = calculatedFee;
+        feeBps = _feeBps;
         releaseTime = _releaseTime;
         cancellable = _cancellable;
         released = false;

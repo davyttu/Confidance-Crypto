@@ -234,9 +234,9 @@
       "amount": "Amount:",
       "releaseDate": "Scheduled release:",
       "important": "Important:",
-      "refund": "Funds will be refunded to your wallet",
+      "refund": "Funds and protocol fees will be refunded to your wallet (pro rata for batch)",
       "irreversible": "This action is irreversible",
-      "noFees": "No fees will be charged",
+      "noFees": "Protocol fees are refunded on cancellation",
       "confirmText": "I understand that this action is irreversible and I wish to cancel this scheduled payment.",
       "close": "Close",
       "processing": "Cancelling...",
@@ -350,6 +350,7 @@
       "cancellableStopsPayments": "Only the \"Cancellable\" option in the payment type allows you to permanently stop the remaining monthly payments via the dashboard",
       "treasuryRemainsAvailable": "Your treasury remains available",
       "onlyAmountDebitedMonthly": "Only <strong>{{amount}} {{token}}</strong> will be debited each month from your wallet.",
+      "refundRemainingMonths": "If you cancel before execution, remaining months and their protocol fees are refunded.",
       "timeUntil": {
         "past": "In the past",
         "pastError": "This date is in the past. Please choose a future date.",
@@ -372,7 +373,7 @@
       "instantDisabled": "Cancellation options are disabled because the payment will be executed immediately.",
       "cancellable": {
         "title": "Cancellable (before the date)",
-        "description": "You will be able to cancel the payment from the dashboard before the release date"
+        "description": "You can cancel before the release date and recover the amount + protocol fees"
       },
       "definitive": {
         "title": "Definitive (non-cancellable)",

@@ -10,12 +10,13 @@ import {
   usePublicClient,
 } from 'wagmi';
 import { decodeEventLog } from 'viem';
-import { type TokenSymbol, getToken } from '@/config/tokens';
+import { type TokenSymbol, getToken, getProtocolFeeBps } from '@/config/tokens';
 import { useTokenApproval, type UseTokenApprovalReturn } from './useTokenApproval';
 import { paymentFactoryScheduledAbi, paymentFactoryInstantAbi } from '@/lib/contracts/paymentFactoryAbi';
 import { PAYMENT_FACTORY_SCHEDULED, PAYMENT_FACTORY_INSTANT } from '@/lib/contracts/addresses';
 import { erc20Abi } from '@/lib/contracts/erc20Abi';
 import { calculateGasFromReceipt, saveGasTransaction } from '@/lib/utils/gas';
+import { useAuth } from '@/contexts/AuthContext';
 
 // ✅ Factories (Base Mainnet)
 const FACTORY_SCHEDULED_ADDRESS: `0x${string}` = PAYMENT_FACTORY_SCHEDULED as `0x${string}`;
@@ -87,6 +88,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
   const { address } = useAccount();
   const chainId = useChainId();
   const publicClient = usePublicClient();
+  const { user } = useAuth();
   
   // ✅ FIX : Helper pour lire la balance d'un token
   const readTokenBalance = async (tokenAddress: `0x${string}`, userAddress: `0x${string}`): Promise<bigint | null> => {
@@ -185,16 +187,19 @@ export function useCreatePayment(): UseCreatePaymentReturn {
   const token = currentParams ? getToken(currentParams.tokenSymbol) : null;
   
   // 🔧 FIX ERC20 ALLOWANCE : Calculer totalRequired
-  // - Paiement programmé : amount + fees (1.79%)
+  // - Paiement programmé : amount + fees (taux selon statut)
   // - Paiement instantané : amount (0% fees)
   const isInstantFromParams = currentParams
     ? (currentParams.releaseTime - Math.floor(Date.now() / 1000)) < 60
     : false;
 
+  const isProVerified = user?.accountType === 'professional' && user?.proStatus === 'verified';
+  const feeBps = getProtocolFeeBps({ isInstantPayment: isInstantFromParams, isProVerified });
+
   const amountForApproval = currentParams?.amount
     ? (isInstantFromParams
         ? currentParams.amount
-        : currentParams.amount + (currentParams.amount * BigInt(179)) / BigInt(10000))
+        : currentParams.amount + (currentParams.amount * BigInt(feeBps)) / BigInt(10000))
     : BigInt(1);
   
   // ✅ FIX CRITIQUE : Utiliser le tokenSymbol de currentParams, ou 'USDC' comme valeur par défaut
@@ -268,6 +273,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
       // ✅ FIX : Déterminer si c'est un paiement instantané pour sélectionner la bonne factory
       const now = Math.floor(Date.now() / 1000);
       const isInstantPayment = (params.releaseTime - now) < 60;
+      const feeBpsForPayment = getProtocolFeeBps({ isInstantPayment, isProVerified });
       const factoryAddress = getFactoryAddress(isInstantPayment);
       const factoryAbi = getFactoryAbi(isInstantPayment);
       
@@ -405,12 +411,12 @@ export function useCreatePayment(): UseCreatePaymentReturn {
           console.log('✅ [ETH INSTANTANÉ] writeContract appelé (pas d\'erreur synchrone)');
           console.log('⏳ [ETH INSTANTANÉ] Attente de la réponse MetaMask...');
         } else {
-          // PAIEMENT PROGRAMMÉ ETH (1.79% fees)
+          // PAIEMENT PROGRAMMÉ ETH (taux selon statut)
           setStatus('creating');
           setProgressMessage(t('create.modal.creatingPaymentETH', { defaultValue: 'Création du paiement ETH...' }));
 
           const amountToPayee = params.amount;
-          const protocolFee = (amountToPayee * BigInt(179)) / BigInt(10000);
+          const protocolFee = (amountToPayee * BigInt(feeBpsForPayment)) / BigInt(10000);
           const totalRequired = amountToPayee + protocolFee;
 
           console.log('💰 Calcul paiement programmé:', {
@@ -502,10 +508,10 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             });
           }
         } else {
-          // PAIEMENT PROGRAMMÉ ERC20 (1.79% fees)
+          // PAIEMENT PROGRAMMÉ ERC20 (taux selon statut)
           
           // ✅ FIX : Calculer le montant total nécessaire (avec fees)
-          const protocolFee = (params.amount * BigInt(179)) / BigInt(10000);
+          const protocolFee = (params.amount * BigInt(feeBpsForPayment)) / BigInt(10000);
           const totalRequired = params.amount + protocolFee;
           
           // ✅ FIX : Formater les montants pour affichage
@@ -1058,16 +1064,18 @@ export function useCreatePayment(): UseCreatePaymentReturn {
         const factoryAddress = getFactoryAddress(isInstantPayment);
         const factoryAbi = getFactoryAbi(isInstantPayment);
 
+      const feeBpsForPayment = getProtocolFeeBps({ isInstantPayment, isProVerified });
+
       // ✅ FIX : Calculer le montant total requis (sans fees pour paiements instantanés)
       const totalRequired = isInstantPayment 
         ? currentParams.amount  // Paiement instantané : pas de fees
-        : currentParams.amount + ((currentParams.amount * BigInt(179)) / BigInt(10000)); // Paiement programmé : + 1.79%
+        : currentParams.amount + ((currentParams.amount * BigInt(feeBpsForPayment)) / BigInt(10000)); // Paiement programmé : + fees
       
       console.log('💰 Calcul totalRequired:', {
         isInstantPayment,
         amount: currentParams.amount.toString(),
         totalRequired: totalRequired.toString(),
-        fees: isInstantPayment ? '0% (instantané)' : '1.79% (programmé)',
+        fees: isInstantPayment ? '0% (instantané)' : `${feeBpsForPayment / 100}% (programmé)`,
       });
       
       // ✅ FIX : Calculer la marge de sécurité attendue (10%)

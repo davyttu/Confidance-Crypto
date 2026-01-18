@@ -13,7 +13,7 @@ import {
   usePublicClient,
 } from 'wagmi';
 import { decodeEventLog, erc20Abi } from 'viem';
-import { type TokenSymbol, getToken } from '@/config/tokens';
+import { type TokenSymbol, getToken, getProtocolFeeBps } from '@/config/tokens';
 import { paymentFactoryAbi } from '@/lib/contracts/paymentFactoryAbi';
 import { PAYMENT_FACTORY_RECURRING } from '@/lib/contracts/addresses';
 import { useAuth } from '@/contexts/AuthContext';
@@ -39,8 +39,6 @@ const getNetworkFromChainId = (chainId: number): string => {
 };
 
 
-// Fees protocole
-const FEE_BASIS_POINTS = 179;
 const BASIS_POINTS_DENOMINATOR = 10000;
 
 interface CreateRecurringPaymentParams {
@@ -96,19 +94,24 @@ interface UseCreateRecurringPaymentReturn {
 /**
  * Calcule le montant total à approuver
  */
-function calculateRecurringTotal(monthlyAmount: bigint, totalMonths: number, firstMonthAmount?: bigint): {
+function calculateRecurringTotal(
+  monthlyAmount: bigint,
+  totalMonths: number,
+  feeBps: number,
+  firstMonthAmount?: bigint
+): {
   monthlyFee: bigint;
   totalPerMonth: bigint;
   totalRequired: bigint;
 } {
-  const monthlyFee = (monthlyAmount * BigInt(FEE_BASIS_POINTS)) / BigInt(BASIS_POINTS_DENOMINATOR);
+  const monthlyFee = (monthlyAmount * BigInt(feeBps)) / BigInt(BASIS_POINTS_DENOMINATOR);
   const totalPerMonth = monthlyAmount + monthlyFee;
   // Si firstMonthAmount est fourni (>0), on calcule un total exact :
   // (1er mois) + (mois suivants)
   // NOTE: on reste compatible avec l'ancien comportement (firstMonthAmount absent)
   let totalRequired = totalPerMonth * BigInt(totalMonths);
   if (typeof firstMonthAmount === 'bigint' && firstMonthAmount > 0n) {
-    const firstFee = (firstMonthAmount * BigInt(FEE_BASIS_POINTS)) / BigInt(BASIS_POINTS_DENOMINATOR);
+    const firstFee = (firstMonthAmount * BigInt(feeBps)) / BigInt(BASIS_POINTS_DENOMINATOR);
     const firstTotal = firstMonthAmount + firstFee;
     const remainingMonths = totalMonths > 1 ? (totalMonths - 1) : 0;
     totalRequired = firstTotal + (totalPerMonth * BigInt(remainingMonths));
@@ -224,12 +227,15 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
         throw new Error(t('create.recurring.dayOfMonthRange', { defaultValue: 'Day of month must be between 1 and 28' }));
       }
 
+      const isProVerified = user?.accountType === 'professional' && user?.proStatus === 'verified';
+      const feeBps = getProtocolFeeBps({ isInstantPayment: false, isProVerified });
+
       // Calculer le total requis
       const { 
         monthlyFee: fee, 
         totalPerMonth: perMonth, 
         totalRequired: total 
-      } = calculateRecurringTotal(params.monthlyAmount, params.totalMonths, params.firstMonthAmount);
+      } = calculateRecurringTotal(params.monthlyAmount, params.totalMonths, feeBps, params.firstMonthAmount);
 
       setMonthlyFee(fee);
       setTotalPerMonth(perMonth);

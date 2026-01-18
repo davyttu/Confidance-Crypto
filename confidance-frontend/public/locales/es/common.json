@@ -112,6 +112,28 @@
         "cancelled": "Cancelado"
       }
     },
+    "cancel": {
+      "title": "Cancelar pago",
+      "warning": "⚠️ Estás a punto de cancelar este pago programado:",
+      "beneficiary": "Beneficiario:",
+      "amount": "Monto:",
+      "releaseDate": "Liberación programada:",
+      "important": "Importante:",
+      "refund": "Los fondos y las comisiones del protocolo se reembolsarán a tu wallet (prorrata para pagos batch)",
+      "irreversible": "Esta acción es irreversible",
+      "noFees": "Las comisiones del protocolo se reembolsan al cancelar",
+      "confirmText": "Entiendo que esta acción es irreversible y deseo cancelar este pago programado.",
+      "close": "Cerrar",
+      "processing": "Cancelando...",
+      "confirm": "Confirmar cancelación",
+      "confirmError": "Por favor confirma marcando la casilla",
+      "error": "Error al cancelar",
+      "success": {
+        "title": "¡Pago cancelado!",
+        "message": "Los fondos han sido reembolsados"
+      },
+      "errorTitle": "Error de cancelación"
+    },
     "nopayments": "Sin pagos programados"
   },
   "beneficiary": {
@@ -284,7 +306,7 @@
       "instantDisabled": "Las opciones de cancelación están desactivadas porque el pago se ejecutará inmediatamente.",
       "cancellable": {
         "title": "Cancelable (antes de la fecha)",
-        "description": "Podrás cancelar el pago desde el panel antes de la fecha de liberación"
+        "description": "Podrás cancelar antes de la fecha y recuperar el importe + comisiones del protocolo"
       },
       "definitive": {
         "title": "Definitivo (no cancelable)",
@@ -335,6 +357,7 @@
       "paymentTypeLabel": "Tipo de pago",
       "treasuryRemainsAvailable": "Su tesorería permanece disponible",
       "onlyAmountDebitedMonthly": "Solo <strong>{{amount}} {{token}}</strong> se debitarán cada mes de su cartera.",
+      "refundRemainingMonths": "Si cancelas antes de la ejecución, los meses restantes y sus comisiones se reembolsan.",
       "importantTitle": "Información importante:",
       "important": {
         "balanceMonthly": "Asegúrate de tener saldo suficiente <strong>CADA MES</strong> en tu wallet para cubrir los débitos",

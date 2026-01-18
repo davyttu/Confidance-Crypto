@@ -105,7 +105,7 @@ contract PaymentFactory {
      * @return Adresse du contrat créé
      * 
      * @dev msg.value DOIT être = _amountToPayee + fees
-     *      Frontend calcule : totalRequired = amountToPayee * 10179 / 10000
+     *      Frontend calcule : totalRequired = amountToPayee * (10000 + feeBps) / 10000
      */
     function createPaymentETH(
         address _payee,
@@ -129,7 +129,8 @@ contract PaymentFactory {
             _amountToPayee,
             _releaseTime,
             _cancellable,
-            PROTOCOL_WALLET
+            PROTOCOL_WALLET,
+            FEE_BASIS_POINTS
         );
         
         emit PaymentCreatedETH(
@@ -188,7 +189,8 @@ contract PaymentFactory {
             _amountToPayee,
             _releaseTime,
             _cancellable,
-            PROTOCOL_WALLET
+            PROTOCOL_WALLET,
+            FEE_BASIS_POINTS
         );
         
         // ✅ ÉTAPE 3 : Factory transfère les tokens au nouveau contrat
@@ -252,7 +254,8 @@ contract PaymentFactory {
             _payees,
             _amounts,
             _releaseTime,
-            _cancellable
+            _cancellable,
+            FEE_BASIS_POINTS
         );
         
         emit BatchPaymentCreatedETH(
@@ -315,7 +318,8 @@ contract PaymentFactory {
             _startDate,
             _totalMonths,
             _dayOfMonth,
-            PROTOCOL_WALLET
+            PROTOCOL_WALLET,
+            FEE_BASIS_POINTS
         );
         
         emit RecurringPaymentCreatedERC20(
