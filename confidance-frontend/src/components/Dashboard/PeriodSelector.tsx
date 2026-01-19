@@ -47,46 +47,53 @@ export function PeriodSelector({ onChange, oldestTimestamp }: PeriodSelectorProp
     <div className="bg-white rounded-lg shadow p-4 mb-6">
       <div className="flex flex-col sm:flex-row gap-4">
         {/* Type de période */}
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => handlePeriodTypeChange('all')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              periodType === 'all'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            {isMounted && translationsReady ? t('dashboard.period.all') : 'Tout'}
-          </button>
-          
-          <button
-            onClick={() => handlePeriodTypeChange('month')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              periodType === 'month'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            {isMounted && translationsReady ? t('dashboard.period.byMonth') : 'Par mois'}
-          </button>
-          
-          <button
-            onClick={() => handlePeriodTypeChange('year')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              periodType === 'year'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            {isMounted && translationsReady ? t('dashboard.period.byYear') : 'Par année'}
-          </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => handlePeriodTypeChange('all')}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                periodType === 'all'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {isMounted && translationsReady ? t('dashboard.period.all') : 'Tout'}
+            </button>
+            
+            <button
+              onClick={() => handlePeriodTypeChange('month')}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                periodType === 'month'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {isMounted && translationsReady ? t('dashboard.period.byMonth') : 'Par mois'}
+            </button>
+            
+            <button
+              onClick={() => handlePeriodTypeChange('year')}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                periodType === 'year'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {isMounted && translationsReady ? t('dashboard.period.byYear') : 'Par année'}
+            </button>
+          </div>
 
-          <Link
-            href="/dashboard/links"
-            className="px-4 py-2 rounded-lg font-medium bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
-          >
-            {isMounted && translationsReady ? t('links.dashboard.button') : 'Mes liens'}
-          </Link>
+          <div className="sm:ml-3 sm:pl-3 sm:border-l sm:border-gray-200">
+            <Link
+              href="/dashboard/links"
+              className="group relative inline-flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-blue-700 bg-gradient-to-r from-white to-blue-50 border border-blue-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all"
+            >
+              <span className="absolute inset-0 rounded-lg bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <span className="relative">
+                {isMounted && translationsReady ? t('links.dashboard.button') : 'Mes liens'}
+              </span>
+            </Link>
+          </div>
         </div>
 
         {/* Sélecteur de mois */}

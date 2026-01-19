@@ -2,7 +2,7 @@
   "nav": {
     "home": "Accueil",
     "create": "Créer",
-    "dashboard": "Dashboard",
+    "dashboard": "Mon Dashboard",
     "help": "Aide"
   },
   "common": {
@@ -38,8 +38,12 @@
       },
       "flexible": {
         "title": "Flexible",
-        "description": "ETH, USDC, USDT. Programmez de 5 minutes à plusieurs années"
+      "description": "ETH, USDT, USDC... Multi-chaînes, quand vous le souhaitez."
       }
+    },
+    "why": {
+      "title": "Pourquoi Confidance ?",
+      "description": "La plateforme la plus simple et sécurisée pour programmer vos paiements crypto"
     },
     "useCases": {
       "salaries": {
@@ -62,6 +66,10 @@
         "title": "Assurances & garanties",
         "desc": "Frais d’activation, puis couverture mensuelle"
       }
+    },
+    "status": {
+      "operational": "Système opérationnel",
+      "maintenance": "Maintenance"
     },
     "stats": {
       "executed": "Paiements exécutés",
@@ -764,7 +772,7 @@
       "weekly": "Hebdomadaire"
     },
     "dashboard": {
-      "button": "Mes liens",
+      "button": "Mes liens de paiement",
       "title": "Mes liens de paiement",
       "empty": "Aucun lien de paiement",
       "hint": "Une fois un paiement validé, vous le retrouvez directement dans votre dashboard.",

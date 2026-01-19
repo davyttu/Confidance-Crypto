@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAccount, useDisconnect } from 'wagmi';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { useRouter } from 'next/navigation';
@@ -34,6 +34,32 @@ interface BeneficiaryHistoryItem {
 export default function PaymentForm() {
   const { t, ready: translationsReady, i18n } = useTranslation();
   const [isMounted, setIsMounted] = useState(false);
+  const [isVoiceSupported, setIsVoiceSupported] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [voiceTranscript, setVoiceTranscript] = useState('');
+  const [voiceParsedAmount, setVoiceParsedAmount] = useState('');
+  const [voiceHint, setVoiceHint] = useState('');
+  const [voiceCorrections, setVoiceCorrections] = useState<Record<string, string>>({});
+  const [showVoiceCorrection, setShowVoiceCorrection] = useState(false);
+  const [voiceCorrectionFrom, setVoiceCorrectionFrom] = useState('');
+  const [voiceCorrectionTo, setVoiceCorrectionTo] = useState('');
+  const [lastVoiceCorrection, setLastVoiceCorrection] = useState<string>('');
+  const [voiceLanguage, setVoiceLanguage] = useState<string>('');
+  const [voiceCommandMode, setVoiceCommandMode] = useState(false);
+  const [voiceAwaitingConfirm, setVoiceAwaitingConfirm] = useState(false);
+  const [voiceAwaitingDate, setVoiceAwaitingDate] = useState(false);
+  const [voiceCommandSummary, setVoiceCommandSummary] = useState('');
+  const amountInputRef = useRef<HTMLInputElement | null>(null);
+  const recognitionRef = useRef<any>(null);
+  const formRef = useRef<HTMLFormElement | null>(null);
+  const pendingVoiceCommandRef = useRef<ReturnType<typeof parseVoiceCommand> | null>(null);
+  const lastVoiceRef = useRef<{
+    amount?: string;
+    meta: { decimalDigits: number; hasDecimal: boolean };
+    token?: TokenSymbol;
+    transcript: string;
+    at: number;
+  }>({ meta: { decimalDigits: 0, hasDecimal: false }, transcript: '', at: 0 });
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
   const { openConnectModal } = useConnectModal();
@@ -66,6 +92,370 @@ export default function PaymentForm() {
         return 'en-US';
     }
   })();
+  const languageKey = (i18n?.language?.toLowerCase() || 'en').split('-')[0];
+  const voiceStorageKey = `voiceCorrections.${languageKey}`;
+  const voiceLanguageStorageKey = 'voiceRecognitionLang';
+  const voiceLanguageOptions = ['fr-FR', 'en-US', 'es-ES', 'ru-RU', 'zh-CN'];
+
+  const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  const normalizeVoiceText = (value: string) =>
+    value
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/’/g, "'")
+      .replace(/[^a-z0-9'\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+  const applyCorrections = (text: string, corrections = voiceCorrections) => {
+    let output = text;
+    Object.entries(corrections).forEach(([from, to]) => {
+      if (!from || !to) return;
+      if (from.includes(' ')) {
+        const pattern = new RegExp(escapeRegExp(from), 'gi');
+        output = output.replace(pattern, to);
+      } else {
+        const pattern = new RegExp(`\\b${escapeRegExp(from)}\\b`, 'gi');
+        output = output.replace(pattern, to);
+      }
+    });
+    return output;
+  };
+
+  const speak = (message: string, onEnd?: () => void) => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) {
+      onEnd?.();
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(message);
+    utterance.lang = voiceLanguage || locale;
+    utterance.rate = 0.95;
+    utterance.onend = () => onEnd?.();
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const extractNumber = (text: string): number | undefined => {
+    const normalized = replaceNumberWords(applyCorrections(text));
+    const match = normalized.match(/\b(\d+)\b/);
+    if (!match) return undefined;
+    const value = Number(match[1]);
+    return Number.isFinite(value) ? value : undefined;
+  };
+
+  const parseDateFromVoice = (text: string): Date | null => {
+    const normalized = applyCorrections(text)
+      .toLowerCase()
+      .replace(/’/g, "'")
+      .replace(/é/g, 'e');
+
+    const now = new Date();
+    if (normalized.includes('apres-demain') || normalized.includes('après-demain')) {
+      const date = new Date(now);
+      date.setDate(now.getDate() + 2);
+      date.setHours(12, 0, 0, 0);
+      return date;
+    }
+    if (normalized.includes('demain')) {
+      const date = new Date(now);
+      date.setDate(now.getDate() + 1);
+      date.setHours(12, 0, 0, 0);
+      return date;
+    }
+
+    const monthMap: Record<string, number> = {
+      janvier: 0,
+      fevrier: 1,
+      fevrier: 1,
+      mars: 2,
+      avril: 3,
+      mai: 4,
+      juin: 5,
+      juillet: 6,
+      aout: 7,
+      septembre: 8,
+      octobre: 9,
+      novembre: 10,
+      decembre: 11,
+    };
+
+    const numericMatch = normalized.match(/(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?/);
+    let day: number | undefined;
+    let month: number | undefined;
+    let year: number | undefined;
+
+    if (numericMatch) {
+      day = Number(numericMatch[1]);
+      month = Number(numericMatch[2]) - 1;
+      year = numericMatch[3] ? Number(numericMatch[3]) : undefined;
+    } else {
+      const monthMatch = normalized.match(/(\d{1,2})\s+(janvier|fevrier|mars|avril|mai|juin|juillet|aout|septembre|octobre|novembre|decembre)/);
+      if (monthMatch) {
+        day = Number(monthMatch[1]);
+        month = monthMap[monthMatch[2]];
+        const yearMatch = normalized.match(/\b(20\d{2})\b/);
+        if (yearMatch) year = Number(yearMatch[1]);
+      }
+    }
+
+    if (day !== undefined && month !== undefined) {
+      const targetYear = year || now.getFullYear();
+      const date = new Date(targetYear, month, day, 12, 0, 0, 0);
+      if (!year && date < now) {
+        date.setFullYear(targetYear + 1);
+      }
+
+      const timeMatch = normalized.match(/(\d{1,2})\s*h(?:\s*(\d{1,2}))?/);
+      const timeAltMatch = normalized.match(/(\d{1,2}):(\d{2})/);
+      if (timeMatch) {
+        const hour = Number(timeMatch[1]);
+        const minutes = timeMatch[2] ? Number(timeMatch[2]) : 0;
+        date.setHours(hour, minutes, 0, 0);
+      } else if (timeAltMatch) {
+        date.setHours(Number(timeAltMatch[1]), Number(timeAltMatch[2]), 0, 0);
+      }
+      return date;
+    }
+
+    return null;
+  };
+
+  const detectTokenFromTranscript = (text: string): TokenSymbol | undefined => {
+    const normalized = applyCorrections(text)
+      .toLowerCase()
+      .replace(/’/g, "'")
+      .replace(/é/g, 'e')
+      .replace(/\barsenal team\b/g, 'centime')
+      .replace(/\bdetergent\b/g, 'ether')
+      .replace(/\b(u s d c|usd c)\b/g, 'usdc')
+      .replace(/\b(u s d t|usd t)\b/g, 'usdt')
+      .replace(/[^a-z0-9']+/g, ' ');
+    const words = normalized
+      .split(/\s+/)
+      .map((word) => word.replace(/^d'/, ''))
+      .filter(Boolean);
+
+    if (words.some((word) => word === 'ethereum' || word === 'ether' || word === 'eth' || word === 'ethere' || word === 'eather')) {
+      return 'ETH';
+    }
+    if (words.some((word) => word === 'usdc')) return 'USDC';
+    if (words.some((word) => word === 'usdt' || word === 'tether')) return 'USDT';
+
+    if (words.some((word) => word === 'detector')) {
+      if (words.some((word) => word.includes('usd'))) return 'USDC';
+      return undefined;
+    }
+    return undefined;
+  };
+
+  const replaceNumberWords = (text: string): string => {
+    const mappings: Array<[string, string]> = [
+      // fr
+      ...[
+        ['zéro', '0'], ['zero', '0'], ['un', '1'], ['une', '1'], ['uhn', '1'], ['hun', '1'], ['um', '1'], ['huh', '1'],
+        ['deux', '2'], ['de', '2'], ['du', '2'], ['deuh', '2'], ['doux', '2'],
+        ['trois', '3'], ['hein', '1'],
+        ['quatre', '4'], ['cinq', '5'], ['six', '6'], ['sept', '7'], ['huit', '8'], ['neuf', '9'],
+        ['dix', '10'], ['onze', '11'], ['douze', '12'], ['treize', '13'], ['quatorze', '14'],
+        ['quinze', '15'], ['seize', '16'], ['vingt', '20'], ['trente', '30'], ['quarante', '40'],
+        ['cinquante', '50'], ['soixante', '60'], ['soixante-dix', '70'], ['quatre-vingt', '80'],
+        ['quatre-vingt-dix', '90'],
+      ],
+      // en
+      ...[
+        ['zero', '0'], ['one', '1'], ['two', '2'], ['three', '3'], ['four', '4'], ['five', '5'],
+        ['sank', '5'], ['sink', '5'], ['suck', '5'], ['search', '5'],
+        ['do', '2'], ['too', '2'], ['to', '2'],
+        ['what', '3'],
+        ['cat', '4'], ['get', '4'],
+        ['cinque', '5'],
+        ['see', '6'],
+        ['set', '7'],
+        ['six', '6'], ['seven', '7'], ['eight', '8'], ['nine', '9'], ['ten', '10'], ['eleven', '11'],
+        ['twelve', '12'], ['thirteen', '13'], ['fourteen', '14'], ['fifteen', '15'], ['sixteen', '16'],
+        ['seventeen', '17'], ['eighteen', '18'], ['nineteen', '19'], ['twenty', '20'], ['thirty', '30'],
+        ['forty', '40'], ['fifty', '50'], ['sixty', '60'], ['seventy', '70'], ['eighty', '80'], ['ninety', '90'],
+      ],
+      // es
+      ...[
+        ['cero', '0'], ['uno', '1'], ['una', '1'], ['dos', '2'], ['tres', '3'], ['cuatro', '4'],
+        ['cinco', '5'], ['seis', '6'], ['siete', '7'], ['ocho', '8'], ['nueve', '9'], ['diez', '10'],
+        ['once', '11'], ['doce', '12'], ['trece', '13'], ['catorce', '14'], ['quince', '15'],
+        ['dieciséis', '16'], ['dieciseis', '16'], ['diecisiete', '17'], ['dieciocho', '18'], ['diecinueve', '19'],
+        ['veinte', '20'], ['treinta', '30'], ['cuarenta', '40'], ['cincuenta', '50'], ['sesenta', '60'],
+        ['setenta', '70'], ['ochenta', '80'], ['noventa', '90'],
+      ],
+      // ru
+      ...[
+        ['ноль', '0'], ['один', '1'], ['два', '2'], ['три', '3'], ['четыре', '4'], ['пять', '5'],
+        ['шесть', '6'], ['семь', '7'], ['восемь', '8'], ['девять', '9'], ['десять', '10'],
+        ['одиннадцать', '11'], ['двенадцать', '12'], ['тринадцать', '13'], ['четырнадцать', '14'],
+        ['пятнадцать', '15'], ['шестнадцать', '16'], ['семнадцать', '17'], ['восемнадцать', '18'],
+        ['девятнадцать', '19'], ['двадцать', '20'], ['тридцать', '30'], ['сорок', '40'],
+        ['пятьдесят', '50'], ['шестьдесят', '60'], ['семьдесят', '70'], ['восемьдесят', '80'], ['девяносто', '90'],
+      ],
+    ];
+
+    let out = text;
+    mappings.forEach(([word, value]) => {
+      const pattern = new RegExp(`\\b${word}\\b`, 'gi');
+      out = out.replace(pattern, value);
+    });
+    return out;
+  };
+
+  const extractAmountFromTranscript = (text: string): { amount?: string; decimalDigits: number; hasDecimal: boolean } => {
+    const normalized = applyCorrections(text)
+      .toLowerCase()
+      .replace(/,/g, '.')
+      .replace(/\b(virgule|virgil|vehicle|value|point|dot|decimal|comma|coma|punto|точка|点)\b/g, '.')
+      .replace(/\barsenal team\b/g, 'centime')
+      .replace(/\badd saltine\b/g, 'centime')
+      .replace(/\bsaltine\b/g, 'centime')
+      .replace(/\bsalty\b/g, 'centime')
+      .replace(/\bsomething\b/g, 'centime')
+      .replace(/\bcancel\b/g, 'centime')
+      .replace(/\bsome team\b/g, 'centime')
+      .replace(/\bturn to do\b/g, 'trente deux')
+      .replace(/\bturn to\b/g, 'trente')
+      .replace(/\btalk to the\b/g, 'trente trois');
+
+    const centsMatch = normalized.match(/\b(centime|centimes|cent|cents)\b/);
+    if (centsMatch) {
+      const replaced = replaceNumberWords(normalized);
+      const numberMatches = replaced.match(/\b(\d+)\b/g) || [];
+      let centsValue = 1;
+      if (numberMatches.length > 0) {
+        const last = Number(numberMatches[numberMatches.length - 1]);
+        const prev = numberMatches.length > 1 ? Number(numberMatches[numberMatches.length - 2]) : NaN;
+        if (!Number.isNaN(prev) && prev % 10 === 0) {
+          centsValue = prev + last;
+        } else if (!Number.isNaN(last)) {
+          centsValue = last;
+        }
+      }
+      if (!Number.isNaN(centsValue) && centsValue > 0) {
+        const amount = (centsValue / 100).toFixed(2);
+        return { amount, decimalDigits: 2, hasDecimal: true };
+      }
+    }
+    const replaced = replaceNumberWords(normalized)
+      .replace(/\b(and|et|y|e|и)\b/g, ' ')
+      .replace(/\s*\.\s*/g, '.')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const combinedTens = replaced.replace(/\b(\d+)\s+(\d)\b/g, (full, tens, unit) => {
+      if (tens.endsWith('0')) {
+        return String(Number(tens) + Number(unit));
+      }
+      return full;
+    });
+    const decimalMatch = combinedTens.match(/(\d+)\.(.+)/);
+    if (decimalMatch) {
+      const left = decimalMatch[1];
+      const rightDigits = decimalMatch[2].replace(/[^\d]/g, '');
+      if (rightDigits.length > 0) {
+        return { amount: `${left}.${rightDigits}`, decimalDigits: rightDigits.length, hasDecimal: true };
+      }
+    }
+    const match = combinedTens.match(/(\d+(?:\.\d+)?)/);
+    if (match?.[1]) {
+      const parts = match[1].split('.');
+      return {
+        amount: match[1],
+        decimalDigits: parts[1]?.length || 0,
+        hasDecimal: match[1].includes('.'),
+      };
+    }
+    return { amount: undefined, decimalDigits: 0, hasDecimal: false };
+  };
+
+  const extractSingleDigit = (text: string): string | undefined => {
+    const normalized = replaceNumberWords(
+      applyCorrections(text)
+        .toLowerCase()
+        .replace(/,/g, '.')
+        .replace(/\b(virgule|virgil|vehicle|value|point|dot|decimal|comma|coma|punto|точка|点)\b/g, '.')
+    );
+    const digitMatch = normalized.match(/\b(\d)\b/);
+    return digitMatch?.[1];
+  };
+
+  const getBeneficiaryFromVoice = (text: string) => {
+    const lower = normalizeVoiceText(applyCorrections(text));
+    if (lower.includes('favori') || lower.includes('favorite')) {
+      const address = favoriteAddresses[0];
+      if (address) return { address, label: 'favori' };
+    }
+
+    const match = lower.match(/(?:envoyer|envoye|envoie|mets|met)\s+a\s+(.+)/);
+    const rawName = match?.[1]?.split(/(\d|\beth\b|\busdc\b|\busdt\b|paiement|instant|program)/)[0]?.trim();
+    if (rawName) {
+      const candidate = beneficiaryHistory.find((item) => {
+        if (!item.name) return false;
+        const name = normalizeVoiceText(item.name);
+        return name === rawName || name.includes(rawName) || rawName.includes(name);
+      });
+      if (candidate?.address) {
+        return { address: candidate.address, label: candidate.name || rawName };
+      }
+      if (favoriteAddresses.length === 1) {
+        return { address: favoriteAddresses[0], label: rawName };
+      }
+    }
+
+    const directMatch = lower.match(/(?:^|\s)a\s+([a-z0-9]+)\b/);
+    const directName = directMatch?.[1]?.trim();
+    if (directName) {
+      const candidate = beneficiaryHistory.find((item) => {
+        if (!item.name) return false;
+        const name = normalizeVoiceText(item.name);
+        return name === directName || name.includes(directName) || directName.includes(name);
+      });
+      if (candidate?.address) {
+        return { address: candidate.address, label: candidate.name || directName };
+      }
+    }
+
+    const foundByName = beneficiaryHistory.find((item) => {
+      if (!item.name) return false;
+      const name = normalizeVoiceText(item.name);
+      return name && lower.includes(name);
+    });
+    if (foundByName?.address) {
+      return { address: foundByName.address, label: foundByName.name || 'beneficiaire' };
+    }
+    return null;
+  };
+
+  const parseVoiceCommand = (text: string) => {
+    const normalized = normalizeVoiceText(applyCorrections(text));
+    const timing = normalized.includes('récurrent') || normalized.includes('recurrent')
+      ? 'recurring'
+      : normalized.includes('instant')
+        ? 'instant'
+        : normalized.includes('program')
+          ? 'scheduled'
+          : paymentTiming;
+    const cancellable =
+      normalized.includes('non annulable') ||
+      normalized.includes('irrevocable') ||
+      normalized.includes('irrévocable')
+        ? false
+        : true;
+    const amountInfo = extractAmountFromTranscript(normalized);
+    const fallbackDigit = amountInfo.amount ? undefined : extractSingleDigit(normalized);
+    const amount = amountInfo.amount || fallbackDigit;
+    const token = detectTokenFromTranscript(normalized) || formData.tokenSymbol;
+    const beneficiary = getBeneficiaryFromVoice(normalized);
+    const months = normalized.includes('mois') || normalized.includes('months')
+      ? extractNumber(normalized)
+      : undefined;
+    const date = parseDateFromVoice(normalized);
+    return { timing, cancellable, amount, token, beneficiary, months, date };
+  };
 
   const handleReconnectWallet = () => {
     disconnect();
@@ -77,6 +467,508 @@ export default function PaymentForm() {
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    let tabPressed = false;
+    const triggerVoice = () => {
+      amountInputRef.current?.focus();
+      if (!isVoiceSupported) return;
+      if (isListening) {
+        recognitionRef.current?.stop?.();
+        return;
+      }
+      setErrors((prev) => ({ ...prev, amount: '' }));
+      try {
+        recognitionRef.current?.start?.();
+        setIsListening(true);
+      } catch {
+        setIsListening(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase();
+
+      if (key === 'tab') {
+        event.preventDefault();
+        tabPressed = true;
+        amountInputRef.current?.focus();
+        return;
+      }
+
+      if (key === 'enter' && tabPressed) {
+        event.preventDefault();
+        triggerVoice();
+        return;
+      }
+
+      if (event.altKey && key === 'm') {
+        event.preventDefault();
+        triggerVoice();
+      }
+    };
+
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() === 'tab') {
+        tabPressed = false;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown, true);
+    window.addEventListener('keyup', handleKeyUp, true);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown, true);
+      window.removeEventListener('keyup', handleKeyUp, true);
+    };
+  }, [isListening, isVoiceSupported]);
+
+  useEffect(() => {
+    const handleVoiceStart = () => {
+      setVoiceCommandMode(true);
+      setVoiceAwaitingConfirm(false);
+      setVoiceCommandSummary('');
+      setErrors((prev) => ({ ...prev, amount: '', beneficiary: '' }));
+      try {
+        recognitionRef.current?.stop?.();
+        speak(translate('create.voice.start', 'Je vous écoute.'), () => {
+          try {
+            recognitionRef.current?.start?.();
+            setIsListening(true);
+          } catch {
+            setIsListening(false);
+          }
+        });
+      } catch {
+        setIsListening(false);
+      }
+    };
+
+    window.addEventListener('voice-payment-start', handleVoiceStart as EventListener);
+    return () => window.removeEventListener('voice-payment-start', handleVoiceStart as EventListener);
+  }, [translate, speak]);
+
+  const applyParsedResult = (text: string, corrections?: Record<string, string>) => {
+    const corrected = applyCorrections(text, corrections);
+    const amountInfo = extractAmountFromTranscript(corrected);
+    const token = detectTokenFromTranscript(corrected);
+    setVoiceTranscript(corrected);
+
+    const fallbackDigit = amountInfo.amount ? undefined : extractSingleDigit(corrected);
+    const finalAmount = amountInfo.amount || fallbackDigit;
+
+    if (finalAmount) {
+      setVoiceParsedAmount(finalAmount);
+      if (amountInfo.hasDecimal && amountInfo.decimalDigits === 1) {
+        setVoiceHint(
+          translate(
+            'create.amount.voiceDecimalsHint',
+            'Décimales détectées. Si vous voulez plus de précision, dites "zéro virgule zéro un".'
+          )
+        );
+      } else {
+        setVoiceHint('');
+      }
+      setFormData((prev) => ({
+        ...prev,
+        amount: finalAmount as string,
+        tokenSymbol: token || 'USDC',
+      }));
+      setErrors((prev) => ({ ...prev, amount: '' }));
+      return;
+    }
+
+    setVoiceParsedAmount('');
+    if (token) {
+      setFormData((prev) => ({
+        ...prev,
+        tokenSymbol: token,
+      }));
+      setErrors((prev) => ({ ...prev, amount: '' }));
+      setVoiceHint(
+        translate(
+          'create.amount.voiceTokenOnly',
+          'Token détecté. Dites maintenant le montant.'
+        )
+      );
+      return;
+    }
+
+    const message = corrected
+      ? translate(
+          'create.amount.voiceNoAmount',
+          'Montant non reconnu. Dites un nombre comme "12.5".'
+        )
+      : translate(
+          'create.amount.voiceEmpty',
+          'Aucun montant détecté. Réessayez en articulant clairement.'
+        );
+    setErrors((prev) => ({ ...prev, amount: message }));
+    setVoiceHint('');
+  };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setIsVoiceSupported(false);
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = voiceLanguage || locale;
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 5;
+    recognition.onresult = (event: any) => {
+      const options: Array<{ text: string; isFinal: boolean }> = [];
+      const results = event?.results || [];
+      for (let i = 0; i < results.length; i += 1) {
+        const result = results[i];
+        const isFinal = !!result.isFinal;
+        for (let j = 0; j < result.length; j += 1) {
+          const alt = result[j]?.transcript;
+          if (alt && typeof alt === 'string') options.push({ text: alt, isFinal });
+        }
+      }
+      if (options.length === 0) options.push({ text: '', isFinal: false });
+
+      let best = options[0];
+      let bestScore = -1;
+      let bestAmount: string | undefined;
+      let bestAmountMeta: { decimalDigits: number; hasDecimal: boolean } = { decimalDigits: 0, hasDecimal: false };
+      let bestToken: TokenSymbol | undefined;
+      for (const option of options) {
+        const amountInfo = extractAmountFromTranscript(option.text);
+        const amount = amountInfo.amount;
+        const token = detectTokenFromTranscript(option.text);
+        const score =
+          (amountInfo.decimalDigits * 10) +
+          (amountInfo.hasDecimal ? 5 : 0) +
+          (amount ? 1 : 0) +
+          (token ? 1 : 0) +
+          (option.isFinal ? 1 : 0);
+        if (score > bestScore) {
+          bestScore = score;
+          best = option;
+          bestAmount = amount;
+          bestAmountMeta = amountInfo;
+          bestToken = token;
+        }
+      }
+
+      if (voiceCommandMode) {
+        const bestText = applyCorrections(best.text, voiceCorrections);
+        setVoiceTranscript(bestText);
+        const normalized = bestText.toLowerCase();
+        const normalizedTrimmed = normalized.replace(/\s+/g, ' ').trim();
+        if (normalizedTrimmed === 'je vous ecoute' || normalizedTrimmed === 'je vous écoute') {
+          return;
+        }
+
+        if (voiceAwaitingConfirm) {
+          if (normalized.includes('oui') || normalized.includes('yes') || normalized.includes('ok')) {
+            setVoiceAwaitingConfirm(false);
+            setVoiceCommandMode(false);
+            speak(
+              translate('create.voice.confirmed', 'Confirmation reçue. Ouverture de MetaMask.'),
+              () => {
+                formRef.current?.requestSubmit();
+              }
+            );
+            return;
+          }
+          if (normalized.includes('non') || normalized.includes('no') || normalized.includes('annuler')) {
+            setVoiceAwaitingConfirm(false);
+            setVoiceCommandMode(false);
+            speak(translate('create.voice.cancelled', 'D\'accord, j\'annule.'));
+            return;
+          }
+        }
+
+        if (voiceAwaitingDate) {
+          const pending = pendingVoiceCommandRef.current;
+          const date = parseDateFromVoice(bestText);
+          if (pending && date) {
+            pending.date = date;
+            setVoiceAwaitingDate(false);
+            pendingVoiceCommandRef.current = pending;
+          } else {
+            speak(
+              translate('create.voice.needDate', 'Je n\'ai pas compris la date. Dites par exemple "12 septembre".')
+            );
+            return;
+          }
+        }
+
+        const command = parseVoiceCommand(bestText);
+        if (voiceAwaitingDate && pendingVoiceCommandRef.current) {
+          return;
+        }
+
+        const cleanedText = bestText.replace(/je vous ecoute|je vous écoute/gi, '').trim();
+        handlePaymentTimingChange(command.timing as PaymentTiming);
+        setCancellable(command.cancellable);
+        if (command.months && command.timing === 'recurring') {
+          setRecurringMonths(command.months);
+        }
+        if (command.beneficiary?.address) {
+          setFormData((prev) => ({
+            ...prev,
+            beneficiary: command.beneficiary?.address || prev.beneficiary,
+          }));
+          setErrors((prev) => ({ ...prev, beneficiary: '' }));
+        } else if (favoriteAddresses.length === 1) {
+          setFormData((prev) => ({
+            ...prev,
+            beneficiary: favoriteAddresses[0],
+          }));
+          setErrors((prev) => ({ ...prev, beneficiary: '' }));
+        }
+        if (command.date) {
+          handleDateChange(command.date);
+        }
+        if ((command.timing === 'scheduled' || command.timing === 'recurring') && !command.date) {
+          pendingVoiceCommandRef.current = command;
+          setVoiceAwaitingDate(true);
+          speak(translate('create.voice.askDate', 'Quelle date pour le premier paiement ?'));
+          return;
+        }
+        if (!command.beneficiary?.address || !command.amount) {
+          if (cleanedText && cleanedText !== bestText) {
+            const retryCommand = parseVoiceCommand(cleanedText);
+            if (retryCommand.amount || retryCommand.beneficiary?.address) {
+              pendingVoiceCommandRef.current = retryCommand;
+              setVoiceAwaitingConfirm(false);
+              setVoiceAwaitingDate(false);
+              const fallbackSummary = `J\'ai compris ${retryCommand.beneficiary?.label ? `le bénéficiaire ${retryCommand.beneficiary.label}` : 'le bénéficiaire'}${retryCommand.amount ? `, montant ${retryCommand.amount} ${retryCommand.token}` : ''}. Continuez.`;
+              speak(fallbackSummary);
+              return;
+            }
+          }
+          speak(
+            translate(
+              'create.voice.help',
+              'Dites par exemple : "envoyer à Ali 3 usdc paiement instantané".'
+            )
+          );
+          return;
+        }
+        if (command.amount) {
+          setFormData((prev) => ({
+            ...prev,
+            amount: command.amount as string,
+            tokenSymbol: command.token as TokenSymbol,
+          }));
+        }
+
+        if (command.amount) {
+          setErrors((prev) => ({ ...prev, amount: '' }));
+        }
+
+        
+
+        const summary = `Je vais envoyer ${command.amount || ''} ${command.token} à ${command.beneficiary?.label || 'le bénéficiaire'} en paiement ${
+          command.timing === 'instant' ? 'instantané' : command.timing === 'scheduled' ? 'programmé' : 'récurrent'
+        }${command.timing === 'recurring' && command.months ? ` pour ${command.months} mois` : ''}${
+          command.date ? `, première date ${command.date.toLocaleDateString(locale)}` : ''
+        }${command.cancellable ? ', annulable' : ', non annulable'}. Dites oui pour confirmer.`;
+        setVoiceCommandSummary(summary);
+        setVoiceAwaitingConfirm(true);
+        recognitionRef.current?.stop?.();
+        speak(summary, () => {
+          try {
+            recognitionRef.current?.start?.();
+          } catch {
+            // ignore
+          }
+        });
+        return;
+      }
+
+      const now = Date.now();
+      const last = lastVoiceRef.current;
+      const shouldKeepLast =
+        last.amount &&
+        now - last.at < 3000 &&
+        bestAmount &&
+        bestAmountMeta.hasDecimal &&
+        last.meta.hasDecimal &&
+        last.meta.decimalDigits > bestAmountMeta.decimalDigits;
+
+      if (shouldKeepLast) {
+        bestAmount = last.amount;
+        bestAmountMeta = last.meta;
+        bestToken = bestToken || last.token;
+        best = { text: last.transcript, isFinal: true };
+      } else if (!bestAmount) {
+        const singleDigit = extractSingleDigit(best.text);
+        if (
+          singleDigit &&
+          last.amount &&
+          last.meta.hasDecimal &&
+          last.meta.decimalDigits < 2 &&
+          now - last.at < 5000
+        ) {
+          const [left, right = ''] = last.amount.split('.');
+          const appended = `${left}.${right}${singleDigit}`;
+          bestAmount = appended;
+          bestAmountMeta = { hasDecimal: true, decimalDigits: right.length + 1 };
+          bestToken = bestToken || last.token;
+        }
+      }
+
+      const correctedBestText = applyCorrections(best.text, voiceCorrections);
+      if (correctedBestText !== best.text) {
+        const correctedAmountInfo = extractAmountFromTranscript(correctedBestText);
+        const correctedToken = detectTokenFromTranscript(correctedBestText);
+        if (correctedAmountInfo.amount) {
+          bestAmount = correctedAmountInfo.amount;
+          bestAmountMeta = correctedAmountInfo;
+        }
+        if (correctedToken) {
+          bestToken = correctedToken;
+        }
+        best = { ...best, text: correctedBestText };
+      }
+
+      if (!bestAmount) {
+        const fallbackDigit = extractSingleDigit(best.text);
+        if (fallbackDigit) {
+          bestAmount = fallbackDigit;
+          bestAmountMeta = { hasDecimal: false, decimalDigits: 0 };
+        }
+      }
+
+      lastVoiceRef.current = {
+        amount: bestAmount,
+        meta: bestAmountMeta,
+        token: bestToken,
+        transcript: best.text,
+        at: now,
+      };
+
+      setVoiceTranscript(best.text);
+
+      if (bestAmount) {
+        setVoiceParsedAmount(bestAmount);
+        if (bestAmountMeta.hasDecimal && bestAmountMeta.decimalDigits === 1) {
+          setVoiceHint(
+            translate(
+              'create.amount.voiceDecimalsHint',
+              'Décimales détectées. Si vous voulez plus de précision, dites "zéro virgule zéro un".'
+            )
+          );
+        } else {
+          setVoiceHint('');
+        }
+        setFormData((prev) => ({
+          ...prev,
+          amount: bestAmount,
+          tokenSymbol: bestToken || 'USDC',
+        }));
+        setErrors((prev) => ({ ...prev, amount: '' }));
+      } else {
+        setVoiceParsedAmount('');
+        if (bestToken) {
+          setFormData((prev) => ({
+            ...prev,
+            tokenSymbol: bestToken,
+          }));
+          setErrors((prev) => ({ ...prev, amount: '' }));
+          setVoiceHint(
+            translate(
+              'create.amount.voiceTokenOnly',
+              'Token détecté. Dites maintenant le montant.'
+            )
+          );
+        } else {
+          const message = best.text
+            ? translate(
+                'create.amount.voiceNoAmount',
+                'Montant non reconnu. Dites un nombre comme "12.5".'
+              )
+            : translate(
+                'create.amount.voiceEmpty',
+                'Aucun montant détecté. Réessayez en articulant clairement.'
+              );
+          setErrors((prev) => ({ ...prev, amount: message }));
+          setVoiceHint('');
+        }
+      }
+    };
+    recognition.onerror = () => {
+      setErrors((prev) => ({
+        ...prev,
+        amount: translate(
+          'create.amount.voiceError',
+          'Impossible de lire la saisie vocale. Réessayez.'
+        ),
+      }));
+      setIsListening(false);
+    };
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognitionRef.current = recognition;
+    setIsVoiceSupported(true);
+
+    return () => {
+      recognition.abort();
+      recognitionRef.current = null;
+    };
+  }, [locale, voiceLanguage]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const storedLang = localStorage.getItem(voiceLanguageStorageKey);
+      if (storedLang && voiceLanguageOptions.includes(storedLang)) {
+        setVoiceLanguage(storedLang);
+      } else {
+        setVoiceLanguage(locale);
+      }
+      const stored = localStorage.getItem(voiceStorageKey);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed && typeof parsed === 'object') {
+          setVoiceCorrections(parsed as Record<string, string>);
+        }
+      }
+    } catch {
+      // ignore invalid storage
+    }
+  }, [voiceStorageKey, locale]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const fetchGlobalCorrections = async () => {
+      try {
+        const response = await fetch(`/api/voice-corrections?lang=${encodeURIComponent(languageKey)}`);
+        if (!response.ok) return;
+        const payload = await response.json();
+        const data: Array<{ from_text: string; to_text: string }> = payload?.data || [];
+        const globalMap = data.reduce<Record<string, string>>((acc, item) => {
+          if (item?.from_text && item?.to_text) {
+            acc[item.from_text] = item.to_text;
+          }
+          return acc;
+        }, {});
+        setVoiceCorrections((prev) => {
+          const merged = { ...globalMap, ...prev };
+          try {
+            localStorage.setItem(voiceStorageKey, JSON.stringify(merged));
+          } catch {
+            // ignore storage failure
+          }
+          return merged;
+        });
+      } catch {
+        // ignore fetch error
+      }
+    };
+    fetchGlobalCorrections();
+  }, [languageKey]);
 
   useEffect(() => {
     setCancellable(true);
@@ -754,7 +1646,7 @@ export default function PaymentForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
+    <form ref={formRef} onSubmit={handleSubmit} className="space-y-8">
       {/* Section 1 : Choix de la crypto */}
       <div className="glass rounded-2xl p-6">
         <CurrencySelector
@@ -997,6 +1889,7 @@ export default function PaymentForm() {
         </label>
         <div className="relative">
           <input
+            ref={amountInputRef}
             type="number"
             step="any"
             value={formData.amount}
@@ -1004,7 +1897,7 @@ export default function PaymentForm() {
             onWheel={(event) => (event.currentTarget as HTMLInputElement).blur()}
             placeholder="0.0"
             className={`
-              w-full px-4 py-3 pr-20 rounded-xl border-2 
+              w-full px-4 py-3 pr-32 rounded-xl border-2 
               bg-white dark:bg-gray-800
               text-gray-900 dark:text-white
               text-lg font-medium
@@ -1017,13 +1910,200 @@ export default function PaymentForm() {
               focus:outline-none focus:ring-4 focus:ring-primary-500/20
             `}
           />
-          <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">
-            {formData.tokenSymbol}
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2 text-gray-500 font-medium">
+            <button
+              type="button"
+              onClick={() => {
+                const currentIndex = voiceLanguageOptions.indexOf(voiceLanguage || locale);
+                const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % voiceLanguageOptions.length;
+                const nextLang = voiceLanguageOptions[nextIndex];
+                setVoiceLanguage(nextLang);
+                try {
+                  localStorage.setItem(voiceLanguageStorageKey, nextLang);
+                } catch {
+                  // ignore storage failure
+                }
+              }}
+              className="inline-flex items-center rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-600 hover:border-primary-400 hover:text-primary-600"
+              title={translate('create.amount.voiceLang', 'Langue de la reconnaissance vocale')}
+              aria-label={translate('create.amount.voiceLang', 'Langue de la reconnaissance vocale')}
+            >
+              {(voiceLanguage || locale).split('-')[0].toUpperCase()}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (!isVoiceSupported) return;
+                if (isListening) {
+                  recognitionRef.current?.stop?.();
+                  return;
+                }
+                setErrors((prev) => ({ ...prev, amount: '' }));
+                setVoiceHint('');
+                setVoiceParsedAmount('');
+                setVoiceTranscript('');
+              lastVoiceRef.current = {
+                amount: undefined,
+                meta: { decimalDigits: 0, hasDecimal: false },
+                token: undefined,
+                transcript: '',
+                at: 0,
+              };
+                try {
+                  recognitionRef.current?.start?.();
+                  setIsListening(true);
+                } catch {
+                  setIsListening(false);
+                }
+              }}
+              disabled={!isVoiceSupported}
+              aria-label={
+                isListening
+                  ? translate('create.amount.voiceStop', 'Arrêter la saisie vocale')
+                  : translate('create.amount.voiceStart', 'Saisir le montant par la voix')
+              }
+              title={
+                isListening
+                  ? translate('create.amount.voiceStop', 'Arrêter la saisie vocale')
+                  : translate('create.amount.voiceStart', 'Saisir le montant par la voix')
+              }
+              className={`
+                inline-flex items-center justify-center w-8 h-8 rounded-lg border
+                transition-all
+                ${
+                  isVoiceSupported
+                    ? isListening
+                      ? 'border-red-300 bg-red-50 text-red-600'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-primary-400 hover:text-primary-600'
+                    : 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
+                }
+              `}
+            >
+              <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 14a3 3 0 003-3V7a3 3 0 10-6 0v4a3 3 0 003 3z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-14 0" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v3" />
+              </svg>
+            </button>
+            <span>{formData.tokenSymbol}</span>
           </div>
         </div>
         {errors.amount && (
           <p className="text-sm text-red-600 dark:text-red-400">
             {errors.amount}
+          </p>
+        )}
+        {voiceTranscript && (
+          <div className="text-xs text-gray-500 dark:text-gray-400 space-y-2">
+            <div>
+              {translate('create.amount.voiceDetected', 'Vocal détecté :')} {voiceTranscript}
+            </div>
+            {!showVoiceCorrection && (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowVoiceCorrection(true);
+                  setVoiceCorrectionFrom(voiceTranscript.toLowerCase());
+                  setVoiceCorrectionTo('');
+                }}
+                className="text-xs text-primary-600 hover:text-primary-700"
+              >
+                {translate('create.amount.voiceCorrectionButton', 'Ajouter une correction')}
+              </button>
+            )}
+          </div>
+        )}
+        {voiceParsedAmount && (
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            {translate('create.amount.voiceParsed', 'Montant interprété :')} {voiceParsedAmount}
+          </p>
+        )}
+        {showVoiceCorrection && (
+          <div className="mt-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-3 text-xs space-y-2">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <label className="flex flex-col gap-1">
+                <span className="text-gray-500 dark:text-gray-400">
+                  {translate('create.amount.voiceCorrectionHeard', 'Entendu')}
+                </span>
+                <input
+                  type="text"
+                  value={voiceCorrectionFrom}
+                  onChange={(e) => setVoiceCorrectionFrom(e.target.value)}
+                  className="rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1"
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-gray-500 dark:text-gray-400">
+                  {translate('create.amount.voiceCorrectionReplace', 'Remplacer par')}
+                </span>
+                <input
+                  type="text"
+                  value={voiceCorrectionTo}
+                  onChange={(e) => setVoiceCorrectionTo(e.target.value)}
+                  placeholder="centime"
+                  className="rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1"
+                />
+              </label>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={async () => {
+                  const from = voiceCorrectionFrom.trim().toLowerCase();
+                  const to = voiceCorrectionTo.trim().toLowerCase();
+                  if (!from || !to) return;
+                  const next = { ...voiceCorrections, [from]: to };
+                  setVoiceCorrections(next);
+                  try {
+                    localStorage.setItem(voiceStorageKey, JSON.stringify(next));
+                  } catch {
+                    // ignore storage failure
+                  }
+                  try {
+                    await fetch('/api/voice-corrections', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        language: languageKey,
+                        from_text: from,
+                        to_text: to,
+                      }),
+                    });
+                  } catch {
+                    // ignore network errors for now
+                  }
+                  setLastVoiceCorrection(`${from} → ${to}`);
+                  setShowVoiceCorrection(false);
+                  setVoiceCorrectionFrom('');
+                  setVoiceCorrectionTo('');
+                  applyParsedResult(voiceTranscript, next);
+                }}
+                className="px-2 py-1 rounded-md bg-primary-600 text-white hover:bg-primary-700"
+              >
+                {translate('create.amount.voiceCorrectionSave', 'Enregistrer')}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowVoiceCorrection(false);
+                  setVoiceCorrectionFrom('');
+                  setVoiceCorrectionTo('');
+                }}
+                className="px-2 py-1 rounded-md border border-gray-200 dark:border-gray-700"
+              >
+                {translate('create.amount.voiceCorrectionCancel', 'Annuler')}
+              </button>
+            </div>
+          </div>
+        )}
+        {voiceHint && (
+          <p className="text-xs text-blue-600 dark:text-blue-400">
+            {voiceHint}
+          </p>
+        )}
+        {lastVoiceCorrection && (
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            {translate('create.amount.voiceCorrectionLast', 'Dernière correction :')} {lastVoiceCorrection}
           </p>
         )}
         

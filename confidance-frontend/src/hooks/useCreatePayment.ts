@@ -28,6 +28,65 @@ const getFactoryAddress = (isInstant: boolean): `0x${string}` =>
 const getFactoryAbi = (isInstant: boolean) =>
   (isInstant ? paymentFactoryInstantAbi : paymentFactoryScheduledAbi);
 
+const getFriendlyApprovalErrorMessage = (error: Error): string => {
+  const candidates = [
+    error.message,
+    (error as any)?.shortMessage,
+    (error as any)?.cause?.message,
+  ].filter(Boolean) as string[];
+  const errorMsgLower = candidates.join(' | ').toLowerCase();
+
+  if (
+    errorMsgLower.includes('user rejected') ||
+    errorMsgLower.includes('user denied') ||
+    errorMsgLower.includes('user cancelled')
+  ) {
+    return 'Transaction annulée. Aucun prélèvement n’a été effectué. Vous pouvez réessayer quand vous voulez.';
+  }
+  if (
+    errorMsgLower.includes('insufficient funds') ||
+    errorMsgLower.includes('balance') ||
+    errorMsgLower.includes('insufficient balance')
+  ) {
+    return 'Balance ETH insuffisante pour payer les frais de transaction (gas). Veuillez ajouter de l\'ETH à votre wallet.';
+  }
+  if (errorMsgLower.includes('nonce') || errorMsgLower.includes('replacement transaction')) {
+    return 'Erreur de nonce. Veuillez réessayer dans quelques instants.';
+  }
+  if (errorMsgLower.includes('network') || errorMsgLower.includes('connection') || errorMsgLower.includes('rpc')) {
+    return 'Erreur de connexion réseau ou RPC. Vérifiez votre connexion internet et réessayez.';
+  }
+  if (errorMsgLower.includes('gas') || errorMsgLower.includes('transaction underpriced')) {
+    return 'Erreur de gas. Vérifiez votre connexion réseau et réessayez.';
+  }
+  if (candidates.length > 0) {
+    return `Erreur lors de l'approbation. ${candidates[0]}`;
+  }
+  return 'Erreur lors de l\'approbation. Vérifiez MetaMask pour plus de détails.';
+};
+
+const isUserRejectedError = (error: Error): boolean => {
+  const candidates = [
+    error.message,
+    (error as any)?.shortMessage,
+    (error as any)?.cause?.message,
+  ].filter(Boolean) as string[];
+  const msg = candidates.join(' | ').toLowerCase();
+  return msg.includes('user rejected') || msg.includes('user denied') || msg.includes('user cancelled');
+};
+
+const safeStringify = (value: unknown): string => {
+  try {
+    return JSON.stringify(
+      value,
+      (_, v) => (typeof v === 'bigint' ? v.toString() : v),
+      2
+    );
+  } catch (error) {
+    return `"[unserializable: ${(error as Error)?.message || 'unknown'}]"`;
+  }
+};
+
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 // ✅ Multi-chain : réseau courant (utilisé par l'API / DB)
@@ -836,6 +895,14 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             console.log('⏳ [APPROBATION] Attente de la transaction MetaMask...');
             console.log('📊 [APPROBATION] Si MetaMask rejette la transaction, vérifiez les logs [useTokenApproval] ci-dessus');
           } catch (err) {
+            if (isUserRejectedError(err as Error)) {
+              const errorMessage = getFriendlyApprovalErrorMessage(err as Error);
+              console.info('ℹ️ [APPROBATION] Annulée par l’utilisateur.');
+              setError(new Error(errorMessage));
+              setStatus('error');
+              setProgressMessage(errorMessage);
+              return;
+            }
             console.error('❌ [ERREUR APPROBATION] Erreur lors de l\'appel currentApprovalHook.approve():', err);
             console.error('❌ [ERREUR APPROBATION] Stack trace:', (err as Error)?.stack);
             console.error('❌ [ERREUR APPROBATION] Détails:', {
@@ -873,36 +940,23 @@ export function useCreatePayment(): UseCreatePaymentReturn {
   useEffect(() => {
     // Si on est en train d'approuver et qu'une erreur survient, mettre à jour immédiatement
     if (status === 'approving' && approvalHook.approveError) {
-      console.error('❌ [ERREUR APPROBATION DÉTECTÉE] Erreur d\'approbation pendant le processus:', {
-        error: approvalHook.approveError,
-        message: approvalHook.approveError.message,
-        name: approvalHook.approveError.name,
-        stack: approvalHook.approveError.stack,
-        status,
-      });
-      
       // Analyser l'erreur pour donner un message plus clair
-      let errorMessage = 'Erreur lors de l\'approbation. ';
-      const errorMsgLower = approvalHook.approveError.message?.toLowerCase() || '';
+      const errorMessage = getFriendlyApprovalErrorMessage(approvalHook.approveError);
       
-      if (errorMsgLower.includes('user rejected') || errorMsgLower.includes('user denied') || errorMsgLower.includes('user cancelled')) {
-        errorMessage = 'Transaction d\'approbation annulée par l\'utilisateur dans MetaMask.';
-      } else if (errorMsgLower.includes('insufficient funds') || errorMsgLower.includes('balance') || errorMsgLower.includes('insufficient balance')) {
-        errorMessage = 'Balance ETH insuffisante pour payer les frais de transaction (gas). Veuillez ajouter de l\'ETH à votre wallet.';
-      } else if (errorMsgLower.includes('nonce') || errorMsgLower.includes('replacement transaction')) {
-        errorMessage = 'Erreur de nonce. Veuillez réessayer dans quelques instants.';
-      } else if (errorMsgLower.includes('network') || errorMsgLower.includes('connection') || errorMsgLower.includes('rpc')) {
-        errorMessage = 'Erreur de connexion réseau ou RPC. Vérifiez votre connexion internet et réessayez.';
-      } else if (errorMsgLower.includes('gas') || errorMsgLower.includes('transaction underpriced')) {
-        errorMessage = 'Erreur de gas. Vérifiez votre connexion réseau et réessayez.';
-      } else if (approvalHook.approveError.message) {
-        errorMessage += approvalHook.approveError.message;
+      if (isUserRejectedError(approvalHook.approveError)) {
+        console.info('ℹ️ [APPROBATION] Annulée par l’utilisateur.');
+        console.info('ℹ️ [ERREUR APPROBATION] Message d\'annulation:', errorMessage);
       } else {
-        errorMessage += 'Vérifiez MetaMask pour plus de détails.';
+        console.error('❌ [ERREUR APPROBATION DÉTECTÉE] Erreur d\'approbation pendant le processus:', {
+          error: approvalHook.approveError,
+          message: approvalHook.approveError.message,
+          name: approvalHook.approveError.name,
+          stack: approvalHook.approveError.stack,
+          status,
+        });
+        console.error('❌ [ERREUR APPROBATION] Message d\'erreur final:', errorMessage);
       }
-      
-      console.error('❌ [ERREUR APPROBATION] Message d\'erreur final:', errorMessage);
-      setError(approvalHook.approveError);
+      setError(new Error(errorMessage));
       setStatus('error');
       setProgressMessage(errorMessage);
       
@@ -945,12 +999,16 @@ export function useCreatePayment(): UseCreatePaymentReturn {
     
     // ✅ FIX : Logger les erreurs d'approbation (mais ne pas mettre à jour le statut ici, c'est fait dans le useEffect précédent)
     if (approvalHook.approveError) {
-      console.error('❌ [SUIVI APPROBATION] Erreur d\'approbation détectée:', {
-        error: approvalHook.approveError,
-        message: approvalHook.approveError.message,
-        name: approvalHook.approveError.name,
-        stack: approvalHook.approveError.stack,
-      });
+      if (isUserRejectedError(approvalHook.approveError)) {
+        console.info('ℹ️ [SUIVI APPROBATION] Annulation utilisateur détectée.');
+      } else {
+        console.error('❌ [SUIVI APPROBATION] Erreur d\'approbation détectée:', {
+          error: approvalHook.approveError,
+          message: approvalHook.approveError.message,
+          name: approvalHook.approveError.name,
+          stack: approvalHook.approveError.stack,
+        });
+      }
     }
   }, [approvalHook.approveTxHash, approvalHook.isApproveSuccess, approvalHook.isApproving, approvalHook.approveError, approvalHook.approveReceipt, approvalHook.currentAllowance, approvalHook.isAllowanceSufficient, status]);
 
@@ -993,14 +1051,19 @@ export function useCreatePayment(): UseCreatePaymentReturn {
     ) {
       // ✅ FIX CRITIQUE : Vérifier s'il y a une erreur d'approbation
       if (approvalHook.approveError) {
-        console.error('❌ ERREUR D\'APPROBATION DÉTECTÉE:', {
-          error: approvalHook.approveError,
-          message: approvalHook.approveError.message,
-          name: approvalHook.approveError.name,
-        });
-        setError(approvalHook.approveError);
+        if (isUserRejectedError(approvalHook.approveError)) {
+          console.info('ℹ️ [APPROBATION] Annulation utilisateur détectée.');
+        } else {
+          console.error('❌ ERREUR D\'APPROBATION DÉTECTÉE:', {
+            error: approvalHook.approveError,
+            message: approvalHook.approveError.message,
+            name: approvalHook.approveError.name,
+          });
+        }
+        const errorMessage = getFriendlyApprovalErrorMessage(approvalHook.approveError);
+        setError(new Error(errorMessage));
         setStatus('error');
-        setProgressMessage('Erreur lors de l\'approbation - ' + approvalHook.approveError.message);
+        setProgressMessage(errorMessage);
         return;
       }
 
@@ -2271,7 +2334,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
     if (writeError) {
       console.error('❌ Erreur writeContract détectée:', writeError);
       console.error('❌ Type d\'erreur:', typeof writeError);
-      console.error('❌ Détails erreur complets:', JSON.stringify(writeError, null, 2));
+      console.error('❌ Détails erreur complets:', safeStringify(writeError));
       console.error('❌ Détails erreur:', {
         name: writeError.name,
         message: writeError.message,
@@ -2294,7 +2357,12 @@ export function useCreatePayment(): UseCreatePaymentReturn {
       
       // ✅ FIX : Message d'erreur plus détaillé avec détection précise
       let errorMessage = 'Transaction annulée ou échouée.';
-      const errorMsgLower = writeError.message?.toLowerCase() || '';
+      const errorCandidates = [
+        writeError.message,
+        (writeError as any)?.shortMessage,
+        (writeError as any)?.cause?.message,
+      ].filter(Boolean) as string[];
+      const errorMsgLower = errorCandidates.join(' | ').toLowerCase();
       
       if (errorMsgLower.includes('user rejected') || errorMsgLower.includes('user denied') || errorMsgLower.includes('user cancelled')) {
         errorMessage = 'Transaction annulée par l\'utilisateur dans MetaMask.';

@@ -113,7 +113,7 @@ export default function Home() {
   return (
     <>
         {/* Hero Section */}
-        <section className="relative overflow-hidden py-12 sm:py-20">
+        <section className="relative overflow-hidden py-10 sm:py-16">
           {/* Background decorations */}
           <div className="absolute inset-0 -z-10">
             <div className="absolute top-0 left-1/4 w-96 h-96 gradient-primary rounded-full blur-3xl opacity-20 animate-float" />
@@ -204,7 +204,7 @@ export default function Home() {
         </section>
 
         {/* Stats Section */}
-        <section className="py-10 sm:py-12 border-y border-gray-200 dark:border-gray-800">
+        <section className="py-8 sm:py-10 border-y border-gray-200 dark:border-gray-800">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {stats.map((stat, i) => (
@@ -219,13 +219,13 @@ export default function Home() {
         </section>
 
         {/* Features Section */}
-        <section className="py-20 sm:py-32">
+        <section className="py-16 sm:py-24">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-16 space-y-4">
-              <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white">
+            <div className="text-center mb-12 space-y-4">
+              <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white animate-slide-in-right">
                 {isMounted && ready ? t('home.why.title') : 'Pourquoi Confidance ?'}
               </h2>
-              <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+              <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto animate-slide-in-left">
                 {isMounted && ready ? t('home.why.description') : 'La plateforme la plus simple et sécurisée pour programmer vos paiements crypto'}
               </p>
             </div>
@@ -256,9 +256,9 @@ export default function Home() {
         </section>
 
         {/* Use Cases Section */}
-        <section className="pt-12 pb-20 sm:pt-16 sm:pb-28 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-950">
+        <section className="pt-10 pb-16 sm:pt-12 sm:pb-22 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-950">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl">
-            <div className="text-center mb-16 space-y-4">
+            <div className="text-center mb-12 space-y-4">
               <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white">
                 {isMounted && ready ? t('home.useCases.title') : 'Cas d\'usage'}
               </h2>
@@ -299,7 +299,7 @@ export default function Home() {
         </section>
 
         {/* CTA Section */}
-        <section className="py-20 sm:py-32">
+        <section className="py-16 sm:py-24">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="relative glass rounded-3xl p-12 sm:p-16 text-center overflow-hidden">
               <div className="absolute inset-0 gradient-primary opacity-10 -z-10" />

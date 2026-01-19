@@ -11,6 +11,28 @@ import {
 import { type TokenSymbol, getToken } from '@/config/tokens';
 import { erc20Abi } from '@/lib/contracts/erc20Abi';
 
+const safeStringify = (value: unknown): string => {
+  try {
+    return JSON.stringify(
+      value,
+      (_, v) => (typeof v === 'bigint' ? v.toString() : v),
+      2
+    );
+  } catch (error) {
+    return `"[unserializable: ${(error as Error)?.message || 'unknown'}]"`;
+  }
+};
+
+const isUserRejectedError = (error: Error): boolean => {
+  const candidates = [
+    error.message,
+    (error as any)?.shortMessage,
+    (error as any)?.cause?.message,
+  ].filter(Boolean) as string[];
+  const msg = candidates.join(' | ').toLowerCase();
+  return msg.includes('user rejected') || msg.includes('user denied') || msg.includes('user cancelled');
+};
+
 interface UseTokenApprovalProps {
   tokenSymbol: TokenSymbol;
   spenderAddress: `0x${string}` | undefined;
@@ -96,18 +118,22 @@ export function useTokenApproval({
   // ✅ FIX : Logs détaillés pour suivre les erreurs d'approbation
   useEffect(() => {
     if (approveError) {
-      console.error('❌ [useTokenApproval] Erreur approbation détectée:', approveError);
-      console.error('❌ [useTokenApproval] Type d\'erreur:', typeof approveError);
-      console.error('❌ [useTokenApproval] Détails complets:', JSON.stringify(approveError, null, 2));
-      console.error('❌ [useTokenApproval] Détails erreur:', {
-        name: approveError.name,
-        message: approveError.message,
-        cause: approveError.cause,
-        stack: approveError.stack,
-        code: (approveError as any)?.code,
-        shortMessage: (approveError as any)?.shortMessage,
-        data: (approveError as any)?.data,
-      });
+      if (isUserRejectedError(approveError)) {
+        console.info('ℹ️ [useTokenApproval] Approbation annulée par l’utilisateur.');
+      } else {
+        console.error('❌ [useTokenApproval] Erreur approbation détectée:', approveError);
+        console.error('❌ [useTokenApproval] Type d\'erreur:', typeof approveError);
+        console.error('❌ [useTokenApproval] Détails complets:', safeStringify(approveError));
+        console.error('❌ [useTokenApproval] Détails erreur:', {
+          name: approveError.name,
+          message: approveError.message,
+          cause: approveError.cause,
+          stack: approveError.stack,
+          code: (approveError as any)?.code,
+          shortMessage: (approveError as any)?.shortMessage,
+          data: (approveError as any)?.data,
+        });
+      }
     }
   }, [approveError]);
 

@@ -2,7 +2,7 @@
   "nav": {
     "home": "首页",
     "create": "创建",
-    "dashboard": "仪表板",
+    "dashboard": "我的仪表板",
     "help": "帮助"
   },
   "common": {
@@ -32,8 +32,12 @@
       },
       "flexible": {
         "title": "灵活",
-        "description": "支持 ETH、USDC、USDT。可安排从 5 分钟到数年"
+      "description": "ETH、USDT、USDC……多链支持，随时可用。"
       }
+    },
+    "why": {
+      "title": "为什么选择 Confidance？",
+      "description": "用于安排加密支付的最简单、最安全的平台"
     },
     "useCases": {
       "salaries": {
@@ -56,6 +60,10 @@
         "title": "保险与担保",
         "desc": "开通费用后按月保障"
       }
+    },
+    "status": {
+      "operational": "系统运行正常",
+      "maintenance": "维护中"
     },
     "stats": {
       "executed": "已执行支付",
@@ -217,7 +225,7 @@
       "weekly": "每周"
     },
     "dashboard": {
-      "button": "我的链接",
+      "button": "我的支付链接",
       "title": "我的支付链接",
       "empty": "暂无支付链接",
       "status": "状态",

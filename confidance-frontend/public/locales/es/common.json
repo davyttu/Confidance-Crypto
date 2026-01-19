@@ -2,7 +2,7 @@
   "nav": {
     "home": "Inicio",
     "create": "Crear",
-    "dashboard": "Panel",
+    "dashboard": "Mi panel",
     "help": "Ayuda"
   },
   "common": {
@@ -32,8 +32,12 @@
       },
       "flexible": {
         "title": "Flexible",
-        "description": "ETH, USDC, USDT. Programa desde 5 minutos hasta varios años"
+      "description": "ETH, USDT, USDC... Multicadena, cuando quieras."
       }
+    },
+    "why": {
+      "title": "¿Por qué Confidance?",
+      "description": "La plataforma más simple y segura para programar tus pagos cripto"
     },
     "useCases": {
       "salaries": {
@@ -56,6 +60,10 @@
         "title": "Seguros y garantías",
         "desc": "Cuota de activación, luego cobertura mensual"
       }
+    },
+    "status": {
+      "operational": "Sistema en funcionamiento",
+      "maintenance": "Mantenimiento"
     },
     "stats": {
       "executed": "Pagos ejecutados",
@@ -217,7 +225,7 @@
       "weekly": "Semanal"
     },
     "dashboard": {
-      "button": "Mis enlaces",
+      "button": "Mis enlaces de pago",
       "title": "Mis enlaces de pago",
       "empty": "No hay enlaces de pago",
       "status": "Estado",

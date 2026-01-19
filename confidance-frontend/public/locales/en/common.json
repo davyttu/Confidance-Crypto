@@ -2,7 +2,7 @@
   "nav": {
     "home": "Home",
     "create": "Create",
-    "dashboard": "Dashboard",
+    "dashboard": "My Dashboard",
     "help": "Help"
   },
   "common": {
@@ -38,7 +38,7 @@
       },
       "flexible": {
         "title": "Flexible",
-        "description": "ETH, USDC, USDT. Schedule from 5 minutes to several years"
+      "description": "ETH, USDT, USDC... Multi-chain, whenever you want."
       }
     },
     "why": {
@@ -798,7 +798,7 @@
       "weekly": "Weekly"
     },
     "dashboard": {
-      "button": "My links",
+      "button": "My payment links",
       "title": "My payment links",
       "empty": "No payment links yet",
       "hint": "Once a payment is validated, you can find it directly in your dashboard.",

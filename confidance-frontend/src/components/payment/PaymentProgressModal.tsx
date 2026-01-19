@@ -57,6 +57,19 @@ export default function PaymentProgressModal({
     []
   );
   const [wordIndex, setWordIndex] = useState(0);
+  const signature = (
+    <div className="flex items-center justify-center gap-2 pt-2 text-gray-600 dark:text-gray-300">
+      <div className="relative">
+        <div className="absolute inset-0 gradient-primary rounded-lg blur-md opacity-40" />
+        <div className="relative w-7 h-7 gradient-primary rounded-lg flex items-center justify-center shadow-md shadow-primary-500/40">
+          <span className="text-white font-bold text-sm">C</span>
+        </div>
+      </div>
+      <span className="font-semibold text-sm bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 bg-clip-text text-transparent">
+        Confidance
+      </span>
+    </div>
+  );
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -181,6 +194,7 @@ export default function PaymentProgressModal({
             >
               {t('create.modal.close', { defaultValue: 'Fermer' })}
             </button>
+            {signature}
           </div>
         )}
 
@@ -219,6 +233,7 @@ export default function PaymentProgressModal({
             >
               {t('create.modal.close', { defaultValue: 'Fermer' })}
             </button>
+            {signature}
           </div>
         )}
 
@@ -301,6 +316,8 @@ export default function PaymentProgressModal({
                 )}
               </div>
             </div>
+
+            {signature}
 
             {/* Liens vers transactions */}
             <div className="space-y-2 text-sm">
