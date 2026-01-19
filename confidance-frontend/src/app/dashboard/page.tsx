@@ -27,7 +27,7 @@ export default function DashboardPage() {
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
   const { openConnectModal } = useConnectModal();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { payments, isLoading, refetch } = useDashboard();
   const { beneficiaries } = useBeneficiaries();
   const { cancelPayment, status: cancelStatus, error: cancelError, reset: resetCancel } = useCancelPayment();
@@ -77,13 +77,17 @@ export default function DashboardPage() {
   }, [payments, beneficiaries]);
 
   // États locaux
-  const [periodType, setPeriodType] = useState<'all' | 'month' | 'year'>('all');
-  const [periodValue, setPeriodValue] = useState<string | number>();
+  const [periodType, setPeriodType] = useState<'all' | 'month' | 'wallet'>('all');
+  const [periodValue, setPeriodValue] = useState<string | number | string[]>();
   const [selectedPaymentToCancel, setSelectedPaymentToCancel] = useState<Payment | null>(null);
   const [beneficiaryToEdit, setBeneficiaryToEdit] = useState<Beneficiary | null>(null);
   const [beneficiaryAddressToAdd, setBeneficiaryAddressToAdd] = useState<string | undefined>();
+  const [wallets, setWallets] = useState<{ id?: string; wallet_address: string; is_primary?: boolean }[]>([]);
+  const [walletsLoading, setWalletsLoading] = useState(false);
+  const [walletAliases, setWalletAliases] = useState<Record<string, string>>({});
   const walletConnected = Boolean(address);
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  const walletAliasesKey = user?.id ? `walletAliases:${user.id}` : 'walletAliases';
 
   const handleReconnectWallet = () => {
     disconnect();
@@ -137,17 +141,79 @@ export default function DashboardPage() {
     };
   }, [refetch]);
 
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (typeof window === 'undefined') return;
+
+    try {
+      const raw = localStorage.getItem(walletAliasesKey);
+      if (raw) {
+        setWalletAliases(JSON.parse(raw));
+      }
+    } catch (error) {
+      console.error('⚠️ Impossible de charger les alias de wallet:', error);
+    }
+  }, [isAuthenticated, walletAliasesKey]);
+
+  useEffect(() => {
+    const fetchWallets = async () => {
+      if (!isAuthenticated) return;
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      try {
+        setWalletsLoading(true);
+        const response = await fetch(`${API_URL}/api/users/wallets`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          console.error('❌ Erreur récupération wallets:', await response.text());
+          return;
+        }
+
+        const data = await response.json();
+        setWallets(data.wallets || []);
+      } catch (error) {
+        console.error('❌ Erreur récupération wallets:', error);
+      } finally {
+        setWalletsLoading(false);
+      }
+    };
+
+    fetchWallets();
+  }, [API_URL, isAuthenticated]);
+
   // Filtrer les paiements par période
   const filteredPayments = useMemo(() => {
     if (periodType === 'all') return payments;
-    
-    return payments.filter(payment => 
-      isInPeriod(payment.release_time, periodType, periodValue)
-    );
+
+    if (periodType === 'month') {
+      return payments.filter(payment =>
+        isInPeriod(payment.release_time, periodType, periodValue)
+      );
+    }
+
+    if (periodType === 'wallet' && Array.isArray(periodValue)) {
+      if (periodValue.length === 0) return payments;
+      const targets = periodValue.map((value) => value.toLowerCase());
+      return payments.filter((payment) => {
+        const payer = payment.payer_address?.toLowerCase();
+        const payee = payment.payee_address?.toLowerCase();
+        const batch = payment.batch_beneficiaries?.some(
+          (beneficiary) => targets.includes(beneficiary.address?.toLowerCase() || '')
+        );
+        return targets.includes(payer || '') || targets.includes(payee || '') || Boolean(batch);
+      });
+    }
+
+    return payments;
   }, [payments, periodType, periodValue]);
 
   // Gestionnaire de changement de période
-  const handlePeriodChange = (type: 'all' | 'month' | 'year', value?: string | number) => {
+  const handlePeriodChange = (type: 'all' | 'month' | 'wallet', value?: string | number | string[]) => {
     setPeriodType(type);
     setPeriodValue(value);
   };
@@ -235,6 +301,116 @@ export default function DashboardPage() {
     refetch(); // Rafraîchir les paiements
   };
 
+  const persistWalletAliases = (aliases: Record<string, string>) => {
+    setWalletAliases(aliases);
+    try {
+      localStorage.setItem(walletAliasesKey, JSON.stringify(aliases));
+      window.dispatchEvent(new CustomEvent('wallet-aliases-updated', { detail: aliases }));
+    } catch (error) {
+      console.error('⚠️ Impossible de sauvegarder les alias de wallet:', error);
+    }
+  };
+
+  const handleRenameWallet = (address: string, name: string) => {
+    const normalized = address.toLowerCase();
+    const next = { ...walletAliases };
+
+    if (!name) {
+      delete next[normalized];
+    } else {
+      next[normalized] = name;
+    }
+
+    persistWalletAliases(next);
+  };
+
+  const handleDeleteWallet = async (addressToDelete: string) => {
+    const confirmMessage = isMounted && translationsReady
+      ? t('dashboard.wallets.deleteConfirm', { defaultValue: 'Supprimer ce wallet de votre compte ?' })
+      : 'Supprimer ce wallet de votre compte ?';
+
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      const response = await fetch(`${API_URL}/api/users/wallets/${addressToDelete}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || 'Erreur suppression wallet');
+      }
+
+      setWallets((prev) => prev.filter((wallet) => wallet.wallet_address.toLowerCase() !== addressToDelete.toLowerCase()));
+      if (periodType === 'wallet' && periodValue?.toString().toLowerCase() === addressToDelete.toLowerCase()) {
+        handlePeriodChange('all');
+      }
+    } catch (error) {
+      console.error('❌ Erreur suppression wallet:', error);
+      alert(isMounted && translationsReady
+        ? t('dashboard.wallets.deleteError', { defaultValue: 'Erreur lors de la suppression du wallet' })
+        : 'Erreur lors de la suppression du wallet'
+      );
+    }
+  };
+
+  const handleSetPrimaryWallet = async (addressToSet: string) => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      const response = await fetch(`${API_URL}/api/users/wallets/${addressToSet}/primary`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || 'Erreur mise à jour wallet principal');
+      }
+
+      setWallets((prev) =>
+        prev.map((wallet) => ({
+          ...wallet,
+          is_primary: wallet.wallet_address.toLowerCase() === addressToSet.toLowerCase(),
+        }))
+      );
+    } catch (error) {
+      console.error('❌ Erreur wallet principal:', error);
+      alert(isMounted && translationsReady
+        ? t('dashboard.wallets.primaryError', { defaultValue: 'Erreur lors de la mise à jour du wallet principal' })
+        : 'Erreur lors de la mise à jour du wallet principal'
+      );
+    }
+  };
+
+  const walletPeriodLabel = useMemo(() => {
+    if (periodType !== 'wallet') return '';
+    if (!periodValue || !Array.isArray(periodValue)) {
+      return isMounted && translationsReady
+        ? t('dashboard.period.walletGeneric', { defaultValue: 'Wallets' })
+        : 'Wallets';
+    }
+    if (periodValue.length === 1) {
+      const normalized = periodValue[0].toLowerCase();
+      const alias = walletAliases[normalized];
+      return alias || formatWalletLabel(periodValue[0]);
+    }
+    return isMounted && translationsReady
+      ? t('dashboard.period.walletGeneric', { defaultValue: 'Wallets' })
+      : 'Wallets';
+  }, [periodType, periodValue, walletAliases, isMounted, translationsReady, t]);
+
   // Vérifier l'authentification (compte client)
   if (!authLoading && !isAuthenticated) {
     return (
@@ -307,6 +483,10 @@ export default function DashboardPage() {
     );
   }
 
+  const selectedWallets = periodType === 'wallet' && Array.isArray(periodValue)
+    ? periodValue
+    : [];
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -340,21 +520,37 @@ export default function DashboardPage() {
           // Dashboard complet
           <>
             {/* Statistiques */}
-            <StatsCards payments={filteredPayments} />
+            <StatsCards payments={filteredPayments} selectedWallets={selectedWallets} />
 
             {/* Barre d'actions */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
               <PeriodSelector 
                 onChange={handlePeriodChange}
-                oldestTimestamp={payments[payments.length - 1]?.release_time}
+                wallets={wallets}
+                walletsLoading={walletsLoading}
+                connectedWallet={address || null}
+                walletAliases={walletAliases}
+                onRenameWallet={handleRenameWallet}
+                onDeleteWallet={handleDeleteWallet}
+                onSetPrimaryWallet={handleSetPrimaryWallet}
               />
               
               <ExportButton 
                 payments={filteredPayments}
                 userAddress={address || ''}
-                period={periodType === 'month' ? (periodValue as string) : 
-                       periodType === 'year' ? (isMounted && translationsReady ? t('dashboard.period.year', { year: periodValue }) : `Année ${periodValue}`) : 
-                       (isMounted && translationsReady ? t('dashboard.period.allPayments') : 'Tous les paiements')}
+                period={
+                  periodType === 'month'
+                    ? (periodValue as string)
+                    : periodType === 'wallet'
+                      ? (isMounted && translationsReady
+                        ? (Array.isArray(periodValue) && periodValue.length === 1
+                          ? t('dashboard.period.wallet', { wallet: walletPeriodLabel, defaultValue: `Wallet ${walletPeriodLabel}` })
+                          : t('dashboard.period.walletGeneric', { defaultValue: walletPeriodLabel }))
+                        : (Array.isArray(periodValue) && periodValue.length === 1
+                          ? `Wallet ${walletPeriodLabel}`
+                          : walletPeriodLabel))
+                      : (isMounted && translationsReady ? t('dashboard.period.allPayments') : 'Tous les paiements')
+                }
               />
             </div>
 
@@ -425,4 +621,9 @@ export default function DashboardPage() {
       )}
     </div>
   );
+}
+
+function formatWalletLabel(address: string) {
+  if (!address) return '';
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }

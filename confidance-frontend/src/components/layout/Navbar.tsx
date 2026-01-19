@@ -3,7 +3,7 @@
 import { ConnectButton, useAccountModal, useConnectModal } from '@rainbow-me/rainbowkit';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Menu, X } from 'lucide-react';
+import { Copy, Menu, X } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { RegisterModal } from '@/components/Auth/RegisterModal';
@@ -31,6 +31,8 @@ export function Navbar() {
   const [verifyEmail, setVerifyEmail] = useState('');
   const [verifyCode, setVerifyCode] = useState('');
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [walletAliases, setWalletAliases] = useState<Record<string, string>>({});
+  const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
 
   // ADDED — ouverture auto du formulaire Pro après inscription + vérification email
   const [pendingAccountType, setPendingAccountType] = useState<'particular' | 'professional' | null>(null);
@@ -40,6 +42,63 @@ export function Navbar() {
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated || !isMounted) return;
+    if (typeof window === 'undefined') return;
+
+    const key = user?.id ? `walletAliases:${user.id}` : 'walletAliases';
+    const loadAliases = () => {
+      try {
+        const raw = localStorage.getItem(key);
+        setWalletAliases(raw ? JSON.parse(raw) : {});
+      } catch (error) {
+        console.error('⚠️ Impossible de charger les alias de wallet:', error);
+      }
+    };
+
+    loadAliases();
+
+    const handleAliasesUpdated = (event: Event) => {
+      const detail = (event as CustomEvent<Record<string, string>>).detail;
+      if (detail) {
+        setWalletAliases(detail);
+      } else {
+        loadAliases();
+      }
+    };
+
+    window.addEventListener('wallet-aliases-updated', handleAliasesUpdated as EventListener);
+    return () => {
+      window.removeEventListener('wallet-aliases-updated', handleAliasesUpdated as EventListener);
+    };
+  }, [isAuthenticated, isMounted, user?.id]);
+
+  const handleCopyAddress = async (event: React.MouseEvent, address?: string) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!address) return;
+
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopiedAddress(address);
+      setTimeout(() => setCopiedAddress(null), 1500);
+    } catch (error) {
+      console.error('❌ Copie wallet échouée:', error);
+    }
+  };
+
+  const getWalletLabel = (address?: string, fallback?: string) => {
+    if (!address) return fallback || '';
+    const alias = walletAliases[address.toLowerCase()];
+    return alias || fallback || address;
+  };
+
+  const formatAddressShort = (addr?: string) => {
+    if (!addr) return '';
+    if (addr.length <= 12) return addr;
+    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  };
 
   // ✅ FIX : Utiliser des valeurs par défaut pendant l'hydratation
   const links = isMounted && translationsReady ? [
@@ -265,14 +324,12 @@ export function Navbar() {
                               </Link>
 
                               <Link
-                                href="/create"
+                                href="/analytics"
                                 onClick={() => setShowUserDropdown(false)}
                                 className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                               >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                </svg>
-                                {isMounted && translationsReady ? t('payment.create') : 'Créer un paiement'}
+                                <span aria-hidden="true">📊</span>
+                                {isMounted && translationsReady ? t('nav.analytics') : 'Analytics'}
                               </Link>
 
                             <div className="border-t border-gray-200 dark:border-gray-700 my-1.5"></div>
@@ -367,17 +424,43 @@ export function Navbar() {
                                 {chain.name}
                               </button>
 
-                              <button
+                              <div
+                                role="button"
+                                tabIndex={0}
                                 onClick={handleWalletModalOpen}
                                 onPointerDown={handleWalletModalOpen}
-                                type="button"
-                                className="cursor-pointer"
+                                onKeyDown={(event) => {
+                                  if (event.key === 'Enter' || event.key === ' ') {
+                                    handleWalletModalOpen(event);
+                                  }
+                                }}
+                                className="relative group cursor-pointer"
                               >
-                                {account.displayName}
+                                {getWalletLabel(account.address, account.displayName)}
                                 {account.displayBalance
                                   ? ` (${account.displayBalance})`
                                   : ''}
-                              </button>
+                                <div className="absolute right-0 top-full mt-2 w-60 rounded-lg border border-gray-200 bg-white shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all">
+                                  <div className="px-3 py-2 flex items-center justify-between gap-2">
+                                    <span
+                                      className="text-xs font-mono text-gray-500 truncate max-w-[170px]"
+                                      title={account.address}
+                                    >
+                                      {formatAddressShort(account.address)}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={(event) => handleCopyAddress(event, account.address)}
+                                      className="p-1 rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+                                      title={copiedAddress === account.address
+                                        ? (isMounted && translationsReady ? t('beneficiary.copied') : 'Copied!')
+                                        : (isMounted && translationsReady ? t('beneficiary.copyAddress') : 'Copy address')}
+                                    >
+                                      <Copy className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
                             </div>
                           );
                         })()}
@@ -555,7 +638,7 @@ export function Navbar() {
                                 type="button"
                                 className="w-full px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 rounded-lg text-left cursor-pointer"
                               >
-                                {account.displayName}
+                                {getWalletLabel(account.address, account.displayName)}
                                 {account.displayBalance
                                   ? ` (${account.displayBalance})`
                                   : ''}

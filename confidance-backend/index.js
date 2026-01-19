@@ -7,6 +7,7 @@ const authRoutes = require('./routes/auth');
 const usersRoutes = require('./routes/users');
 const recurringPaymentsRoutes = require('./routes/recurringPayments'); // ✅ AJOUTÉ
 const paymentLinksRoutes = require('./routes/paymentLinks');
+const paymentTransactionsRoutes = require('./routes/paymentTransactions');
 const chatRoutes = require('./routes/chat'); // ✅ Chat Agent
 const { optionalAuth } = require('./middleware/auth');
 const app = express();
@@ -47,6 +48,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/chat', chatRoutes); // ✅ Chat Agent
 app.use('/api/payment-links', paymentLinksRoutes);
+app.use('/api/payment-transactions', paymentTransactionsRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

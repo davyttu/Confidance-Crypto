@@ -199,6 +199,54 @@ router.get('/:paymentId', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/payment-transactions
+ * Récupérer toutes les transactions d'un utilisateur (optionnellement filtrées par dates)
+ *
+ * Query:
+ *   user_address: string (adresse wallet)
+ *   from: string (ISO date, optionnel)
+ *   to: string (ISO date, optionnel)
+ */
+router.get('/', async (req, res) => {
+  try {
+    const { user_address, from, to } = req.query;
+
+    if (!user_address) {
+      return res.status(400).json({ error: 'user_address requis' });
+    }
+
+    let query = supabase
+      .from('payment_transactions')
+      .select('*')
+      .eq('user_address', user_address)
+      .order('created_at', { ascending: true });
+
+    if (from) {
+      query = query.gte('created_at', from);
+    }
+    if (to) {
+      query = query.lte('created_at', to);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('❌ Erreur récupération transactions utilisateur:', error);
+      return res.status(500).json({ error: 'Erreur lors de la récupération' });
+    }
+
+    return res.json({
+      success: true,
+      transactions: data || [],
+      count: data?.length || 0,
+    });
+  } catch (error) {
+    console.error('❌ Erreur GET payment-transactions:', error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;
 
 

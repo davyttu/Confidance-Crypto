@@ -3,7 +3,8 @@
     "home": "Accueil",
     "create": "Créer",
     "dashboard": "Mon Dashboard",
-    "help": "Aide"
+    "help": "Aide",
+    "analytics": "Analytics"
   },
   "common": {
     "connect": "Connecter le portefeuille",
@@ -174,10 +175,32 @@
       "all": "Tout",
       "byMonth": "Par mois",
       "byYear": "Par année",
+      "byWallet": "Par wallet",
       "selectMonth": "Sélectionner un mois",
       "selectYear": "Sélectionner une année",
       "allPayments": "Tous les paiements",
-      "year": "Année {{year}}"
+      "year": "Année {{year}}",
+      "wallet": "Wallet {{wallet}}",
+      "walletGeneric": "Wallets"
+    },
+    "wallets": {
+      "title": "Wallets liés",
+      "subtitle": "Choisissez le wallet à afficher. Le solde reste disponible même si le wallet est déconnecté.",
+      "loading": "Chargement des wallets...",
+      "empty": "Aucun wallet associé pour le moment.",
+      "connected": "Connecté",
+      "saved": "Wallet enregistré",
+      "primary": "Wallet principal",
+      "setPrimary": "Définir comme principal",
+      "showWallet": "Afficher dans le dashboard",
+      "displayed": "Affiché",
+      "selectedCount": "{{count}} wallets",
+      "renamePlaceholder": "Nom du wallet",
+      "rename": "Renommer",
+      "delete": "Supprimer",
+      "deleteConfirm": "Supprimer ce wallet de votre compte ?",
+      "deleteError": "Erreur lors de la suppression du wallet",
+      "primaryError": "Erreur lors de la mise à jour du wallet principal"
     },
     "export": {
       "button": "Exporter",

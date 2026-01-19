@@ -3,7 +3,8 @@
     "home": "Inicio",
     "create": "Crear",
     "dashboard": "Mi panel",
-    "help": "Ayuda"
+    "help": "Ayuda",
+    "analytics": "Analytics"
   },
   "common": {
     "connect": "Conectar cartera",
@@ -88,6 +89,8 @@
   },
   "dashboard": {
     "title": "Mi Panel",
+    "subtitle": "Gestiona tus pagos programados",
+    "loading": "Cargando tu panel...",
     "stats": {
       "total": "Total enviado",
       "pending": "Pendientes",
@@ -102,6 +105,137 @@
       "totalPayments": "{{count}} pago{{plural}} en total",
       "scheduledPayments": "Pago{{plural}} programado{{plural}}",
       "releasedPayments": "Pago{{plural}} liberado{{plural}}"
+    },
+    "table": {
+      "search": "Buscar por nombre o dirección...",
+      "beneficiary": "Beneficiario",
+      "amount": "Monto",
+      "releaseDate": "Fecha de liberación",
+      "status": "Estado",
+      "contract": "Contrato",
+      "actions": "Acciones",
+      "pagination": "Mostrando {{start}} a {{end}} de {{total}} pagos",
+      "previous": "Anterior",
+      "next": "Siguiente",
+      "releasedOn": "Liberado el {{date}}",
+      "clickToRename": "Haz clic para renombrar",
+      "copyAddress": "Copiar dirección",
+      "viewOnBasescan": "Ver en Basescan",
+      "cancelPayment": "Cancelar pago"
+    },
+    "period": {
+      "all": "Todo",
+      "byMonth": "Por mes",
+      "byYear": "Por año",
+      "byWallet": "Por billetera",
+      "selectMonth": "Selecciona un mes",
+      "selectYear": "Selecciona un año",
+      "allPayments": "Todos los pagos",
+      "year": "Año {{year}}",
+      "wallet": "Billetera {{wallet}}",
+      "walletGeneric": "Billeteras"
+    },
+    "wallets": {
+      "title": "Billeteras vinculadas",
+      "subtitle": "Elige qué billetera mostrar. Los saldos siguen disponibles aunque la billetera esté desconectada.",
+      "loading": "Cargando billeteras...",
+      "empty": "Aún no hay billeteras vinculadas.",
+      "connected": "Conectada",
+      "saved": "Billetera guardada",
+      "primary": "Billetera principal",
+      "setPrimary": "Establecer como principal",
+      "showWallet": "Mostrar en el panel",
+      "displayed": "Mostrado",
+      "selectedCount": "{{count}} billeteras",
+      "renamePlaceholder": "Nombre de la billetera",
+      "rename": "Renombrar",
+      "delete": "Eliminar",
+      "deleteConfirm": "¿Eliminar esta billetera de tu cuenta?",
+      "deleteError": "Error al eliminar la billetera",
+      "primaryError": "Error al actualizar la billetera principal"
+    },
+    "beneficiary": {
+      "unnamed": "Sin nombre",
+      "beneficiary": "Beneficiario",
+      "beneficiaries": "Beneficiarios",
+      "main": "Principal",
+      "clickToCopy": "Haz clic para copiar",
+      "copied": "¡Copiado!",
+      "copyAddress": "Copiar dirección",
+      "rename": "Renombrar"
+    },
+    "paymentType": {
+      "recurring": "Recurrente",
+      "batch": "Lote",
+      "instant": "Instantáneo",
+      "scheduled": "Programado"
+    },
+    "tooltips": {
+      "showHistory": "Mostrar historial",
+      "hideHistory": "Ocultar historial"
+    },
+    "export": {
+      "button": "Exportar",
+      "exporting": "Exportando...",
+      "csv": {
+        "title": "Exportar CSV",
+        "description": "Para Excel/contabilidad"
+      },
+      "pdf": {
+        "title": "Exportar PDF",
+        "description": "Para impresión/comprobante"
+      }
+    },
+    "beneficiaries": {
+      "title": "Mis beneficiarios",
+      "empty": "Sin beneficiarios",
+      "emptyDescription": "Crea pagos para añadir beneficiarios a tu lista.",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "deleteConfirm": "¿Eliminar \"{{name}}\" de tus beneficiarios?",
+      "deleteError": "Error al eliminar",
+      "categories": {
+        "family": "Familia",
+        "work": "Trabajo",
+        "personal": "Personal",
+        "other": "Otro"
+      }
+    },
+    "empty": {
+      "title": "Sin pagos programados",
+      "description": "Aún no has creado pagos programados. ¡Empieza a automatizar tus transferencias cripto!",
+      "cta": "Crear mi primer pago",
+      "features": {
+        "secure": {
+          "title": "Seguro",
+          "description": "Tus fondos están protegidos por la blockchain"
+        },
+        "automatic": {
+          "title": "Automático",
+          "description": "Ejecución automática en la fecha programada"
+        },
+        "transparent": {
+          "title": "Transparente",
+          "description": "Sigue tus pagos en tiempo real"
+        }
+      }
+    },
+    "auth": {
+      "title": "Crea una cuenta para acceder al panel",
+      "description": "El panel muestra el historial de todos tus pagos programados y te permite gestionarlos fácilmente.",
+      "advantages": "✨ Beneficios de la cuenta:",
+      "advantagesList": {
+        "dashboard": "📊 Panel completo",
+        "history": "📜 Historial de pagos",
+        "cancel": "✅ Cancelación posible (si está activada)",
+        "beneficiaries": "👥 Gestión de beneficiarios"
+      },
+      "cta": "Crear cuenta gratis",
+      "walletNotConnected": {
+        "title": "Cartera no conectada",
+        "description": "Conecta tu cartera para acceder a tu panel.",
+        "hint": "Usa el botón \"Conectar cartera\" arriba a la derecha"
+      }
     },
     "status": {
       "pending": "Pendiente",

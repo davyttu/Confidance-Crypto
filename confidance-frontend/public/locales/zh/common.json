@@ -3,7 +3,8 @@
     "home": "首页",
     "create": "创建",
     "dashboard": "我的仪表板",
-    "help": "帮助"
+    "help": "帮助",
+    "analytics": "Analytics"
   },
   "common": {
     "connect": "连接钱包",
@@ -88,6 +89,8 @@
   },
   "dashboard": {
     "title": "我的仪表板",
+    "subtitle": "管理您的定期支付",
+    "loading": "正在加载仪表板...",
     "stats": {
       "total": "总发送额",
       "pending": "待处理",
@@ -102,6 +105,165 @@
       "totalPayments": "共 {{count}} 笔支付",
       "scheduledPayments": "已计划支付",
       "releasedPayments": "已释放支付"
+    },
+    "table": {
+      "search": "按名称或地址搜索...",
+      "beneficiary": "受益人",
+      "amount": "金额",
+      "releaseDate": "释放日期",
+      "status": "状态",
+      "contract": "合约",
+      "actions": "操作",
+      "pagination": "显示第 {{start}} - {{end}} 条，共 {{total}} 笔支付",
+      "previous": "上一页",
+      "next": "下一页",
+      "releasedOn": "{{date}} 已释放",
+      "clickToRename": "点击重命名",
+      "copyAddress": "复制地址",
+      "viewOnBasescan": "在 Basescan 查看",
+      "cancelPayment": "取消支付"
+    },
+    "period": {
+      "all": "全部",
+      "byMonth": "按月",
+      "byYear": "按年",
+      "byWallet": "按钱包",
+      "selectMonth": "选择月份",
+      "selectYear": "选择年份",
+      "allPayments": "所有支付",
+      "year": "{{year}} 年",
+      "wallet": "钱包 {{wallet}}",
+      "walletGeneric": "钱包"
+    },
+    "wallets": {
+      "title": "已关联的钱包",
+      "subtitle": "选择要显示的钱包。即使钱包未连接，余额仍可用。",
+      "loading": "正在加载钱包...",
+      "empty": "暂无已关联的钱包。",
+      "connected": "已连接",
+      "saved": "已保存的钱包",
+      "primary": "主钱包",
+      "setPrimary": "设为主钱包",
+      "showWallet": "在仪表板中显示",
+      "displayed": "已显示",
+      "selectedCount": "{{count}} 个钱包",
+      "renamePlaceholder": "钱包名称",
+      "rename": "重命名",
+      "delete": "删除",
+      "deleteConfirm": "从账户中移除此钱包？",
+      "deleteError": "删除钱包时出错",
+      "primaryError": "更新主钱包时出错"
+    },
+    "beneficiary": {
+      "unnamed": "未命名",
+      "beneficiary": "受益人",
+      "beneficiaries": "受益人",
+      "main": "主要",
+      "clickToCopy": "点击复制",
+      "copied": "已复制！",
+      "copyAddress": "复制地址",
+      "rename": "重命名"
+    },
+    "paymentType": {
+      "recurring": "定期",
+      "batch": "批量",
+      "instant": "即时",
+      "scheduled": "预定"
+    },
+    "tooltips": {
+      "showHistory": "显示历史",
+      "hideHistory": "隐藏历史"
+    },
+    "export": {
+      "button": "导出",
+      "exporting": "导出中...",
+      "csv": {
+        "title": "导出 CSV",
+        "description": "用于 Excel/会计"
+      },
+      "pdf": {
+        "title": "导出 PDF",
+        "description": "用于打印/凭证"
+      }
+    },
+    "beneficiaries": {
+      "title": "我的受益人",
+      "empty": "暂无受益人",
+      "emptyDescription": "创建支付以将受益人加入列表。",
+      "edit": "编辑",
+      "delete": "删除",
+      "deleteConfirm": "删除“{{name}}”从受益人列表？",
+      "deleteError": "删除出错",
+      "categories": {
+        "family": "家庭",
+        "work": "工作",
+        "personal": "个人",
+        "other": "其他"
+      }
+    },
+    "empty": {
+      "title": "暂无计划支付",
+      "description": "你还没有创建计划支付。现在开始自动化你的加密转账！",
+      "cta": "创建我的第一个支付",
+      "features": {
+        "secure": {
+          "title": "安全",
+          "description": "你的资金受区块链保护"
+        },
+        "automatic": {
+          "title": "自动",
+          "description": "在计划日期自动执行"
+        },
+        "transparent": {
+          "title": "透明",
+          "description": "实时跟踪你的支付"
+        }
+      }
+    },
+    "auth": {
+      "title": "创建账户以访问仪表板",
+      "description": "仪表板展示你所有的计划支付历史，方便管理。",
+      "advantages": "✨ 账户优势：",
+      "advantagesList": {
+        "dashboard": "📊 完整仪表板",
+        "history": "📜 支付历史",
+        "cancel": "✅ 可取消（如已启用）",
+        "beneficiaries": "👥 受益人管理"
+      },
+      "cta": "免费创建账户",
+      "walletNotConnected": {
+        "title": "钱包未连接",
+        "description": "请连接钱包以访问你的仪表板。",
+        "hint": "使用右上角的“连接钱包”按钮"
+      }
+    },
+    "period": {
+      "all": "全部",
+      "byMonth": "按月",
+      "byYear": "按年",
+      "byWallet": "按钱包",
+      "selectMonth": "选择月份",
+      "selectYear": "选择年份",
+      "allPayments": "所有支付",
+      "year": "{{year}} 年",
+      "wallet": "钱包 {{wallet}}",
+      "walletGeneric": "钱包"
+    },
+    "wallets": {
+      "title": "已关联的钱包",
+      "subtitle": "选择要显示的钱包。即使钱包未连接，余额仍可用。",
+      "loading": "正在加载钱包...",
+      "empty": "暂无已关联的钱包。",
+      "connected": "已连接",
+      "saved": "已保存的钱包",
+      "primary": "主钱包",
+      "setPrimary": "设为主钱包",
+      "renamePlaceholder": "钱包名称",
+      "rename": "重命名",
+      "delete": "删除",
+      "deleteConfirm": "从账户中移除此钱包？",
+      "deleteError": "删除钱包时出错",
+      "primaryError": "更新主钱包时出错"
     },
     "status": {
       "pending": "待处理",

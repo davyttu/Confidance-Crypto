@@ -49,9 +49,16 @@ export default function PaymentForm() {
   const [voiceAwaitingConfirm, setVoiceAwaitingConfirm] = useState(false);
   const [voiceAwaitingDate, setVoiceAwaitingDate] = useState(false);
   const [voiceCommandSummary, setVoiceCommandSummary] = useState('');
+  const [useWhisper, setUseWhisper] = useState(true);
+  const [isWhisperSupported, setIsWhisperSupported] = useState(false);
+  const [isWhisperRecording, setIsWhisperRecording] = useState(false);
+  const [voiceHelpShown, setVoiceHelpShown] = useState(false);
   const amountInputRef = useRef<HTMLInputElement | null>(null);
   const recognitionRef = useRef<any>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const whisperTimeoutRef = useRef<number | null>(null);
   const formRef = useRef<HTMLFormElement | null>(null);
+  const voiceIdleTimeoutRef = useRef<number | null>(null);
   const pendingVoiceCommandRef = useRef<ReturnType<typeof parseVoiceCommand> | null>(null);
   const lastVoiceRef = useRef<{
     amount?: string;
@@ -109,6 +116,41 @@ export default function PaymentForm() {
       .replace(/\s+/g, ' ')
       .trim();
 
+  const syncVoiceBeneficiaries = () => {
+    if (typeof window === 'undefined') return;
+    try {
+      const stored = localStorage.getItem('beneficiaryHistory');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          const normalized = parsed
+            .map((item) => {
+              if (typeof item === 'string') {
+                return { address: item };
+              }
+              if (item && typeof item === 'object' && typeof item.address === 'string') {
+                return { address: item.address, name: item.name };
+              }
+              return null;
+            })
+            .filter((item): item is BeneficiaryHistoryItem => Boolean(item));
+          if (normalized.length > 0) {
+            setBeneficiaryHistory(normalized);
+          }
+        }
+      }
+      const storedFavorites = localStorage.getItem('beneficiaryFavorites');
+      if (storedFavorites) {
+        const parsedFavorites = JSON.parse(storedFavorites);
+        if (Array.isArray(parsedFavorites)) {
+          setFavoriteAddresses(parsedFavorites.filter((item) => typeof item === 'string'));
+        }
+      }
+    } catch {
+      // ignore storage failures
+    }
+  };
+
   const applyCorrections = (text: string, corrections = voiceCorrections) => {
     let output = text;
     Object.entries(corrections).forEach(([from, to]) => {
@@ -135,6 +177,65 @@ export default function PaymentForm() {
     utterance.rate = 0.95;
     utterance.onend = () => onEnd?.();
     window.speechSynthesis.speak(utterance);
+  };
+
+  const startWhisperCapture = async () => {
+    if (isWhisperRecording || typeof window === 'undefined') return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const chunks: BlobPart[] = [];
+
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          chunks.push(event.data);
+        }
+      };
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((track) => track.stop());
+        const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
+        setIsWhisperRecording(false);
+        try {
+          const formData = new FormData();
+          formData.append('file', blob, 'voice.webm');
+          const response = await fetch('/api/transcribe', {
+            method: 'POST',
+            body: formData,
+          });
+          if (!response.ok) {
+            throw new Error('Transcription failed');
+          }
+          const payload = await response.json();
+          const text = String(payload?.text || '').trim();
+          if (text) {
+            handleVoiceCommandTranscript(text);
+          }
+        } catch (error) {
+          setVoiceHint(
+            translate(
+              'create.voice.whisperError',
+              'Impossible de transcrire l’audio. Vérifiez votre connexion.'
+            )
+          );
+        }
+      };
+
+      recorder.start();
+      setIsWhisperRecording(true);
+      whisperTimeoutRef.current = window.setTimeout(() => {
+        if (recorder.state !== 'inactive') {
+          recorder.stop();
+        }
+      }, 6000);
+      mediaRecorderRef.current = recorder;
+    } catch {
+      setVoiceHint(
+        translate(
+          'create.voice.whisperError',
+          'Impossible d’accéder au micro. Vérifiez les permissions.'
+        )
+      );
+    }
   };
 
   const extractNumber = (text: string): number | undefined => {
@@ -390,7 +491,7 @@ export default function PaymentForm() {
       if (address) return { address, label: 'favori' };
     }
 
-    const match = lower.match(/(?:envoyer|envoye|envoie|mets|met)\s+a\s+(.+)/);
+    const match = lower.match(/(?:envoyer|envoye|envoie|mets|met|dis|dites)\s+a\s+(.+)/);
     const rawName = match?.[1]?.split(/(\d|\beth\b|\busdc\b|\busdt\b|paiement|instant|program)/)[0]?.trim();
     if (rawName) {
       const candidate = beneficiaryHistory.find((item) => {
@@ -401,7 +502,7 @@ export default function PaymentForm() {
       if (candidate?.address) {
         return { address: candidate.address, label: candidate.name || rawName };
       }
-      if (favoriteAddresses.length === 1) {
+      if (favoriteAddresses.length >= 1) {
         return { address: favoriteAddresses[0], label: rawName };
       }
     }
@@ -416,6 +517,9 @@ export default function PaymentForm() {
       });
       if (candidate?.address) {
         return { address: candidate.address, label: candidate.name || directName };
+      }
+      if (favoriteAddresses.length === 1) {
+        return { address: favoriteAddresses[0], label: directName };
       }
     }
 
@@ -432,11 +536,11 @@ export default function PaymentForm() {
 
   const parseVoiceCommand = (text: string) => {
     const normalized = normalizeVoiceText(applyCorrections(text));
-    const timing = normalized.includes('récurrent') || normalized.includes('recurrent')
+    const timing = normalized.includes('recurrent') || normalized.includes('recurr')
       ? 'recurring'
       : normalized.includes('instant')
         ? 'instant'
-        : normalized.includes('program')
+        : normalized.includes('program') || normalized.includes('programme')
           ? 'scheduled'
           : paymentTiming;
     const cancellable =
@@ -455,6 +559,139 @@ export default function PaymentForm() {
       : undefined;
     const date = parseDateFromVoice(normalized);
     return { timing, cancellable, amount, token, beneficiary, months, date };
+  };
+
+  const handleVoiceCommandTranscript = (rawText: string) => {
+    const bestText = applyCorrections(rawText, voiceCorrections);
+    setVoiceTranscript(bestText);
+    const normalized = bestText.toLowerCase();
+    const normalizedTrimmed = normalized.replace(/\s+/g, ' ').trim();
+    if (normalizedTrimmed === 'je vous ecoute' || normalizedTrimmed === 'je vous écoute') {
+      return;
+    }
+
+    if (voiceAwaitingConfirm) {
+      if (normalized.includes('oui') || normalized.includes('yes') || normalized.includes('ok')) {
+        setVoiceAwaitingConfirm(false);
+        setVoiceCommandMode(false);
+        setVoiceHelpShown(false);
+        speak(
+          translate('create.voice.confirmed', 'Confirmation reçue. Ouverture de MetaMask.'),
+          () => {
+            formRef.current?.requestSubmit();
+          }
+        );
+        return;
+      }
+      if (normalized.includes('non') || normalized.includes('no') || normalized.includes('annuler')) {
+        setVoiceAwaitingConfirm(false);
+        setVoiceCommandMode(false);
+        setVoiceHelpShown(false);
+        speak(translate('create.voice.cancelled', 'D\'accord, j\'annule.'));
+        return;
+      }
+    }
+
+    if (voiceAwaitingDate) {
+      const pending = pendingVoiceCommandRef.current;
+      const date = parseDateFromVoice(bestText);
+      if (pending && date) {
+        pending.date = date;
+        setVoiceAwaitingDate(false);
+        pendingVoiceCommandRef.current = pending;
+      } else {
+        speak(
+          translate('create.voice.needDate', 'Je n\'ai pas compris la date. Dites par exemple "12 septembre".'),
+          () => {
+            if (useWhisper && isWhisperSupported) {
+              startWhisperCapture();
+            } else {
+              recognitionRef.current?.start?.();
+            }
+          }
+        );
+        return;
+      }
+    }
+
+    const command = parseVoiceCommand(bestText);
+    if (voiceAwaitingDate && pendingVoiceCommandRef.current) {
+      return;
+    }
+
+    const cleanedText = bestText.replace(/je vous ecoute|je vous écoute/gi, '').trim();
+    handlePaymentTimingChange(command.timing as PaymentTiming);
+    setCancellable(command.cancellable);
+    if (command.months && command.timing === 'recurring') {
+      setRecurringMonths(command.months);
+    }
+    if (command.beneficiary?.address) {
+      setFormData((prev) => ({
+        ...prev,
+        beneficiary: command.beneficiary?.address || prev.beneficiary,
+      }));
+      setErrors((prev) => ({ ...prev, beneficiary: '' }));
+    }
+    if (command.date) {
+      handleDateChange(command.date);
+    }
+    if ((command.timing === 'scheduled' || command.timing === 'recurring') && !command.date) {
+      pendingVoiceCommandRef.current = command;
+      setVoiceAwaitingDate(true);
+      speak(translate('create.voice.askDate', 'Quelle date pour le premier paiement ?'));
+      return;
+    }
+    if (!command.beneficiary?.address || !command.amount) {
+      if (cleanedText && cleanedText !== bestText) {
+        const retryCommand = parseVoiceCommand(cleanedText);
+        if (retryCommand.amount || retryCommand.beneficiary?.address) {
+          pendingVoiceCommandRef.current = retryCommand;
+          setVoiceAwaitingConfirm(false);
+          setVoiceAwaitingDate(false);
+          const fallbackSummary = `J\'ai compris ${retryCommand.beneficiary?.label ? `le bénéficiaire ${retryCommand.beneficiary.label}` : 'le bénéficiaire'}${retryCommand.amount ? `, montant ${retryCommand.amount} ${retryCommand.token}` : ''}. Continuez.`;
+          speak(fallbackSummary, () => {
+            if (useWhisper && isWhisperSupported) {
+              startWhisperCapture();
+            } else {
+              recognitionRef.current?.start?.();
+            }
+          });
+          return;
+        }
+      }
+      if (!voiceHelpShown) {
+        setVoiceHelpShown(true);
+        speak(
+          translate(
+            'create.voice.help',
+            'Dites par exemple : "envoyer à Ali 3 usdc paiement instantané".'
+          )
+        );
+      }
+      return;
+    }
+
+    if (command.amount) {
+      setFormData((prev) => ({
+        ...prev,
+        amount: command.amount as string,
+        tokenSymbol: command.token as TokenSymbol,
+      }));
+    }
+
+    if (command.amount) {
+      setErrors((prev) => ({ ...prev, amount: '' }));
+    }
+
+    const summary = `Je vais envoyer ${command.amount || ''} ${command.token} à ${command.beneficiary?.label || 'le bénéficiaire'} en paiement ${
+      command.timing === 'instant' ? 'instantané' : command.timing === 'scheduled' ? 'programmé' : 'récurrent'
+    }${command.timing === 'recurring' && command.months ? ` pour ${command.months} mois` : ''}${
+      command.date ? `, première date ${command.date.toLocaleDateString(locale)}` : ''
+    }${command.cancellable ? ', annulable' : ', non annulable'}. Dites oui pour confirmer.`;
+    setVoiceCommandSummary(summary);
+    setVoiceAwaitingConfirm(true);
+    recognitionRef.current?.stop?.();
+    speak(summary);
   };
 
   const handleReconnectWallet = () => {
@@ -527,17 +764,37 @@ export default function PaymentForm() {
       setVoiceCommandMode(true);
       setVoiceAwaitingConfirm(false);
       setVoiceCommandSummary('');
+      setVoiceHelpShown(false);
       setErrors((prev) => ({ ...prev, amount: '', beneficiary: '' }));
+      syncVoiceBeneficiaries();
       try {
         recognitionRef.current?.stop?.();
         speak(translate('create.voice.start', 'Je vous écoute.'), () => {
           try {
-            recognitionRef.current?.start?.();
-            setIsListening(true);
+            if (useWhisper && isWhisperSupported) {
+              startWhisperCapture();
+            } else {
+              recognitionRef.current?.start?.();
+              setIsListening(true);
+            }
           } catch {
             setIsListening(false);
           }
         });
+        if (voiceIdleTimeoutRef.current) {
+          window.clearTimeout(voiceIdleTimeoutRef.current);
+        }
+        voiceIdleTimeoutRef.current = window.setTimeout(() => {
+          setVoiceCommandMode(false);
+          setVoiceAwaitingConfirm(false);
+          setVoiceAwaitingDate(false);
+          setIsListening(false);
+          if (mediaRecorderRef.current?.state === 'recording') {
+            mediaRecorderRef.current.stop();
+          }
+          recognitionRef.current?.stop?.();
+          speak(translate('create.voice.timeout', 'J’arrête l’écoute.'));
+        }, 12000);
       } catch {
         setIsListening(false);
       }
@@ -657,131 +914,7 @@ export default function PaymentForm() {
       }
 
       if (voiceCommandMode) {
-        const bestText = applyCorrections(best.text, voiceCorrections);
-        setVoiceTranscript(bestText);
-        const normalized = bestText.toLowerCase();
-        const normalizedTrimmed = normalized.replace(/\s+/g, ' ').trim();
-        if (normalizedTrimmed === 'je vous ecoute' || normalizedTrimmed === 'je vous écoute') {
-          return;
-        }
-
-        if (voiceAwaitingConfirm) {
-          if (normalized.includes('oui') || normalized.includes('yes') || normalized.includes('ok')) {
-            setVoiceAwaitingConfirm(false);
-            setVoiceCommandMode(false);
-            speak(
-              translate('create.voice.confirmed', 'Confirmation reçue. Ouverture de MetaMask.'),
-              () => {
-                formRef.current?.requestSubmit();
-              }
-            );
-            return;
-          }
-          if (normalized.includes('non') || normalized.includes('no') || normalized.includes('annuler')) {
-            setVoiceAwaitingConfirm(false);
-            setVoiceCommandMode(false);
-            speak(translate('create.voice.cancelled', 'D\'accord, j\'annule.'));
-            return;
-          }
-        }
-
-        if (voiceAwaitingDate) {
-          const pending = pendingVoiceCommandRef.current;
-          const date = parseDateFromVoice(bestText);
-          if (pending && date) {
-            pending.date = date;
-            setVoiceAwaitingDate(false);
-            pendingVoiceCommandRef.current = pending;
-          } else {
-            speak(
-              translate('create.voice.needDate', 'Je n\'ai pas compris la date. Dites par exemple "12 septembre".')
-            );
-            return;
-          }
-        }
-
-        const command = parseVoiceCommand(bestText);
-        if (voiceAwaitingDate && pendingVoiceCommandRef.current) {
-          return;
-        }
-
-        const cleanedText = bestText.replace(/je vous ecoute|je vous écoute/gi, '').trim();
-        handlePaymentTimingChange(command.timing as PaymentTiming);
-        setCancellable(command.cancellable);
-        if (command.months && command.timing === 'recurring') {
-          setRecurringMonths(command.months);
-        }
-        if (command.beneficiary?.address) {
-          setFormData((prev) => ({
-            ...prev,
-            beneficiary: command.beneficiary?.address || prev.beneficiary,
-          }));
-          setErrors((prev) => ({ ...prev, beneficiary: '' }));
-        } else if (favoriteAddresses.length === 1) {
-          setFormData((prev) => ({
-            ...prev,
-            beneficiary: favoriteAddresses[0],
-          }));
-          setErrors((prev) => ({ ...prev, beneficiary: '' }));
-        }
-        if (command.date) {
-          handleDateChange(command.date);
-        }
-        if ((command.timing === 'scheduled' || command.timing === 'recurring') && !command.date) {
-          pendingVoiceCommandRef.current = command;
-          setVoiceAwaitingDate(true);
-          speak(translate('create.voice.askDate', 'Quelle date pour le premier paiement ?'));
-          return;
-        }
-        if (!command.beneficiary?.address || !command.amount) {
-          if (cleanedText && cleanedText !== bestText) {
-            const retryCommand = parseVoiceCommand(cleanedText);
-            if (retryCommand.amount || retryCommand.beneficiary?.address) {
-              pendingVoiceCommandRef.current = retryCommand;
-              setVoiceAwaitingConfirm(false);
-              setVoiceAwaitingDate(false);
-              const fallbackSummary = `J\'ai compris ${retryCommand.beneficiary?.label ? `le bénéficiaire ${retryCommand.beneficiary.label}` : 'le bénéficiaire'}${retryCommand.amount ? `, montant ${retryCommand.amount} ${retryCommand.token}` : ''}. Continuez.`;
-              speak(fallbackSummary);
-              return;
-            }
-          }
-          speak(
-            translate(
-              'create.voice.help',
-              'Dites par exemple : "envoyer à Ali 3 usdc paiement instantané".'
-            )
-          );
-          return;
-        }
-        if (command.amount) {
-          setFormData((prev) => ({
-            ...prev,
-            amount: command.amount as string,
-            tokenSymbol: command.token as TokenSymbol,
-          }));
-        }
-
-        if (command.amount) {
-          setErrors((prev) => ({ ...prev, amount: '' }));
-        }
-
-        
-
-        const summary = `Je vais envoyer ${command.amount || ''} ${command.token} à ${command.beneficiary?.label || 'le bénéficiaire'} en paiement ${
-          command.timing === 'instant' ? 'instantané' : command.timing === 'scheduled' ? 'programmé' : 'récurrent'
-        }${command.timing === 'recurring' && command.months ? ` pour ${command.months} mois` : ''}${
-          command.date ? `, première date ${command.date.toLocaleDateString(locale)}` : ''
-        }${command.cancellable ? ', annulable' : ', non annulable'}. Dites oui pour confirmer.`;
-        setVoiceCommandSummary(summary);
-        setVoiceAwaitingConfirm(true);
-        recognitionRef.current?.stop?.();
-        speak(summary, () => {
-          try {
-            recognitionRef.current?.start?.();
-          } catch {
-            // ignore
-          }
-        });
+        handleVoiceCommandTranscript(best.text);
         return;
       }
 
@@ -918,6 +1051,14 @@ export default function PaymentForm() {
       recognitionRef.current = null;
     };
   }, [locale, voiceLanguage]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setIsWhisperSupported(
+      typeof MediaRecorder !== 'undefined' &&
+        !!navigator.mediaDevices?.getUserMedia
+    );
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;

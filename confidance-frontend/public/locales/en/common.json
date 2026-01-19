@@ -3,7 +3,8 @@
     "home": "Home",
     "create": "Create",
     "dashboard": "My Dashboard",
-    "help": "Help"
+    "help": "Help",
+    "analytics": "Analytics"
   },
   "common": {
     "connect": "Connect Wallet",
@@ -176,10 +177,32 @@
       "all": "All",
       "byMonth": "By month",
       "byYear": "By year",
+      "byWallet": "By wallet",
       "selectMonth": "Select a month",
       "selectYear": "Select a year",
       "allPayments": "All payments",
-      "year": "Year {{year}}"
+      "year": "Year {{year}}",
+      "wallet": "Wallet {{wallet}}",
+      "walletGeneric": "Wallets"
+    },
+    "wallets": {
+      "title": "Linked wallets",
+      "subtitle": "Choose which wallet to display. Balances remain available even when the wallet is disconnected.",
+      "loading": "Loading wallets...",
+      "empty": "No wallets linked yet.",
+      "connected": "Connected",
+      "saved": "Saved wallet",
+      "primary": "Primary wallet",
+      "setPrimary": "Set as primary",
+      "showWallet": "Show in dashboard",
+      "displayed": "Displayed",
+      "selectedCount": "{{count}} wallets",
+      "renamePlaceholder": "Wallet name",
+      "rename": "Rename",
+      "delete": "Delete",
+      "deleteConfirm": "Remove this wallet from your account?",
+      "deleteError": "Error deleting wallet",
+      "primaryError": "Error updating primary wallet"
     },
     "export": {
       "button": "Export",

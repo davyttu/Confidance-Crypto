@@ -205,6 +205,64 @@ router.put('/wallets/:address/primary', authenticateToken, async (req, res) => {
 });
 
 /**
+ * GET /api/users/preferences
+ * Récupérer les préférences UI de l'utilisateur
+ */
+router.get('/preferences', authenticateToken, async (req, res) => {
+  try {
+    const { userId } = req.user;
+
+    const { data, error } = await supabase
+      .from('user_ui_preferences')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error fetching preferences:', error);
+      return res.status(500).json({ error: 'Erreur lors de la récupération des préférences' });
+    }
+
+    res.json({ preferences: data || null });
+  } catch (error) {
+    console.error('Get preferences error:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
+ * PUT /api/users/preferences
+ * Mettre à jour les préférences UI de l'utilisateur
+ */
+router.put('/preferences', authenticateToken, async (req, res) => {
+  try {
+    const { userId } = req.user;
+    const { analytics_year, analytics_month } = req.body;
+
+    const { data, error } = await supabase
+      .from('user_ui_preferences')
+      .upsert({
+        user_id: userId,
+        analytics_year,
+        analytics_month,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error saving preferences:', error);
+      return res.status(500).json({ error: 'Erreur lors de la sauvegarde des préférences' });
+    }
+
+    res.json({ success: true, preferences: data });
+  } catch (error) {
+    console.error('Update preferences error:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
  * GET /api/users/profile
  * Récupérer le profil complet de l'utilisateur
  */
