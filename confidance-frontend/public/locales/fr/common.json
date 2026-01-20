@@ -20,6 +20,45 @@
     "accountType": {
       "professional": "Pro",
       "individual": "Particulier"
+    },
+    "accountSettings": {
+      "menuLabel": "Infos de connexion",
+      "title": "Infos de connexion",
+      "subtitle": "Modifiez votre email ou votre mot de passe. Votre mot de passe actuel est requis.",
+      "currentPasswordLabel": "Mot de passe actuel",
+      "unlockButton": "Déverrouiller",
+      "unlockedLabel": "Déverrouillé",
+      "emailSectionTitle": "Email",
+      "newEmailLabel": "Nouvel email",
+      "sendCodeButton": "Envoyer le code",
+      "sendCodeLoading": "Envoi...",
+      "confirmCodeLabel": "Code de vérification",
+      "confirmEmailButton": "Confirmer le nouvel email",
+      "confirmEmailLoading": "Confirmation...",
+      "passwordSectionTitle": "Mot de passe",
+      "newPasswordLabel": "Nouveau mot de passe",
+      "confirmPasswordLabel": "Confirmer le mot de passe",
+      "updatePasswordButton": "Mettre à jour le mot de passe",
+      "updatePasswordLoading": "Mise à jour...",
+      "errors": {
+        "currentPasswordRequired": "Renseignez votre mot de passe actuel.",
+        "unlockRequired": "Déverrouillez l'accès pour modifier vos infos de connexion.",
+        "invalidEmail": "Renseignez un nouvel email valide.",
+        "codeRequired": "Renseignez le code envoyé sur votre nouvel email.",
+        "passwordTooShort": "Le nouveau mot de passe doit contenir au moins 8 caractères.",
+        "passwordsMismatch": "Les mots de passe ne correspondent pas.",
+        "loginRequiredEmail": "Connectez-vous pour modifier votre email.",
+        "loginRequiredConfirm": "Connectez-vous pour confirmer votre changement d'email.",
+        "loginRequiredPassword": "Connectez-vous pour modifier votre mot de passe.",
+        "emailRequestFailed": "Impossible de demander le changement d'email.",
+        "emailConfirmFailed": "Impossible de confirmer le changement d'email.",
+        "passwordUpdateFailed": "Impossible de mettre à jour le mot de passe."
+      },
+      "success": {
+        "emailCodeSent": "Code envoyé. Vérifiez votre boîte mail.",
+        "emailUpdated": "Email mis à jour avec succès.",
+        "passwordUpdated": "Mot de passe mis à jour avec succès."
+      }
     }
   },
   "home": {
@@ -167,7 +206,97 @@
       "instant": "Instantané",
       "scheduled": "Programmé"
     },
-    "tooltips": {
+  "analytics": {
+    "title": "📊 Analytics mensuels",
+    "subtitle": "Analysez votre activité globale sur la plateforme",
+    "month": "Mois",
+    "year": "Année",
+    "connectTitle": "Connectez votre wallet",
+    "connectSubtitle": "Pour accéder à vos analytics, connectez d'abord votre wallet",
+    "loadError": "Erreur lors du chargement des données :",
+    "emptyTitle": "Aucune donnée disponible",
+    "emptySubtitle": "Créez vos premiers paiements pour voir vos analytics",
+    "kpi": {
+      "transactions": "Transactions",
+      "totalVolume": "Volume total",
+      "totalFees": "Frais totaux",
+      "realCost": "Coût réel"
+    },
+    "types": {
+      "instant": "Paiements instantanés",
+      "scheduled": "Paiements programmés",
+      "recurring": "Paiements récurrents"
+    },
+    "table": {
+      "title": "Détail par type de transaction",
+      "type": "Type de transaction",
+      "count": "Nombre",
+      "volume": "Volume",
+      "avgFees": "Frais moyens",
+      "total": "TOTAL"
+    },
+    "fees": {
+      "title": "Décomposition des frais",
+      "gas": "Frais de gaz (Base Network)",
+      "protocol": "Frais protocole Confidance (1.79%)",
+      "totalMonthly": "TOTAL FRAIS MENSUELS",
+      "tipTitle": "💡 Astuce d'optimisation",
+      "tipHighGas": "Vos frais de gaz représentent la majorité des coûts. Privilégiez les heures creuses (week-end, nuit) pour économiser jusqu'à 30%.",
+      "tipBalanced": "Vos frais sont équilibrés entre gas et protocole. Continuez ainsi !"
+    },
+    "history": {
+      "title": "Historique mensuel",
+      "month": "Mois",
+      "txs": "Txs",
+      "volume": "Volume",
+      "fees": "Frais",
+      "ratio": "Ratio %",
+      "current": "Actuel",
+      "best": "Meilleur",
+      "high": "Plus élevé",
+      "bestMonth": "Mois le plus économique :",
+      "worstMonth": "Mois le plus coûteux :",
+      "avgRatio": "Ratio moyen :"
+    },
+    "export": {
+      "title": "📥 Télécharger ce mois",
+      "csvTitle": "CSV - Comptabilité",
+      "csvSubtitle": "Pour Excel/logiciels compta",
+      "pdfTitle": "PDF - Justificatif",
+      "pdfSubtitle": "Pour impression/archives",
+      "inProgress": "Export en cours...",
+      "csvError": "Erreur lors de l'export CSV",
+      "pdfError": "Erreur lors de l'export PDF. Veuillez installer jspdf et jspdf-autotable.",
+      "csv": {
+        "month": "Mois",
+        "transactions": "Transactions",
+        "totalVolume": "Volume total (ETH)",
+        "totalFees": "Frais totaux (ETH)",
+        "ratio": "Ratio %",
+        "gasFees": "Frais gaz (ETH)",
+        "protocolFees": "Frais protocole (ETH)",
+        "instant": "Paiements instantanés",
+        "scheduled": "Paiements programmés",
+        "recurring": "Paiements récurrents"
+      },
+      "pdf": {
+        "title": "Rapport analytics mensuel",
+        "period": "Période",
+        "wallet": "Wallet",
+        "generatedAt": "Généré le",
+        "indicator": "Indicateur",
+        "value": "Valeur",
+        "type": "Type",
+        "count": "Nombre",
+        "volumeEth": "Volume (ETH)",
+        "feeType": "Type de frais",
+        "amount": "Montant",
+        "share": "Part",
+        "page": "Page {{page}} sur {{total}}"
+      }
+    }
+  },
+  "tooltips": {
       "showHistory": "Afficher l'historique",
       "hideHistory": "Masquer l'historique"
     },

@@ -16,12 +16,17 @@ import { useCreateBatchPayment } from '@/hooks/useCreateBatchPayment';
 import { useCreateRecurringPayment } from '@/hooks/useCreateRecurringPayment';
 import { useCreateBatchRecurringPayment } from '@/hooks/useCreateBatchRecurringPayment';
 import { useAuth } from '@/contexts/AuthContext';
+import { type PaymentCategory } from '@/types/payment-identity';
+import { useSuggestedCategory } from '@/hooks/useCategorySuggestion';
+import PaymentIdentitySection from '@/components/payment/PaymentIdentitySection';
 
 interface PaymentFormData {
   tokenSymbol: TokenSymbol;
   beneficiary: string;
   amount: string;
   releaseDate: Date | null;
+  label: string;
+  category: PaymentCategory;
 }
 
 type PaymentTiming = 'instant' | 'scheduled' | 'recurring';
@@ -1163,7 +1168,11 @@ export default function PaymentForm() {
     beneficiary: '',
     amount: '',
     releaseDate: null,
+    label: '',
+    category: 'other',
   });
+
+  const { suggestedCategory, confidence, matchedKeywords } = useSuggestedCategory(formData.label);
 
   // État: paiement récurrent
   const [isRecurringMode, setIsRecurringMode] = useState(false);
@@ -1245,6 +1254,8 @@ export default function PaymentForm() {
           beneficiary: data.beneficiary || '',
           amount: data.amount || '',
           releaseDate: data.releaseDate ? new Date(data.releaseDate) : null,
+          label: data.label || '',
+          category: data.category || 'other',
         });
         localStorage.removeItem('paymentFormData');
       } catch (error) {
@@ -1393,6 +1404,21 @@ export default function PaymentForm() {
   }, [paymentTiming, formData.releaseDate]);
 
   // Handler changement token
+  
+  const handleLabelChange = (label: string) => {
+    setFormData(prev => ({ ...prev, label }));
+    if (label.length > 100) {
+      setErrors(prev => ({ ...prev, label: 'Maximum 100 characters' }));
+    } else {
+      setErrors(prev => ({ ...prev, label: '' }));
+    }
+  };
+
+  const handleCategoryChange = (category: PaymentCategory) => {
+    setFormData(prev => ({ ...prev, category }));
+  };
+
+
   const handleTokenChange = (token: TokenSymbol) => {
     setFormData((prev) => ({ ...prev, tokenSymbol: token }));
     setErrors((prev) => ({ ...prev, amount: '' }));
@@ -1495,6 +1521,8 @@ export default function PaymentForm() {
       beneficiary: formData.beneficiary,
       amount: formData.amount,
       releaseDate: formData.releaseDate?.toISOString(),
+        label: formData.label,
+        category: formData.category,
     }));
 
     router.push('/create-batch');
@@ -1618,6 +1646,8 @@ export default function PaymentForm() {
           totalMonths: recurringMonths,
           dayOfMonth: dayOfMonth,
           cancellable,
+            label: formData.label,
+            category: formData.category,
         });
       } else if (isRecurringMode) {
         // ✅ Paiement récurrent SINGLE
@@ -1634,6 +1664,8 @@ export default function PaymentForm() {
           totalMonths: recurringMonths,
           dayOfMonth: dayOfMonth, // ✅ AJOUTÉ - Jour extrait automatiquement du calendrier
           cancellable,
+            label: formData.label,
+            category: formData.category,
         });
       } else if (isBatchMode && additionalBeneficiaries.length > 0) {
         const allBeneficiaries = [
@@ -1655,6 +1687,8 @@ export default function PaymentForm() {
           amount: amountBigInt.toString(),
           releaseTime,
           cancellable,
+            label: formData.label,
+            category: formData.category,
         });
         await singlePayment.createPayment({
           tokenSymbol: formData.tokenSymbol,
@@ -1662,6 +1696,8 @@ export default function PaymentForm() {
           amount: amountBigInt,
           releaseTime,
           cancellable,
+            label: formData.label,
+            category: formData.category,
         });
         console.log('✅ [FORM SUBMIT] singlePayment.createPayment() appelé');
       }
@@ -2022,6 +2058,18 @@ export default function PaymentForm() {
           </div>
         )}
       </div>
+
+      {/* ✅ SECTION PAYMENT IDENTITY */}
+      <PaymentIdentitySection
+        label={formData.label}
+        category={formData.category}
+        onLabelChange={handleLabelChange}
+        onCategoryChange={handleCategoryChange}
+        suggestedCategory={suggestedCategory}
+        confidence={confidence}
+        matchedKeywords={matchedKeywords}
+        error={errors.label}
+      />
 
       {/* Section 3 : Montant */}
       <div className="glass rounded-2xl p-6 space-y-4">

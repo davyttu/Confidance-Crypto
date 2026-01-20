@@ -10,7 +10,13 @@ import {
   usePublicClient,
 } from 'wagmi';
 import { decodeEventLog } from 'viem';
-import { type TokenSymbol, getToken, getProtocolFeeBps } from '@/config/tokens';
+import {
+  type TokenSymbol,
+  getToken,
+  getProtocolFeeBps,
+  PROTOCOL_FEE_BPS_PARTICULAR,
+  PROTOCOL_FEE_BPS_PRO,
+} from '@/config/tokens';
 import { useTokenApproval, type UseTokenApprovalReturn } from './useTokenApproval';
 import { paymentFactoryScheduledAbi, paymentFactoryInstantAbi } from '@/lib/contracts/paymentFactoryAbi';
 import { PAYMENT_FACTORY_SCHEDULED, PAYMENT_FACTORY_INSTANT } from '@/lib/contracts/addresses';
@@ -27,6 +33,32 @@ const getFactoryAddress = (isInstant: boolean): `0x${string}` =>
 
 const getFactoryAbi = (isInstant: boolean) =>
   (isInstant ? paymentFactoryInstantAbi : paymentFactoryScheduledAbi);
+
+const resolveOnchainFeeBps = async (params: {
+  isInstantPayment: boolean;
+  address?: `0x${string}`;
+  publicClient?: ReturnType<typeof usePublicClient>;
+  isProVerified: boolean;
+}): Promise<number> => {
+  if (params.isInstantPayment) {
+    return 0;
+  }
+  if (!params.publicClient || !params.address) {
+    return getProtocolFeeBps({ isInstantPayment: false, isProVerified: params.isProVerified });
+  }
+  try {
+    const isProOnchain = await params.publicClient.readContract({
+      address: FACTORY_SCHEDULED_ADDRESS,
+      abi: paymentFactoryScheduledAbi,
+      functionName: 'isProWallet',
+      args: [params.address],
+    });
+    return (isProOnchain as boolean) ? PROTOCOL_FEE_BPS_PRO : PROTOCOL_FEE_BPS_PARTICULAR;
+  } catch (error) {
+    console.warn('⚠️ Impossible de lire isProWallet on-chain, fallback off-chain.', error);
+    return getProtocolFeeBps({ isInstantPayment: false, isProVerified: params.isProVerified });
+  }
+};
 
 const getFriendlyApprovalErrorMessage = (error: Error): string => {
   const candidates = [
@@ -332,7 +364,12 @@ export function useCreatePayment(): UseCreatePaymentReturn {
       // ✅ FIX : Déterminer si c'est un paiement instantané pour sélectionner la bonne factory
       const now = Math.floor(Date.now() / 1000);
       const isInstantPayment = (params.releaseTime - now) < 60;
-      const feeBpsForPayment = getProtocolFeeBps({ isInstantPayment, isProVerified });
+      const feeBpsForPayment = await resolveOnchainFeeBps({
+        isInstantPayment,
+        address,
+        publicClient,
+        isProVerified,
+      });
       const factoryAddress = getFactoryAddress(isInstantPayment);
       const factoryAbi = getFactoryAbi(isInstantPayment);
       
@@ -1124,39 +1161,44 @@ export function useCreatePayment(): UseCreatePaymentReturn {
       const now = Math.floor(Date.now() / 1000);
       const isInstantPayment = (currentParams.releaseTime - now) < 60;
 
-        const factoryAddress = getFactoryAddress(isInstantPayment);
-        const factoryAbi = getFactoryAbi(isInstantPayment);
-
-      const feeBpsForPayment = getProtocolFeeBps({ isInstantPayment, isProVerified });
-
-      // ✅ FIX : Calculer le montant total requis (sans fees pour paiements instantanés)
-      const totalRequired = isInstantPayment 
-        ? currentParams.amount  // Paiement instantané : pas de fees
-        : currentParams.amount + ((currentParams.amount * BigInt(feeBpsForPayment)) / BigInt(10000)); // Paiement programmé : + fees
-      
-      console.log('💰 Calcul totalRequired:', {
-        isInstantPayment,
-        amount: currentParams.amount.toString(),
-        totalRequired: totalRequired.toString(),
-        fees: isInstantPayment ? '0% (instantané)' : `${feeBpsForPayment / 100}% (programmé)`,
-      });
-      
-      // ✅ FIX : Calculer la marge de sécurité attendue (10%)
-      const expectedAllowance = (totalRequired * BigInt(110)) / BigInt(100);
-      const currentAllowanceCheck = approvalHook.currentAllowance;
-      
-      console.log('🔍 Vérification allowance avant création (après approbation):', {
-        token: token.symbol,
-        currentAllowance: currentAllowanceCheck?.toString() || 'undefined',
-        totalRequired: totalRequired.toString(),
-        expectedAllowance: expectedAllowance.toString(),
-        isAllowanceSufficient: currentAllowanceCheck !== undefined && currentAllowanceCheck >= totalRequired,
-      });
+      const factoryAddress = getFactoryAddress(isInstantPayment);
+      const factoryAbi = getFactoryAbi(isInstantPayment);
 
       // ✅ FIX : Attendre un peu que l'allowance soit mise à jour (refetch peut prendre du temps)
       // On vérifie l'allowance actuelle et on attend si nécessaire
       const checkAndCreate = async () => {
         try {
+          const feeBpsForPayment = await resolveOnchainFeeBps({
+            isInstantPayment,
+            address,
+            publicClient,
+            isProVerified,
+          });
+
+          // ✅ FIX : Calculer le montant total requis (sans fees pour paiements instantanés)
+          const totalRequired = isInstantPayment 
+            ? currentParams.amount  // Paiement instantané : pas de fees
+            : currentParams.amount + ((currentParams.amount * BigInt(feeBpsForPayment)) / BigInt(10000)); // Paiement programmé : + fees
+          
+          console.log('💰 Calcul totalRequired:', {
+            isInstantPayment,
+            amount: currentParams.amount.toString(),
+            totalRequired: totalRequired.toString(),
+            fees: isInstantPayment ? '0% (instantané)' : `${feeBpsForPayment / 100}% (programmé)`,
+          });
+          
+          // ✅ FIX : Calculer la marge de sécurité attendue (10%)
+          const expectedAllowance = (totalRequired * BigInt(110)) / BigInt(100);
+          const currentAllowanceCheck = approvalHook.currentAllowance;
+          
+          console.log('🔍 Vérification allowance avant création (après approbation):', {
+            token: token.symbol,
+            currentAllowance: currentAllowanceCheck?.toString() || 'undefined',
+            totalRequired: totalRequired.toString(),
+            expectedAllowance: expectedAllowance.toString(),
+            isAllowanceSufficient: currentAllowanceCheck !== undefined && currentAllowanceCheck >= totalRequired,
+          });
+
           if (!address || !token.address || !publicClient) {
             const errorMsg = 'Paramètres manquants pour vérifier l\'allowance';
             console.error('❌', errorMsg, { address: !!address, tokenAddress: !!token.address, publicClient: !!publicClient });
@@ -1303,9 +1345,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
         let waited = 0;
         let checkCount = 0;
         
-        // ✅ FIX : Calculer la marge de sécurité attendue (10%)
-        const expectedAllowance = (totalRequired * BigInt(110)) / BigInt(100); // +10% de marge (augmenté de 5% à 10%)
-        
+        // ✅ FIX : Utiliser la marge de sécurité attendue (10%) déjà calculée
         console.log('⏳ Attente confirmation allowance sur la blockchain...');
         console.log('📋 Paramètres vérification:', {
           token: currentParams?.tokenSymbol,

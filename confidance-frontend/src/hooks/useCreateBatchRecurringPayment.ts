@@ -52,6 +52,8 @@ interface CreateBatchRecurringPaymentParams {
   dayOfMonth: number; // 1-28
   cancellable?: boolean;
   firstMonthAmount?: bigint; // ⭐ ADD
+  label?: string;
+  category?: string;
 }
 
 type PaymentStatus =
@@ -461,6 +463,9 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
                 network: getNetworkFromChainId(chainId),
                 chain_id: chainId,
                 transaction_hash: createTxHash,
+                payment_label: currentParams.label || '',
+                payment_category: currentParams.category || '',
+                payment_categorie: currentParams.category || '',
                 ...(isAuthenticated && user ? { user_id: user.id } : { guest_email: guestEmail }),
               }),
             });

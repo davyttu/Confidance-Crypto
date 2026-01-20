@@ -40,6 +40,26 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+async function addTimelineEvent(payload) {
+  try {
+    const required = ["payment_id", "user_id", "event_type", "event_label", "actor_type", "explanation"];
+    const missing = required.filter((field) => !payload?.[field]);
+    if (missing.length > 0) {
+      return;
+    }
+
+    const { error } = await supabase
+      .from("payment_timeline_events")
+      .insert([payload]);
+
+    if (error) {
+      console.error("⚠️ Timeline insert failed:", error.message);
+    }
+  } catch (error) {
+    console.error("⚠️ Timeline insert error:", error.message);
+  }
+}
+
 // ============================================================
 // N8N (ALBERT) WEBHOOK - EVENT EMITTER
 // ============================================================
@@ -395,6 +415,8 @@ async function loadRecurringPayments() {
       executedMonths: row.executed_months,
       nextExecutionTime: row.next_execution_time,
       status: row.status,
+      userId: row.user_id,
+      category: row.category || null,
       name: `🔄 Recurring #${row.id.substring(0, 8)} (${row.token_symbol}, ${row.executed_months}/${row.total_months} mois)`,
     }));
 
@@ -1043,6 +1065,27 @@ async function executeRecurringPayment(payment) {
           nextMonthToProcessOnChain > 0n ? Number(nextMonthToProcessOnChain) : null,
           startDateOnChain > 0n ? Number(startDateOnChain) : null
         );
+
+        if (payment.userId) {
+          await addTimelineEvent({
+            payment_id: payment.id,
+            user_id: payment.userId,
+            event_type: "payment_executed",
+            event_label: "Paiement exécuté",
+            actor_type: "system",
+            actor_label: "Confidance",
+            explanation: "Paiement exécuté avec succès",
+            metadata: {
+              amount: payment.monthlyAmount,
+              currency: payment.tokenSymbol,
+              gas_fee: 0,
+              protocol_fee: 0,
+              payment_type: "recurring",
+              category: payment.category || null,
+              tx_hash: tx.hash
+            }
+          });
+        }
       } else if (paymentFailed) {
         // Paiement échoué : synchroniser la DB avec l'état du contrat (le mois a été skip)
         console.log(`   ⚠️ Payment failed - synchronizing DB with contract state (month skipped)`);

@@ -2,12 +2,14 @@
 'use client';
 
 import { MonthlyStats } from '@/hooks/useMonthlyAnalytics';
+import { useTranslationReady } from '@/hooks/useTranslationReady';
 
 interface MonthlyComparisonProps {
   monthlyData: MonthlyStats[];
 }
 
 export function MonthlyComparison({ monthlyData }: MonthlyComparisonProps) {
+  const { t } = useTranslationReady();
   // Trouver le meilleur et le pire ratio
   const bestRatio = monthlyData.reduce((min, current) => 
     current.feeRatio < min.feeRatio ? current : min
@@ -19,7 +21,9 @@ export function MonthlyComparison({ monthlyData }: MonthlyComparisonProps) {
   return (
     <div className="bg-white rounded-xl shadow">
       <div className="px-6 py-4 border-b border-gray-200">
-        <h2 className="text-lg font-semibold text-gray-900">Historique Mensuel</h2>
+        <h2 className="text-lg font-semibold text-gray-900">
+          {t('analytics.history.title', { defaultValue: 'Monthly History' })}
+        </h2>
       </div>
 
       <div className="overflow-x-auto">
@@ -27,19 +31,19 @@ export function MonthlyComparison({ monthlyData }: MonthlyComparisonProps) {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Mois
+                {t('analytics.history.month', { defaultValue: 'Month' })}
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Txs
+                {t('analytics.history.txs', { defaultValue: 'Txs' })}
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Volume
+                {t('analytics.history.volume', { defaultValue: 'Volume' })}
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Frais
+                {t('analytics.history.fees', { defaultValue: 'Fees' })}
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Ratio %
+                {t('analytics.history.ratio', { defaultValue: 'Ratio %' })}
               </th>
             </tr>
           </thead>
@@ -66,7 +70,7 @@ export function MonthlyComparison({ monthlyData }: MonthlyComparisonProps) {
                       </span>
                       {isCurrent && (
                         <span className="px-2 py-1 bg-blue-600 text-white text-xs rounded-full">
-                          Actuel
+                          {t('analytics.history.current', { defaultValue: 'Current' })}
                         </span>
                       )}
                     </div>
@@ -105,12 +109,12 @@ export function MonthlyComparison({ monthlyData }: MonthlyComparisonProps) {
                       </span>
                       {isBest && monthlyData.length > 1 && (
                         <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full font-medium">
-                          Best
+                          {t('analytics.history.best', { defaultValue: 'Best' })}
                         </span>
                       )}
                       {isWorst && monthlyData.length > 1 && (
                         <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full font-medium">
-                          High
+                          {t('analytics.history.high', { defaultValue: 'High' })}
                         </span>
                       )}
                     </div>
@@ -127,17 +131,23 @@ export function MonthlyComparison({ monthlyData }: MonthlyComparisonProps) {
         <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
             <div>
-              <span className="text-gray-600">Mois le plus économique : </span>
+              <span className="text-gray-600">
+                {t('analytics.history.bestMonth', { defaultValue: 'Best month:' })}{' '}
+              </span>
               <span className="font-semibold text-green-600">{bestRatio.displayMonth}</span>
               <span className="text-gray-500"> ({bestRatio.feeRatio.toFixed(2)}%)</span>
             </div>
             <div>
-              <span className="text-gray-600">Mois le plus coûteux : </span>
+              <span className="text-gray-600">
+                {t('analytics.history.worstMonth', { defaultValue: 'Most expensive month:' })}{' '}
+              </span>
               <span className="font-semibold text-red-600">{worstRatio.displayMonth}</span>
               <span className="text-gray-500"> ({worstRatio.feeRatio.toFixed(2)}%)</span>
             </div>
             <div>
-              <span className="text-gray-600">Ratio moyen : </span>
+              <span className="text-gray-600">
+                {t('analytics.history.avgRatio', { defaultValue: 'Average ratio:' })}{' '}
+              </span>
               <span className="font-semibold text-gray-900">
                 {(monthlyData.reduce((sum, m) => sum + m.feeRatio, 0) / monthlyData.length).toFixed(2)}%
               </span>

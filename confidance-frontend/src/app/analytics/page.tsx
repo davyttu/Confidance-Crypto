@@ -7,13 +7,16 @@ import { useMonthlyAnalytics } from '@/hooks/useMonthlyAnalytics';
 import { useEthUsdPrice } from '@/hooks/useEthUsdPrice';
 import { usePaymentTransactions } from '@/hooks/usePaymentTransactions';
 import { useAuth } from '@/hooks/useAuth';
+import { useTranslationReady } from '@/hooks/useTranslationReady';
 import { KPICards } from '@/components/Analytics/KPICards';
 import { TransactionTypeTable } from '@/components/Analytics/TransactionTypeTable';
 import { FeesBreakdown } from '@/components/Analytics/FeesBreakdown';
 import { MonthlyComparison } from '@/components/Analytics/MonthlyComparison';
 import { ExportActions } from '@/components/Analytics/ExportActions';
+import { CategoryInsights, type CategoryInsight } from '@/components/Analytics/CategoryInsights';
 
 export default function AnalyticsPage() {
+  const { t, i18n } = useTranslationReady();
   const { address, isConnected } = useAccount();
   const { priceUsd } = useEthUsdPrice();
   const { user, isAuthenticated } = useAuth();
@@ -31,6 +34,25 @@ export default function AnalyticsPage() {
     transactions,
     isProVerified
   );
+  const [hasToken, setHasToken] = useState(false);
+  const [timelineOpen, setTimelineOpen] = useState(false);
+  const [timelineLoading, setTimelineLoading] = useState(false);
+  const [timelineError, setTimelineError] = useState<string | null>(null);
+  const [timelineEvents, setTimelineEvents] = useState<Array<{
+    event_type: string;
+    event_label: string;
+    actor_label: string | null;
+    explanation: string;
+    created_at: string;
+    metadata?: Record<string, unknown> | null;
+  }>>([]);
+  const [categoryInsights, setCategoryInsights] = useState<CategoryInsight[]>([]);
+  const [categoryInsightsLoading, setCategoryInsightsLoading] = useState(false);
+  const [categoryInsightsError, setCategoryInsightsError] = useState<string | null>(null);
+  useEffect(() => {
+    setHasToken(Boolean(localStorage.getItem('token')));
+  }, []);
+
   useEffect(() => {
     const loadPayments = async () => {
       if (!address) {
@@ -130,6 +152,8 @@ export default function AnalyticsPage() {
     ? monthlyData.find((month) => month.month === selectedMonthKey) || currentMonth
     : currentMonth;
 
+  const locale = i18n.language || 'en';
+
   useEffect(() => {
     if (!selectedYear && availableYears.length > 0) {
       setSelectedYear(availableYears[0]);
@@ -151,6 +175,103 @@ export default function AnalyticsPage() {
       setSelectedMonth(month);
     }
   }, [currentMonth, selectedYear, selectedMonth]);
+
+  useEffect(() => {
+    const loadTimeline = async () => {
+      if (!timelineOpen) return;
+      if (!activeMonth?.month) return;
+
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setTimelineError('Connexion requise pour afficher la timeline.');
+        return;
+      }
+
+      setTimelineLoading(true);
+      setTimelineError(null);
+
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/analytics/${activeMonth.month}/timeline`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!response.ok) {
+          const fallbackMessage = response.status === 401
+            ? 'Connexion requise pour afficher la timeline.'
+            : `Erreur ${response.status} lors du chargement.`;
+          let errorMessage = fallbackMessage;
+          try {
+            const payload = await response.json();
+            if (payload?.error) {
+              errorMessage = `${fallbackMessage} ${payload.error}`;
+            }
+          } catch {
+            // ignore JSON parse errors
+          }
+          throw new Error(errorMessage);
+        }
+        const data = await response.json();
+        setTimelineEvents(Array.isArray(data) ? data : []);
+      } catch (err) {
+        const message = (err as Error)?.message || 'Impossible de charger la timeline.';
+        setTimelineError(message);
+        setTimelineEvents([]);
+      } finally {
+        setTimelineLoading(false);
+      }
+    };
+
+    loadTimeline();
+  }, [timelineOpen, activeMonth?.month]);
+
+  useEffect(() => {
+    const loadInsights = async () => {
+      if (!activeMonth?.month) return;
+
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setCategoryInsights([]);
+        setCategoryInsightsError(null);
+        setCategoryInsightsLoading(false);
+        return;
+      }
+
+      setCategoryInsightsLoading(true);
+      setCategoryInsightsError(null);
+
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/analytics/${activeMonth.month}/insights`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!response.ok) {
+          const fallbackMessage = response.status === 401
+            ? 'Connexion requise pour afficher les insights.'
+            : `Erreur ${response.status} lors du chargement.`;
+          let errorMessage = fallbackMessage;
+          try {
+            const payload = await response.json();
+            if (payload?.error) {
+              errorMessage = `${fallbackMessage} ${payload.error}`;
+            }
+          } catch {
+            // ignore JSON parse errors
+          }
+          throw new Error(errorMessage);
+        }
+        const data = await response.json();
+        setCategoryInsights(Array.isArray(data) ? data : []);
+      } catch (err) {
+        const message = (err as Error)?.message || 'Impossible de charger les insights.';
+        setCategoryInsightsError(message);
+        setCategoryInsights([]);
+      } finally {
+        setCategoryInsightsLoading(false);
+      }
+    };
+
+    loadInsights();
+  }, [activeMonth?.month]);
 
   useEffect(() => {
     if (!selectedYear || !selectedMonth) return;
@@ -215,10 +336,12 @@ export default function AnalyticsPage() {
               </svg>
             </div>
             <h3 className="text-xl font-bold text-gray-900 mb-2">
-              Connectez votre wallet
+              {t('analytics.connectTitle', { defaultValue: 'Connect your wallet' })}
             </h3>
             <p className="text-gray-600">
-              Pour accéder à vos analytics, connectez d'abord votre wallet
+              {t('analytics.connectSubtitle', {
+                defaultValue: 'To access your analytics, connect your wallet first',
+              })}
             </p>
           </div>
         </div>
@@ -251,7 +374,9 @@ export default function AnalyticsPage() {
       <div className="min-h-screen bg-gray-50 py-12 px-4">
         <div className="max-w-7xl mx-auto">
           <div className="bg-red-50 border border-red-200 rounded-xl p-6">
-            <p className="text-red-800">Erreur lors du chargement des données : {paymentsError.message}</p>
+            <p className="text-red-800">
+              {t('analytics.loadError', { defaultValue: 'Error loading data:' })} {paymentsError.message}
+            </p>
           </div>
         </div>
       </div>
@@ -265,9 +390,11 @@ export default function AnalyticsPage() {
         <div className="max-w-7xl mx-auto space-y-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">📊 Analytics Mensuels</h1>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                {t('analytics.title', { defaultValue: '📊 Monthly Analytics' })}
+              </h1>
               <p className="text-gray-600">
-                Analysez votre activité globale sur la plateforme
+                {t('analytics.subtitle', { defaultValue: 'Analyze your overall activity on the platform' })}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -277,7 +404,7 @@ export default function AnalyticsPage() {
                 className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 disabled
               >
-                <option value="" disabled>Mois</option>
+                <option value="" disabled>{t('analytics.month', { defaultValue: 'Month' })}</option>
               </select>
               <select
                 value={selectedYear || ''}
@@ -285,7 +412,7 @@ export default function AnalyticsPage() {
                 className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 disabled
               >
-                <option value="" disabled>Année</option>
+                <option value="" disabled>{t('analytics.year', { defaultValue: 'Year' })}</option>
               </select>
             </div>
           </div>
@@ -295,10 +422,10 @@ export default function AnalyticsPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
             <h3 className="text-xl font-bold text-gray-900 mb-2">
-              Aucune donnée disponible
+              {t('analytics.emptyTitle', { defaultValue: 'No data available' })}
             </h3>
             <p className="text-gray-600">
-              Créez vos premiers paiements pour voir vos analytics
+              {t('analytics.emptySubtitle', { defaultValue: 'Create your first payments to see your analytics' })}
             </p>
           </div>
         </div>
@@ -313,9 +440,11 @@ export default function AnalyticsPage() {
         {/* En-tête + Sélecteurs */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">📊 Analytics Mensuels</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              {t('analytics.title', { defaultValue: '📊 Monthly Analytics' })}
+            </h1>
             <p className="text-gray-600">
-              Analysez votre activité globale sur la plateforme
+              {t('analytics.subtitle', { defaultValue: 'Analyze your overall activity on the platform' })}
             </p>
           </div>
           {monthlyData.length > 0 && (
@@ -326,10 +455,10 @@ export default function AnalyticsPage() {
                 className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 disabled={!selectedYear || monthsForSelectedYear.length === 0}
               >
-                <option value="" disabled>Mois</option>
+                <option value="" disabled>{t('analytics.month', { defaultValue: 'Month' })}</option>
                 {monthsForSelectedYear.map((month) => (
                   <option key={month} value={month}>
-                    {new Intl.DateTimeFormat('fr-FR', { month: 'long' }).format(new Date(2024, month - 1, 1))}
+                    {new Intl.DateTimeFormat(locale, { month: 'long' }).format(new Date(2024, month - 1, 1))}
                   </option>
                 ))}
               </select>
@@ -338,7 +467,7 @@ export default function AnalyticsPage() {
                 onChange={(e) => setSelectedYear(Number(e.target.value))}
                 className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="" disabled>Année</option>
+                <option value="" disabled>{t('analytics.year', { defaultValue: 'Year' })}</option>
                 {availableYears.map((year) => (
                   <option key={year} value={year}>{year}</option>
                 ))}
@@ -349,6 +478,81 @@ export default function AnalyticsPage() {
 
         {/* Section A : KPI Cards */}
         <KPICards stats={activeMonth} />
+
+        <CategoryInsights
+          insights={categoryInsights}
+          loading={categoryInsightsLoading}
+          error={categoryInsightsError}
+          monthLabel={activeMonth.displayMonth}
+        />
+
+        {/* Lien Timeline mensuelle */}
+        <div className="flex items-center justify-between bg-white rounded-xl shadow px-6 py-4">
+          <div className="text-sm text-gray-700">
+            {timelineOpen
+              ? t('analytics.timeline.open', { defaultValue: 'Timeline des événements exécutés' })
+              : t('analytics.timeline.closed', { defaultValue: 'Basé sur les événements exécutés du mois' })}
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              if (!hasToken) {
+                setTimelineError('Connexion requise pour afficher la timeline.');
+                setTimelineOpen(true);
+                return;
+              }
+              setTimelineOpen((prev) => !prev);
+            }}
+            className={`px-3 py-2 text-sm font-medium rounded-lg border ${
+              hasToken ? 'border-gray-300 hover:bg-gray-50' : 'border-gray-200 text-gray-400 cursor-not-allowed'
+            }`}
+            disabled={!hasToken}
+          >
+            {timelineOpen
+              ? t('analytics.timeline.hide', { defaultValue: 'Masquer la timeline' })
+              : t('analytics.timeline.show', { defaultValue: 'Voir les événements' })}
+          </button>
+        </div>
+
+        {timelineOpen && (
+          <div className="bg-white rounded-xl shadow px-6 py-4 space-y-3">
+            {timelineLoading && (
+              <p className="text-sm text-gray-500">
+                {t('analytics.timeline.loading', { defaultValue: 'Chargement des événements...' })}
+              </p>
+            )}
+            {timelineError && (
+              <p className="text-sm text-red-600">
+                {timelineError}
+              </p>
+            )}
+            {!timelineLoading && !timelineError && timelineEvents.length === 0 && (
+              <p className="text-sm text-gray-500">
+                {t('analytics.timeline.empty', { defaultValue: 'Aucun événement ce mois-ci.' })}
+              </p>
+            )}
+            {!timelineLoading && !timelineError && timelineEvents.length > 0 && (
+              <div className="space-y-3">
+                {timelineEvents.map((event, index) => (
+                  <div key={`${event.created_at}-${index}`} className="border border-gray-200 rounded-lg p-3">
+                    <div className="flex items-center justify-between text-sm text-gray-500">
+                      <span>{event.event_label}</span>
+                      <span>{new Date(event.created_at).toLocaleDateString(locale)}</span>
+                    </div>
+                    <div className="mt-1 text-gray-900">
+                      {event.explanation}
+                    </div>
+                    {event.actor_label && (
+                      <div className="mt-1 text-xs text-gray-500">
+                        {event.actor_label}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Section C : Tableau par type */}
         <TransactionTypeTable stats={activeMonth} />

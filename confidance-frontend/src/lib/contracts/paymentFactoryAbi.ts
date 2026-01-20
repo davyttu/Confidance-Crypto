@@ -183,6 +183,13 @@ export const paymentFactoryAbi = [
   // HELPERS
   // ============================================================
   {
+    inputs: [{ name: 'wallet', type: 'address' }],
+    name: 'isProWallet',
+    outputs: [{ name: '', type: 'bool' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
     inputs: [{ name: 'amountToPayee', type: 'uint256' }],
     name: 'calculateSingleTotal',
     outputs: [

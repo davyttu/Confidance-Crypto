@@ -208,15 +208,30 @@ router.put('/wallets/:address/primary', authenticateToken, async (req, res) => {
  * GET /api/users/preferences
  * Récupérer les préférences UI de l'utilisateur
  */
+const fetchPreferences = async (tableName, userId) => {
+  return supabase
+    .from(tableName)
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle();
+};
+
+const upsertPreferences = async (tableName, payload) => {
+  return supabase
+    .from(tableName)
+    .upsert(payload, { onConflict: 'user_id' })
+    .select()
+    .single();
+};
+
 router.get('/preferences', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.user;
 
-    const { data, error } = await supabase
-      .from('user_ui_preferences')
-      .select('*')
-      .eq('user_id', userId)
-      .maybeSingle();
+    let { data, error } = await fetchPreferences('user_ui_preferences', userId);
+    if (error && error.code === 'PGRST205') {
+      ({ data, error } = await fetchPreferences('user_preferences', userId));
+    }
 
     if (error && error.code !== 'PGRST116') {
       console.error('Error fetching preferences:', error);
@@ -239,16 +254,17 @@ router.put('/preferences', authenticateToken, async (req, res) => {
     const { userId } = req.user;
     const { analytics_year, analytics_month } = req.body;
 
-    const { data, error } = await supabase
-      .from('user_ui_preferences')
-      .upsert({
-        user_id: userId,
-        analytics_year,
-        analytics_month,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id' })
-      .select()
-      .single();
+    const payload = {
+      user_id: userId,
+      analytics_year,
+      analytics_month,
+      updated_at: new Date().toISOString(),
+    };
+
+    let { data, error } = await upsertPreferences('user_ui_preferences', payload);
+    if (error && error.code === 'PGRST205') {
+      ({ data, error } = await upsertPreferences('user_preferences', payload));
+    }
 
     if (error) {
       console.error('Error saving preferences:', error);

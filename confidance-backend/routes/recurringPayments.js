@@ -1,6 +1,7 @@
 // routes/recurringPayments.js
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
+const { addTimelineEvent } = require('../services/timeline/timelineService');
 
 const router = express.Router();
 
@@ -36,6 +37,27 @@ const MAX_MONTHS = 12;
  * Durée d'un mois en secondes (30 jours)
  */
 const MONTH_IN_SECONDS = 30 * 24 * 60 * 60; // 2592000
+
+const formatPaymentCreatedExplanation = (label, category) => {
+  const trimmedLabel = typeof label === 'string' ? label.trim() : '';
+  const trimmedCategory = typeof category === 'string' ? category.trim() : '';
+
+  if (trimmedLabel && trimmedCategory) {
+    return `Paiement créé : ${trimmedLabel} (${trimmedCategory})`;
+  }
+  if (trimmedLabel) {
+    return `Paiement créé : ${trimmedLabel}`;
+  }
+  if (trimmedCategory) {
+    return `Paiement créé (${trimmedCategory})`;
+  }
+  return 'Paiement créé';
+};
+
+const sanitizeMetadata = (metadata) =>
+  Object.fromEntries(
+    Object.entries(metadata || {}).filter(([, value]) => value !== undefined)
+  );
 
 // ============================================================
 // HELPERS
@@ -109,7 +131,13 @@ router.post('/', async (req, res) => {
       transaction_hash,
       cancellable,
       user_id,
-      guest_email
+      guest_email,
+      payment_label,
+      payment_category,
+      payment_categorie,
+      label,
+      category,
+      categorie
     } = req.body;
 
     // Validations
@@ -133,6 +161,23 @@ router.post('/', async (req, res) => {
       }
       ticket_number = generateTicketNumber();
     }
+
+    const normalizedPaymentLabel =
+      typeof payment_label === 'string'
+        ? payment_label.trim()
+        : typeof label === 'string'
+        ? label.trim()
+        : '';
+    const normalizedPaymentCategory =
+      typeof payment_categorie === 'string'
+        ? payment_categorie.trim()
+        : typeof payment_category === 'string'
+        ? payment_category.trim()
+        : typeof categorie === 'string'
+        ? categorie.trim()
+        : typeof category === 'string'
+        ? category.trim()
+        : '';
 
     // Calculer next_execution_time (= first_payment_time au départ)
     const next_execution_time = first_payment_time;
@@ -163,7 +208,9 @@ router.post('/', async (req, res) => {
         user_id: user_id || null,
         guest_email: guest_email || null,
         ticket_number,
-        status: 'pending'
+        status: 'pending',
+        payment_label: normalizedPaymentLabel || null,
+        payment_categorie: normalizedPaymentCategory || null
       })
       .select()
       .single();
@@ -177,6 +224,25 @@ router.post('/', async (req, res) => {
     }
 
     console.log('✅ Paiement récurrent enregistré:', recurringPayment.id);
+
+    if (recurringPayment?.id && recurringPayment?.user_id) {
+      const metadata = sanitizeMetadata({
+        amount: recurringPayment.monthly_amount,
+        currency: recurringPayment.token_symbol,
+        frequency: 'monthly'
+      });
+
+      addTimelineEvent({
+        payment_id: recurringPayment.id,
+        user_id: recurringPayment.user_id,
+        event_type: 'payment_created',
+        event_label: 'Paiement créé',
+        actor_type: 'user',
+        actor_label: 'Vous',
+        explanation: formatPaymentCreatedExplanation(normalizedPaymentLabel, normalizedPaymentCategory),
+        metadata
+      });
+    }
 
     res.status(201).json({
       success: true,
@@ -303,6 +369,39 @@ router.patch('/:id', async (req, res) => {
 
     console.log('✅ Paiement récurrent mis à jour:', id);
 
+    if (payment?.id && payment?.user_id && status === 'active') {
+      addTimelineEvent({
+        payment_id: payment.id,
+        user_id: payment.user_id,
+        event_type: 'payment_scheduled',
+        event_label: 'Paiement programmé',
+        actor_type: 'system',
+        actor_label: 'Confidance',
+        explanation: 'Paiement programmé selon la règle définie'
+      });
+    }
+
+    if (payment?.id && payment?.user_id && (last_execution_hash || status === 'completed')) {
+      addTimelineEvent({
+        payment_id: payment.id,
+        user_id: payment.user_id,
+        event_type: 'payment_executed',
+        event_label: 'Paiement exécuté',
+        actor_type: 'system',
+        actor_label: 'Confidance',
+        explanation: 'Paiement exécuté avec succès',
+        metadata: sanitizeMetadata({
+          amount: payment.monthly_amount,
+          currency: payment.token_symbol,
+          payment_type: 'recurring',
+          category: req.body.category ?? null,
+          tx_hash: last_execution_hash,
+          gas_fee: req.body.gas_fee ?? 0,
+          protocol_fee: req.body.protocol_fee ?? 0
+        })
+      });
+    }
+
     res.json({
       success: true,
       payment
@@ -378,6 +477,18 @@ router.delete('/:id', async (req, res) => {
     }
 
     console.log('✅ Paiement récurrent annulé:', id);
+
+    if (updatedPayment?.id && updatedPayment?.user_id) {
+      addTimelineEvent({
+        payment_id: updatedPayment.id,
+        user_id: updatedPayment.user_id,
+        event_type: 'payment_cancelled',
+        event_label: 'Paiement annulé',
+        actor_type: 'user',
+        actor_label: 'Vous',
+        explanation: 'Paiement annulé'
+      });
+    }
 
     res.json({
       success: true,

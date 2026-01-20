@@ -22,6 +22,7 @@ export function ProAccountModal({
   mode = 'create'
 }: ProAccountModalProps) {
   const { openConnectModal } = useConnectModal();
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
   const [formData, setFormData] = useState({
     companyLegalName: '',
     countryCode: '',
@@ -38,6 +39,20 @@ export function ProAccountModal({
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [authSuccess, setAuthSuccess] = useState<string | null>(null);
+  const [authSubmitting, setAuthSubmitting] = useState({
+    email: false,
+    confirmEmail: false,
+    password: false,
+  });
+  const [authData, setAuthData] = useState({
+    currentPassword: '',
+    newEmail: '',
+    emailCode: '',
+    newPassword: '',
+    confirmNewPassword: '',
+  });
   const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -62,6 +77,8 @@ export function ProAccountModal({
       });
       setError(null);
       setSuccess(false);
+      setAuthError(null);
+      setAuthSuccess(null);
     }
     wasOpenRef.current = isOpen;
   }, [isOpen, userId]);
@@ -227,7 +244,144 @@ export function ProAccountModal({
   const handleClose = () => {
     setError(null);
     setSuccess(false);
+    setAuthError(null);
+    setAuthSuccess(null);
     onClose();
+  };
+
+  const getAuthToken = () => localStorage.getItem('token');
+
+  const handleEmailChangeRequest = async () => {
+    setAuthError(null);
+    setAuthSuccess(null);
+    if (!authData.currentPassword) {
+      setAuthError('Renseigne ton mot de passe actuel.');
+      return;
+    }
+    if (!authData.newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(authData.newEmail)) {
+      setAuthError('Nouvel email invalide.');
+      return;
+    }
+
+    const token = getAuthToken();
+    if (!token) {
+      setAuthError('Connecte-toi pour modifier ton email.');
+      return;
+    }
+
+    try {
+      setAuthSubmitting((prev) => ({ ...prev, email: true }));
+      const res = await fetch(`${apiUrl}/api/auth/change-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          oldPassword: authData.currentPassword,
+          newEmail: authData.newEmail,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error || 'Erreur lors de la demande de changement d’email');
+      }
+      setAuthSuccess('Code envoyé sur votre email. Vérifiez votre boîte.');
+      toast.success('Code de confirmation envoyé ✅');
+    } catch (err) {
+      setAuthError(err instanceof Error ? err.message : 'Erreur inconnue');
+    } finally {
+      setAuthSubmitting((prev) => ({ ...prev, email: false }));
+    }
+  };
+
+  const handleEmailConfirm = async () => {
+    setAuthError(null);
+    setAuthSuccess(null);
+    if (!authData.emailCode) {
+      setAuthError('Renseigne le code reçu par email.');
+      return;
+    }
+    const token = getAuthToken();
+    if (!token) {
+      setAuthError('Connecte-toi pour confirmer ton email.');
+      return;
+    }
+
+    try {
+      setAuthSubmitting((prev) => ({ ...prev, confirmEmail: true }));
+      const res = await fetch(`${apiUrl}/api/auth/confirm-email-change`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ code: authData.emailCode }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error || 'Erreur lors de la confirmation email');
+      }
+      if (data?.token) {
+        localStorage.setItem('token', data.token);
+      }
+      setAuthSuccess('Email mis à jour ✅');
+      toast.success('Email mis à jour ✅');
+    } catch (err) {
+      setAuthError(err instanceof Error ? err.message : 'Erreur inconnue');
+    } finally {
+      setAuthSubmitting((prev) => ({ ...prev, confirmEmail: false }));
+    }
+  };
+
+  const handlePasswordChange = async () => {
+    setAuthError(null);
+    setAuthSuccess(null);
+    if (!authData.currentPassword) {
+      setAuthError('Renseigne ton mot de passe actuel.');
+      return;
+    }
+    if (!authData.newPassword || authData.newPassword.length < 8) {
+      setAuthError('Le nouveau mot de passe doit contenir au moins 8 caractères.');
+      return;
+    }
+    if (authData.newPassword !== authData.confirmNewPassword) {
+      setAuthError('Les mots de passe ne correspondent pas.');
+      return;
+    }
+
+    const token = getAuthToken();
+    if (!token) {
+      setAuthError('Connecte-toi pour modifier ton mot de passe.');
+      return;
+    }
+
+    try {
+      setAuthSubmitting((prev) => ({ ...prev, password: true }));
+      const res = await fetch(`${apiUrl}/api/auth/change-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          oldPassword: authData.currentPassword,
+          newPassword: authData.newPassword,
+          confirmPassword: authData.confirmNewPassword,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error || 'Erreur lors de la modification du mot de passe');
+      }
+      setAuthSuccess('Mot de passe mis à jour ✅');
+      toast.success('Mot de passe mis à jour ✅');
+      setAuthData((prev) => ({ ...prev, newPassword: '', confirmNewPassword: '' }));
+    } catch (err) {
+      setAuthError(err instanceof Error ? err.message : 'Erreur inconnue');
+    } finally {
+      setAuthSubmitting((prev) => ({ ...prev, password: false }));
+    }
   };
 
   return (
@@ -326,6 +480,97 @@ export function ProAccountModal({
                 </div>
               )}
 
+              <div className="pt-2 border-t border-gray-200">
+                <h3 className="text-sm font-semibold text-gray-900">Connexion</h3>
+                <p className="text-xs text-gray-500 mt-1">
+                  Pour modifier votre email ou mot de passe, saisissez votre mot de passe actuel.
+                </p>
+              </div>
+
+              <Input
+                label="Mot de passe actuel"
+                type="password"
+                value={authData.currentPassword}
+                onChange={(v) => setAuthData({ ...authData, currentPassword: v })}
+                required={false}
+              />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Input
+                  label="Nouvel email"
+                  type="email"
+                  value={authData.newEmail}
+                  onChange={(v) => setAuthData({ ...authData, newEmail: v })}
+                  required={false}
+                />
+                <div className="flex items-end">
+                  <button
+                    type="button"
+                    onClick={handleEmailChangeRequest}
+                    disabled={authSubmitting.email}
+                    className="w-full py-2.5 px-4 text-sm bg-gray-900 text-white rounded-lg disabled:opacity-50"
+                  >
+                    {authSubmitting.email ? 'Envoi...' : 'Envoyer le code'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Input
+                  label="Code de confirmation"
+                  value={authData.emailCode}
+                  onChange={(v) => setAuthData({ ...authData, emailCode: v })}
+                  required={false}
+                />
+                <div className="flex items-end">
+                  <button
+                    type="button"
+                    onClick={handleEmailConfirm}
+                    disabled={authSubmitting.confirmEmail}
+                    className="w-full py-2.5 px-4 text-sm bg-purple-600 text-white rounded-lg disabled:opacity-50"
+                  >
+                    {authSubmitting.confirmEmail ? 'Confirmation...' : 'Confirmer le nouvel email'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Input
+                  label="Nouveau mot de passe"
+                  type="password"
+                  value={authData.newPassword}
+                  onChange={(v) => setAuthData({ ...authData, newPassword: v })}
+                  required={false}
+                />
+                <Input
+                  label="Confirmer le mot de passe"
+                  type="password"
+                  value={authData.confirmNewPassword}
+                  onChange={(v) => setAuthData({ ...authData, confirmNewPassword: v })}
+                  required={false}
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={handlePasswordChange}
+                disabled={authSubmitting.password}
+                className="w-full py-2.5 text-sm bg-gray-100 text-gray-900 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50"
+              >
+                {authSubmitting.password ? 'Mise à jour...' : 'Mettre à jour le mot de passe'}
+              </button>
+
+              {authError && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-800">
+                  {authError}
+                </div>
+              )}
+              {authSuccess && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-800">
+                  {authSuccess}
+                </div>
+              )}
+
               <button
                 type="submit"
                 disabled={isSubmitting}
@@ -347,7 +592,7 @@ export function ProAccountModal({
 
 /* ---------- Small local helpers (no refactor global) ---------- */
 
-function Input({ label, value, onChange, type = 'text' }: any) {
+function Input({ label, value, onChange, type = 'text', required = true }: any) {
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
@@ -355,21 +600,21 @@ function Input({ label, value, onChange, type = 'text' }: any) {
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        required
+        required={required}
         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
       />
     </div>
   );
 }
 
-function Textarea({ label, value, onChange }: any) {
+function Textarea({ label, value, onChange, required = true }: any) {
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        required
+        required={required}
         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
       />
     </div>
@@ -393,14 +638,14 @@ function getReadableServerError(code: string) {
   }
 }
 
-function Select({ label, value, options, onChange }: any) {
+function Select({ label, value, options, onChange, required = true }: any) {
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        required
+        required={required}
         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
       >
         <option value="">Select…</option>

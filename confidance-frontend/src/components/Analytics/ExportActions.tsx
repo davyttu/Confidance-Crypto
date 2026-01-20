@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import { MonthlyStats } from '@/hooks/useMonthlyAnalytics';
+import { useTranslationReady } from '@/hooks/useTranslationReady';
 
 interface ExportActionsProps {
   stats: MonthlyStats;
@@ -10,7 +11,9 @@ interface ExportActionsProps {
 }
 
 export function ExportActions({ stats, userAddress }: ExportActionsProps) {
+  const { t, i18n } = useTranslationReady();
   const [isExporting, setIsExporting] = useState(false);
+  const locale = i18n.language || 'en';
 
   const exportToCSV = () => {
     setIsExporting(true);
@@ -18,16 +21,16 @@ export function ExportActions({ stats, userAddress }: ExportActionsProps) {
     try {
       // Headers CSV
       const headers = [
-        'Mois',
-        'Transactions',
-        'Volume Total (ETH)',
-        'Frais Totaux (ETH)',
-        'Ratio %',
-        'Frais Gaz (ETH)',
-        'Frais Protocole (ETH)',
-        'Paiements Instantanés',
-        'Paiements Programmés',
-        'Paiements Récurrents'
+        t('analytics.export.csv.month', { defaultValue: 'Month' }),
+        t('analytics.export.csv.transactions', { defaultValue: 'Transactions' }),
+        t('analytics.export.csv.totalVolume', { defaultValue: 'Total Volume (ETH)' }),
+        t('analytics.export.csv.totalFees', { defaultValue: 'Total Fees (ETH)' }),
+        t('analytics.export.csv.ratio', { defaultValue: 'Ratio %' }),
+        t('analytics.export.csv.gasFees', { defaultValue: 'Gas Fees (ETH)' }),
+        t('analytics.export.csv.protocolFees', { defaultValue: 'Protocol Fees (ETH)' }),
+        t('analytics.export.csv.instant', { defaultValue: 'Instant Payments' }),
+        t('analytics.export.csv.scheduled', { defaultValue: 'Scheduled Payments' }),
+        t('analytics.export.csv.recurring', { defaultValue: 'Recurring Payments' })
       ];
 
       // Données
@@ -65,7 +68,7 @@ export function ExportActions({ stats, userAddress }: ExportActionsProps) {
 
     } catch (error) {
       console.error('Erreur export CSV:', error);
-      alert('Erreur lors de l\'export CSV');
+      alert(t('analytics.export.csvError', { defaultValue: 'Error exporting CSV' }));
     } finally {
       setIsExporting(false);
     }
@@ -86,22 +89,29 @@ export function ExportActions({ stats, userAddress }: ExportActionsProps) {
       doc.text('Confidance Crypto', 14, 20);
       
       doc.setFontSize(11);
-      doc.text('Rapport Analytics Mensuel', 14, 28);
-      doc.text(`Période : ${stats.displayMonth}`, 14, 34);
-      doc.text(`Wallet : ${userAddress}`, 14, 40);
-      doc.text(`Généré le : ${new Date().toLocaleDateString('fr-FR')}`, 14, 46);
+      doc.text(t('analytics.export.pdf.title', { defaultValue: 'Monthly Analytics Report' }), 14, 28);
+      doc.text(`${t('analytics.export.pdf.period', { defaultValue: 'Period' })}: ${stats.displayMonth}`, 14, 34);
+      doc.text(`${t('analytics.export.pdf.wallet', { defaultValue: 'Wallet' })}: ${userAddress}`, 14, 40);
+      doc.text(
+        `${t('analytics.export.pdf.generatedAt', { defaultValue: 'Generated on' })}: ${new Date().toLocaleDateString(locale)}`,
+        14,
+        46
+      );
 
       // KPI Summary
       const summaryData = [
-        ['Transactions', stats.transactionCount.toString()],
-        ['Volume Total', `${stats.totalVolumeFormatted} ETH`],
-        ['Frais Totaux', `${stats.totalFeesFormatted} ETH`],
-        ['Coût Réel', `${stats.feeRatio.toFixed(2)}%`]
+        [t('analytics.kpi.transactions', { defaultValue: 'Transactions' }), stats.transactionCount.toString()],
+        [t('analytics.kpi.totalVolume', { defaultValue: 'Total Volume' }), `${stats.totalVolumeFormatted} ETH`],
+        [t('analytics.kpi.totalFees', { defaultValue: 'Total Fees' }), `${stats.totalFeesFormatted} ETH`],
+        [t('analytics.kpi.realCost', { defaultValue: 'Real Cost' }), `${stats.feeRatio.toFixed(2)}%`]
       ];
 
       autoTable(doc, {
         startY: 55,
-        head: [['Indicateur', 'Valeur']],
+        head: [[
+          t('analytics.export.pdf.indicator', { defaultValue: 'Indicator' }),
+          t('analytics.export.pdf.value', { defaultValue: 'Value' })
+        ]],
         body: summaryData,
         theme: 'grid',
         headStyles: { fillColor: [66, 66, 66] },
@@ -110,14 +120,18 @@ export function ExportActions({ stats, userAddress }: ExportActionsProps) {
 
       // Détail par type
       const typeData = [
-        ['💰 Instantanés', stats.breakdown.instant.count, stats.breakdown.instant.volumeFormatted],
-        ['⏰ Programmés', stats.breakdown.scheduled.count, stats.breakdown.scheduled.volumeFormatted],
-        ['🔄 Récurrents', stats.breakdown.recurring.count, stats.breakdown.recurring.volumeFormatted]
+        [`💰 ${t('analytics.types.instant', { defaultValue: 'Instant Payments' })}`, stats.breakdown.instant.count, stats.breakdown.instant.volumeFormatted],
+        [`⏰ ${t('analytics.types.scheduled', { defaultValue: 'Scheduled Payments' })}`, stats.breakdown.scheduled.count, stats.breakdown.scheduled.volumeFormatted],
+        [`🔄 ${t('analytics.types.recurring', { defaultValue: 'Recurring Payments' })}`, stats.breakdown.recurring.count, stats.breakdown.recurring.volumeFormatted]
       ];
 
       autoTable(doc, {
         startY: (doc as any).lastAutoTable.finalY + 10,
-        head: [['Type', 'Nombre', 'Volume (ETH)']],
+        head: [[
+          t('analytics.export.pdf.type', { defaultValue: 'Type' }),
+          t('analytics.export.pdf.count', { defaultValue: 'Count' }),
+          t('analytics.export.pdf.volumeEth', { defaultValue: 'Volume (ETH)' })
+        ]],
         body: typeData,
         theme: 'striped',
         headStyles: { fillColor: [66, 66, 66] },
@@ -126,14 +140,18 @@ export function ExportActions({ stats, userAddress }: ExportActionsProps) {
 
       // Frais
       const feesData = [
-        ['Frais de Gaz', `${stats.costs.gasFeesFormatted} ETH`, `${stats.costs.gasPercentage.toFixed(0)}%`],
-        ['Frais Protocole', `${stats.costs.protocolFeesFormatted} ETH`, `${stats.costs.protocolPercentage.toFixed(0)}%`],
-        ['TOTAL', `${stats.totalFeesFormatted} ETH`, '100%']
+        [t('analytics.fees.gas', { defaultValue: 'Gas Fees (Base Network)' }), `${stats.costs.gasFeesFormatted} ETH`, `${stats.costs.gasPercentage.toFixed(0)}%`],
+        [t('analytics.fees.protocol', { defaultValue: 'Confidance Protocol Fees (1.79%)' }), `${stats.costs.protocolFeesFormatted} ETH`, `${stats.costs.protocolPercentage.toFixed(0)}%`],
+        [t('analytics.table.total', { defaultValue: 'TOTAL' }), `${stats.totalFeesFormatted} ETH`, '100%']
       ];
 
       autoTable(doc, {
         startY: (doc as any).lastAutoTable.finalY + 10,
-        head: [['Type de Frais', 'Montant', 'Part']],
+        head: [[
+          t('analytics.export.pdf.feeType', { defaultValue: 'Fee Type' }),
+          t('analytics.export.pdf.amount', { defaultValue: 'Amount' }),
+          t('analytics.export.pdf.share', { defaultValue: 'Share' })
+        ]],
         body: feesData,
         theme: 'grid',
         headStyles: { fillColor: [66, 66, 66] },
@@ -146,7 +164,7 @@ export function ExportActions({ stats, userAddress }: ExportActionsProps) {
         doc.setPage(i);
         doc.setFontSize(8);
         doc.text(
-          `Page ${i} sur ${pageCount}`,
+          t('analytics.export.pdf.page', { defaultValue: 'Page {{page}} of {{total}}', page: i, total: pageCount }),
           doc.internal.pageSize.getWidth() / 2,
           doc.internal.pageSize.getHeight() - 10,
           { align: 'center' }
@@ -158,7 +176,7 @@ export function ExportActions({ stats, userAddress }: ExportActionsProps) {
 
     } catch (error) {
       console.error('Erreur export PDF:', error);
-      alert('Erreur lors de l\'export PDF. Veuillez installer jspdf et jspdf-autotable.');
+      alert(t('analytics.export.pdfError', { defaultValue: 'Error exporting PDF. Please install jspdf and jspdf-autotable.' }));
     } finally {
       setIsExporting(false);
     }
@@ -166,7 +184,9 @@ export function ExportActions({ stats, userAddress }: ExportActionsProps) {
 
   return (
     <div className="bg-white rounded-xl shadow p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">📥 Télécharger ce mois</h3>
+      <h3 className="text-lg font-semibold text-gray-900 mb-4">
+        {t('analytics.export.title', { defaultValue: '📥 Download this month' })}
+      </h3>
       
       <div className="flex flex-col sm:flex-row gap-3">
         <button
@@ -178,8 +198,12 @@ export function ExportActions({ stats, userAddress }: ExportActionsProps) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
           <div className="text-left">
-            <div className="font-semibold">CSV - Comptabilité</div>
-            <div className="text-xs opacity-90">Pour Excel/logiciels compta</div>
+            <div className="font-semibold">
+              {t('analytics.export.csvTitle', { defaultValue: 'CSV - Accounting' })}
+            </div>
+            <div className="text-xs opacity-90">
+              {t('analytics.export.csvSubtitle', { defaultValue: 'For Excel/accounting tools' })}
+            </div>
           </div>
         </button>
 
@@ -192,8 +216,12 @@ export function ExportActions({ stats, userAddress }: ExportActionsProps) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
           </svg>
           <div className="text-left">
-            <div className="font-semibold">PDF - Justificatif</div>
-            <div className="text-xs opacity-90">Pour impression/archives</div>
+            <div className="font-semibold">
+              {t('analytics.export.pdfTitle', { defaultValue: 'PDF - Statement' })}
+            </div>
+            <div className="text-xs opacity-90">
+              {t('analytics.export.pdfSubtitle', { defaultValue: 'For printing/archives' })}
+            </div>
           </div>
         </button>
       </div>
@@ -203,7 +231,7 @@ export function ExportActions({ stats, userAddress }: ExportActionsProps) {
           <svg className="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
-          Export en cours...
+          {t('analytics.export.inProgress', { defaultValue: 'Export in progress...' })}
         </div>
       )}
     </div>

@@ -1,0 +1,111 @@
+{
+  "create": {
+    "identity": {
+      "title": "Payment description",
+      "placeholder": "Ex: Rent, Spotify subscription, Freelance payment...",
+      "hint": "💡 Describe your payment to help you track it later",
+      "matched": "Matched keywords",
+      "suggestion": "Suggested category",
+      "confidence": "confidence",
+      "apply": "Apply",
+      "categoryLabel": "Category",
+      "why": "This helps you track your expenses and enables AI-powered insights about your payments.",
+      
+      "_translations": {
+        "fr": {
+          "title": "Description du paiement",
+          "placeholder": "Ex : Loyer, Abonnement Spotify, Paiement freelance...",
+          "hint": "💡 Décrivez votre paiement pour mieux le suivre",
+          "matched": "Mots-clés détectés",
+          "suggestion": "Catégorie suggérée",
+          "confidence": "de confiance",
+          "apply": "Appliquer",
+          "categoryLabel": "Catégorie",
+          "why": "Cela vous aide à suivre vos dépenses et permet à l'IA de vous donner des insights sur vos paiements."
+        },
+        "es": {
+          "title": "Descripción del pago",
+          "placeholder": "Ej: Alquiler, Suscripción Spotify, Pago freelance...",
+          "hint": "💡 Describe tu pago para seguirlo mejor",
+          "matched": "Palabras clave detectadas",
+          "suggestion": "Categoría sugerida",
+          "confidence": "de confianza",
+          "apply": "Aplicar",
+          "categoryLabel": "Categoría",
+          "why": "Esto te ayuda a rastrear tus gastos y permite que la IA te dé insights sobre tus pagos."
+        },
+        "ru": {
+          "title": "Описание платежа",
+          "placeholder": "Напр: Аренда, Подписка Spotify, Фриланс оплата...",
+          "hint": "💡 Опишите платеж для лучшего отслеживания",
+          "matched": "Найденные ключевые слова",
+          "suggestion": "Предложенная категория",
+          "confidence": "уверенности",
+          "apply": "Применить",
+          "categoryLabel": "Категория",
+          "why": "Это помогает отслеживать расходы и позволяет ИИ давать insights о платежах."
+        },
+        "zh": {
+          "title": "付款描述",
+          "placeholder": "例如：房租、Spotify订阅、自由职业付款...",
+          "hint": "💡 描述您的付款以便更好地跟踪",
+          "matched": "检测到的关键词",
+          "suggestion": "建议类别",
+          "confidence": "置信度",
+          "apply": "应用",
+          "categoryLabel": "类别",
+          "why": "这有助于跟踪您的支出，并使AI能够提供关于您付款的insights。"
+        }
+      }
+    }
+  },
+  
+  "category": {
+    "housing": "Housing",
+    "salary": "Salary",
+    "subscription": "Subscription",
+    "utilities": "Utilities",
+    "services": "Services",
+    "transfer": "Transfer",
+    "other": "Other",
+    
+    "_translations": {
+      "fr": {
+        "housing": "Logement",
+        "salary": "Salaire",
+        "subscription": "Abonnement",
+        "utilities": "Services publics",
+        "services": "Services",
+        "transfer": "Virement",
+        "other": "Autre"
+      },
+      "es": {
+        "housing": "Vivienda",
+        "salary": "Salario",
+        "subscription": "Suscripción",
+        "utilities": "Servicios",
+        "services": "Servicios",
+        "transfer": "Transferencia",
+        "other": "Otro"
+      },
+      "ru": {
+        "housing": "Жильё",
+        "salary": "Зарплата",
+        "subscription": "Подписка",
+        "utilities": "Коммунальные",
+        "services": "Услуги",
+        "transfer": "Перевод",
+        "other": "Другое"
+      },
+      "zh": {
+        "housing": "住房",
+        "salary": "工资",
+        "subscription": "订阅",
+        "utilities": "公用事业",
+        "services": "服务",
+        "transfer": "转账",
+        "other": "其他"
+      }
+    }
+  }
+}

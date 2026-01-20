@@ -14,7 +14,13 @@ import { parseEther, parseUnits, decodeEventLog } from 'viem';
 import { paymentFactoryAbi } from '@/lib/contracts/paymentFactoryAbi';
 import { PAYMENT_FACTORY_SCHEDULED, PAYMENT_FACTORY_INSTANT } from '@/lib/contracts/addresses';
 import { useAuth } from '@/contexts/AuthContext';
-import { type TokenSymbol, getToken, getProtocolFeeBps } from '@/config/tokens';
+import {
+  type TokenSymbol,
+  getToken,
+  getProtocolFeeBps,
+  PROTOCOL_FEE_BPS_PARTICULAR,
+  PROTOCOL_FEE_BPS_PRO,
+} from '@/config/tokens';
 import { useTokenApproval } from './useTokenApproval';
 import { erc20Abi } from '@/lib/contracts/erc20Abi';
 
@@ -24,6 +30,32 @@ const FACTORY_INSTANT_ADDRESS: `0x${string}` = PAYMENT_FACTORY_INSTANT as `0x${s
 
 const getFactoryAddress = (isInstant: boolean): `0x${string}` =>
   (isInstant ? FACTORY_INSTANT_ADDRESS : FACTORY_SCHEDULED_ADDRESS);
+
+const resolveOnchainFeeBps = async (params: {
+  isInstantPayment: boolean;
+  address?: `0x${string}`;
+  publicClient?: ReturnType<typeof usePublicClient>;
+  isProVerified: boolean;
+}): Promise<number> => {
+  if (params.isInstantPayment) {
+    return 0;
+  }
+  if (!params.publicClient || !params.address) {
+    return getProtocolFeeBps({ isInstantPayment: false, isProVerified: params.isProVerified });
+  }
+  try {
+    const isProOnchain = await params.publicClient.readContract({
+      address: FACTORY_SCHEDULED_ADDRESS,
+      abi: paymentFactoryAbi,
+      functionName: 'isProWallet',
+      args: [params.address],
+    });
+    return (isProOnchain as boolean) ? PROTOCOL_FEE_BPS_PRO : PROTOCOL_FEE_BPS_PARTICULAR;
+  } catch (error) {
+    console.warn('⚠️ Impossible de lire isProWallet on-chain, fallback off-chain.', error);
+    return getProtocolFeeBps({ isInstantPayment: false, isProVerified: params.isProVerified });
+  }
+};
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 // ✅ Multi-chain : réseau courant
 const getNetworkFromChainId = (chainId: number): string => {
@@ -222,7 +254,12 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
       const now = Math.floor(Date.now() / 1000);
       const isInstantPayment = (params.releaseTime - now) < 60;
       const isProVerified = user?.accountType === 'professional' && user?.proStatus === 'verified';
-      const feeBps = getProtocolFeeBps({ isInstantPayment, isProVerified });
+      const feeBps = await resolveOnchainFeeBps({
+        isInstantPayment,
+        address,
+        publicClient,
+        isProVerified,
+      });
       const factoryAddress = getFactoryAddress(isInstantPayment);
       
       // ✅ Calculer les montants selon le type de paiement

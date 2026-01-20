@@ -50,6 +50,8 @@ interface CreateRecurringPaymentParams {
   totalMonths: number; // 1-12
   dayOfMonth: number; // Jour du mois (1-28)
   cancellable?: boolean; // Optionnel (non implémenté dans le contrat actuel)
+  label?: string;
+  category?: string;
 }
 
 type PaymentStatus =
@@ -693,6 +695,9 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
               network: getNetworkFromChainId(chainId),
               chain_id: chainId,
               transaction_hash: createTxHash,
+              payment_label: params.label || '',
+              payment_category: params.category || '',
+              payment_categorie: params.category || '',
               ...(isAuthenticated && user ? { user_id: user.id } : { guest_email: guestEmail }),
             }),
           });

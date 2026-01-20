@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { useEffect, useState as useStateReact } from 'react';
 import { useAccount } from 'wagmi';
 import { ProAccountModal } from '@/components/Pro/ProAccountModal'; // ADDED
+import { AccountSecurityModal } from '@/components/Auth/AccountSecurityModal';
 
 export function Navbar() {
   const { t, ready: translationsReady } = useTranslation();
@@ -37,6 +38,7 @@ export function Navbar() {
   // ADDED — ouverture auto du formulaire Pro après inscription + vérification email
   const [pendingAccountType, setPendingAccountType] = useState<'particular' | 'professional' | null>(null);
   const [showProModal, setShowProModal] = useState(false);
+  const [showAccountSecurityModal, setShowAccountSecurityModal] = useState(false);
 
   // ✅ FIX : Éviter le mismatch d'hydratation en attendant que les traductions soient chargées
   useEffect(() => {
@@ -300,6 +302,20 @@ export function Navbar() {
                                   Passer en compte Pro
                                 </button>
                               )}
+                              {!isProVerified && (
+                                <button
+                                  onClick={() => {
+                                    setShowUserDropdown(false);
+                                    setShowAccountSecurityModal(true);
+                                  }}
+                                  className="flex items-center gap-2.5 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                                >
+                                  <span>🔐</span>
+                                  {isMounted && translationsReady
+                                    ? t('common.accountSettings.menuLabel', { defaultValue: 'Login details' })
+                                    : 'Login details'}
+                                </button>
+                              )}
                               {isProVerified && (
                                 <button
                                   onClick={() => {
@@ -561,6 +577,19 @@ export function Navbar() {
                         📝 Modifier mes infos Pro
                       </button>
                     )}
+                    {!isProVerified && (
+                      <button
+                        onClick={() => {
+                          setMobileMenuOpen(false);
+                          setShowAccountSecurityModal(true);
+                        }}
+                        className="w-full px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-left"
+                      >
+                        🔐 {isMounted && translationsReady
+                          ? t('common.accountSettings.menuLabel', { defaultValue: 'Login details' })
+                          : 'Login details'}
+                      </button>
+                    )}
                     <button
                       onClick={() => {
                         setMobileMenuOpen(false);
@@ -705,6 +734,12 @@ export function Navbar() {
           }}
         />
       )}
+
+      <AccountSecurityModal
+        isOpen={showAccountSecurityModal}
+        onClose={() => setShowAccountSecurityModal(false)}
+        userEmail={user?.email}
+      />
     </>
   );
 }

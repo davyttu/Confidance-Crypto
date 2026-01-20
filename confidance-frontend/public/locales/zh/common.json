@@ -14,7 +14,50 @@
     "save": "保存",
     "loading": "加载中...",
     "error": "错误",
-    "success": "成功"
+    "success": "成功",
+    "accountType": {
+      "professional": "专业",
+      "individual": "个人"
+    },
+    "accountSettings": {
+      "menuLabel": "登录信息",
+      "title": "登录信息",
+      "subtitle": "更新邮箱或密码。需要当前密码。",
+      "currentPasswordLabel": "当前密码",
+      "unlockButton": "解锁",
+      "unlockedLabel": "已解锁",
+      "emailSectionTitle": "邮箱",
+      "newEmailLabel": "新邮箱",
+      "sendCodeButton": "发送验证码",
+      "sendCodeLoading": "发送中...",
+      "confirmCodeLabel": "验证码",
+      "confirmEmailButton": "确认新邮箱",
+      "confirmEmailLoading": "确认中...",
+      "passwordSectionTitle": "密码",
+      "newPasswordLabel": "新密码",
+      "confirmPasswordLabel": "确认密码",
+      "updatePasswordButton": "更新密码",
+      "updatePasswordLoading": "更新中...",
+      "errors": {
+        "currentPasswordRequired": "请输入当前密码。",
+        "unlockRequired": "解锁后才能修改登录信息。",
+        "invalidEmail": "请输入有效的新邮箱。",
+        "codeRequired": "请输入发送到新邮箱的验证码。",
+        "passwordTooShort": "新密码至少需要 8 个字符。",
+        "passwordsMismatch": "两次输入的密码不一致。",
+        "loginRequiredEmail": "请先登录以更新邮箱。",
+        "loginRequiredConfirm": "请先登录以确认邮箱更改。",
+        "loginRequiredPassword": "请先登录以更新密码。",
+        "emailRequestFailed": "无法请求更改邮箱。",
+        "emailConfirmFailed": "无法确认邮箱更改。",
+        "passwordUpdateFailed": "无法更新密码。"
+      },
+      "success": {
+        "emailCodeSent": "验证码已发送，请检查邮箱。",
+        "emailUpdated": "邮箱更新成功。",
+        "passwordUpdated": "密码更新成功。"
+      }
+    }
   },
   "home": {
     "title": "安心安排您的加密货币支付",
@@ -321,6 +364,96 @@
     "batch": "批量",
     "instant": "即时",
     "scheduled": "预定"
+  },
+  "analytics": {
+    "title": "📊 月度分析",
+    "subtitle": "分析您在平台上的整体活动",
+    "month": "月份",
+    "year": "年份",
+    "connectTitle": "连接钱包",
+    "connectSubtitle": "要访问分析，请先连接钱包",
+    "loadError": "加载数据出错：",
+    "emptyTitle": "暂无数据",
+    "emptySubtitle": "创建您的第一笔支付以查看分析",
+    "kpi": {
+      "transactions": "交易数",
+      "totalVolume": "总交易量",
+      "totalFees": "总费用",
+      "realCost": "实际成本"
+    },
+    "types": {
+      "instant": "即时支付",
+      "scheduled": "定时支付",
+      "recurring": "周期支付"
+    },
+    "table": {
+      "title": "按交易类型明细",
+      "type": "交易类型",
+      "count": "数量",
+      "volume": "交易量",
+      "avgFees": "平均费用",
+      "total": "合计"
+    },
+    "fees": {
+      "title": "费用明细",
+      "gas": "Gas 费用（Base 网络）",
+      "protocol": "Confidance 协议费用 (1.79%)",
+      "totalMonthly": "每月总费用",
+      "tipTitle": "💡 优化建议",
+      "tipHighGas": "Gas 费用占比最高。建议在低峰时段（周末、夜间）操作，可节省最多 30%。",
+      "tipBalanced": "费用在 Gas 与协议之间较为均衡，继续保持！"
+    },
+    "history": {
+      "title": "月度历史",
+      "month": "月份",
+      "txs": "交易数",
+      "volume": "交易量",
+      "fees": "费用",
+      "ratio": "比例 %",
+      "current": "当前",
+      "best": "最佳",
+      "high": "最高",
+      "bestMonth": "最省费用月份：",
+      "worstMonth": "费用最高月份：",
+      "avgRatio": "平均比例："
+    },
+    "export": {
+      "title": "📥 下载本月",
+      "csvTitle": "CSV - 财务",
+      "csvSubtitle": "用于 Excel/财务软件",
+      "pdfTitle": "PDF - 凭证",
+      "pdfSubtitle": "用于打印/存档",
+      "inProgress": "导出中...",
+      "csvError": "导出 CSV 出错",
+      "pdfError": "导出 PDF 出错。请安装 jspdf 和 jspdf-autotable。",
+      "csv": {
+        "month": "月份",
+        "transactions": "交易数",
+        "totalVolume": "总交易量 (ETH)",
+        "totalFees": "总费用 (ETH)",
+        "ratio": "比例 %",
+        "gasFees": "Gas 费用 (ETH)",
+        "protocolFees": "协议费用 (ETH)",
+        "instant": "即时支付",
+        "scheduled": "定时支付",
+        "recurring": "周期支付"
+      },
+      "pdf": {
+        "title": "月度分析报告",
+        "period": "周期",
+        "wallet": "钱包",
+        "generatedAt": "生成日期",
+        "indicator": "指标",
+        "value": "数值",
+        "type": "类型",
+        "count": "数量",
+        "volumeEth": "交易量 (ETH)",
+        "feeType": "费用类型",
+        "amount": "金额",
+        "share": "占比",
+        "page": "第 {{page}} 页 / 共 {{total}} 页"
+      }
+    }
   },
   "tooltips": {
     "showHistory": "显示历史",

@@ -2,29 +2,31 @@
 'use client';
 
 import { MonthlyStats } from '@/hooks/useMonthlyAnalytics';
+import { useTranslationReady } from '@/hooks/useTranslationReady';
 
 interface TransactionTypeTableProps {
   stats: MonthlyStats;
 }
 
 export function TransactionTypeTable({ stats }: TransactionTypeTableProps) {
+  const { t } = useTranslationReady();
   const { breakdown } = stats;
 
   const rows = [
     {
-      type: 'Paiements Instantanés',
+      type: t('analytics.types.instant', { defaultValue: 'Instant Payments' }),
       icon: '💰',
       data: breakdown.instant,
       color: 'text-blue-600'
     },
     {
-      type: 'Paiements Programmés',
+      type: t('analytics.types.scheduled', { defaultValue: 'Scheduled Payments' }),
       icon: '⏰',
       data: breakdown.scheduled,
       color: 'text-purple-600'
     },
     {
-      type: 'Paiements Récurrents',
+      type: t('analytics.types.recurring', { defaultValue: 'Recurring Payments' }),
       icon: '🔄',
       data: breakdown.recurring,
       color: 'text-green-600'
@@ -42,7 +44,9 @@ export function TransactionTypeTable({ stats }: TransactionTypeTableProps) {
   return (
     <div className="bg-white rounded-xl shadow">
       <div className="px-6 py-4 border-b border-gray-200">
-        <h2 className="text-lg font-semibold text-gray-900">Détail par Type de Transaction</h2>
+        <h2 className="text-lg font-semibold text-gray-900">
+          {t('analytics.table.title', { defaultValue: 'Breakdown by Transaction Type' })}
+        </h2>
       </div>
 
       <div className="overflow-x-auto">
@@ -50,16 +54,16 @@ export function TransactionTypeTable({ stats }: TransactionTypeTableProps) {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Type de Transaction
+                {t('analytics.table.type', { defaultValue: 'Transaction Type' })}
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Nombre
+                {t('analytics.table.count', { defaultValue: 'Count' })}
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Volume
+                {t('analytics.table.volume', { defaultValue: 'Volume' })}
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Frais Moyens
+                {t('analytics.table.avgFees', { defaultValue: 'Avg Fees' })}
               </th>
             </tr>
           </thead>
@@ -88,7 +92,9 @@ export function TransactionTypeTable({ stats }: TransactionTypeTableProps) {
             {/* Ligne Total */}
             <tr className="bg-gray-100 font-bold">
               <td className="px-6 py-4">
-                <span className="text-gray-900">TOTAL</span>
+                <span className="text-gray-900">
+                  {t('analytics.table.total', { defaultValue: 'TOTAL' })}
+                </span>
               </td>
               <td className="px-6 py-4 text-right">
                 <span className="text-gray-900">{totalCount}</span>

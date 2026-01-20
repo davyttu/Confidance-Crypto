@@ -1,7 +1,7 @@
 // hooks/useMonthlyAnalytics.ts
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Payment } from './useDashboard';
 import { formatAmount } from '@/lib/utils/amountFormatter';
 import { formatUnits } from 'viem';
@@ -34,6 +34,12 @@ export interface MonthlyStats {
     gasPercentage: number;
     protocolPercentage: number;
   };
+  explanations?: {
+    transactions: KpiExplanation<number>;
+    totalVolume: KpiExplanation<string>;
+    totalFees: KpiExplanation<string>;
+    realCost: KpiExplanation<number>;
+  };
   previousMonthComparison?: {
     volumeChange: number; // % changement
     feesChange: number;
@@ -47,6 +53,39 @@ export interface TransactionTypeStats {
   volumeFormatted: string;
   avgFees: bigint;
   avgFeesFormatted: string;
+}
+
+export interface KpiExplanation<T> {
+  value: T;
+  delta: number;
+  explanation: string;
+}
+
+interface AnalyticsApiBreakdown {
+  count: number;
+  volume: string;
+  avgFees: string;
+}
+
+interface AnalyticsApiMonth {
+  month: string;
+  transactionCount: number;
+  totalVolume: string;
+  totalFees: string;
+  feeRatio: number;
+  gasFees: string;
+  protocolFees: string;
+  breakdown: {
+    instant: AnalyticsApiBreakdown;
+    scheduled: AnalyticsApiBreakdown;
+    recurring: AnalyticsApiBreakdown;
+  };
+  explanations?: {
+    transactions: KpiExplanation<number>;
+    totalVolume: KpiExplanation<string>;
+    totalFees: KpiExplanation<string>;
+    realCost: KpiExplanation<number>;
+  };
 }
 
 const MONTH_NAMES = [
@@ -87,7 +126,124 @@ export function useMonthlyAnalytics(
   transactions: PaymentTransaction[] = [],
   isProVerified: boolean = false
 ) {
-  const monthlyData = useMemo(() => {
+  const [apiMonthlyData, setApiMonthlyData] = useState<MonthlyStats[] | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) {
+      setApiMonthlyData(null);
+      return;
+    }
+
+    const fetchAnalytics = async () => {
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/analytics/monthly`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!response.ok) {
+          throw new Error('analytics_fetch_failed');
+        }
+        const data = await response.json();
+        const rows: AnalyticsApiMonth[] = data?.months || [];
+
+        const normalizedPrice = priceUsd && priceUsd > 0 ? priceUsd : null;
+        const mapped = rows.map((row) => {
+          const totalVolume = BigInt(row.totalVolume || '0');
+          const totalFees = BigInt(row.totalFees || '0');
+          const gasFees = BigInt(row.gasFees || '0');
+          const protocolFees = BigInt(row.protocolFees || '0');
+
+          const totalVolumeEth = Number(formatUnits(totalVolume, 18));
+          const totalFeesEth = Number(formatUnits(totalFees, 18));
+          const totalVolumeUsd = normalizedPrice ? totalVolumeEth * normalizedPrice : null;
+          const totalFeesUsd = normalizedPrice ? totalFeesEth * normalizedPrice : null;
+
+          const [year, monthNum] = row.month.split('-');
+          const monthIndex = parseInt(monthNum) - 1;
+          const displayMonth = `${MONTH_NAMES[monthIndex]} ${year}`;
+
+          const mapBreakdown = (entry: AnalyticsApiBreakdown): TransactionTypeStats => {
+            const volume = BigInt(entry.volume || '0');
+            const avgFees = BigInt(entry.avgFees || '0');
+            return {
+              count: entry.count,
+              volume,
+              volumeFormatted: formatAmount(volume.toString()),
+              avgFees,
+              avgFeesFormatted: formatAmount(avgFees.toString())
+            };
+          };
+
+          return {
+            month: row.month,
+            displayMonth,
+            transactionCount: row.transactionCount,
+            totalVolume,
+            totalVolumeFormatted: formatAmount(totalVolume.toString()),
+            totalVolumeUsd,
+            totalVolumeUsdFormatted: totalVolumeUsd !== null ? USD_FORMATTER.format(totalVolumeUsd) : null,
+            totalFees,
+            totalFeesFormatted: formatAmount(totalFees.toString()),
+            totalFeesUsd,
+            totalFeesUsdFormatted: totalFeesUsd !== null ? USD_FORMATTER.format(totalFeesUsd) : null,
+            feeRatio: row.feeRatio,
+            breakdown: {
+              instant: mapBreakdown(row.breakdown.instant),
+              scheduled: mapBreakdown(row.breakdown.scheduled),
+              recurring: mapBreakdown(row.breakdown.recurring)
+            },
+            costs: {
+              gasFees,
+              gasFeesFormatted: formatAmount(gasFees.toString()),
+              protocolFees,
+              protocolFeesFormatted: formatAmount(protocolFees.toString()),
+              gasPercentage: totalFees > BigInt(0)
+                ? Number((gasFees * BigInt(10000)) / totalFees) / 100
+                : 0,
+              protocolPercentage: totalFees > BigInt(0)
+                ? Number((protocolFees * BigInt(10000)) / totalFees) / 100
+                : 0
+            },
+            explanations: row.explanations
+          } satisfies MonthlyStats;
+        }).sort((a, b) => b.month.localeCompare(a.month));
+
+        // Ajouter comparaison avec mois précédent
+        mapped.forEach((current, index) => {
+          if (index < mapped.length - 1) {
+            const previous = mapped[index + 1];
+            current.previousMonthComparison = {
+              volumeChange: previous.totalVolume > BigInt(0)
+                ? Number(((current.totalVolume - previous.totalVolume) * BigInt(10000)) / previous.totalVolume) / 100
+                : 0,
+              feesChange: previous.totalFees > BigInt(0)
+                ? Number(((current.totalFees - previous.totalFees) * BigInt(10000)) / previous.totalFees) / 100
+                : 0,
+              ratioChange: current.feeRatio - previous.feeRatio
+            };
+          }
+        });
+
+        if (isMounted) {
+          setApiMonthlyData(mapped);
+        }
+      } catch (error) {
+        if (isMounted) {
+          setApiMonthlyData(null);
+        }
+      }
+    };
+
+    fetchAnalytics();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [priceUsd]);
+
+  const computedMonthlyData = useMemo(() => {
     // Grouper les paiements par mois
     const byMonth: Record<string, Payment[]> = {};
     
@@ -239,6 +395,8 @@ export function useMonthlyAnalytics(
 
     return stats;
   }, [payments, priceUsd, transactions, isProVerified]);
+
+  const monthlyData = apiMonthlyData ?? computedMonthlyData;
 
   return {
     monthlyData,

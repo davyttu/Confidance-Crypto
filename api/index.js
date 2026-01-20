@@ -2,6 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const { createClient } = require("@supabase/supabase-js");
+const jwt = require("jsonwebtoken");
 
 // ✅ VERSION DU CODE - À VÉRIFIER DANS LES LOGS
 const CODE_VERSION = "v2.0-with-payment-type-fix";
@@ -23,6 +24,36 @@ const supabase = createClient(
   process.env.SUPABASE_KEY || "placeholder-key"
 );
 
+const JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-key-change-in-production";
+
+const authenticateToken = (req, res, next) => {
+  const token = req.headers.authorization?.split(" ")[1];
+  if (!token) {
+    return res.status(401).json({ error: "Non authentifié" });
+  }
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    return next();
+  } catch (error) {
+    return res.status(403).json({ error: "Token invalide" });
+  }
+};
+
+const getMonthKey = (value) => {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+};
+
+const getMonthRange = (monthKey) => {
+  const [year, month] = String(monthKey).split("-").map(Number);
+  if (!year || !month) return null;
+  const start = new Date(Date.UTC(year, month - 1, 1));
+  const end = new Date(Date.UTC(year, month, 1));
+  return { start: start.toISOString(), end: end.toISOString() };
+};
+
 console.log("🚀 Confidance Crypto API");
 console.log("━━━━━━━━━━━━━━━━━━━━━━");
 console.log("Port:", PORT);
@@ -32,6 +63,141 @@ console.log("━━━━━━━━━━━━━━━━━━━━━━"
 // Health check
 app.get("/health", (req, res) => {
   res.json({ status: "healthy", timestamp: new Date().toISOString() });
+});
+
+// GET /api/analytics/monthly - Analytics mensuelles basées sur la timeline
+app.get("/api/analytics/monthly", authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user?.userId;
+    const { month } = req.query;
+
+    if (!userId) {
+      return res.status(401).json({ error: "Non authentifié" });
+    }
+
+    let analyticsQuery = supabase
+      .from("monthly_payment_analytics_v1")
+      .select("*")
+      .eq("user_id", userId)
+      .order("month", { ascending: false });
+
+    let breakdownQuery = supabase
+      .from("monthly_payment_breakdown_v1")
+      .select("*")
+      .eq("user_id", userId);
+
+    if (month) {
+      const range = getMonthRange(month);
+      if (!range) {
+        return res.status(400).json({ error: "Format de mois invalide (YYYY-MM)" });
+      }
+      analyticsQuery = analyticsQuery.gte("month", range.start).lt("month", range.end);
+      breakdownQuery = breakdownQuery.gte("month", range.start).lt("month", range.end);
+    }
+
+    const { data: analyticsRows, error: analyticsError } = await analyticsQuery;
+    if (analyticsError) {
+      return res.status(500).json({ error: "Erreur lors de la récupération" });
+    }
+
+    const { data: breakdownRows, error: breakdownError } = await breakdownQuery;
+    if (breakdownError) {
+      return res.status(500).json({ error: "Erreur lors de la récupération" });
+    }
+
+    const breakdownByMonth = (breakdownRows || []).reduce((acc, row) => {
+      const monthKey = getMonthKey(row.month);
+      if (!monthKey) return acc;
+      if (!acc[monthKey]) {
+        acc[monthKey] = {
+          instant: { count: 0, volume: "0", avg_fees: "0" },
+          scheduled: { count: 0, volume: "0", avg_fees: "0" },
+          recurring: { count: 0, volume: "0", avg_fees: "0" }
+        };
+      }
+      const typeKey = row.payment_type || "scheduled";
+      const target = acc[monthKey][typeKey] || acc[monthKey].scheduled;
+      target.count = Number(row.transactions_count || 0);
+      target.volume = String(row.total_volume || "0");
+      target.avg_fees = String(row.avg_fees || "0");
+      acc[monthKey][typeKey] = target;
+      return acc;
+    }, {});
+
+    const monthStats = (analyticsRows || []).map((row) => {
+      const monthKey = getMonthKey(row.month);
+      const breakdown = breakdownByMonth[monthKey] || {
+        instant: { count: 0, volume: "0", avg_fees: "0" },
+        scheduled: { count: 0, volume: "0", avg_fees: "0" },
+        recurring: { count: 0, volume: "0", avg_fees: "0" }
+      };
+
+      return {
+        month: monthKey,
+        transactionCount: Number(row.transactions_count || 0),
+        totalVolume: String(row.total_volume || "0"),
+        totalFees: String(row.total_fees || "0"),
+        feeRatio: Number(row.real_cost_percentage || 0),
+        gasFees: String(row.gas_fees_total || "0"),
+        protocolFees: String(row.protocol_fees_total || "0"),
+        breakdown: {
+          instant: {
+            count: breakdown.instant.count,
+            volume: breakdown.instant.volume,
+            avgFees: breakdown.instant.avg_fees
+          },
+          scheduled: {
+            count: breakdown.scheduled.count,
+            volume: breakdown.scheduled.volume,
+            avgFees: breakdown.scheduled.avg_fees
+          },
+          recurring: {
+            count: breakdown.recurring.count,
+            volume: breakdown.recurring.volume,
+            avgFees: breakdown.recurring.avg_fees
+          }
+        }
+      };
+    }).filter((row) => row.month);
+
+    const sorted = monthStats.sort((a, b) => b.month.localeCompare(a.month));
+    res.json({ months: sorted });
+  } catch (error) {
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+
+// GET /api/analytics/:month/timeline - Events exécutés du mois
+app.get("/api/analytics/:month/timeline", authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user?.userId;
+    const { month } = req.params;
+    const range = getMonthRange(month);
+
+    if (!userId) {
+      return res.status(401).json({ error: "Non authentifié" });
+    }
+    if (!range) {
+      return res.status(400).json({ error: "Format de mois invalide (YYYY-MM)" });
+    }
+
+    const { data: events, error } = await supabase
+      .from("payment_timeline_events")
+      .select("event_type, event_label, actor_label, explanation, created_at, metadata")
+      .eq("user_id", userId)
+      .eq("event_type", "payment_executed")
+      .gte("created_at", range.start)
+      .lt("created_at", range.end)
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      return res.status(500).json({ error: "Erreur lors de la récupération" });
+    }
+
+    res.json(events || []);
+  } catch (error) {
+    res.status(500).json({ error: "Erreur serveur" });
+  }
 });
 
 // POST /api/payments - Créer un nouveau paiement SIMPLE

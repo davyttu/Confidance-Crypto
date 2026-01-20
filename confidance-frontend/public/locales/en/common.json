@@ -20,6 +20,45 @@
     "accountType": {
       "professional": "Pro",
       "individual": "Individual"
+    },
+    "accountSettings": {
+      "menuLabel": "Login details",
+      "title": "Login details",
+      "subtitle": "Update your email or password. You'll need your current password.",
+      "currentPasswordLabel": "Current password",
+      "unlockButton": "Unlock",
+      "unlockedLabel": "Unlocked",
+      "emailSectionTitle": "Email",
+      "newEmailLabel": "New email",
+      "sendCodeButton": "Send verification code",
+      "sendCodeLoading": "Sending...",
+      "confirmCodeLabel": "Verification code",
+      "confirmEmailButton": "Confirm new email",
+      "confirmEmailLoading": "Confirming...",
+      "passwordSectionTitle": "Password",
+      "newPasswordLabel": "New password",
+      "confirmPasswordLabel": "Confirm new password",
+      "updatePasswordButton": "Update password",
+      "updatePasswordLoading": "Updating...",
+      "errors": {
+        "currentPasswordRequired": "Enter your current password.",
+        "unlockRequired": "Unlock access to edit your login details.",
+        "invalidEmail": "Enter a valid new email address.",
+        "codeRequired": "Enter the verification code sent to your new email.",
+        "passwordTooShort": "New password must be at least 8 characters.",
+        "passwordsMismatch": "Passwords do not match.",
+        "loginRequiredEmail": "Sign in to update your email.",
+        "loginRequiredConfirm": "Sign in to confirm your email change.",
+        "loginRequiredPassword": "Sign in to update your password.",
+        "emailRequestFailed": "Unable to request email change.",
+        "emailConfirmFailed": "Unable to confirm email change.",
+        "passwordUpdateFailed": "Unable to update password."
+      },
+      "success": {
+        "emailCodeSent": "Verification code sent. Check your inbox.",
+        "emailUpdated": "Email updated successfully.",
+        "passwordUpdated": "Password updated successfully."
+      }
     }
   },
   "home": {
@@ -863,6 +902,96 @@
         "weeklyUnsupported": "Weekly recurring not supported yet.",
         "recurringMissing": "Missing recurring info",
         "executeMissing": "Missing execution date"
+      }
+    }
+  },
+  "analytics": {
+    "title": "📊 Monthly Analytics",
+    "subtitle": "Analyze your overall activity on the platform",
+    "month": "Month",
+    "year": "Year",
+    "connectTitle": "Connect your wallet",
+    "connectSubtitle": "To access your analytics, connect your wallet first",
+    "loadError": "Error loading data:",
+    "emptyTitle": "No data available",
+    "emptySubtitle": "Create your first payments to see your analytics",
+    "kpi": {
+      "transactions": "Transactions",
+      "totalVolume": "Total Volume",
+      "totalFees": "Total Fees",
+      "realCost": "Real Cost"
+    },
+    "types": {
+      "instant": "Instant Payments",
+      "scheduled": "Scheduled Payments",
+      "recurring": "Recurring Payments"
+    },
+    "table": {
+      "title": "Breakdown by Transaction Type",
+      "type": "Transaction Type",
+      "count": "Count",
+      "volume": "Volume",
+      "avgFees": "Avg Fees",
+      "total": "TOTAL"
+    },
+    "fees": {
+      "title": "Fees Breakdown",
+      "gas": "Gas Fees (Base Network)",
+      "protocol": "Confidance Protocol Fees (1.79%)",
+      "totalMonthly": "TOTAL MONTHLY FEES",
+      "tipTitle": "💡 Optimization tip",
+      "tipHighGas": "Gas fees make up most of your costs. Favor off-peak hours (weekends, nights) to save up to 30%.",
+      "tipBalanced": "Your fees are balanced between gas and protocol. Keep it up!"
+    },
+    "history": {
+      "title": "Monthly History",
+      "month": "Month",
+      "txs": "Txs",
+      "volume": "Volume",
+      "fees": "Fees",
+      "ratio": "Ratio %",
+      "current": "Current",
+      "best": "Best",
+      "high": "High",
+      "bestMonth": "Best month:",
+      "worstMonth": "Most expensive month:",
+      "avgRatio": "Average ratio:"
+    },
+    "export": {
+      "title": "📥 Download this month",
+      "csvTitle": "CSV - Accounting",
+      "csvSubtitle": "For Excel/accounting tools",
+      "pdfTitle": "PDF - Statement",
+      "pdfSubtitle": "For printing/archives",
+      "inProgress": "Export in progress...",
+      "csvError": "Error exporting CSV",
+      "pdfError": "Error exporting PDF. Please install jspdf and jspdf-autotable.",
+      "csv": {
+        "month": "Month",
+        "transactions": "Transactions",
+        "totalVolume": "Total Volume (ETH)",
+        "totalFees": "Total Fees (ETH)",
+        "ratio": "Ratio %",
+        "gasFees": "Gas Fees (ETH)",
+        "protocolFees": "Protocol Fees (ETH)",
+        "instant": "Instant Payments",
+        "scheduled": "Scheduled Payments",
+        "recurring": "Recurring Payments"
+      },
+      "pdf": {
+        "title": "Monthly Analytics Report",
+        "period": "Period",
+        "wallet": "Wallet",
+        "generatedAt": "Generated on",
+        "indicator": "Indicator",
+        "value": "Value",
+        "type": "Type",
+        "count": "Count",
+        "volumeEth": "Volume (ETH)",
+        "feeType": "Fee Type",
+        "amount": "Amount",
+        "share": "Share",
+        "page": "Page {{page}} of {{total}}"
       }
     }
   },

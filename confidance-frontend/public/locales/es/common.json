@@ -8,13 +8,57 @@
   },
   "common": {
     "connect": "Conectar cartera",
+    "connectWallet": "Por favor, conecte su cartera",
     "disconnect": "Desconectar",
     "cancel": "Cancelar",
     "confirm": "Confirmar",
     "save": "Guardar",
     "loading": "Cargando...",
     "error": "Error",
-    "success": "Éxito"
+    "success": "Éxito",
+    "accountType": {
+      "professional": "Pro",
+      "individual": "Individual"
+    },
+    "accountSettings": {
+      "menuLabel": "Detalles de acceso",
+      "title": "Detalles de acceso",
+      "subtitle": "Actualiza tu correo o contraseña. Necesitarás tu contraseña actual.",
+      "currentPasswordLabel": "Contraseña actual",
+      "unlockButton": "Desbloquear",
+      "unlockedLabel": "Desbloqueado",
+      "emailSectionTitle": "Correo",
+      "newEmailLabel": "Nuevo correo",
+      "sendCodeButton": "Enviar código de verificación",
+      "sendCodeLoading": "Enviando...",
+      "confirmCodeLabel": "Código de verificación",
+      "confirmEmailButton": "Confirmar nuevo correo",
+      "confirmEmailLoading": "Confirmando...",
+      "passwordSectionTitle": "Contraseña",
+      "newPasswordLabel": "Nueva contraseña",
+      "confirmPasswordLabel": "Confirmar contraseña",
+      "updatePasswordButton": "Actualizar contraseña",
+      "updatePasswordLoading": "Actualizando...",
+      "errors": {
+        "currentPasswordRequired": "Introduce tu contraseña actual.",
+        "unlockRequired": "Desbloquea el acceso para editar tus datos de acceso.",
+        "invalidEmail": "Introduce un nuevo correo válido.",
+        "codeRequired": "Introduce el código de verificación enviado a tu nuevo correo.",
+        "passwordTooShort": "La nueva contraseña debe tener al menos 8 caracteres.",
+        "passwordsMismatch": "Las contraseñas no coinciden.",
+        "loginRequiredEmail": "Inicia sesión para actualizar tu correo.",
+        "loginRequiredConfirm": "Inicia sesión para confirmar el cambio de correo.",
+        "loginRequiredPassword": "Inicia sesión para actualizar tu contraseña.",
+        "emailRequestFailed": "No se pudo solicitar el cambio de correo.",
+        "emailConfirmFailed": "No se pudo confirmar el cambio de correo.",
+        "passwordUpdateFailed": "No se pudo actualizar la contraseña."
+      },
+      "success": {
+        "emailCodeSent": "Código de verificación enviado. Revisa tu bandeja de entrada.",
+        "emailUpdated": "Correo actualizado correctamente.",
+        "passwordUpdated": "Contraseña actualizada correctamente."
+      }
+    }
   },
   "home": {
     "title": "Programa tus pagos cripto con confianza",
@@ -294,6 +338,96 @@
     "instant": "Instantáneo",
     "scheduled": "Programado"
   },
+  "analytics": {
+    "title": "📊 Analíticas mensuales",
+    "subtitle": "Analiza tu actividad global en la plataforma",
+    "month": "Mes",
+    "year": "Año",
+    "connectTitle": "Conecta tu cartera",
+    "connectSubtitle": "Para acceder a tus analíticas, conecta primero tu cartera",
+    "loadError": "Error al cargar los datos:",
+    "emptyTitle": "No hay datos disponibles",
+    "emptySubtitle": "Crea tus primeros pagos para ver tus analíticas",
+    "kpi": {
+      "transactions": "Transacciones",
+      "totalVolume": "Volumen total",
+      "totalFees": "Comisiones totales",
+      "realCost": "Costo real"
+    },
+    "types": {
+      "instant": "Pagos instantáneos",
+      "scheduled": "Pagos programados",
+      "recurring": "Pagos recurrentes"
+    },
+    "table": {
+      "title": "Detalle por tipo de transacción",
+      "type": "Tipo de transacción",
+      "count": "Número",
+      "volume": "Volumen",
+      "avgFees": "Comisiones medias",
+      "total": "TOTAL"
+    },
+    "fees": {
+      "title": "Desglose de comisiones",
+      "gas": "Comisiones de gas (Red Base)",
+      "protocol": "Comisiones del protocolo Confidance (1.79%)",
+      "totalMonthly": "TOTAL COMISIONES MENSUALES",
+      "tipTitle": "💡 Consejo de optimización",
+      "tipHighGas": "Las comisiones de gas representan la mayor parte de los costos. Prioriza horas valle (fines de semana, noche) para ahorrar hasta un 30%.",
+      "tipBalanced": "Tus comisiones están equilibradas entre gas y protocolo. ¡Sigue así!"
+    },
+    "history": {
+      "title": "Historial mensual",
+      "month": "Mes",
+      "txs": "Txs",
+      "volume": "Volumen",
+      "fees": "Comisiones",
+      "ratio": "Ratio %",
+      "current": "Actual",
+      "best": "Mejor",
+      "high": "Más alto",
+      "bestMonth": "Mes más económico:",
+      "worstMonth": "Mes más caro:",
+      "avgRatio": "Ratio medio:"
+    },
+    "export": {
+      "title": "📥 Descargar este mes",
+      "csvTitle": "CSV - Contabilidad",
+      "csvSubtitle": "Para Excel/software contable",
+      "pdfTitle": "PDF - Justificante",
+      "pdfSubtitle": "Para impresión/archivos",
+      "inProgress": "Exportación en curso...",
+      "csvError": "Error al exportar CSV",
+      "pdfError": "Error al exportar PDF. Instala jspdf y jspdf-autotable.",
+      "csv": {
+        "month": "Mes",
+        "transactions": "Transacciones",
+        "totalVolume": "Volumen total (ETH)",
+        "totalFees": "Comisiones totales (ETH)",
+        "ratio": "Ratio %",
+        "gasFees": "Comisiones de gas (ETH)",
+        "protocolFees": "Comisiones de protocolo (ETH)",
+        "instant": "Pagos instantáneos",
+        "scheduled": "Pagos programados",
+        "recurring": "Pagos recurrentes"
+      },
+      "pdf": {
+        "title": "Informe de analíticas mensual",
+        "period": "Periodo",
+        "wallet": "Cartera",
+        "generatedAt": "Generado el",
+        "indicator": "Indicador",
+        "value": "Valor",
+        "type": "Tipo",
+        "count": "Cantidad",
+        "volumeEth": "Volumen (ETH)",
+        "feeType": "Tipo de comisión",
+        "amount": "Importe",
+        "share": "Parte",
+        "page": "Página {{page}} de {{total}}"
+      }
+    }
+  },
   "tooltips": {
     "showHistory": "Mostrar historial",
     "hideHistory": "Ocultar historial"
@@ -533,8 +667,5 @@
       "amountLabel": "Monto del primer pago mensual",
       "info": "💡 Si introduces el mismo monto que el mensual, la opción se ignorará automáticamente."
     }
-  },
-  "common": {
-    "connectWallet": "Por favor, conecte su cartera"
   }
 }
