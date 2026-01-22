@@ -6,7 +6,7 @@ import { type TokenSymbol } from '@/config/tokens';
 
 interface PaymentProgressModalProps {
   isOpen: boolean;
-  status: 'idle' | 'approving' | 'approving_factory' | 'creating' | 'confirming' | 'approving_contract' | 'success' | 'error';
+  status: 'idle' | 'approving' | 'approving_factory' | 'creating' | 'confirming' | 'approving_contract' | 'approving_contracts' | 'success' | 'error';
   currentStep: number;
   totalSteps: number;
   progressMessage: string;
@@ -14,7 +14,11 @@ interface PaymentProgressModalProps {
   approveTxHash?: `0x${string}`;
   createTxHash?: `0x${string}`;
   contractAddress?: `0x${string}`;
+  contractAddresses?: `0x${string}`[];
   tokenSymbol: TokenSymbol;
+  approvalTotalPerContract?: bigint | null;
+  beneficiariesCount?: number;
+  totalMonths?: number;
   onClose: () => void;
   onViewPayment?: () => void;
 }
@@ -29,32 +33,49 @@ export default function PaymentProgressModal({
   approveTxHash,
   createTxHash,
   contractAddress,
+  contractAddresses,
   tokenSymbol,
   onClose,
   onViewPayment,
+  approvalTotalPerContract,
+  beneficiariesCount,
+  totalMonths,
 }: PaymentProgressModalProps) {
   const { t } = useTranslation();
+  const formatTokenAmount = (amount: bigint | null | undefined) => {
+    if (amount === null || amount === undefined) return null;
+    const decimals = tokenSymbol === 'ETH' ? 18 : 6;
+    const divisor = BigInt(10 ** decimals);
+    const integerPart = amount / divisor;
+    const fractionalPart = amount % divisor;
+    const fractionalStr = fractionalPart.toString().padStart(decimals, '0').replace(/0+$/, '');
+    return fractionalStr ? `${integerPart}.${fractionalStr}` : `${integerPart}`;
+  };
+  const approvalSummary =
+    approvalTotalPerContract && beneficiariesCount && totalMonths
+      ? {
+          perBeneficiary: formatTokenAmount(approvalTotalPerContract),
+          beneficiariesCount,
+          totalMonths
+        }
+      : null;
   const scrollingWords = useMemo(
     () => [
-      'Préparation de la transaction',
-      'Estimation du gas',
-      'Sélection du nonce',
-      'Signature ECDSA',
-      'Broadcast via RPC',
-      'Propagation P2P',
-      'Entrée en mempool',
-      'Sélection du block',
-      'Exécution EVM',
-      'Déploiement bytecode',
-      'Initialisation du contrat',
-      'Écriture storage',
-      'Émission events',
-      'Calcul du state root',
-      'Preuve et consensus L2',
-      'Finalité on-chain',
-      'Indexation BaseScan',
+      t('create.modal.progressWords.preparing', { defaultValue: 'Preparing transaction' }),
+      t('create.modal.progressWords.gasEstimate', { defaultValue: 'Estimating gas' }),
+      t('create.modal.progressWords.nonce', { defaultValue: 'Selecting nonce' }),
+      t('create.modal.progressWords.signature', { defaultValue: 'ECDSA signature' }),
+      t('create.modal.progressWords.broadcast', { defaultValue: 'Broadcast via RPC' }),
+      t('create.modal.progressWords.mempool', { defaultValue: 'Entering mempool' }),
+      t('create.modal.progressWords.block', { defaultValue: 'Block selection' }),
+      t('create.modal.progressWords.evm', { defaultValue: 'EVM execution' }),
+      t('create.modal.progressWords.bytecode', { defaultValue: 'Bytecode deployment' }),
+      t('create.modal.progressWords.storage', { defaultValue: 'Storage write' }),
+      t('create.modal.progressWords.events', { defaultValue: 'Emitting events' }),
+      t('create.modal.progressWords.finality', { defaultValue: 'On-chain finality' }),
+      t('create.modal.progressWords.indexing', { defaultValue: 'Basescan indexing' }),
     ],
-    []
+    [t]
   );
   const [wordIndex, setWordIndex] = useState(0);
   const signature = (
@@ -131,26 +152,36 @@ export default function PaymentProgressModal({
             <div>
               <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                 {contractAddress 
-                  ? t('create.modal.paymentCreated', { defaultValue: 'Paiement créé !' })
-                  : t('create.modal.transactionConfirmed', { defaultValue: 'Transaction confirmée !' })}
+                  ? t('create.modal.paymentCreated', { defaultValue: 'Payment created!' })
+                  : t('create.modal.transactionConfirmed', { defaultValue: 'Transaction confirmed!' })}
               </h3>
               <p className="text-gray-600 dark:text-gray-400">
                 {contractAddress 
-                  ? t('create.modal.paymentDeployedSuccess', { defaultValue: 'Votre paiement programmé a été déployé avec succès' })
-                  : t('create.modal.viewOnBasescanDetails', { defaultValue: 'Consultez Basescan pour voir les détails' })
+                  ? t('create.modal.paymentDeployedSuccess', { defaultValue: 'Your scheduled payment has been successfully deployed' })
+                  : t('create.modal.viewOnBasescanDetails', { defaultValue: 'Check Basescan to see the details' })
                 }
               </p>
             </div>
 
             {/* Adresse du contrat (si disponible) */}
-            {contractAddress && (
+            {(contractAddress || (contractAddresses && contractAddresses.length > 0)) && (
               <div className="p-4 rounded-xl bg-gray-100 dark:bg-gray-800">
                 <p className="text-xs text-gray-500 mb-1">
-                  {t('create.modal.contractAddress', { defaultValue: 'Adresse du contrat' })}
+                  {t('create.modal.contractAddress', { defaultValue: 'Contract address' })}
                 </p>
-                <p className="font-mono text-sm text-gray-900 dark:text-white break-all">
-                  {contractAddress}
-                </p>
+                {contractAddress ? (
+                  <p className="font-mono text-sm text-gray-900 dark:text-white break-all">
+                    {contractAddress}
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {(contractAddresses || []).map((address) => (
+                      <p key={address} className="font-mono text-xs text-gray-900 dark:text-white break-all">
+                        {address}
+                      </p>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -175,7 +206,7 @@ export default function PaymentProgressModal({
                   rel="noopener noreferrer"
                   className="flex-1 py-3 px-4 rounded-xl border-2 border-primary-500 text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-950/30 transition-all text-center font-medium"
                 >
-                  {t('create.modal.viewOnBasescan', { defaultValue: 'Voir sur Basescan' })}
+                  {t('create.modal.viewOnBasescan', { defaultValue: 'View on Basescan' })}
                 </a>
               )}
               {contractAddress && onViewPayment && (
@@ -183,7 +214,7 @@ export default function PaymentProgressModal({
                   onClick={onViewPayment}
                   className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-primary-500 to-purple-500 text-white font-bold hover:shadow-lg transition-all"
                 >
-                  {t('create.modal.viewPayment', { defaultValue: 'Voir le paiement' })}
+                  {t('create.modal.viewPayment', { defaultValue: 'View payment' })}
                 </button>
               )}
             </div>
@@ -192,7 +223,7 @@ export default function PaymentProgressModal({
               onClick={onClose}
               className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
             >
-              {t('create.modal.close', { defaultValue: 'Fermer' })}
+              {t('create.modal.close', { defaultValue: 'Close' })}
             </button>
             {signature}
           </div>
@@ -220,10 +251,10 @@ export default function PaymentProgressModal({
 
             <div>
               <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                {t('create.modal.error', { defaultValue: 'Erreur' })}
+                {t('create.modal.error', { defaultValue: 'Error' })}
               </h3>
               <p className="text-sm text-red-600 dark:text-red-400">
-                {error?.message || t('create.modal.errorOccurred', { defaultValue: 'Une erreur est survenue' })}
+                {error?.message || t('create.modal.errorOccurred', { defaultValue: 'An error occurred' })}
               </p>
             </div>
 
@@ -231,14 +262,14 @@ export default function PaymentProgressModal({
               onClick={onClose}
               className="w-full py-3 px-4 rounded-xl bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 font-medium transition-all"
             >
-              {t('create.modal.close', { defaultValue: 'Fermer' })}
+              {t('create.modal.close', { defaultValue: 'Close' })}
             </button>
             {signature}
           </div>
         )}
 
         {/* LOADING (approving, creating, confirming) - ✅ Support des nouveaux statuts recurring */}
-        {(status === 'approving' || status === 'approving_factory' || status === 'creating' || status === 'confirming' || status === 'approving_contract') && (
+        {(status === 'approving' || status === 'approving_factory' || status === 'creating' || status === 'confirming' || status === 'approving_contract' || status === 'approving_contracts') && (
           <div className="text-center space-y-6">
             {/* Spinner */}
             <div className="w-20 h-20 mx-auto">
@@ -250,7 +281,7 @@ export default function PaymentProgressModal({
                 {progressMessage}
               </h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                {t('create.modal.step', { current: currentStep, total: totalSteps, defaultValue: `Étape ${currentStep} sur ${totalSteps}` })}
+                {t('create.modal.step', { current: currentStep, total: totalSteps, defaultValue: `Step ${currentStep} of ${totalSteps}` })}
               </p>
             </div>
 
@@ -265,10 +296,17 @@ export default function PaymentProgressModal({
             <div className="space-y-3">
               {/* Barre de progression */}
               <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                {(() => {
+                  const baseStep = Math.max(currentStep - 1, 0);
+                  const progressStep = status === 'success' ? totalSteps : baseStep;
+                  const progressPercent = totalSteps > 0 ? (progressStep / totalSteps) * 100 : 0;
+                  return (
                 <div
                   className="h-full bg-gradient-to-r from-primary-500 to-purple-500 transition-all duration-500"
-                  style={{ width: `${(currentStep / totalSteps) * 100}%` }}
+                  style={{ width: `${progressPercent}%` }}
                 />
+                  );
+                })()}
               </div>
 
               {/* Étapes */}
@@ -277,45 +315,62 @@ export default function PaymentProgressModal({
                   <>
                     {/* Paiements récurrents BATCH : 2 + N étapes */}
                     <span className={currentStep >= 1 ? 'text-primary-600 font-medium' : ''}>
-                      {t('create.modal.approvalFactory', { defaultValue: '1. Approbation' })}
+                      {t('create.modal.approvalFactory', { defaultValue: '1. Factory approval' })}
                     </span>
                     <span className={currentStep >= 2 ? 'text-primary-600 font-medium' : ''}>
-                      {t('create.modal.creation', { defaultValue: '2. Création' })}
+                      {t('create.modal.creation', { defaultValue: '2. Creation' })}
                     </span>
                     <span className={currentStep >= 3 ? 'text-primary-600 font-medium' : ''}>
-                      {t('create.modal.approvingContracts', { defaultValue: `3-${totalSteps}. Autorisations` })}
+                      {t('create.modal.approvingContracts', { total: totalSteps, defaultValue: `3-${totalSteps}. Approvals` })}
                     </span>
                   </>
                 ) : totalSteps === 3 ? (
                   <>
                     {/* Paiements récurrents single : 3 étapes */}
                     <span className={currentStep >= 1 ? 'text-primary-600 font-medium' : ''}>
-                      {t('create.modal.approvalFactory', { defaultValue: '1. Approbation' })}
+                      {t('create.modal.approvalFactory', { defaultValue: '1. Factory approval' })}
                     </span>
                     <span className={currentStep >= 2 ? 'text-primary-600 font-medium' : ''}>
-                      {t('create.modal.creation', { defaultValue: '2. Création' })}
+                      {t('create.modal.creation', { defaultValue: '2. Creation' })}
                     </span>
                     <span className={currentStep >= 3 ? 'text-primary-600 font-medium' : ''}>
-                      {t('create.modal.approvalContract', { defaultValue: '3. Autorisation' })}
+                      {t('create.modal.approvalContract', { defaultValue: '3. Contract approval' })}
                     </span>
                   </>
                 ) : totalSteps === 2 ? (
                   <>
                     {/* Ordre standard: Approbation puis Création (pour paiements programmés) */}
                     <span className={currentStep >= 1 ? 'text-primary-600 font-medium' : ''}>
-                      {t('create.modal.approval', { defaultValue: '1. Approbation' })}
+                    {t('create.modal.approval', { defaultValue: '1. Approval' })}
                     </span>
                     <span className={currentStep >= 2 ? 'text-primary-600 font-medium' : ''}>
-                      {t('create.modal.creation', { defaultValue: '2. Création' })}
+                    {t('create.modal.creation', { defaultValue: '2. Creation' })}
                     </span>
                   </>
                 ) : (
                   <span className="text-primary-600 font-medium mx-auto">
-                    {t('create.modal.creationSingle', { defaultValue: 'Création' })}
+                    {t('create.modal.creationSingle', { defaultValue: 'Creation' })}
                   </span>
                 )}
               </div>
             </div>
+
+            {approvalSummary && status === 'approving_contracts' && (
+              <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-left text-xs text-blue-700 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-300">
+                <p className="font-semibold">
+                  {t('create.modal.approvalSummaryTitle', { defaultValue: 'Approval summary' })}
+                </p>
+                <p>
+                  {t('create.modal.approvalSummaryLine', {
+                    defaultValue: '{{amount}} {{token}} per month to approve for each beneficiary',
+                    amount: approvalSummary.perBeneficiary,
+                    token: tokenSymbol,
+                    beneficiaries: approvalSummary.beneficiariesCount,
+                    months: approvalSummary.totalMonths
+                  })}
+                </p>
+              </div>
+            )}
 
             {signature}
 
@@ -328,7 +383,7 @@ export default function PaymentProgressModal({
                   rel="noopener noreferrer"
                   className="flex items-center justify-center gap-2 text-primary-600 hover:text-primary-700"
                 >
-                  <span>{t('create.modal.viewApproval', { defaultValue: 'Voir l\'approbation' })}</span>
+                  <span>{t('create.modal.viewApproval', { defaultValue: 'View approval' })}</span>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                   </svg>
@@ -341,7 +396,7 @@ export default function PaymentProgressModal({
                   rel="noopener noreferrer"
                   className="flex items-center justify-center gap-2 text-primary-600 hover:text-primary-700"
                 >
-                  <span>{t('create.modal.viewCreation', { defaultValue: 'Voir la création' })}</span>
+                  <span>{t('create.modal.viewCreation', { defaultValue: 'View creation' })}</span>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                   </svg>
@@ -350,7 +405,7 @@ export default function PaymentProgressModal({
             </div>
 
             <p className="text-xs text-gray-500">
-              {t('create.modal.dontCloseWindow', { defaultValue: '⚠️ Ne fermez pas cette fenêtre' })}
+              {t('create.modal.dontCloseWindow', { defaultValue: '⚠️ Do not close this window' })}
             </p>
           </div>
         )}
@@ -359,7 +414,7 @@ export default function PaymentProgressModal({
         {status === 'idle' && (
           <div className="text-center p-8">
             <p className="text-gray-600 dark:text-gray-400">
-              {t('create.modal.loading', { defaultValue: 'Chargement...' })}
+              {t('create.modal.loading', { defaultValue: 'Loading...' })}
             </p>
           </div>
         )}

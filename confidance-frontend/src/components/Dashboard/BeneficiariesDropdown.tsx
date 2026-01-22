@@ -2,59 +2,38 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { Copy, Check, Edit2 } from 'lucide-react';
+import { Copy, Check, Edit2, ChevronDown, X } from 'lucide-react';
 import { Payment } from '@/hooks/useDashboard';
 import { useBeneficiaries } from '@/hooks/useBeneficiaries';
 
 interface BeneficiariesDropdownProps {
   payment: Payment;
   onRename: (address: string) => void;
+  showBatchControls?: boolean;
 }
 
-export function BeneficiariesDropdown({ payment, onRename }: BeneficiariesDropdownProps) {
+export function BeneficiariesDropdown({
+  payment,
+  onRename,
+  showBatchControls = true,
+}: BeneficiariesDropdownProps) {
   const { t, i18n } = useTranslation();
   const { getBeneficiaryName } = useBeneficiaries();
   const [isOpen, setIsOpen] = useState(false);
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Gérer l'ouverture/fermeture avec délai pour éviter les fermetures accidentelles
-  const handleMouseEnter = () => {
-    // Annuler tout timeout de fermeture en cours
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-    setIsOpen(true);
-  };
-
-  const handleMouseLeave = () => {
-    // Ajouter un délai avant de fermer pour permettre à l'utilisateur de déplacer sa souris
-    timeoutRef.current = setTimeout(() => {
-      setIsOpen(false);
-    }, 200); // 200ms de délai
-  };
-
-  // Nettoyer le timeout au démontage
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, []);
+  const popupRef = useRef<HTMLDivElement>(null);
 
   // Fermer le dropdown si on clique en dehors
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      const clickedDropdown = dropdownRef.current && dropdownRef.current.contains(target);
+      const clickedPopup = popupRef.current && popupRef.current.contains(target);
+      if (!clickedDropdown && !clickedPopup) {
         setIsOpen(false);
-        if (timeoutRef.current) {
-          clearTimeout(timeoutRef.current);
-          timeoutRef.current = null;
-        }
       }
     };
 
@@ -105,7 +84,7 @@ export function BeneficiariesDropdown({ payment, onRename }: BeneficiariesDropdo
   };
 
   // Si un seul bénéficiaire, pas besoin du dropdown
-  if (additionalCount === 0) {
+  if (additionalCount === 0 || !showBatchControls) {
     const beneficiaryName = getBeneficiaryName(payment.payee_address);
     const isCopied = copiedAddress === payment.payee_address;
     return (
@@ -197,118 +176,146 @@ export function BeneficiariesDropdown({ payment, onRename }: BeneficiariesDropdo
   const mainBeneficiary = beneficiaries[0];
   const mainBeneficiaryName = getBeneficiaryName(mainBeneficiary.address);
 
+  const popup =
+    isOpen && typeof document !== 'undefined'
+      ? createPortal(
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            onClick={() => setIsOpen(false)}
+          >
+            <div
+              ref={popupRef}
+              className="w-full max-w-lg overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-800"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-gray-200 bg-gradient-to-r from-purple-50 to-blue-50 px-4 py-3 dark:border-gray-700 dark:from-purple-900/20 dark:to-blue-900/20">
+                <div>
+                  <div className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                    {t('beneficiary.beneficiaries', { defaultValue: 'Beneficiaries' })}
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-300">
+                    {beneficiaries.length}{' '}
+                    {beneficiaries.length === 1
+                      ? t('beneficiary.beneficiary', { defaultValue: 'Beneficiary' })
+                      : t('beneficiary.beneficiaries', { defaultValue: 'Beneficiaries' })}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsOpen(false)}
+                  className="rounded-md p-1 text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-white"
+                  aria-label={t('create.modal.close', { defaultValue: 'Close' })}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="max-h-[60vh] overflow-y-auto">
+                {beneficiaries.map((beneficiary, index) => {
+                  const name = getBeneficiaryName(beneficiary.address);
+                  const isCopied = copiedAddress === beneficiary.address;
+
+                  return (
+                    <div
+                      key={`${beneficiary.address}-${index}`}
+                      className="border-b border-gray-100 p-3 last:border-b-0 dark:border-gray-700"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-1 flex items-center gap-2">
+                            <div className="truncate text-sm font-medium text-gray-900 dark:text-white">
+                              {name || `${t('beneficiary.beneficiary')} ${index + 1}`}
+                            </div>
+                            {beneficiary.isMain && (
+                              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                                {t('beneficiary.main')}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                            <span className="font-mono">
+                              {beneficiary.address}
+                            </span>
+                            <button
+                              onClick={() => copyToClipboard(beneficiary.address)}
+                              className="rounded-md p-1 hover:bg-purple-100 dark:hover:bg-purple-900/30"
+                              title={isCopied ? t('beneficiary.copied') : t('beneficiary.copyAddress')}
+                            >
+                              {isCopied ? (
+                                <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                              ) : (
+                                <Copy className="h-3.5 w-3.5 text-gray-400 transition-colors hover:text-purple-600 dark:hover:text-purple-400" />
+                              )}
+                            </button>
+                          </div>
+                          <div className="mt-1 text-xs font-medium text-gray-600 dark:text-gray-300">
+                            {formatAmount(beneficiary.amount, payment.token_symbol || 'ETH')} {payment.token_symbol || 'ETH'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>,
+          document.body
+        )
+      : null;
+
   return (
-    <div 
-      className="relative" 
-      ref={dropdownRef}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
-      <div className="flex items-center gap-2">
-        <div>
+    <>
+      <div className="flex items-start justify-between gap-3" ref={dropdownRef}>
+        <div className="min-w-0">
           <div className="flex items-center gap-2">
             <div className="text-sm font-medium text-gray-900 dark:text-white">
               {mainBeneficiaryName || t('beneficiary.unnamed')}
             </div>
-            {/* Badge +X */}
-            <div className="relative">
-              <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded-full bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 text-xs font-semibold cursor-pointer hover:bg-purple-200 dark:hover:bg-purple-800 transition-colors">
+            {showBatchControls && (
+              <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded-full bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 text-xs font-semibold">
                 +{additionalCount}
               </span>
-
-              {/* Dropdown */}
-              {isOpen && (
-                <div 
-                  className="absolute left-0 top-full mt-1 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 z-50 overflow-hidden transition-all duration-200 ease-out pointer-events-auto"
-                >
-                  <div className="p-3 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border-b border-gray-200 dark:border-gray-700">
-                    <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
-                      {additionalCount + 1} Bénéficiaire{additionalCount > 0 ? 's' : ''}
-                    </div>
-                  </div>
-                  
-                  <div className="max-h-96 overflow-y-auto">
-                    {beneficiaries.map((beneficiary, index) => {
-                      const name = getBeneficiaryName(beneficiary.address);
-                      const isCopied = copiedAddress === beneficiary.address;
-                      
-                      return (
-                        <div
-                          key={beneficiary.address}
-                          className="p-3 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors last:border-b-0 group/item"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1.5">
-                                <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                                  {name || `${t('beneficiary.beneficiary')} ${index + 1}`}
-                                </div>
-                                {beneficiary.isMain && (
-                                  <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full">
-                                    {t('beneficiary.main')}
-                                  </span>
-                                )}
-                              </div>
-                              <div 
-                                className="text-xs font-mono text-gray-500 dark:text-gray-400 break-all cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                                onClick={() => copyToClipboard(beneficiary.address)}
-                                title={t('beneficiary.clickToCopy')}
-                              >
-                                {beneficiary.address}
-                              </div>
-                              <div className="text-xs text-gray-600 dark:text-gray-300 mt-1.5 font-medium">
-                                {formatAmount(beneficiary.amount, payment.token_symbol || 'ETH')} {payment.token_symbol || 'ETH'}
-                              </div>
-                            </div>
-                            
-                            <button
-                              onClick={() => copyToClipboard(beneficiary.address)}
-                              className="flex-shrink-0 p-2 rounded-md hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors group/button"
-                              title={isCopied ? t('beneficiary.copied') : t('beneficiary.copyAddress')}
-                            >
-                              {isCopied ? (
-                                <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
-                              ) : (
-                                <Copy className="w-4 h-4 text-gray-400 group-hover/button:text-purple-600 dark:group-hover/button:text-purple-400 transition-colors" />
-                              )}
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <div className="text-xs text-gray-500 dark:text-gray-400 font-mono">
               {payment.payee_address.slice(0, 6)}...{payment.payee_address.slice(-4)}
             </div>
-          <button
-            onClick={() => copyToClipboard(payment.payee_address)}
-            className="flex-shrink-0 p-1.5 rounded-md hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
-            title={copiedAddress === payment.payee_address ? t('beneficiary.copied') : t('beneficiary.copyAddress')}
-          >
-            {copiedAddress === payment.payee_address ? (
-              <Check className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
-            ) : (
-              <Copy className="w-3.5 h-3.5 text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors" />
-            )}
-          </button>
+            <button
+              onClick={() => copyToClipboard(payment.payee_address)}
+              className="flex-shrink-0 p-1.5 rounded-md hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
+              title={copiedAddress === payment.payee_address ? t('beneficiary.copied') : t('beneficiary.copyAddress')}
+            >
+              {copiedAddress === payment.payee_address ? (
+                <Check className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
+              ) : (
+                <Copy className="w-3.5 h-3.5 text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors" />
+              )}
+            </button>
             {!mainBeneficiaryName && (
               <button
                 onClick={() => onRename(payment.payee_address)}
                 className="text-gray-400 hover:text-blue-600 transition-colors"
-                title="Renommer"
+                title={t('beneficiary.rename')}
               >
                 <Edit2 className="w-3 h-3" />
               </button>
             )}
           </div>
         </div>
+
+        {showBatchControls && (
+          <button
+            type="button"
+            onClick={() => setIsOpen(true)}
+            className="flex-shrink-0 rounded-md p-1.5 text-gray-500 hover:bg-gray-200 hover:text-gray-700 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white"
+            title={t('beneficiary.viewAll', { defaultValue: 'View beneficiaries' })}
+          >
+            <ChevronDown className="h-4 w-4" />
+          </button>
+        )}
       </div>
-    </div>
+      {showBatchControls ? popup : null}
+    </>
   );
 }
 

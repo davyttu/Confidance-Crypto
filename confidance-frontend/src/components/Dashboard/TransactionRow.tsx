@@ -9,6 +9,7 @@ import { useBeneficiaries } from '@/hooks/useBeneficiaries';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Copy, ExternalLink, Mail, X, Edit2, ChevronDown, ChevronRight } from 'lucide-react';
+import { sumAmounts } from '@/lib/utils/amountFormatter';
 import { BeneficiariesDropdown } from './BeneficiariesDropdown';
 import { RecurringPaymentHistory } from './RecurringPaymentHistory';
 import {
@@ -27,6 +28,7 @@ type DashboardPayment = Payment & {
   __parentId?: string;
   __parentPayment?: Payment;
   __monthlyStatuses?: Array<'executed' | 'failed' | 'pending' | 'cancelled'>;
+  __batchChildren?: Payment[];
 };
 
 interface TransactionRowProps {
@@ -46,7 +48,7 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
   const [showContractTooltip, setShowContractTooltip] = useState(false);
   const tooltipHideTimeoutRef = useRef<number | null>(null);
   const isRecurringInstance = Boolean(payment.__recurringInstance);
-  const cancelTargetPayment = payment.__parentPayment ?? payment;
+  const cancelTargetPayment = isRecurringInstance ? payment : (payment.__parentPayment ?? payment);
 
   // Vérifier si c'est un paiement récurrent
   const isRecurringParent = (payment.is_recurring || payment.payment_type === 'recurring') && !isRecurringInstance;
@@ -73,6 +75,50 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
 
   const beneficiaryName = getBeneficiaryName(payment.payee_address);
   const displayName = beneficiaryName || `${payment.payee_address.slice(0, 6)}...${payment.payee_address.slice(-4)}`;
+  const contractAddresses = (() => {
+    const addresses = new Set<string>();
+    if (payment.contract_address) {
+      addresses.add(payment.contract_address);
+    }
+    if (payment.__batchChildren) {
+      payment.__batchChildren.forEach((child) => {
+        if (child.contract_address) {
+          addresses.add(child.contract_address);
+        }
+      });
+    }
+    return Array.from(addresses);
+  })();
+  const contractEntries = (() => {
+    const entries: Array<{ address: string; label: string }> = [];
+    const seen = new Set<string>();
+    const truncate = (address: string) => `${address.slice(0, 6)}...${address.slice(-4)}`;
+    if (payment.__batchChildren?.length) {
+      payment.__batchChildren.forEach((child, index) => {
+        const address = child.contract_address;
+        if (!address) return;
+        const key = address.toLowerCase();
+        if (seen.has(key)) return;
+        seen.add(key);
+        const name = getBeneficiaryName(child.payee_address);
+        const label = name ? `Contract ${name}` : `Contract ${index + 1}`;
+        entries.push({ address, label });
+      });
+    }
+    contractAddresses.forEach((address, index) => {
+      const key = address.toLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      entries.push({ address, label: `Contract ${index + 1}` });
+    });
+    return entries;
+  })();
+  const transactionHash =
+    payment.transaction_hash ||
+    payment.tx_hash ||
+    payment.__batchChildren?.find((child) => child.transaction_hash)?.transaction_hash ||
+    payment.__batchChildren?.find((child) => child.tx_hash)?.tx_hash ||
+    null;
 
   // Formater le montant avec la locale actuelle
   const formatAmount = (amount: string, symbol: string) => {
@@ -110,6 +156,30 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
       return payment.first_month_amount;
     }
     return payment.amount;
+  };
+
+  const getNextInstallmentAmount = () => {
+    if (!isRecurringParent) return null;
+    const executedMonths = Number(payment.executed_months || 0);
+    const totalMonths = Number(payment.total_months || 0);
+    if (totalMonths > 0 && executedMonths >= totalMonths) return null;
+    const isFirstMonthCustom =
+      payment.is_first_month_custom === true || payment.is_first_month_custom === 'true';
+
+    if (payment.batch_beneficiaries && payment.batch_beneficiaries.length > 0) {
+      const beneficiariesCount = payment.batch_beneficiaries.length;
+      const monthlyTotals = sumAmounts(payment.batch_beneficiaries.map((beneficiary) => beneficiary.amount || '0'));
+      if (isFirstMonthCustom && executedMonths === 0 && payment.first_month_amount) {
+        return BigInt(payment.first_month_amount) * BigInt(beneficiariesCount);
+      }
+      return monthlyTotals;
+    }
+
+    if (isFirstMonthCustom && executedMonths === 0 && payment.first_month_amount) {
+      return BigInt(payment.first_month_amount);
+    }
+
+    return BigInt(payment.monthly_amount || payment.amount || '0');
   };
 
   // Formater la date et l'heure avec la locale actuelle
@@ -314,17 +384,32 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
 
             return (
               <div className="flex min-w-[160px] flex-col gap-1">
-                <div className="flex items-center gap-2">
-                  <span
-                    className="text-sm font-medium text-gray-900 dark:text-white truncate max-w-[180px]"
-                    title={label || 'Sans libellé'}
-                  >
-                    {label || 'Sans libellé'}
-                  </span>
-                  {isNew && (
-                    <span className="inline-flex items-center rounded-full bg-gradient-to-r from-pink-500 to-purple-600 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow-sm">
-                      NEW
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className="text-sm font-medium text-gray-900 dark:text-white truncate max-w-[180px]"
+                      title={label || 'Sans libellé'}
+                    >
+                      {label || 'Sans libellé'}
                     </span>
+                    {isNew && (
+                      <span className="inline-flex items-center rounded-full bg-gradient-to-r from-pink-500 to-purple-600 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow-sm">
+                        {translationsReady ? t('dashboard.badges.new', { defaultValue: 'New' }) : 'New'}
+                      </span>
+                    )}
+                  </div>
+                  {isRecurring && (
+                    <button
+                      onClick={() => setIsExpanded(!isExpanded)}
+                      className="flex-shrink-0 p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+                      title={isExpanded ? t('tooltips.hideHistory') : t('tooltips.showHistory')}
+                    >
+                      {isExpanded ? (
+                        <ChevronDown className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                      ) : (
+                        <ChevronRight className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                      )}
+                    </button>
                   )}
                 </div>
                 <span
@@ -345,33 +430,34 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
         </td>
         {/* Bénéficiaire */}
         <td className="px-6 py-4 whitespace-nowrap">
-          <div className="flex items-center gap-2">
-            {isRecurring && (
-              <button
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
-                title={isExpanded ? t('tooltips.hideHistory') : t('tooltips.showHistory')}
-              >
-                {isExpanded ? (
-                  <ChevronDown className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                ) : (
-                  <ChevronRight className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                )}
-              </button>
-            )}
-            <BeneficiariesDropdown payment={payment} onRename={onRename} />
-          </div>
+          <BeneficiariesDropdown
+            payment={payment}
+            onRename={onRename}
+            showBatchControls={!payment.__recurringInstance}
+          />
         </td>
 
       {/* Montant */}
       <td className="px-6 py-4 whitespace-nowrap">
-        <div className="text-sm font-medium text-gray-900 dark:text-white">
-          {formatAmount(
-            isRecurring ? getRecurringDisplayAmount() : payment.amount,
-            payment.token_symbol || 'ETH'
-          )}{' '}
-          {payment.token_symbol || 'ETH'}
-        </div>
+        {(() => {
+          const tokenSymbol = payment.token_symbol || 'ETH';
+          const nextInstallment = getNextInstallmentAmount();
+          const displayAmount = nextInstallment
+            ? nextInstallment.toString()
+            : (isRecurring ? getRecurringDisplayAmount() : payment.amount);
+          return (
+            <div className="flex flex-col">
+              <div className="text-sm font-medium text-gray-900 dark:text-white">
+                {formatAmount(displayAmount, tokenSymbol)} {tokenSymbol}
+              </div>
+              {nextInstallment && (
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  {t('dashboard.table.nextInstallment', { defaultValue: 'Next installment' })}
+                </span>
+              )}
+            </div>
+          );
+        })()}
       </td>
 
       {/* Type */}
@@ -414,7 +500,7 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
 
       {/* Contrat */}
       <td className="px-6 py-4 whitespace-nowrap text-center">
-        {payment.contract_address ? (
+        {contractEntries.length > 0 ? (
           <div
             className="relative inline-flex items-center justify-center"
             onMouseEnter={() => {
@@ -432,7 +518,7 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
             }}
           >
             <a
-              href={`https://basescan.org/address/${payment.contract_address}`}
+              href={`https://basescan.org/address/${contractEntries[0].address}`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center"
@@ -470,22 +556,54 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
                   }, 250);
                 }}
               >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-mono">
-                    {payment.contract_address.slice(0, 10)}...{payment.contract_address.slice(-8)}
-                  </span>
-                  <button
-                    onClick={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      copyToClipboard(payment.contract_address!);
-                    }}
-                    className="text-gray-200 hover:text-white transition-colors"
-                    title="Copier l'adresse"
-                  >
-                    <Copy className={`w-4 h-4 ${copied ? 'text-green-400' : ''}`} />
-                  </button>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {contractEntries.map((entry) => (
+                    <div key={entry.address} className="space-y-1">
+                      <div className="text-[10px] uppercase tracking-wide text-gray-300">
+                        {entry.label}
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-mono">
+                          {entry.address.slice(0, 10)}...{entry.address.slice(-8)}
+                        </span>
+                        <button
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            copyToClipboard(entry.address);
+                          }}
+                          className="text-gray-200 hover:text-white transition-colors"
+                          title="Copier l'adresse"
+                        >
+                          <Copy className={`w-4 h-4 ${copied ? 'text-green-400' : ''}`} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
+                {transactionHash && (
+                  <div className="mt-3 border-t border-white/10 pt-2">
+                    <div className="text-[10px] uppercase tracking-wide text-gray-300">
+                      Transaction hash
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono">
+                        {transactionHash.slice(0, 10)}...{transactionHash.slice(-8)}
+                      </span>
+                      <button
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          copyToClipboard(transactionHash);
+                        }}
+                        className="text-gray-200 hover:text-white transition-colors"
+                        title="Copier le hash"
+                      >
+                        <Copy className={`w-4 h-4 ${copied ? 'text-green-400' : ''}`} />
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900 dark:border-t-gray-700"></div>
               </div>
             )}

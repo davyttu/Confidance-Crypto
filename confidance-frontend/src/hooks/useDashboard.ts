@@ -52,6 +52,8 @@ export interface Payment {
   next_execution_time?: number | null;
   is_recurring?: boolean;
   last_execution_hash?: string | null;
+  // UI-only aggregation
+  __batchChildren?: Payment[];
 }
 
 interface UseDashboardReturn {

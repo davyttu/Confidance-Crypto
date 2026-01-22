@@ -175,6 +175,9 @@
       "failed": "Fallido",
       "completed": "Completado"
     },
+    "badges": {
+      "new": "Nuevo"
+    },
     "period": {
       "all": "Todo",
       "byMonth": "Por mes",
@@ -310,7 +313,11 @@
       "title": "Cancelar pago",
       "warning": "⚠️ Estás a punto de cancelar este pago programado:",
       "beneficiary": "Beneficiario:",
+      "beneficiaries": "Beneficiarios:",
       "amount": "Monto:",
+      "totalAmountRecurring": "Importe total (todos los meses):",
+      "recurringNoRefund": "No hay fondos bloqueados; cancelar detiene las próximas cuotas.",
+      "batchRecurringNotice": "Deberás confirmar {{count}} cancelaciones en tu wallet.",
       "releaseDate": "Liberación programada:",
       "important": "Importante:",
       "refund": "Los fondos y las comisiones del protocolo se reembolsarán a tu wallet (prorrata para pagos batch)",
@@ -338,7 +345,8 @@
     "clickToCopy": "Hacer clic para copiar",
     "copied": "¡Copiado!",
     "copyAddress": "Copiar dirección",
-    "rename": "Renombrar"
+    "rename": "Renombrar",
+    "viewAll": "Ver beneficiarios"
   },
   "paymentType": {
     "recurring": "Recurrente",
@@ -564,6 +572,8 @@
   "create": {
     "title": "Crear un pago instantáneo, programado o recurrente",
     "subtitle": "Envía cripto que se liberará automáticamente en la fecha elegida",
+    "voiceCta": "Crear un pago por voz",
+    "voiceLang": "Idioma de voz",
     "beneficiary": {
       "address": "Dirección del beneficiario",
       "addMultiple": "Añadir varios beneficiarios",
@@ -620,7 +630,24 @@
     "submit": "Crear pago programado",
     "modal": {
       "approvingFactoryForCreation": "Aprobando {{token}} para la creación...",
+      "approvingContractStep": "Aprobando contrato {{current}}/{{total}}...",
+      "progressWords": {
+        "preparing": "Preparando la transacción",
+        "gasEstimate": "Estimando gas",
+        "nonce": "Seleccionando nonce",
+        "signature": "Firma ECDSA",
+        "broadcast": "Envío por RPC",
+        "mempool": "Entrando al mempool",
+        "block": "Selección de bloque",
+        "evm": "Ejecución EVM",
+        "bytecode": "Despliegue de bytecode",
+        "storage": "Escritura de storage",
+        "events": "Emisión de eventos",
+        "finality": "Finalidad on-chain",
+        "indexing": "Indexación en Basescan"
+      },
       "creatingRecurring": "Creando pago recurrente {{token}}...",
+      "creatingRecurringBatchCount": "Creando {{count}} pagos recurrentes...",
       "errorCreating": "Error durante la creación",
       "errorCreatingContract": "Error durante la creación del contrato",
       "confirmingCreation": "Confirmando creación...",
@@ -639,7 +666,11 @@
       "contractApprovalCancelled": "Aprobación del contrato cancelada por el usuario en MetaMask",
       "approvalFactory": "1. Aprobación Factory",
       "approvalContract": "3. Autorización Contrato",
-      "approvingContracts": "3-{{total}}. Autorizaciones"
+      "approvingContracts": "3-{{total}}. Autorizaciones",
+      "contractAddress": "Dirección del contrato",
+      "contractAddresses": "Direcciones de contratos",
+      "approvalSummaryTitle": "Resumen de aprobación",
+      "approvalSummaryLine": "{{amount}} {{token}} por mes, durante {{months}} meses, para aprobar por beneficiario"
     },
     "recurring": {
       "onlyUSDCUSDT": "Pagos recurrentes disponibles solo para USDC y USDT",
@@ -657,6 +688,7 @@
       "paymentTypeLabel": "Tipo de pago",
       "treasuryRemainsAvailable": "Su tesorería permanece disponible",
       "onlyAmountDebitedMonthly": "Solo <strong>{{amount}} {{token}}</strong> se debitarán cada mes de su cartera.",
+      "firstMonthOverride": "Excepto el primer pago mensual: <strong>{{amount}} {{token}}</strong> se debitarán el primer mes.",
       "refundRemainingMonths": "Si cancelas antes de la ejecución, los meses restantes y sus comisiones se reembolsan.",
       "importantTitle": "Información importante:",
       "important": {
@@ -666,6 +698,7 @@
         "nextMonthsContinue": "Los próximos pagos mensuales continuarán normalmente incluso si un mes falló"
       },
       "beneficiaryWillReceive": "El beneficiario recibirá (por mes)",
+      "numberOfBeneficiaries": "Número de beneficiarios",
       "numberOfMonths": "Número de meses",
       "firstDueDate": "Primer vencimiento:",
       "lastDueDate": "Último vencimiento:",

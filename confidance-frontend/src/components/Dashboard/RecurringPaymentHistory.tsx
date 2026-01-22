@@ -80,6 +80,7 @@ export function RecurringPaymentHistory({ payment }: RecurringPaymentHistoryProp
     const firstMonthAmount = payment.first_month_amount || '';
     const monthlyAmount = payment.monthly_amount || payment.amount || '';
 
+    let firstMonthFailed = false;
     for (let monthIndex = 0; monthIndex < totalMonths; monthIndex++) {
       const paymentDate = startTime + (monthIndex * MONTH_IN_SECONDS);
 
@@ -88,11 +89,16 @@ export function RecurringPaymentHistory({ payment }: RecurringPaymentHistoryProp
       const monthlyStatusOverride = payment.__monthlyStatuses?.[monthIndex];
       if (monthlyStatusOverride) {
         status = monthlyStatusOverride;
+        if (monthIndex === 0 && monthlyStatusOverride === 'failed') {
+          firstMonthFailed = true;
+        }
       } else if (monthIndex < executedMonths) {
         // ✅ Les premiers N mois ont été exécutés avec succès
         status = 'executed';
       } else if (isCancelled) {
         // ✅ Si le paiement récurrent est annulé, tous les mois non exécutés sont annulés
+        status = 'cancelled';
+      } else if (firstMonthFailed) {
         status = 'cancelled';
       } else if (paymentDate > now) {
         // Date dans le futur

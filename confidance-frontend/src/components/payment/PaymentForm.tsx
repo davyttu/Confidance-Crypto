@@ -1212,7 +1212,25 @@ export default function PaymentForm() {
   const recurringAmountValue = Number.isFinite(parseFloat(formData.amount)) ? parseFloat(formData.amount) : 0;
   const recurringMonthlyFee = recurringAmountValue * recurringFeeRate;
   const recurringTotalPerMonth = recurringAmountValue + recurringMonthlyFee;
-  const recurringTotalToApprove = recurringTotalPerMonth * recurringMonths;
+  const beneficiaryCount = isBatchMode ? 1 + additionalBeneficiaries.length : 1;
+  const recurringTotalPerMonthAll = recurringTotalPerMonth * beneficiaryCount;
+  const firstMonthValue = Number.isFinite(parseFloat(firstMonthAmountInput)) ? parseFloat(firstMonthAmountInput) : 0;
+  const hasCustomFirstMonth = isFirstMonthDifferent && firstMonthValue > 0;
+  const firstMonthAmount = hasCustomFirstMonth ? firstMonthValue : recurringAmountValue;
+  const firstMonthFee = firstMonthAmount * recurringFeeRate;
+  const firstMonthTotal = firstMonthAmount + firstMonthFee;
+  const firstMonthTotalAll = firstMonthTotal * beneficiaryCount;
+  const remainingMonths = Math.max(recurringMonths - 1, 0);
+  const recurringTotalToApprove =
+    (firstMonthTotal + (remainingMonths * recurringTotalPerMonth)) * beneficiaryCount;
+  const dateDiffSeconds = formData.releaseDate
+    ? (formData.releaseDate.getTime() - Date.now()) / 1000
+    : null;
+  const dateTooSoon =
+    typeof dateDiffSeconds === 'number' &&
+    dateDiffSeconds >= 60 &&
+    dateDiffSeconds < 10 * 60 &&
+    paymentTiming !== 'instant';
   const [hasSyncedPro, setHasSyncedPro] = useState(false);
 
   useEffect(() => {
@@ -2060,16 +2078,18 @@ export default function PaymentForm() {
       </div>
 
       {/* ✅ SECTION PAYMENT IDENTITY */}
-      <PaymentIdentitySection
-        label={formData.label}
-        category={formData.category}
-        onLabelChange={handleLabelChange}
-        onCategoryChange={handleCategoryChange}
-        suggestedCategory={suggestedCategory}
-        confidence={confidence}
-        matchedKeywords={matchedKeywords}
-        error={errors.label}
-      />
+      <div id="payment-description">
+        <PaymentIdentitySection
+          label={formData.label}
+          category={formData.category}
+          onLabelChange={handleLabelChange}
+          onCategoryChange={handleCategoryChange}
+          suggestedCategory={suggestedCategory}
+          confidence={confidence}
+          matchedKeywords={matchedKeywords}
+          error={errors.label}
+        />
+      </div>
 
       {/* Section 3 : Montant */}
       <div className="glass rounded-2xl p-6 space-y-4">
@@ -2629,6 +2649,18 @@ export default function PaymentForm() {
                   {isMounted && translationsReady ? t('create.summary.title') : '💰 Summary'}
                 </h3>
               </div>
+              {/* Calcul total */}
+              <div className="space-y-3">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-700 dark:text-gray-300">
+                    {isMounted && translationsReady ? t('create.date.numberOfMonths') : 'Number of months'}
+                  </span>
+                  <span className="font-semibold text-gray-900 dark:text-white">
+                    × {recurringMonths}
+                  </span>
+                </div>
+              </div>
+
               {/* Détails par mensualité */}
               <div className="bg-blue-50 dark:bg-blue-950/30 rounded-xl p-4 space-y-3">
                 <div className="flex justify-between text-sm">
@@ -2656,30 +2688,31 @@ export default function PaymentForm() {
                     {isMounted && translationsReady ? t('create.date.totalPerMonth') : 'TOTAL per monthly payment'}
                   </span>
                   <span className="font-bold text-blue-600 dark:text-blue-400">
-                    {recurringTotalPerMonth.toFixed(6)} {formData.tokenSymbol}
+                    {recurringTotalPerMonthAll.toFixed(6)} {formData.tokenSymbol}
                   </span>
                 </div>
               </div>
 
-              {/* Calcul total */}
-              <div className="space-y-3">
+              {isBatchMode && beneficiaryCount > 1 && (
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-gray-700 dark:text-gray-300">
-                    {isMounted && translationsReady ? t('create.date.numberOfMonths') : 'Number of months'}
+                    {isMounted && translationsReady
+                      ? t('create.date.numberOfBeneficiaries', { defaultValue: 'Number of beneficiaries' })
+                      : 'Number of beneficiaries'}
                   </span>
                   <span className="font-semibold text-gray-900 dark:text-white">
-                    × {recurringMonths}
+                    × {beneficiaryCount}
                   </span>
                 </div>
+              )}
 
-                <div className="border-t-2 border-gray-300 dark:border-gray-600 pt-3 flex justify-between items-center">
-                  <span className="text-lg font-bold text-gray-900 dark:text-white">
-                    {isMounted && translationsReady ? t('create.date.totalToApprove') : 'TOTAL to approve'}
-                  </span>
-                  <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                    {recurringTotalToApprove.toFixed(6)} {formData.tokenSymbol}
-                  </span>
-                </div>
+              <div className="border-t-2 border-gray-300 dark:border-gray-600 pt-3 flex justify-between items-center">
+                <span className="text-lg font-bold text-gray-900 dark:text-white">
+                  {isMounted && translationsReady ? t('create.date.totalToApprove') : 'TOTAL to approve'}
+                </span>
+                <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                  {recurringTotalToApprove.toFixed(6)} {formData.tokenSymbol}
+                </span>
               </div>
 
               {/* Dates première et dernière échéance */}
@@ -2730,16 +2763,31 @@ export default function PaymentForm() {
                     <p>
                       {isMounted && translationsReady ? (
                         <span dangerouslySetInnerHTML={{ __html: t('create.date.onlyAmountDebitedMonthly', { 
-                          amount: recurringTotalPerMonth.toFixed(2),
+                          amount: recurringTotalPerMonthAll.toFixed(2),
                           token: formData.tokenSymbol,
-                          defaultValue: `Only <strong>${recurringTotalPerMonth.toFixed(2)} ${formData.tokenSymbol}</strong> will be debited each month from your wallet.`
+                          defaultValue: `Only <strong>${recurringTotalPerMonthAll.toFixed(2)} ${formData.tokenSymbol}</strong> will be debited each month from your wallet.`
                         }) }} />
                       ) : (
                         <>
-                          Only <span className="font-bold">{recurringTotalPerMonth.toFixed(2)} {formData.tokenSymbol}</span> will be debited each month from your wallet.
+                          Only <span className="font-bold">{recurringTotalPerMonthAll.toFixed(2)} {formData.tokenSymbol}</span> will be debited each month from your wallet.
                         </>
                       )}
                     </p>
+                    {hasCustomFirstMonth && (
+                      <p className="mt-2">
+                        {isMounted && translationsReady ? (
+                          <span dangerouslySetInnerHTML={{ __html: t('create.date.firstMonthOverride', {
+                            amount: firstMonthTotalAll.toFixed(2),
+                            token: formData.tokenSymbol,
+                            defaultValue: `Except the first monthly payment: <strong>${firstMonthTotalAll.toFixed(2)} ${formData.tokenSymbol}</strong> will be debited for the first month.`
+                          }) }} />
+                        ) : (
+                          <>
+                            Except the first monthly payment: <span className="font-bold">{firstMonthTotalAll.toFixed(2)} {formData.tokenSymbol}</span> will be debited for the first month.
+                          </>
+                        )}
+                      </p>
+                    )}
                     <p className="mt-2">
                       {isMounted && translationsReady
                         ? t('create.date.refundRemainingMonths', { defaultValue: 'If you cancel before execution, remaining months and their protocol fees are refunded.' })
@@ -2855,6 +2903,13 @@ export default function PaymentForm() {
           ? (isMounted && translationsReady ? t('create.submit') + ` (${additionalBeneficiaries.length + 1} ${isMounted && translationsReady ? t('create.beneficiary.additional').toLowerCase() : 'beneficiaries'})` : `Create batch payment (${additionalBeneficiaries.length + 1} beneficiaries)`)
           : (isMounted && translationsReady ? t('create.submit') : 'Create scheduled payment')}
       </button>
+      {dateTooSoon && (
+        <p className="mt-3 text-sm text-red-600 dark:text-red-400">
+          {isMounted && translationsReady
+            ? t('create.validation.dateMin')
+            : 'The date must be at least 10 minutes in the future'}
+        </p>
+      )}
 
       {/* Modal de progression */}
       <PaymentProgressModal
@@ -2871,7 +2926,11 @@ export default function PaymentForm() {
           : (isBatchMode ? batchPayment.approveTxHash : singlePayment.approveTxHash)}
         createTxHash={activePayment.createTxHash}
         contractAddress={activePayment.contractAddress}
+        contractAddresses={isRecurringMode && isBatchMode ? batchRecurringPayment.contractAddresses : undefined}
         tokenSymbol={formData.tokenSymbol}
+        approvalTotalPerContract={isRecurringMode && isBatchMode ? batchRecurringPayment.approvalTotalPerContract : null}
+        beneficiariesCount={isRecurringMode && isBatchMode ? additionalBeneficiaries.length + 1 : undefined}
+        totalMonths={isRecurringMode ? recurringMonths : undefined}
         onClose={handleCloseModal}
         onViewPayment={handleViewPayment}
       />

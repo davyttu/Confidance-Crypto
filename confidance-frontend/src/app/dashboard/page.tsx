@@ -80,6 +80,7 @@ export default function DashboardPage() {
   const [periodType, setPeriodType] = useState<'all' | 'month' | 'wallet'>('all');
   const [periodValue, setPeriodValue] = useState<string | number | string[]>();
   const [selectedPaymentToCancel, setSelectedPaymentToCancel] = useState<Payment | null>(null);
+  const [lastCancelWasRecurring, setLastCancelWasRecurring] = useState(false);
   const [beneficiaryToEdit, setBeneficiaryToEdit] = useState<Beneficiary | null>(null);
   const [beneficiaryAddressToAdd, setBeneficiaryAddressToAdd] = useState<string | undefined>();
   const [wallets, setWallets] = useState<{ id?: string; wallet_address: string; is_primary?: boolean }[]>([]);
@@ -236,14 +237,27 @@ export default function DashboardPage() {
   // Gestionnaire d'annulation de paiement (VERSION SIMPLIFIÉE)
   const handleCancelPayment = async (payment: Payment) => {
     try {
-      console.log('🚫 Annulation du paiement:', payment.contract_address);
-      
-      await cancelPayment({
-        contractAddress: payment.contract_address as `0x${string}`,
-        paymentId: payment.id,
-        payerAddress: payment.payer_address,
-        isRecurring: payment.is_recurring || payment.payment_type === 'recurring',
-      });
+      const isRecurring = payment.is_recurring || payment.payment_type === 'recurring';
+      setLastCancelWasRecurring(isRecurring);
+      const batchChildren = payment.__batchChildren || [];
+      const targets = batchChildren.length > 0 ? batchChildren : [payment];
+      const seenContracts = new Set<string>();
+
+      for (const target of targets) {
+        if (!target.contract_address) continue;
+        const contract = target.contract_address.toLowerCase();
+        if (seenContracts.has(contract)) continue;
+        seenContracts.add(contract);
+
+        console.log('🚫 Annulation du paiement:', target.contract_address);
+
+        await cancelPayment({
+          contractAddress: target.contract_address as `0x${string}`,
+          paymentId: target.id,
+          payerAddress: target.payer_address,
+          isRecurring,
+        });
+      }
 
       // Le refetch() est maintenant géré par useEffect qui surveille cancelStatus
       
@@ -595,7 +609,7 @@ export default function DashboardPage() {
       )}
 
       {/* Notification de succès d'annulation */}
-      {cancelStatus === 'success' && (
+      {cancelStatus === 'success' && !lastCancelWasRecurring && (
         <div className="fixed bottom-4 right-4 bg-green-600 text-white px-6 py-4 rounded-lg shadow-xl flex items-center gap-3 z-50">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />

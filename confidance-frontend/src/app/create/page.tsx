@@ -34,10 +34,10 @@ export default function CreatePaymentPage() {
 
         <div className="max-w-2xl mx-auto text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold mb-8 gradient-text leading-relaxed pb-2">
-            {isMounted && ready ? t('create.title') : 'Créer un paiement instantané, programmé ou récurrent'}
+            {isMounted && ready ? t('create.title') : 'Create a payment'}
           </h1>
           <p className="text-lg text-gray-600 dark:text-gray-400">
-            {isMounted && ready ? t('create.subtitle') : 'Envoyez de la crypto qui sera automatiquement libérée à la date choisie'}
+            {isMounted && ready ? t('create.subtitle') : 'Define what it is for, when it executes, and who it is for.'}
           </p>
           <div className="mt-6 flex justify-center">
             <div className="group inline-flex items-center gap-3 rounded-full border border-primary-200 bg-white/80 px-3 py-2 text-sm font-semibold text-primary-700 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary-300 hover:shadow-md dark:border-primary-800 dark:bg-gray-900/70 dark:text-primary-300">
@@ -57,7 +57,7 @@ export default function CreatePaymentPage() {
                   </svg>
                 </span>
                 <span>
-                  {isMounted && ready ? t('create.voiceCta', { defaultValue: 'Créer un paiement par la voix' }) : 'Créer un paiement par la voix'}
+                  {isMounted && ready ? t('create.voiceCta', { defaultValue: 'Create a payment by voice' }) : 'Create a payment by voice'}
                 </span>
                 <span className="text-primary-400 group-hover:text-primary-500">→</span>
               </button>
@@ -79,8 +79,8 @@ export default function CreatePaymentPage() {
                   }
                 }}
                 className="mr-2 inline-flex items-center rounded-full border border-primary-200 px-3 py-1 text-xs text-primary-700 hover:border-primary-300 hover:text-primary-800"
-                title={isMounted && ready ? t('create.voiceLang', { defaultValue: 'Langue vocale' }) : 'Langue vocale'}
-                aria-label={isMounted && ready ? t('create.voiceLang', { defaultValue: 'Langue vocale' }) : 'Langue vocale'}
+                title={isMounted && ready ? t('create.voiceLang', { defaultValue: 'Voice language' }) : 'Voice language'}
+                aria-label={isMounted && ready ? t('create.voiceLang', { defaultValue: 'Voice language' }) : 'Voice language'}
               >
                 {voiceLang}
               </button>
@@ -113,10 +113,10 @@ export default function CreatePaymentPage() {
               </svg>
             </div>
             <h3 className="font-bold text-gray-900 dark:text-white mb-2">
-              {isMounted && ready ? t('create.features.secure.title') : '100% Sécurisé'}
+              {isMounted && ready ? t('create.features.secure.title') : '100% Secure'}
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              {isMounted && ready ? t('create.features.secure.description') : 'Vos fonds sont verrouillés dans un smart contract vérifié'}
+              {isMounted && ready ? t('create.features.secure.description') : 'Your funds are secured in a verified smart contract'}
             </p>
           </div>
 
@@ -138,10 +138,10 @@ export default function CreatePaymentPage() {
               </svg>
             </div>
             <h3 className="font-bold text-gray-900 dark:text-white mb-2">
-              {isMounted && ready ? t('create.features.automatic.title') : 'Automatique'}
+              {isMounted && ready ? t('create.features.automatic.title') : 'Automatic'}
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              {isMounted && ready ? t('create.features.automatic.description') : 'Le paiement est libéré automatiquement à la date choisie'}
+              {isMounted && ready ? t('create.features.automatic.description') : 'The payment is released automatically on the chosen date'}
             </p>
           </div>
 
@@ -172,7 +172,7 @@ export default function CreatePaymentPage() {
               {isMounted && ready ? t('create.features.transparent.title') : 'Transparent'}
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              {isMounted && ready ? t('create.features.transparent.description') : 'Suivez votre paiement en temps réel sur Basescan'}
+              {isMounted && ready ? t('create.features.transparent.description') : 'Track your payment in real-time on Basescan'}
             </p>
           </div>
         </div>

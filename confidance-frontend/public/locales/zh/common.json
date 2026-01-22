@@ -174,6 +174,9 @@
       "failed": "失败",
       "completed": "已完成"
     },
+    "badges": {
+      "new": "新"
+    },
     "period": {
       "all": "全部",
       "byMonth": "按月",
@@ -337,7 +340,11 @@
       "title": "取消支付",
       "warning": "⚠️ 你将取消此计划支付：",
       "beneficiary": "受益人：",
+      "beneficiaries": "受益人：",
       "amount": "金额：",
+      "totalAmountRecurring": "总金额（所有月份）：",
+      "recurringNoRefund": "不会锁定资金；取消将停止后续扣款。",
+      "batchRecurringNotice": "你需要在钱包中确认 {{count}} 笔取消交易。",
       "releaseDate": "计划释放：",
       "important": "重要：",
       "refund": "资金与协议费用将退回到你的钱包（批量按比例）",
@@ -365,7 +372,8 @@
     "clickToCopy": "点击复制",
     "copied": "已复制！",
     "copyAddress": "复制地址",
-    "rename": "重命名"
+    "rename": "重命名",
+    "viewAll": "查看受益人"
   },
   "paymentType": {
     "recurring": "定期",
@@ -591,6 +599,8 @@
   "create": {
     "title": "创建即时、定期或循环支付",
     "subtitle": "发送加密货币，将在指定日期自动释放",
+    "voiceCta": "语音创建支付",
+    "voiceLang": "语音语言",
     "beneficiary": {
       "address": "收款地址",
       "addMultiple": "添加多个收款人",
@@ -621,7 +631,24 @@
     },
     "modal": {
       "approvingFactoryForCreation": "正在批准 {{token}} 用于创建...",
+      "approvingContractStep": "正在批准合约 {{current}}/{{total}}...",
+      "progressWords": {
+        "preparing": "准备交易",
+        "gasEstimate": "估算 gas",
+        "nonce": "选择 nonce",
+        "signature": "ECDSA 签名",
+        "broadcast": "通过 RPC 广播",
+        "mempool": "进入 mempool",
+        "block": "选择区块",
+        "evm": "EVM 执行",
+        "bytecode": "部署 bytecode",
+        "storage": "写入存储",
+        "events": "发出事件",
+        "finality": "链上最终性",
+        "indexing": "Basescan 索引"
+      },
       "creatingRecurring": "正在创建定期 {{token}} 支付...",
+      "creatingRecurringBatchCount": "正在创建 {{count}} 笔循环支付...",
       "errorCreating": "创建时出错",
       "errorCreatingContract": "创建合约时出错",
       "confirmingCreation": "正在确认创建...",
@@ -640,7 +667,11 @@
       "contractApprovalCancelled": "合约批准已被用户在 MetaMask 中取消",
       "approvalFactory": "1. Factory 批准",
       "approvalContract": "3. 合约授权",
-      "approvingContracts": "3-{{total}}. 授权"
+      "approvingContracts": "3-{{total}}. 授权",
+      "contractAddress": "合约地址",
+      "contractAddresses": "合约地址列表",
+      "approvalSummaryTitle": "批准摘要",
+      "approvalSummaryLine": "{{amount}} {{token}} 每月，持续 {{months}} 个月，每位受益人需授权"
     },
     "recurring": {
       "onlyUSDCUSDT": "定期支付仅适用于 USDC 和 USDT",
@@ -656,8 +687,10 @@
     },
     "date": {
       "paymentTypeLabel": "支付类型",
+      "numberOfBeneficiaries": "受益人数量",
       "treasuryRemainsAvailable": "您的资金仍然可用",
       "onlyAmountDebitedMonthly": "每月只会从您的钱包中扣除 <strong>{{amount}} {{token}}</strong>。",
+      "firstMonthOverride": "首月除外：首月将扣除 <strong>{{amount}} {{token}}</strong>。",
       "refundRemainingMonths": "若在执行前取消，剩余月份及其费用会退还。",
       "importantTitle": "重要信息：",
       "important": {

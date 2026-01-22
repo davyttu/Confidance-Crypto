@@ -79,6 +79,7 @@ interface UseCreateBatchRecurringPaymentReturn {
 
   createTxHash: `0x${string}` | undefined;
   contractAddresses: `0x${string}`[];
+  approvalTotalPerContract: bigint | null;
 
   createBatchRecurringPayment: (params: CreateBatchRecurringPaymentParams) => Promise<void>;
   reset: () => void;
@@ -123,6 +124,7 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
   const [status, setStatus] = useState<PaymentStatus>('idle');
   const [error, setError] = useState<Error | null>(null);
   const [contractAddresses, setContractAddresses] = useState<`0x${string}`[]>([]);
+  const [approvalTotalPerContract, setApprovalTotalPerContract] = useState<bigint | null>(null);
   const [currentParams, setCurrentParams] = useState<CreateBatchRecurringPaymentParams | null>(null);
   const [progressMessage, setProgressMessage] = useState<string>('');
   const [capturedPayerAddress, setCapturedPayerAddress] = useState<`0x${string}` | undefined>();
@@ -142,6 +144,24 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
     error: writeError,
     reset: resetWrite,
   } = useWriteContract();
+
+  useEffect(() => {
+    if (!createTxHash || !currentParams?.beneficiaries?.length) return;
+    if (typeof window === 'undefined') return;
+    try {
+      const storageKey = 'batchRecurringMainByTx';
+      const raw = window.localStorage.getItem(storageKey);
+      const parsed = raw ? JSON.parse(raw) : {};
+      const next =
+        parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+          ? { ...parsed }
+          : {};
+      next[createTxHash] = currentParams.beneficiaries[0].address;
+      window.localStorage.setItem(storageKey, JSON.stringify(next));
+    } catch (error) {
+      console.warn('⚠️ Unable to cache batch recurring main beneficiary:', error);
+    }
+  }, [createTxHash, currentParams]);
 
   // Hook pour approuver la Factory
   const approvalFactoryHook = useTokenApproval({
@@ -203,11 +223,31 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
         throw new Error(`Token ${params.tokenSymbol} n'a pas d'adresse de contrat`);
       }
 
+      const perBeneficiaryAmount = BigInt(
+        Math.floor(parseFloat(params.beneficiaries[0]?.amount || '0') * 10 ** tokenData.decimals)
+      );
+      const isProVerified = user?.accountType === 'professional' && user?.proStatus === 'verified';
+      const feeBps = getProtocolFeeBps({ isInstantPayment: false, isProVerified });
+      const totalPerContract = calculateRecurringTotal(
+        perBeneficiaryAmount,
+        params.totalMonths,
+        feeBps,
+        params.firstMonthAmount
+      );
+      setApprovalTotalPerContract(totalPerContract);
+
       // Étape 1: Approuver la Factory
       setStatus('approving_factory');
-      setProgressMessage(`Approbation de ${tokenData.symbol} pour la création...`);
+      setProgressMessage(
+        t('create.modal.approvingFactoryForCreation', {
+          defaultValue: 'Approving {{token}} for creation...',
+          token: tokenData.symbol,
+        })
+      );
 
-      console.log('💳 [BATCH RECURRING] Étape 1: Approbation Factory...');
+      console.log('💳 [BATCH RECURRING] Étape 1: Approbation Factory...', {
+        totalPerContract: totalPerContract.toString(),
+      });
 
       approvalFactoryHook.approve(BigInt(1), params.tokenSymbol, tokenData.address as `0x${string}`);
 
@@ -215,7 +255,7 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
       console.error('Erreur createBatchRecurringPayment:', err);
       setError(err as Error);
       setStatus('error');
-      setProgressMessage('Erreur lors de la création');
+      setProgressMessage(t('create.modal.errorCreating', { defaultValue: 'Error during creation' }));
     }
   };
 
@@ -232,7 +272,12 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
           }
 
           setStatus('creating');
-          setProgressMessage(`Création de ${currentParams.beneficiaries.length} paiements récurrents...`);
+          setProgressMessage(
+            t('create.modal.creatingRecurringBatchCount', {
+              defaultValue: 'Creating {{count}} recurring payments...',
+              count: currentParams.beneficiaries.length,
+            })
+          );
 
           // Préparer les arrays pour le batch
           const payees: `0x${string}`[] = [];
@@ -272,7 +317,7 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
           console.error('❌ [BATCH RECURRING] Erreur création:', err);
           setError(err as Error);
           setStatus('error');
-          setProgressMessage('Erreur lors de la création');
+          setProgressMessage(t('create.modal.errorCreating', { defaultValue: 'Error during creation' }));
         }
       }
     };
@@ -285,7 +330,7 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
     if (isConfirming && status === 'creating') {
       console.log('⏳ [BATCH RECURRING] Confirmation en cours...');
       setStatus('confirming');
-      setProgressMessage('Confirmation de la création...');
+      setProgressMessage(t('create.modal.confirmingCreation', { defaultValue: 'Confirming creation...' }));
     }
   }, [isConfirming, status]);
 
@@ -295,7 +340,7 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
       if (isConfirmed && createTxHash && publicClient && contractAddresses.length === 0 && (status === 'confirming' || status === 'creating')) {
         try {
           console.log('✅ [BATCH RECURRING] Extraction des adresses...');
-          setProgressMessage('Récupération des adresses des contrats...');
+          setProgressMessage(t('create.modal.retrievingContractAddress', { defaultValue: 'Retrieving contract addresses...' }));
 
           const receipt = await publicClient.getTransactionReceipt({ hash: createTxHash });
 
@@ -338,13 +383,19 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
           // Passer à l'approbation des contrats
           setStatus('approving_contracts');
           setCurrentApprovingIndex(0);
-          setProgressMessage(`Approbation du contrat 1/${addresses.length}...`);
+          setProgressMessage(
+            t('create.modal.approvingContractStep', {
+              defaultValue: 'Approving contract {{current}}/{{total}}...',
+              current: 1,
+              total: addresses.length,
+            })
+          );
 
         } catch (err) {
           console.error('❌ [BATCH RECURRING] Erreur extraction:', err);
           setError(err as Error);
           setStatus('error');
-          setProgressMessage('Erreur lors de l\'extraction des adresses');
+          setProgressMessage(t('create.modal.errorExtractingAddress', { defaultValue: 'Error extracting address' }));
         }
       }
     };
@@ -387,7 +438,14 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
             amount: totalRequired.toString(),
           });
 
-          setProgressMessage(`Approbation du contrat ${currentApprovingIndex + 1}/${contractAddresses.length}...`);
+          setProgressMessage(
+            t('create.modal.approvingContractStep', {
+              defaultValue: 'Approving contract {{current}}/{{total}}...',
+              current: currentApprovingIndex + 1,
+              total: contractAddresses.length,
+            })
+          );
+          setApprovalTotalPerContract(totalRequired);
 
           // Approuver le contrat
           const USDC = new (await import('viem')).getContract({
@@ -424,7 +482,9 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
           console.error(`❌ [BATCH RECURRING] Erreur approbation contrat ${currentApprovingIndex + 1}:`, err);
           setError(err as Error);
           setStatus('error');
-          setProgressMessage(`Erreur lors de l'approbation du contrat ${currentApprovingIndex + 1}`);
+          setProgressMessage(
+            t('create.modal.errorApprovingContract', { defaultValue: 'Error approving contract' })
+          );
         }
       }
     };
@@ -444,7 +504,7 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
       ) {
         try {
           console.log('✅ [BATCH RECURRING] Toutes les approbations terminées ! Sauvegarde DB...');
-          setProgressMessage('Enregistrement dans la base de données...');
+          setProgressMessage(t('create.modal.savingToDatabase', { defaultValue: 'Saving to database...' }));
 
           const tokenData = getToken(currentParams.tokenSymbol);
 
@@ -507,13 +567,13 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
       console.error('❌ [BATCH RECURRING] Erreur writeContract:', writeError);
       setError(writeError as Error);
       setStatus('error');
-      setProgressMessage('Transaction annulée ou échouée');
+      setProgressMessage(t('create.modal.transactionCancelledOrFailed', { defaultValue: 'Transaction cancelled or failed. Check MetaMask.' }));
     }
     if (confirmError) {
       console.error('❌ [BATCH RECURRING] Erreur confirmation:', confirmError);
       setError(confirmError as Error);
       setStatus('error');
-      setProgressMessage('Erreur de confirmation');
+      setProgressMessage(t('create.modal.errorConfirmingCreation', { defaultValue: 'Error confirming creation transaction' }));
     }
     if (approvalFactoryHook.approveError && status === 'approving_factory') {
       console.error('❌ [BATCH RECURRING] Erreur approbation Factory:', approvalFactoryHook.approveError);
@@ -522,7 +582,9 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
       if (approvalFactoryHook.approveError instanceof Error) {
         const errorMsg = approvalFactoryHook.approveError.message.toLowerCase();
         if (errorMsg.includes('user rejected') || errorMsg.includes('user denied') || errorMsg.includes('user cancelled')) {
-          errorMessage = 'Approbation Factory annulée par l\'utilisateur';
+          errorMessage = t('create.modal.factoryApprovalCancelled', {
+            defaultValue: 'Factory approval cancelled by user in MetaMask',
+          });
         }
       }
 
@@ -544,6 +606,7 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
     setContractAddresses([]);
     setCurrentParams(null);
     setProgressMessage('');
+    setApprovalTotalPerContract(null);
     setCapturedPayerAddress(undefined);
     setCurrentApprovingIndex(0);
     setGuestEmail('');
@@ -571,6 +634,8 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
     currentStep,
     totalSteps,
     progressMessage,
+    approvalTotalPerContract,
+    approvalTotalPerContract,
     isAuthenticated,
     needsGuestEmail,
     setGuestEmail,

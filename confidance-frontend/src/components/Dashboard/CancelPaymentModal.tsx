@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Payment } from '@/hooks/useDashboard';
-import { formatAmount } from '@/lib/utils/amountFormatter';
+import { formatAmount, sumAmounts } from '@/lib/utils/amountFormatter';
 import { formatDateTime } from '@/lib/utils/dateFormatter';
 import { truncateAddress } from '@/lib/utils/addressFormatter';
 import { useBeneficiaries } from '@/hooks/useBeneficiaries';
@@ -29,8 +29,80 @@ export function CancelPaymentModal({ payment, onClose, onConfirm }: CancelPaymen
 
   if (!payment) return null;
 
-  const beneficiaryName = getBeneficiaryName(payment.payee_address);
-  const displayName = beneficiaryName || truncateAddress(payment.payee_address);
+  const isRecurring = payment.is_recurring || payment.payment_type === 'recurring';
+  const batchChildren = payment.__batchChildren || [];
+  const batchBeneficiaries = payment.batch_beneficiaries || [];
+
+  const resolvedBeneficiaries = (() => {
+    if (batchChildren.length > 0) {
+      return batchChildren.map((child) => ({
+        address: child.payee_address,
+        amount: child.monthly_amount || child.amount,
+        firstMonthAmount: child.first_month_amount || payment.first_month_amount,
+        isFirstMonthCustom: child.is_first_month_custom ?? payment.is_first_month_custom,
+        totalMonths: child.total_months ?? payment.total_months,
+      }));
+    }
+    if (batchBeneficiaries.length > 0) {
+      return batchBeneficiaries.map((beneficiary) => ({
+        address: beneficiary.address,
+        amount: beneficiary.amount,
+        firstMonthAmount: payment.first_month_amount,
+        isFirstMonthCustom: payment.is_first_month_custom,
+        totalMonths: payment.total_months,
+      }));
+    }
+    return [{
+      address: payment.payee_address,
+      amount: payment.monthly_amount || payment.amount,
+      firstMonthAmount: payment.first_month_amount,
+      isFirstMonthCustom: payment.is_first_month_custom,
+      totalMonths: payment.total_months,
+    }];
+  })();
+
+  const beneficiaryNames = resolvedBeneficiaries.map((beneficiary) => {
+    const name = getBeneficiaryName(beneficiary.address);
+    return name || truncateAddress(beneficiary.address);
+  });
+
+  const totalMonths =
+    isRecurring
+      ? Number(
+          payment.total_months ||
+          Math.max(
+            0,
+            ...resolvedBeneficiaries.map((beneficiary) => Number(beneficiary.totalMonths || 0))
+          )
+        )
+      : 1;
+
+  const computeTotalForBeneficiary = (beneficiary: {
+    amount?: string | null;
+    firstMonthAmount?: string | null;
+    isFirstMonthCustom?: boolean | null;
+  }) => {
+    const monthlyAmount = beneficiary.amount ? BigInt(beneficiary.amount) : 0n;
+    if (!isRecurring || totalMonths <= 0) {
+      return monthlyAmount;
+    }
+    const isFirstMonthCustom =
+      beneficiary.isFirstMonthCustom === true || beneficiary.isFirstMonthCustom === 'true';
+    const firstMonthAmount = beneficiary.firstMonthAmount ? BigInt(beneficiary.firstMonthAmount) : 0n;
+    if (isFirstMonthCustom && firstMonthAmount > 0n && firstMonthAmount !== monthlyAmount) {
+      return firstMonthAmount + (monthlyAmount * BigInt(Math.max(totalMonths - 1, 0)));
+    }
+    return monthlyAmount * BigInt(totalMonths);
+  };
+
+  const totalAmount = resolvedBeneficiaries.reduce((sum, beneficiary) => {
+    return sum + computeTotalForBeneficiary(beneficiary);
+  }, 0n);
+  const displayAmount = formatAmount(
+    totalAmount,
+    payment.token_symbol === 'USDC' || payment.token_symbol === 'USDT' ? 6 : 18
+  );
+  const requiresMultipleCancels = isRecurring && resolvedBeneficiaries.length > 1;
 
   const handleConfirm = async () => {
     if (!isConfirmed) {
@@ -56,7 +128,9 @@ export function CancelPaymentModal({ payment, onClose, onConfirm }: CancelPaymen
         {/* En-tête */}
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-gray-900">Annuler le paiement</h2>
+            <h2 className="text-xl font-bold text-gray-900">
+              {isMounted && translationsReady ? t('dashboard.cancel.title') : 'Cancel payment'}
+            </h2>
             <button
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600"
@@ -78,19 +152,33 @@ export function CancelPaymentModal({ payment, onClose, onConfirm }: CancelPaymen
             
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-600">Bénéficiaire :</span>
-                <span className="font-medium text-gray-900">{displayName}</span>
-              </div>
-              
-              <div className="flex justify-between">
-                <span className="text-gray-600">{isMounted && translationsReady ? t('dashboard.cancel.amount') : 'Montant :'}</span>
-                <span className="font-medium text-gray-900">
-                  {formatAmount(payment.amount)} {payment.token_symbol}
+                <span className="text-gray-600">
+                  {resolvedBeneficiaries.length > 1
+                    ? (isMounted && translationsReady ? t('dashboard.cancel.beneficiaries', { defaultValue: 'Beneficiaries:' }) : 'Beneficiaries:')
+                    : (isMounted && translationsReady ? t('dashboard.cancel.beneficiary', { defaultValue: 'Beneficiary:' }) : 'Beneficiary:')}
+                </span>
+                <span className="font-medium text-gray-900 text-right">
+                  {resolvedBeneficiaries.length > 1
+                    ? beneficiaryNames.join(', ')
+                    : beneficiaryNames[0]}
                 </span>
               </div>
               
               <div className="flex justify-between">
-                <span className="text-gray-600">Libération prévue :</span>
+                <span className="text-gray-600">
+                  {isRecurring
+                    ? (isMounted && translationsReady ? t('dashboard.cancel.totalAmountRecurring', { defaultValue: 'Total amount (all months):' }) : 'Total amount (all months):')
+                    : (isMounted && translationsReady ? t('dashboard.cancel.amount', { defaultValue: 'Amount:' }) : 'Amount:')}
+                </span>
+                <span className="font-medium text-gray-900">
+                  {displayAmount} {payment.token_symbol}
+                </span>
+              </div>
+              
+              <div className="flex justify-between">
+                <span className="text-gray-600">
+                  {isMounted && translationsReady ? t('dashboard.cancel.releaseDate') : 'Scheduled release:'}
+                </span>
                 <span className="font-medium text-gray-900">
                   {formatDateTime(payment.release_time)}
                 </span>
@@ -105,11 +193,34 @@ export function CancelPaymentModal({ payment, onClose, onConfirm }: CancelPaymen
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
               <div className="text-sm text-yellow-800">
-                <p className="font-medium mb-1">{isMounted && translationsReady ? t('dashboard.cancel.important') : 'Important :'}</p>
+                <p className="font-medium mb-1">
+                  {isMounted && translationsReady ? t('dashboard.cancel.important') : 'Important:'}
+                </p>
                 <ul className="list-disc list-inside space-y-1">
-                  <li>{isMounted && translationsReady ? t('dashboard.cancel.refund') : 'Les fonds seront remboursés sur votre wallet'}</li>
-                  <li>{isMounted && translationsReady ? t('dashboard.cancel.irreversible') : 'Cette action est irréversible'}</li>
-                  <li>{isMounted && translationsReady ? t('dashboard.cancel.noFees') : 'Aucun frais ne sera prélevé'}</li>
+                  {!isRecurring && (
+                    <>
+                      <li>{isMounted && translationsReady ? t('dashboard.cancel.refund') : 'Funds and protocol fees will be refunded to your wallet (pro rata for batch)'}</li>
+                      <li>{isMounted && translationsReady ? t('dashboard.cancel.noFees') : 'Protocol fees are refunded on cancellation'}</li>
+                    </>
+                  )}
+                  {isRecurring && (
+                    <li>
+                      {isMounted && translationsReady
+                        ? t('dashboard.cancel.recurringNoRefund', { defaultValue: 'No funds are locked; cancelling stops future installments.' })
+                        : 'No funds are locked; cancelling stops future installments.'}
+                    </li>
+                  )}
+                  <li>{isMounted && translationsReady ? t('dashboard.cancel.irreversible') : 'This action is irreversible'}</li>
+                  {requiresMultipleCancels && (
+                    <li>
+                      {isMounted && translationsReady
+                        ? t('dashboard.cancel.batchRecurringNotice', {
+                            count: resolvedBeneficiaries.length,
+                            defaultValue: `You will need to confirm ${resolvedBeneficiaries.length} cancellation transactions in your wallet.`,
+                          })
+                        : `You will need to confirm ${resolvedBeneficiaries.length} cancellation transactions in your wallet.`}
+                    </li>
+                  )}
                 </ul>
               </div>
             </div>
@@ -127,7 +238,9 @@ export function CancelPaymentModal({ payment, onClose, onConfirm }: CancelPaymen
               className="mt-1 w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
             />
             <span className="text-sm text-gray-700">
-              Je comprends que cette action est irréversible et je souhaite annuler ce paiement programmé.
+              {isMounted && translationsReady
+                ? t('dashboard.cancel.confirmText')
+                : 'I understand that this action is irreversible and I wish to cancel this scheduled payment.'}
             </span>
           </label>
 

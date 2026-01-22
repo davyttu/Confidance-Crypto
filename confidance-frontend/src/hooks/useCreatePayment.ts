@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import {
   useAccount,
   useChainId,
@@ -60,7 +61,7 @@ const resolveOnchainFeeBps = async (params: {
   }
 };
 
-const getFriendlyApprovalErrorMessage = (error: Error): string => {
+const getFriendlyApprovalErrorMessage = (error: Error, t: TFunction): string => {
   const candidates = [
     error.message,
     (error as any)?.shortMessage,
@@ -73,28 +74,43 @@ const getFriendlyApprovalErrorMessage = (error: Error): string => {
     errorMsgLower.includes('user denied') ||
     errorMsgLower.includes('user cancelled')
   ) {
-    return 'Transaction annulée. Aucun prélèvement n’a été effectué. Vous pouvez réessayer quand vous voulez.';
+    return t('create.modal.errorUserRejected', {
+      defaultValue: 'Transaction cancelled. No charge was made. You can try again anytime.',
+    });
   }
   if (
     errorMsgLower.includes('insufficient funds') ||
     errorMsgLower.includes('balance') ||
     errorMsgLower.includes('insufficient balance')
   ) {
-    return 'Balance ETH insuffisante pour payer les frais de transaction (gas). Veuillez ajouter de l\'ETH à votre wallet.';
+    return t('create.modal.errorInsufficientEthGas', {
+      defaultValue: 'Insufficient ETH to pay transaction fees (gas). Please add ETH to your wallet.',
+    });
   }
   if (errorMsgLower.includes('nonce') || errorMsgLower.includes('replacement transaction')) {
-    return 'Erreur de nonce. Veuillez réessayer dans quelques instants.';
+    return t('create.modal.errorNonce', {
+      defaultValue: 'Nonce error. Please try again in a moment.',
+    });
   }
   if (errorMsgLower.includes('network') || errorMsgLower.includes('connection') || errorMsgLower.includes('rpc')) {
-    return 'Erreur de connexion réseau ou RPC. Vérifiez votre connexion internet et réessayez.';
+    return t('create.modal.errorNetworkRpc', {
+      defaultValue: 'Network or RPC error. Check your connection and try again.',
+    });
   }
   if (errorMsgLower.includes('gas') || errorMsgLower.includes('transaction underpriced')) {
-    return 'Erreur de gas. Vérifiez votre connexion réseau et réessayez.';
+    return t('create.modal.errorGas', {
+      defaultValue: 'Gas error. Check your network connection and try again.',
+    });
   }
   if (candidates.length > 0) {
-    return `Erreur lors de l'approbation. ${candidates[0]}`;
+    return t('create.modal.errorApprovingWithDetails', {
+      defaultValue: 'Approval error. {{details}}',
+      details: candidates[0],
+    });
   }
-  return 'Erreur lors de l\'approbation. Vérifiez MetaMask pour plus de détails.';
+  return t('create.modal.errorApprovingGeneric', {
+    defaultValue: 'Approval error. Check MetaMask for details.',
+  });
 };
 
 const isUserRejectedError = (error: Error): boolean => {
@@ -268,7 +284,11 @@ export function useCreatePayment(): UseCreatePaymentReturn {
     if (isConfirmed && createTxHash && status === 'creating') {
       console.log('✅ Transaction confirmée, passage à confirming...');
       setStatus('confirming');
-      setProgressMessage('Transaction confirmée, récupération des détails...');
+      setProgressMessage(
+        t('create.modal.transactionConfirmedFetching', {
+          defaultValue: 'Transaction confirmed, fetching details...',
+        })
+      );
     }
   }, [isConfirmed, createTxHash, status]);
 
@@ -442,7 +462,13 @@ export function useCreatePayment(): UseCreatePaymentReturn {
 
       if (!currentApprovalHook) {
         console.error('❌ Hook d\'approbation non disponible');
-        setError(new Error('Erreur interne: hook d\'approbation non disponible'));
+        setError(
+          new Error(
+            t('create.modal.errorInternalApprovalHookUnavailable', {
+              defaultValue: 'Internal error: approval hook unavailable',
+            })
+          )
+        );
         setStatus('error');
         return;
       }
@@ -481,7 +507,11 @@ export function useCreatePayment(): UseCreatePaymentReturn {
         if (isInstantPayment) {
           // ⚡ PAIEMENT INSTANTANÉ ETH (0% fees)
           setStatus('creating');
-          setProgressMessage('⚡ Paiement instantané ETH (0% fees)...');
+          setProgressMessage(
+            t('create.modal.instantPaymentEth', {
+              defaultValue: '⚡ Instant ETH payment (0% fees)...',
+            })
+          );
 
           console.log('⚡ createInstantPaymentETH:', {
             beneficiary: params.beneficiary,
@@ -509,7 +539,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
         } else {
           // PAIEMENT PROGRAMMÉ ETH (taux selon statut)
           setStatus('creating');
-          setProgressMessage(t('create.modal.creatingPaymentETH', { defaultValue: 'Création du paiement ETH...' }));
+          setProgressMessage(t('create.modal.creatingPaymentETH', { defaultValue: 'Creating ETH payment...' }));
 
           const amountToPayee = params.amount;
           const protocolFee = (amountToPayee * BigInt(feeBpsForPayment)) / BigInt(10000);
@@ -570,7 +600,12 @@ export function useCreatePayment(): UseCreatePaymentReturn {
           if (!allowanceIsSufficient || currentApprovalHook.isCheckingAllowance) {
             console.log('🔐 Approbation nécessaire pour paiement instantané');
             setStatus('approving');
-            setProgressMessage(`⚡ Approbation ${tokenData.symbol} instantané (0% fees)...`);
+            setProgressMessage(
+              t('create.modal.instantApproval', {
+                defaultValue: '⚡ Instant {{token}} approval (0% fees)...',
+                token: tokenData.symbol,
+              })
+            );
             // ✅ FIX : Passer le montant directement (pas de fees pour instantané) + tokenSymbol et tokenAddress override
             if (!tokenData.address) {
               throw new Error(`Token ${params.tokenSymbol} n'a pas d'adresse de contrat`);
@@ -580,7 +615,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             // Approbation déjà suffisante, passer directement à la création
             console.log('✅ Allowance suffisante, création instantanée directe');
             setStatus('creating');
-            setProgressMessage('⚡ Paiement instantané...');
+            setProgressMessage(t('create.modal.instantPayment', { defaultValue: '⚡ Instant payment...' }));
 
             if (!tokenData.address) {
               throw new Error(`Token ${params.tokenSymbol} n'a pas d'adresse de contrat`);
@@ -717,9 +752,18 @@ export function useCreatePayment(): UseCreatePaymentReturn {
               paramsTokenSymbol: params.tokenSymbol,
               tokenDataSymbol: tokenData.symbol,
             });
-            setError(new Error(`Erreur: le token du paiement (${params.tokenSymbol}) ne correspond pas. Veuillez rafraîchir la page.`));
+            setError(
+              new Error(
+                t('create.modal.errorTokenMismatch', {
+                  defaultValue: 'Error: payment token ({{token}}) does not match. Please refresh the page.',
+                  token: params.tokenSymbol,
+                })
+              )
+            );
             setStatus('error');
-            setProgressMessage('Erreur de token - veuillez rafraîchir');
+            setProgressMessage(
+              t('create.modal.tokenMismatchRefresh', { defaultValue: 'Token error - please refresh' })
+            );
             return;
           }
           
@@ -735,7 +779,12 @@ export function useCreatePayment(): UseCreatePaymentReturn {
           
           console.log('🔄 [AVANT APPROBATION] Passage au statut approving...');
           setStatus('approving');
-          setProgressMessage(`Approbation ${tokenData.symbol}...`);
+          setProgressMessage(
+            t('create.modal.approvingToken', {
+              defaultValue: 'Approving {{token}}...',
+              token: tokenData.symbol,
+            })
+          );
           
           console.log('📞 [AVANT APPROBATION] Vérification de currentApprovalHook...');
           console.log('🔍 [AVANT APPROBATION] Vérification currentApprovalHook:', {
@@ -755,9 +804,17 @@ export function useCreatePayment(): UseCreatePaymentReturn {
               type: typeof currentApprovalHook.approve,
               currentApprovalHook: currentApprovalHook,
             });
-            setError(new Error('Erreur: fonction d\'approbation non disponible. Veuillez rafraîchir la page.'));
+            setError(
+              new Error(
+                t('create.modal.errorApprovalFunctionUnavailableRefresh', {
+                  defaultValue: 'Error: approval function unavailable. Please refresh the page.',
+                })
+              )
+            );
             setStatus('error');
-            setProgressMessage('Erreur: fonction d\'approbation non disponible');
+            setProgressMessage(
+              t('create.modal.approvalFunctionUnavailable', { defaultValue: 'Error: approval function unavailable' })
+            );
             return;
           }
           
@@ -933,7 +990,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             console.log('📊 [APPROBATION] Si MetaMask rejette la transaction, vérifiez les logs [useTokenApproval] ci-dessus');
           } catch (err) {
             if (isUserRejectedError(err as Error)) {
-              const errorMessage = getFriendlyApprovalErrorMessage(err as Error);
+              const errorMessage = getFriendlyApprovalErrorMessage(err as Error, t);
               console.info('ℹ️ [APPROBATION] Annulée par l’utilisateur.');
               setError(new Error(errorMessage));
               setStatus('error');
@@ -949,7 +1006,9 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             });
             setError(err as Error);
             setStatus('error');
-            setProgressMessage('Erreur lors de l\'approbation - voir console');
+            setProgressMessage(
+              t('create.modal.approvalErrorSeeConsole', { defaultValue: 'Approval error - see console' })
+            );
           }
           
           // ✅ FIX : Ne pas continuer - on attendra que l'approbation soit confirmée dans le useEffect suivant
@@ -960,7 +1019,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
       console.error('Erreur createPayment:', err);
       setError(err as Error);
       setStatus('error');
-      setProgressMessage('Erreur lors de la création');
+      setProgressMessage(t('create.modal.errorCreating', { defaultValue: 'Error during creation' }));
     }
   };
 
@@ -978,7 +1037,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
     // Si on est en train d'approuver et qu'une erreur survient, mettre à jour immédiatement
     if (status === 'approving' && approvalHook.approveError) {
       // Analyser l'erreur pour donner un message plus clair
-      const errorMessage = getFriendlyApprovalErrorMessage(approvalHook.approveError);
+      const errorMessage = getFriendlyApprovalErrorMessage(approvalHook.approveError, t);
       
       if (isUserRejectedError(approvalHook.approveError)) {
         console.info('ℹ️ [APPROBATION] Annulée par l’utilisateur.');
@@ -1097,7 +1156,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             name: approvalHook.approveError.name,
           });
         }
-        const errorMessage = getFriendlyApprovalErrorMessage(approvalHook.approveError);
+        const errorMessage = getFriendlyApprovalErrorMessage(approvalHook.approveError, t);
         setError(new Error(errorMessage));
         setStatus('error');
         setProgressMessage(errorMessage);
@@ -1149,7 +1208,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
           });
           setError(new Error('Le processus de création a pris trop de temps. Veuillez réessayer. Si le paiement a été créé, vérifiez votre dashboard.'));
           setStatus('error');
-          setProgressMessage('Timeout - veuillez réessayer');
+          setProgressMessage(t('create.modal.timeoutRetry', { defaultValue: 'Timeout - please try again' }));
           creationTimeoutRef.current = null;
         } else {
           console.log('✅ Timeout ignoré - statut actuel:', currentStatus, '(processus terminé)');
@@ -1204,7 +1263,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             console.error('❌', errorMsg, { address: !!address, tokenAddress: !!token.address, publicClient: !!publicClient });
             setError(new Error(errorMsg));
             setStatus('error');
-            setProgressMessage('Erreur de paramètres');
+            setProgressMessage(t('create.modal.invalidParams', { defaultValue: 'Invalid parameters' }));
             return;
           }
 
@@ -1237,7 +1296,9 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             setError(new Error('Hash de transaction d\'approbation non disponible. La transaction n\'a peut-être pas été envoyée. Vérifiez MetaMask.'));
           }
           setStatus('error');
-          setProgressMessage('Transaction d\'approbation non trouvée');
+          setProgressMessage(
+            t('create.modal.approvalTxNotFound', { defaultValue: 'Approval transaction not found' })
+          );
           return;
         }
 
@@ -1282,7 +1343,9 @@ export function useCreatePayment(): UseCreatePaymentReturn {
           console.error('❌ Impossible de récupérer le receipt de la transaction d\'approbation');
           setError(new Error('Impossible de confirmer la transaction d\'approbation. Vérifiez Basescan.'));
           setStatus('error');
-          setProgressMessage('Transaction d\'approbation non confirmée');
+          setProgressMessage(
+            t('create.modal.approvalTxNotConfirmed', { defaultValue: 'Approval transaction not confirmed' })
+          );
           return;
         }
 
@@ -1293,7 +1356,9 @@ export function useCreatePayment(): UseCreatePaymentReturn {
           });
           setError(new Error('La transaction d\'approbation a échoué. Veuillez réessayer.'));
           setStatus('error');
-          setProgressMessage('Transaction d\'approbation échouée');
+          setProgressMessage(
+            t('create.modal.approvalTxFailed', { defaultValue: 'Approval transaction failed' })
+          );
           return;
         }
 
@@ -1519,7 +1584,9 @@ export function useCreatePayment(): UseCreatePaymentReturn {
               'La transaction d\'approbation n\'a pas été envoyée. Veuillez réessayer en approuvant manuellement le token.'
             ));
             setStatus('error');
-            setProgressMessage('Transaction d\'approbation non envoyée');
+            setProgressMessage(
+              t('create.modal.approvalTxNotSent', { defaultValue: 'Approval transaction not sent' })
+            );
             return;
           }
 
@@ -1532,7 +1599,9 @@ export function useCreatePayment(): UseCreatePaymentReturn {
               `La transaction d'approbation n'est pas confirmée ou a échoué. Vérifiez sur Basescan: ${basescanLink}`
             ));
             setStatus('error');
-            setProgressMessage('Transaction d\'approbation non confirmée');
+            setProgressMessage(
+              t('create.modal.approvalTxNotConfirmed', { defaultValue: 'Approval transaction not confirmed' })
+            );
             return;
           }
           
@@ -1545,7 +1614,9 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             `Allowance insuffisante après approbation. Attendu: >= ${totalRequired.toString()}, Reçu: ${latestAllowance?.toString() || diagnosticAllowance?.toString() || 'undefined'}. Vérifiez la transaction: ${basescanLink}`
           ));
           setStatus('error');
-          setProgressMessage('Allowance insuffisante après approbation');
+          setProgressMessage(
+            t('create.modal.allowanceInsufficientAfterApproval', { defaultValue: 'Allowance insufficient after approval' })
+          );
           return;
         }
 
@@ -1609,7 +1680,9 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             `Allowance insuffisante. Attendu: >= ${totalRequired.toString()}, Reçu: ${preSimulationAllowance.toString()}. Veuillez réapprouver.`
           ));
           setStatus('error');
-          setProgressMessage('Allowance insuffisante - veuillez réapprouver');
+          setProgressMessage(
+            t('create.modal.allowanceInsufficientReapprove', { defaultValue: 'Allowance insufficient - please re-approve' })
+          );
           return;
         }
 
@@ -1626,9 +1699,19 @@ export function useCreatePayment(): UseCreatePaymentReturn {
 
         if (balance && balance < totalRequired) {
           console.error('❌ Balance insuffisante pour créer le paiement');
-          setError(new Error(`Balance insuffisante. Vous avez ${(Number(balance) / (10 ** tokenDecimals)).toFixed(6)} ${currentParams.tokenSymbol}, mais ${(Number(totalRequired) / (10 ** tokenDecimals)).toFixed(6)} sont nécessaires.`));
+          setError(
+            new Error(
+              t('create.modal.balanceInsufficientDetails', {
+                defaultValue:
+                  'Insufficient balance. You have {{balance}} {{token}}, but {{required}} are required.',
+                balance: (Number(balance) / (10 ** tokenDecimals)).toFixed(6),
+                token: currentParams.tokenSymbol,
+                required: (Number(totalRequired) / (10 ** tokenDecimals)).toFixed(6),
+              })
+            )
+          );
           setStatus('error');
-          setProgressMessage('Balance insuffisante');
+          setProgressMessage(t('create.modal.balanceInsufficient', { defaultValue: 'Insufficient balance' }));
           return;
         }
 
@@ -1678,18 +1761,24 @@ export function useCreatePayment(): UseCreatePaymentReturn {
           });
           
           // Extraire le message d'erreur
-          let errorMessage = 'La transaction va échouer. ';
+          let errorMessage = t('create.modal.txWillFailPrefix', {
+            defaultValue: 'The transaction will fail. ',
+          });
           if (simulateError?.shortMessage) {
             errorMessage += simulateError.shortMessage;
           } else if (simulateError?.message) {
             errorMessage += simulateError.message;
           } else {
-            errorMessage += 'Vérifiez votre allowance et votre balance.';
+            errorMessage += t('create.modal.checkAllowanceBalance', {
+              defaultValue: 'Check your allowance and balance.',
+            });
           }
           
           setError(new Error(errorMessage));
           setStatus('error');
-          setProgressMessage('Transaction va échouer - voir détails dans la console');
+          setProgressMessage(
+            t('create.modal.txWillFailSeeConsole', { defaultValue: 'Transaction will fail - see console details' })
+          );
           return;
         }
 
@@ -1755,18 +1844,24 @@ export function useCreatePayment(): UseCreatePaymentReturn {
         });
         
         // Définir un message d'erreur clair
-        let errorMessage = 'Erreur lors de la vérification de l\'allowance. ';
+        let errorMessage = t('create.modal.allowanceCheckErrorPrefix', {
+          defaultValue: 'Allowance check error. ',
+        });
         if (checkAndCreateError?.message) {
           errorMessage += checkAndCreateError.message;
         } else if (checkAndCreateError?.shortMessage) {
           errorMessage += checkAndCreateError.shortMessage;
         } else {
-          errorMessage += 'Vérifiez la console pour plus de détails.';
+          errorMessage += t('create.modal.checkConsoleForDetails', {
+            defaultValue: 'Check the console for more details.',
+          });
         }
         
         setError(new Error(errorMessage));
         setStatus('error');
-        setProgressMessage('Erreur lors de la vérification - voir console');
+        setProgressMessage(
+          t('create.modal.checkErrorSeeConsole', { defaultValue: 'Error during check - see console' })
+        );
       }
     };
 
@@ -1786,9 +1881,18 @@ export function useCreatePayment(): UseCreatePaymentReturn {
           creationTimeoutRef.current = null;
         }
         
-        setError(new Error(`Erreur lors de la vérification: ${err?.message || String(err)}`));
+        setError(
+          new Error(
+            t('create.modal.checkErrorWithDetails', {
+              defaultValue: 'Error during check: {{details}}',
+              details: err?.message || String(err),
+            })
+          )
+        );
         setStatus('error');
-        setProgressMessage('Erreur lors de la vérification - voir console');
+        setProgressMessage(
+          t('create.modal.checkErrorSeeConsole', { defaultValue: 'Error during check - see console' })
+        );
       });
     }
   }, [approvalHook.isApproveSuccess, approvalHook.approveTxHash, status, currentParams, token, address, publicClient]);
@@ -1829,7 +1933,9 @@ export function useCreatePayment(): UseCreatePaymentReturn {
           }
           
           setStatus('confirming');
-          setProgressMessage('Récupération de l\'adresse du contrat...');
+          setProgressMessage(
+            t('create.modal.retrievingContractAddress', { defaultValue: 'Retrieving contract address...' })
+          );
 
           // ✅ FIX : Utiliser le receipt de useWaitForTransactionReceipt si disponible
           const receiptToUse = receipt || await publicClient.getTransactionReceipt({
@@ -2271,7 +2377,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             }
 
             setStatus('success');
-            setProgressMessage('Paiement créé avec succès !');
+            setProgressMessage(t('create.modal.paymentCreatedSuccess', { defaultValue: 'Payment created successfully!' }));
           } else {
             console.error('❌ Impossible de trouver l\'adresse du contrat');
             
@@ -2308,7 +2414,11 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             // ✅ FIX : Même si on ne trouve pas l'adresse, on passe à success avec le hash
             // L'utilisateur pourra vérifier sur Basescan et ajouter l'adresse manuellement si nécessaire
             setStatus('success');
-            setProgressMessage('Transaction confirmée ! (Adresse contrat non trouvée - vérifiez Basescan)');
+            setProgressMessage(
+              t('create.modal.transactionConfirmedNoAddress', {
+                defaultValue: 'Transaction confirmed! (Contract address not found - check Basescan)',
+              })
+            );
             
             // ✅ FIX : Essayer d'enregistrer quand même dans Supabase avec contract_address = null
             // Le backend pourra peut-être récupérer l'adresse depuis la transaction
@@ -2353,13 +2463,13 @@ export function useCreatePayment(): UseCreatePaymentReturn {
           console.error('❌ Erreur:', err);
           // ✅ FIX : Même en cas d'erreur, on passe à success avec le hash de transaction
           setStatus('success');
-          setProgressMessage('Transaction confirmée !');
+          setProgressMessage(t('create.modal.transactionConfirmed', { defaultValue: 'Transaction confirmed!' }));
         }
       } else if (isConfirmed && createTxHash && !contractAddress) {
         // ✅ FIX : Fallback si l'extraction échoue mais que la transaction est confirmée
         console.log('⚠️ Transaction confirmée mais extraction adresse en cours ou échouée, passage à success...');
         setStatus('success');
-        setProgressMessage('Transaction confirmée !');
+        setProgressMessage(t('create.modal.transactionConfirmed', { defaultValue: 'Transaction confirmed!' }));
       }
     };
 
@@ -2447,7 +2557,9 @@ export function useCreatePayment(): UseCreatePaymentReturn {
       
       setError(confirmError as Error);
       setStatus('error');
-      setProgressMessage('Erreur de confirmation de la transaction');
+      setProgressMessage(
+        t('create.modal.errorConfirmingTransaction', { defaultValue: 'Error confirming transaction' })
+      );
     }
   }, [writeError, confirmError]);
   

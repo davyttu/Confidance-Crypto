@@ -142,7 +142,7 @@ export default function AddBeneficiariesForm() {
     updateHistoryWithAddresses(validAddresses);
 
     // Retour sur /create
-    router.push('/create');
+    router.push('/create#payment-description');
   };
 
   const handleCancel = () => {
@@ -150,7 +150,18 @@ export default function AddBeneficiariesForm() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-lg">
+    <div className="max-w-2xl mx-auto p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-lg relative">
+      <button
+        type="button"
+        onClick={handleCancel}
+        className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+        aria-label={isMounted && translationsReady ? t('create.beneficiary.cancel') : 'Close'}
+        title={isMounted && translationsReady ? t('create.beneficiary.cancel') : 'Close'}
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
       <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">
         {isMounted && translationsReady ? t('create.beneficiary.addTitle') : '➕ Ajouter des bénéficiaires'}
       </h2>
@@ -204,6 +215,13 @@ export default function AddBeneficiariesForm() {
                 type="text"
                 value={address}
                 onChange={(e) => handleAddressChange(index, e.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                  }
+                }}
+                onFocus={() => setActiveHistoryIndex(index)}
+                onClick={() => setActiveHistoryIndex(index)}
                 placeholder="0x..."
                 className={`
                   w-full px-4 py-3 pr-10 rounded-xl border-2

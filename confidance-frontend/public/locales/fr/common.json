@@ -180,6 +180,9 @@
       "failed": "Échoué",
       "completed": "Terminé"
     },
+    "badges": {
+      "new": "Nouveau"
+    },
     "recurringHistory": {
       "title": "Historique des paiements mensuels",
       "executed": "{{executed}} / {{total}} mois exécutés",
@@ -292,7 +295,11 @@
       "title": "Annuler le paiement",
       "warning": "⚠️ Vous êtes sur le point d'annuler ce paiement programmé :",
       "beneficiary": "Bénéficiaire :",
+      "beneficiaries": "Bénéficiaires :",
       "amount": "Montant :",
+      "totalAmountRecurring": "Montant total (tous les mois) :",
+      "recurringNoRefund": "Aucun fonds n’est bloqué ; l’annulation stoppe les prochaines mensualités.",
+      "batchRecurringNotice": "Vous devrez confirmer {{count}} annulations dans votre wallet.",
       "releaseDate": "Libération prévue :",
       "important": "Important :",
       "refund": "Les fonds et les fees protocole seront remboursés sur votre wallet (au prorata pour les batchs)",
@@ -329,9 +336,22 @@
     },
     "nopayments": "Aucun paiement programmé"
   },
+  "beneficiary": {
+    "unnamed": "Non nommé",
+    "beneficiary": "Bénéficiaire",
+    "beneficiaries": "Bénéficiaires",
+    "main": "Principal",
+    "clickToCopy": "Cliquer pour copier",
+    "copied": "Copié !",
+    "copyAddress": "Copier l'adresse",
+    "rename": "Renommer",
+    "viewAll": "Voir les bénéficiaires"
+  },
   "create": {
     "title": "Créer un paiement instantané, programmé ou récurrent",
     "subtitle": "Envoyez de la crypto qui sera automatiquement libérée à la date choisie",
+    "voiceCta": "Créer un paiement par la voix",
+    "voiceLang": "Langue vocale",
     "wallet": {
       "connectFirst": "Pour créer un paiement programmé, connectez d'abord votre wallet"
     },
@@ -401,6 +421,7 @@
       "dayOfMonth": "Les prélèvements auront lieu le {{day}} de chaque mois",
       "autoRelease": "💡 Le paiement sera automatiquement libéré à cette date",
       "beneficiaryWillReceive": "Bénéficiaire recevra (par mois)",
+      "numberOfBeneficiaries": "Nombre de bénéficiaires",
       "totalPerMonth": "TOTAL par mensualité",
       "numberOfMonths": "Nombre de mois",
       "totalToApprove": "TOTAL à approuver",
@@ -408,6 +429,7 @@
       "cancellableStopsPayments": "Seule l'option \"Annulable\" dans le type de paiement permet de stopper définitivement la suite des mensualités via le dashboard",
       "treasuryRemainsAvailable": "Votre trésorerie reste disponible",
       "onlyAmountDebitedMonthly": "Seuls <strong>{{amount}} {{token}}</strong> seront prélevés chaque mois sur votre wallet.",
+      "firstMonthOverride": "Sauf la première mensualité : <strong>{{amount}} {{token}}</strong> seront prélevés le premier mois.",
       "refundRemainingMonths": "En cas d'annulation avant exécution, les mensualités restantes et leurs fees sont remboursées.",
       "timeUntil": {
         "past": "Dans le passé",
@@ -455,6 +477,9 @@
       "paymentDeployedSuccess": "Votre paiement programmé a été déployé avec succès",
       "viewOnBasescanDetails": "Consultez Basescan pour voir les détails",
       "contractAddress": "Adresse du contrat",
+      "contractAddresses": "Adresses des contrats",
+      "approvalSummaryTitle": "Résumé d'approbation",
+      "approvalSummaryLine": "{{amount}} {{token}} par mois, pour {{months}} mois, à valider par bénéficiaire",
       "transactionHash": "Transaction Hash",
       "viewOnBasescan": "Voir sur Basescan",
       "viewPayment": "Voir le paiement",
@@ -479,7 +504,24 @@
       "approvalContract": "3. Autorisation Contrat",
       "approvingContracts": "3-{{total}}. Autorisations",
       "approvingFactoryForCreation": "Approbation de {{token}} pour la création...",
+      "approvingContractStep": "Approbation du contrat {{current}}/{{total}}...",
+      "progressWords": {
+        "preparing": "Préparation de la transaction",
+        "gasEstimate": "Estimation du gas",
+        "nonce": "Sélection du nonce",
+        "signature": "Signature ECDSA",
+        "broadcast": "Broadcast via RPC",
+        "mempool": "Entrée en mempool",
+        "block": "Sélection du block",
+        "evm": "Exécution EVM",
+        "bytecode": "Déploiement bytecode",
+        "storage": "Écriture storage",
+        "events": "Émission events",
+        "finality": "Finalité on-chain",
+        "indexing": "Indexation BaseScan"
+      },
       "creatingRecurring": "Création du paiement récurrent {{token}}...",
+      "creatingRecurringBatchCount": "Création de {{count}} paiements récurrents...",
       "errorCreating": "Erreur lors de la création",
       "errorCreatingContract": "Erreur lors de la création du contrat",
       "confirmingCreation": "Confirmation de la création...",
