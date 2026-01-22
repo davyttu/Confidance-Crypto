@@ -7,6 +7,12 @@ import { useTranslation } from 'react-i18next';
 import { CHAINS } from '@/config/chains';
 import { TOKEN_LIST, type Token } from '@/config/tokens';
 import { usePaymentLinks } from '@/hooks/usePaymentLinks';
+import {
+  PaymentCategory,
+  CATEGORY_COLORS,
+  CATEGORY_ICONS,
+  CATEGORY_LABELS,
+} from '@/types/payment-identity';
 
 type PaymentType = 'instant' | 'scheduled' | 'recurring';
 type Frequency = 'monthly' | 'weekly';
@@ -33,10 +39,12 @@ function TokenIcon({ token }: { token: Token }) {
 }
 
 export default function NewPaymentLinkPage() {
-  const { t, ready } = useTranslation();
+  const { t, ready, i18n } = useTranslation();
   const { address } = useAccount();
   const { createLink, isLoading } = usePaymentLinks();
 
+  const [paymentLabel, setPaymentLabel] = useState('');
+  const [paymentCategory, setPaymentCategory] = useState<PaymentCategory>('other');
   const [amount, setAmount] = useState('2');
   const [token, setToken] = useState<'ETH' | 'USDC' | 'USDT'>('USDT');
   const [paymentType, setPaymentType] = useState<PaymentType>('instant');
@@ -52,6 +60,16 @@ export default function NewPaymentLinkPage() {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const selectedToken = TOKEN_LIST.find((item) => item.symbol === token) || TOKEN_LIST[0];
+  const currentLang = (i18n?.language?.split('-')[0] || 'en') as 'en' | 'fr' | 'es' | 'ru' | 'zh';
+  const categories: PaymentCategory[] = [
+    'housing',
+    'salary',
+    'subscription',
+    'utilities',
+    'services',
+    'transfer',
+    'other',
+  ];
 
   useEffect(() => {
     if (paymentType !== 'recurring' || frequency !== 'monthly') {
@@ -81,6 +99,10 @@ export default function NewPaymentLinkPage() {
     }
     if (!amount || Number(amount) <= 0) {
       setError(ready ? t('links.create.errors.amount') : 'Invalid amount');
+      return;
+    }
+    if (paymentLabel.length > 100) {
+      setError(ready ? t('links.create.errors.labelTooLong') : 'Label is too long');
       return;
     }
 
@@ -126,6 +148,9 @@ export default function NewPaymentLinkPage() {
         execute_at: paymentType === 'scheduled' ? executeAtTs : null,
         chain_id: chainId,
         description: description || null,
+        payment_label: paymentLabel.trim() || null,
+        payment_categorie: paymentCategory || 'other',
+        payment_category: paymentCategory || 'other',
         user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
       });
       setCreatedId(paymentLink.id);
@@ -183,6 +208,70 @@ export default function NewPaymentLinkPage() {
         {/* Formulaire compact - Card unique */}
         <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 space-y-6">
           
+          {/* Payment label & category */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+              <span className="text-base">🏷️</span>
+              {ready
+                ? t('links.create.sections.identity', { defaultValue: 'Payment identity' })
+                : 'Payment identity'}
+            </h3>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                  {ready ? t('links.create.fields.label') : 'Label'}
+                  <span className="text-gray-400"> {ready ? t('links.create.fields.optional') : '(optional)'}</span>
+                </label>
+                <input
+                  type="text"
+                  value={paymentLabel}
+                  onChange={(e) => setPaymentLabel(e.target.value)}
+                  maxLength={100}
+                  className="w-full px-3 py-2 border-2 border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm font-medium transition-all"
+                  placeholder={ready ? t('links.create.placeholders.label') : 'e.g., Netflix subscription'}
+                />
+                <div className="flex items-center justify-between text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                  <span>
+                    {ready
+                      ? t('links.create.hint.label', { defaultValue: 'Give your link a clear title.' })
+                      : 'Give your link a clear title.'}
+                  </span>
+                  <span>{paymentLabel.length}/100</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                  {ready ? t('links.create.fields.category') : 'Category'}
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {categories.map((cat) => {
+                    const isSelected = paymentCategory === cat;
+                    const colors = CATEGORY_COLORS[cat];
+                    return (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => setPaymentCategory(cat)}
+                        className={`flex items-center gap-2 p-2 rounded-lg border-2 transition-all ${
+                          isSelected
+                            ? `${colors.bg} ${colors.border} ${colors.text} font-semibold`
+                            : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-purple-300'
+                        }`}
+                      >
+                        <span className="text-base">{CATEGORY_ICONS[cat]}</span>
+                        <span className="text-[11px] truncate">
+                          {CATEGORY_LABELS[cat][currentLang]}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Amount & Token */}
           <div>
             <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">

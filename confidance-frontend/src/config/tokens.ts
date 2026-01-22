@@ -16,6 +16,8 @@ export interface Token {
 
 // Adresses VÉRIFIÉES sur Base Mainnet (chainId: 8453)
 // Source: Basescan (octobre 2025)
+const isBaseSepolia = process.env.NEXT_PUBLIC_CHAIN === 'base_sepolia';
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as const;
 export const SUPPORTED_TOKENS: Record<TokenSymbol, Token> = {
   ETH: {
     symbol: 'ETH',
@@ -31,7 +33,9 @@ export const SUPPORTED_TOKENS: Record<TokenSymbol, Token> = {
   USDC: {
     symbol: 'USDC',
     name: 'USD Coin',
-    address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+    address: isBaseSepolia
+      ? '0x036CbD53842c5426634e7929541eC2318f3dCF7e'
+      : '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
     decimals: 6,
     icon: '/tokens/usdc.png',
     isNative: false,
@@ -42,7 +46,9 @@ export const SUPPORTED_TOKENS: Record<TokenSymbol, Token> = {
   USDT: {
     symbol: 'USDT',
     name: 'Tether USD',
-    address: '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2',
+    address: isBaseSepolia
+      ? ZERO_ADDRESS
+      : '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2',
     decimals: 6,
     icon: '/tokens/usdt.png',
     isNative: false,
@@ -81,8 +87,14 @@ export const getToken = (symbol: TokenSymbol): Token => {
 
 // Liste des tokens pour l'UI (exclut cbBTC et WBTC)
 export const TOKEN_LIST: Token[] = Object.values(SUPPORTED_TOKENS).filter(
-  (token) => token.symbol !== 'cbBTC' && token.symbol !== 'WBTC'
+  (token) =>
+    token.symbol !== 'cbBTC' &&
+    token.symbol !== 'WBTC' &&
+    (!isBaseSepolia || token.symbol !== 'USDT')
 );
+
+export const isZeroAddress = (value: string) =>
+  value.toLowerCase() === ZERO_ADDRESS.toLowerCase();
 
 // Tokens recommandés (affichés en premier)
 export const RECOMMENDED_TOKENS: TokenSymbol[] = ['ETH', 'USDC'];

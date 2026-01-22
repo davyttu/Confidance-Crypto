@@ -13,20 +13,20 @@ import {
   usePublicClient,
 } from 'wagmi';
 import { decodeEventLog, erc20Abi } from 'viem';
-import { type TokenSymbol, getToken, getProtocolFeeBps } from '@/config/tokens';
+import { type TokenSymbol, getToken, getProtocolFeeBps, isZeroAddress } from '@/config/tokens';
 import { paymentFactoryAbi } from '@/lib/contracts/paymentFactoryAbi';
-import { PAYMENT_FACTORY_RECURRING } from '@/lib/contracts/addresses';
+import { CONTRACT_ADDRESSES, PAYMENT_FACTORY_RECURRING } from '@/lib/contracts/addresses';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTokenApproval } from '@/hooks/useTokenApproval';
 
-// ✅ Utiliser la nouvelle factory Recurring pour les recurring payments
-const FACTORY_ADDRESS: `0x${string}` = PAYMENT_FACTORY_RECURRING as `0x${string}`;
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 // ✅ Multi-chain : réseau courant
 const getNetworkFromChainId = (chainId: number): string => {
   switch (chainId) {
     case 8453:
       return 'base_mainnet';
+    case 84532:
+      return 'base_sepolia';
     case 137:
       return 'polygon_mainnet';
     case 42161:
@@ -40,6 +40,13 @@ const getNetworkFromChainId = (chainId: number): string => {
 
 
 const BASIS_POINTS_DENOMINATOR = 10000;
+
+const getRecurringFactoryAddress = (chainId?: number): `0x${string}` => {
+  if (chainId === 84532) {
+    return CONTRACT_ADDRESSES.base_sepolia.factory_recurring as `0x${string}`;
+  }
+  return PAYMENT_FACTORY_RECURRING as `0x${string}`;
+};
 
 interface CreateRecurringPaymentParams {
   tokenSymbol: TokenSymbol; // USDC ou USDT uniquement
@@ -128,6 +135,7 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
   const chainId = useChainId();
   const publicClient = usePublicClient();
   const { user, isAuthenticated } = useAuth();
+  const factoryAddress = getRecurringFactoryAddress(chainId);
 
   // État local
   const [status, setStatus] = useState<PaymentStatus>('idle');
@@ -168,7 +176,7 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
   // Hook pour approuver la Factory (étape 1)
   const approvalFactoryHook = useTokenApproval({
     tokenSymbol: currentParams?.tokenSymbol || 'USDC',
-    spenderAddress: FACTORY_ADDRESS,
+    spenderAddress: factoryAddress,
     amount: BigInt(1), // Montant minimal pour la Factory (juste pour créer)
     releaseTime: Math.floor(Date.now() / 1000),
   });
@@ -210,7 +218,7 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
 
       const tokenData = getToken(params.tokenSymbol);
       
-      if (!tokenData.address) {
+      if (!tokenData.address || tokenData.address === 'NATIVE' || isZeroAddress(tokenData.address)) {
         throw new Error(t('create.recurring.tokenNoAddress', { token: params.tokenSymbol, defaultValue: `Token ${params.tokenSymbol} has no contract address` }));
       }
 
@@ -263,7 +271,7 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
       // Note: Le contrat créé vérifiera allowance(payer, address(this)), donc il faudra peut-être
       // approuver le contrat créé après sa création, mais pour l'instant on suit le workflow Scheduled
       console.log('🔍 [RECURRING] Vérification allowance existante (pour info uniquement):', {
-        factoryAddress: FACTORY_ADDRESS,
+        factoryAddress,
         note: 'On demandera toujours l\'approbation pour que l\'utilisateur voie la fenêtre MetaMask',
       });
       
@@ -272,7 +280,7 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
           address: tokenData.address as `0x${string}`,
           abi: erc20Abi,
           functionName: 'allowance',
-          args: [address, FACTORY_ADDRESS],
+          args: [address, factoryAddress],
         }) as bigint;
 
         console.log('🔍 [RECURRING] Allowance existante pour Factory:', {
@@ -291,7 +299,7 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
 
       console.log('💳 [RECURRING] Étape 1/3: Approbation de la Factory...', {
         token: tokenData.address,
-        spender: FACTORY_ADDRESS,
+        spender: factoryAddress,
         amount: BigInt(1).toString(),
         note: 'Approbation minimale pour que la Factory puisse créer le contrat',
       });
@@ -409,7 +417,7 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
 
           writeContract({
             abi: paymentFactoryAbi,
-            address: FACTORY_ADDRESS,
+            address: factoryAddress,
             functionName: useV2 ? 'createRecurringPaymentERC20_V2' : 'createRecurringPaymentERC20',
             args: useV2
               ? [
@@ -497,7 +505,7 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
 
             if (recurringPaymentCreatedEvent) {
               for (const log of receipt.logs) {
-                if (log.address.toLowerCase() === FACTORY_ADDRESS.toLowerCase()) {
+                if (log.address.toLowerCase() === factoryAddress.toLowerCase()) {
                   try {
                     const decoded = decodeEventLog({
                       abi: [recurringPaymentCreatedEvent],
@@ -523,7 +531,7 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
           // Méthode 2: Fallback - Premier log non-Factory
           if (!foundAddress) {
             for (const log of receipt.logs) {
-              if (log.address.toLowerCase() !== FACTORY_ADDRESS.toLowerCase()) {
+              if (log.address.toLowerCase() !== factoryAddress.toLowerCase()) {
                 foundAddress = log.address as `0x${string}`;
                 console.log('✅ [RECURRING] Contrat RecurringPayment trouvé (fallback):', foundAddress);
                 break;
@@ -697,7 +705,6 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
               transaction_hash: createTxHash,
               payment_label: params.label || '',
               payment_category: params.category || '',
-              payment_categorie: params.category || '',
               ...(isAuthenticated && user ? { user_id: user.id } : { guest_email: guestEmail }),
             }),
           });

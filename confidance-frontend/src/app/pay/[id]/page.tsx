@@ -12,6 +12,7 @@ import { getToken } from '@/config/tokens';
 import { usePaymentLinks } from '@/hooks/usePaymentLinks';
 import { useCreatePayment } from '@/hooks/useCreatePayment';
 import { useCreateRecurringPayment } from '@/hooks/useCreateRecurringPayment';
+import { CATEGORY_ICONS, CATEGORY_LABELS, type PaymentCategory } from '@/types/payment-identity';
 import { 
   Shield, 
   Lock, 
@@ -28,7 +29,7 @@ import {
 type LinkFrequency = 'monthly' | 'weekly' | null;
 
 export default function PayLinkPage() {
-  const { t, ready } = useTranslation();
+  const { t, ready, i18n } = useTranslation();
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { fetchLink, updateLinkStatus } = usePaymentLinks();
@@ -44,6 +45,7 @@ export default function PayLinkPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const currentLang = (i18n?.language?.split('-')[0] || 'en') as 'en' | 'fr' | 'es' | 'ru' | 'zh';
 
   const params = useParams();
   const linkId = Array.isArray(params?.id)
@@ -100,6 +102,14 @@ export default function PayLinkPage() {
     }
     return monthlyAmountLabel;
   }, [isFirstMonthCustom, link, monthlyAmountLabel]);
+  const rawCategory = link?.payment_categorie || link?.payment_category || null;
+  const categoryKey = rawCategory && rawCategory in CATEGORY_LABELS
+    ? (rawCategory as PaymentCategory)
+    : null;
+  const categoryLabel = categoryKey
+    ? CATEGORY_LABELS[categoryKey][currentLang]
+    : rawCategory;
+  const categoryIcon = categoryKey ? CATEGORY_ICONS[categoryKey] : '🏷️';
 
   const handleCopyAddress = () => {
     if (!link?.creator_address) return;
@@ -309,6 +319,27 @@ export default function PayLinkPage() {
 
               {/* Contenu */}
               <div className="p-6 space-y-6">
+                {(link.payment_label || categoryLabel) && (
+                  <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <div>
+                        <p className="text-xs text-gray-500">
+                          {ready ? t('links.pay.summary.label') : 'Payment label'}
+                        </p>
+                        <p className="text-lg font-semibold text-gray-900">
+                          {link.payment_label || (ready ? t('links.pay.summary.unnamed') : 'Unnamed payment')}
+                        </p>
+                      </div>
+                      {categoryLabel && (
+                        <span className="inline-flex items-center gap-2 rounded-full bg-white border border-gray-200 px-3 py-1 text-xs font-medium text-gray-700">
+                          <span>{categoryIcon}</span>
+                          <span>{categoryLabel}</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Montant principal */}
                 <div className="text-center py-6 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl border border-gray-200">
                   <p className="text-sm text-gray-600 mb-2">

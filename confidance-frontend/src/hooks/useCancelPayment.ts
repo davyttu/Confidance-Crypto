@@ -89,9 +89,12 @@ export function useCancelPayment(): UseCancelPaymentReturn {
         throw new Error('Veuillez connecter votre wallet pour annuler le paiement');
       }
 
-      // Vérifier le chainId (Base Mainnet = 8453)
-      if (chainId !== 8453) {
-        throw new Error(`Vous devez être connecté à Base Mainnet (chainId: 8453). Vous êtes actuellement sur chainId: ${chainId}`);
+      // Vérifier le chainId (Base Mainnet = 8453, Base Sepolia = 84532)
+      const expectedChainId =
+        process.env.NEXT_PUBLIC_CHAIN === 'base_sepolia' ? 84532 : 8453;
+      if (chainId !== expectedChainId) {
+        const expectedName = expectedChainId === 84532 ? 'Base Sepolia' : 'Base Mainnet';
+        throw new Error(`Vous devez être connecté à ${expectedName} (chainId: ${expectedChainId}). Vous êtes actuellement sur chainId: ${chainId}`);
       }
 
       // Étape 1 : Vérifier que le wallet est connecté et le client disponible

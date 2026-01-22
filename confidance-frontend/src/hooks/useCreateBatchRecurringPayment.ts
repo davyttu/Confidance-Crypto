@@ -13,19 +13,27 @@ import {
   usePublicClient,
 } from 'wagmi';
 import { decodeEventLog, erc20Abi } from 'viem';
-import { type TokenSymbol, getToken, getProtocolFeeBps } from '@/config/tokens';
+import { type TokenSymbol, getToken, getProtocolFeeBps, isZeroAddress } from '@/config/tokens';
 import { paymentFactoryAbi } from '@/lib/contracts/paymentFactoryAbi';
-import { PAYMENT_FACTORY_RECURRING } from '@/lib/contracts/addresses';
+import { CONTRACT_ADDRESSES, PAYMENT_FACTORY_RECURRING } from '@/lib/contracts/addresses';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTokenApproval } from '@/hooks/useTokenApproval';
 
-const FACTORY_ADDRESS: `0x${string}` = PAYMENT_FACTORY_RECURRING as `0x${string}`;
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+const getRecurringFactoryAddress = (chainId?: number): `0x${string}` => {
+  if (chainId === 84532) {
+    return CONTRACT_ADDRESSES.base_sepolia.factory_recurring as `0x${string}`;
+  }
+  return PAYMENT_FACTORY_RECURRING as `0x${string}`;
+};
 
 const getNetworkFromChainId = (chainId: number): string => {
   switch (chainId) {
     case 8453:
       return 'base_mainnet';
+    case 84532:
+      return 'base_sepolia';
     case 137:
       return 'polygon_mainnet';
     case 42161:
@@ -110,6 +118,7 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
   const chainId = useChainId();
   const publicClient = usePublicClient();
   const { user, isAuthenticated } = useAuth();
+  const factoryAddress = getRecurringFactoryAddress(chainId);
 
   const [status, setStatus] = useState<PaymentStatus>('idle');
   const [error, setError] = useState<Error | null>(null);
@@ -137,7 +146,7 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
   // Hook pour approuver la Factory
   const approvalFactoryHook = useTokenApproval({
     tokenSymbol: currentParams?.tokenSymbol || 'USDC',
-    spenderAddress: FACTORY_ADDRESS,
+    spenderAddress: factoryAddress,
     amount: BigInt(1), // Montant minimal pour créer
     releaseTime: Math.floor(Date.now() / 1000),
   });
@@ -190,7 +199,7 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
       }
 
       const tokenData = getToken(params.tokenSymbol);
-      if (!tokenData.address) {
+      if (!tokenData.address || tokenData.address === 'NATIVE' || isZeroAddress(tokenData.address)) {
         throw new Error(`Token ${params.tokenSymbol} n'a pas d'adresse de contrat`);
       }
 
@@ -218,7 +227,7 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
           console.log('✅ [BATCH RECURRING] Factory approuvée ! Étape 2: Création des contrats...');
 
           const tokenData = getToken(currentParams.tokenSymbol);
-          if (!tokenData.address) {
+          if (!tokenData.address || tokenData.address === 'NATIVE' || isZeroAddress(tokenData.address)) {
             throw new Error('Token address manquante');
           }
 
@@ -246,7 +255,7 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
 
           writeContract({
             abi: paymentFactoryAbi,
-            address: FACTORY_ADDRESS,
+              address: factoryAddress,
             functionName: 'createBatchRecurringPaymentERC20',
             args: [
               tokenData.address as `0x${string}`,
@@ -299,7 +308,7 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
 
           if (recurringPaymentCreatedEvent) {
             for (const log of receipt.logs) {
-              if (log.address.toLowerCase() === FACTORY_ADDRESS.toLowerCase()) {
+              if (log.address.toLowerCase() === factoryAddress.toLowerCase()) {
                 try {
                   const decoded = decodeEventLog({
                     abi: [recurringPaymentCreatedEvent],
@@ -465,7 +474,6 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
                 transaction_hash: createTxHash,
                 payment_label: currentParams.label || '',
                 payment_category: currentParams.category || '',
-                payment_categorie: currentParams.category || '',
                 ...(isAuthenticated && user ? { user_id: user.id } : { guest_email: guestEmail }),
               }),
             });

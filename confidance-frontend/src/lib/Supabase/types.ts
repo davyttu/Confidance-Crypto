@@ -66,6 +66,8 @@ export interface PaymentLink {
   execute_at: number | null;
   chain_id: number;
   description: string | null;
+  payment_label?: string | null;
+  payment_categorie?: string | null;
   status: PaymentLinkStatus;
   payer_address: string | null;
   device_id: string | null;

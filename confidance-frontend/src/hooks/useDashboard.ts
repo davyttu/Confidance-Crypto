@@ -24,11 +24,16 @@ export interface Payment {
   release_time: number;
   created_at: string;
   released_at: string | null;
-  status: 'pending' | 'released' | 'cancelled' | 'failed';
+  status: 'pending' | 'active' | 'released' | 'cancelled' | 'failed' | 'completed';
   cancellable: boolean;
   transaction_hash: string | null;
   tx_hash: string | null;
   network: string;
+  payment_label?: string | null;
+  payment_category?: string | null;
+  payment_categorie?: string | null;
+  label?: string | null;
+  category?: string | null;
   
   // 🆕 Nouvelles propriétés pour les colonnes COUNT et TYPE
   is_batch: boolean;
@@ -46,6 +51,7 @@ export interface Payment {
   first_payment_time?: number | null;
   next_execution_time?: number | null;
   is_recurring?: boolean;
+  last_execution_hash?: string | null;
 }
 
 interface UseDashboardReturn {

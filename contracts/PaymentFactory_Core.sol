@@ -13,6 +13,7 @@ contract PaymentFactory_Core {
     address public constant PROTOCOL_WALLET = 0xa34eDf91Cc494450000Eef08e6563062B2F115a9;
     uint256 public constant FEE_BASIS_POINTS = 179;
     uint256 public constant BASIS_POINTS_DENOMINATOR = 10000;
+    uint256 public constant SECONDS_PER_MONTH = 30 * 24 * 60 * 60;
 
     event PaymentCreatedETH(address indexed payer,address indexed payee,address paymentContract,uint256 releaseTime,uint256 amountToPayee,uint256 protocolFee,uint256 totalSent,bool cancellable);
     event PaymentCreatedERC20(address indexed payer,address indexed payee,address indexed tokenAddress,address paymentContract,uint256 releaseTime,uint256 amountToPayee,uint256 protocolFee,bool cancellable);
@@ -79,7 +80,8 @@ contract PaymentFactory_Core {
             _totalMonths,
             _dayOfMonth,
             PROTOCOL_WALLET,
-            FEE_BASIS_POINTS
+            FEE_BASIS_POINTS,
+            SECONDS_PER_MONTH
         );
         emit RecurringPaymentCreatedERC20(msg.sender,_payee,_tokenAddress,address(newRecurringPayment),_monthlyAmount,protocolFeePerMonth,_startDate,_totalMonths);
         return address(newRecurringPayment);

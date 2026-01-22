@@ -29,6 +29,9 @@ contract PaymentFactory_Recurring {
     uint256 public constant FEE_BPS_PRO = 156; // 1.56%
     uint256 public constant BASIS_POINTS_DENOMINATOR = 10000;
 
+    // Durée d'un "mois" (prod: 30 days, test: 300s)
+    uint256 public secondsPerMonth;
+
     // ============================================================
     // OWNER (wallet de déploiement)
     // ============================================================
@@ -41,8 +44,10 @@ contract PaymentFactory_Recurring {
         _;
     }
 
-    constructor() {
+    constructor(uint256 _secondsPerMonth) {
+        require(_secondsPerMonth > 0, "Invalid secondsPerMonth");
         FACTORY_OWNER = msg.sender;
+        secondsPerMonth = _secondsPerMonth;
     }
 
     event ProWalletUpdated(address indexed wallet, bool isPro);
@@ -127,7 +132,8 @@ contract PaymentFactory_Recurring {
             _totalMonths,
             _dayOfMonth,
             PROTOCOL_WALLET,
-            feeBps
+            feeBps,
+            secondsPerMonth
         );
 
         emit RecurringPaymentCreatedERC20(
@@ -184,7 +190,8 @@ contract PaymentFactory_Recurring {
             _totalMonths,
             _dayOfMonth,
             PROTOCOL_WALLET,
-            feeBps
+            feeBps,
+            secondsPerMonth
         );
 
         emit RecurringPaymentCreatedERC20(
@@ -239,7 +246,8 @@ contract PaymentFactory_Recurring {
                 _totalMonths,
                 _dayOfMonth,
                 PROTOCOL_WALLET,
-                feeBps
+                feeBps,
+            secondsPerMonth
             );
 
             payments[i] = address(p);

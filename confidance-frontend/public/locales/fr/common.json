@@ -62,7 +62,7 @@
     }
   },
   "home": {
-    "title": "Programmez vos paiements crypto en toute confiance",
+    "title": "Protocole de paiement Web 3",
     "subtitle": "Libérez-les automatiquement à une date précise.",
     "badge": "Protocole DeFi multi-chaînes.",
     "tagline": "Sans intermédiaire. 100% on-chain.",
@@ -177,7 +177,8 @@
       "pending": "En cours",
       "released": "Exécuté",
       "cancelled": "Annulé",
-      "failed": "Échoué"
+      "failed": "Échoué",
+      "completed": "Terminé"
     },
     "recurringHistory": {
       "title": "Historique des paiements mensuels",
@@ -206,96 +207,6 @@
       "instant": "Instantané",
       "scheduled": "Programmé"
     },
-  "analytics": {
-    "title": "📊 Analytics mensuels",
-    "subtitle": "Analysez votre activité globale sur la plateforme",
-    "month": "Mois",
-    "year": "Année",
-    "connectTitle": "Connectez votre wallet",
-    "connectSubtitle": "Pour accéder à vos analytics, connectez d'abord votre wallet",
-    "loadError": "Erreur lors du chargement des données :",
-    "emptyTitle": "Aucune donnée disponible",
-    "emptySubtitle": "Créez vos premiers paiements pour voir vos analytics",
-    "kpi": {
-      "transactions": "Transactions",
-      "totalVolume": "Volume total",
-      "totalFees": "Frais totaux",
-      "realCost": "Coût réel"
-    },
-    "types": {
-      "instant": "Paiements instantanés",
-      "scheduled": "Paiements programmés",
-      "recurring": "Paiements récurrents"
-    },
-    "table": {
-      "title": "Détail par type de transaction",
-      "type": "Type de transaction",
-      "count": "Nombre",
-      "volume": "Volume",
-      "avgFees": "Frais moyens",
-      "total": "TOTAL"
-    },
-    "fees": {
-      "title": "Décomposition des frais",
-      "gas": "Frais de gaz (Base Network)",
-      "protocol": "Frais protocole Confidance (1.79%)",
-      "totalMonthly": "TOTAL FRAIS MENSUELS",
-      "tipTitle": "💡 Astuce d'optimisation",
-      "tipHighGas": "Vos frais de gaz représentent la majorité des coûts. Privilégiez les heures creuses (week-end, nuit) pour économiser jusqu'à 30%.",
-      "tipBalanced": "Vos frais sont équilibrés entre gas et protocole. Continuez ainsi !"
-    },
-    "history": {
-      "title": "Historique mensuel",
-      "month": "Mois",
-      "txs": "Txs",
-      "volume": "Volume",
-      "fees": "Frais",
-      "ratio": "Ratio %",
-      "current": "Actuel",
-      "best": "Meilleur",
-      "high": "Plus élevé",
-      "bestMonth": "Mois le plus économique :",
-      "worstMonth": "Mois le plus coûteux :",
-      "avgRatio": "Ratio moyen :"
-    },
-    "export": {
-      "title": "📥 Télécharger ce mois",
-      "csvTitle": "CSV - Comptabilité",
-      "csvSubtitle": "Pour Excel/logiciels compta",
-      "pdfTitle": "PDF - Justificatif",
-      "pdfSubtitle": "Pour impression/archives",
-      "inProgress": "Export en cours...",
-      "csvError": "Erreur lors de l'export CSV",
-      "pdfError": "Erreur lors de l'export PDF. Veuillez installer jspdf et jspdf-autotable.",
-      "csv": {
-        "month": "Mois",
-        "transactions": "Transactions",
-        "totalVolume": "Volume total (ETH)",
-        "totalFees": "Frais totaux (ETH)",
-        "ratio": "Ratio %",
-        "gasFees": "Frais gaz (ETH)",
-        "protocolFees": "Frais protocole (ETH)",
-        "instant": "Paiements instantanés",
-        "scheduled": "Paiements programmés",
-        "recurring": "Paiements récurrents"
-      },
-      "pdf": {
-        "title": "Rapport analytics mensuel",
-        "period": "Période",
-        "wallet": "Wallet",
-        "generatedAt": "Généré le",
-        "indicator": "Indicateur",
-        "value": "Valeur",
-        "type": "Type",
-        "count": "Nombre",
-        "volumeEth": "Volume (ETH)",
-        "feeType": "Type de frais",
-        "amount": "Montant",
-        "share": "Part",
-        "page": "Page {{page}} sur {{total}}"
-      }
-    }
-  },
   "tooltips": {
       "showHistory": "Afficher l'historique",
       "hideHistory": "Masquer l'historique"
@@ -870,6 +781,7 @@
       "title": "Créer un lien de paiement",
       "subtitle": "Générez un lien partageable et faites-vous payer directement.",
       "sections": {
+        "identity": "Identité du paiement",
         "amountToken": "Montant & Token",
         "paymentType": "Type de paiement",
         "network": "Réseau",
@@ -887,7 +799,10 @@
         "frequency": "Fréquence",
         "periods": "Périodes",
         "startAt": "Date de début",
-        "description": "Description (optionnel)"
+        "description": "Description (optionnel)",
+        "label": "Libellé",
+        "category": "Catégorie",
+        "optional": "(optionnel)"
       },
       "firstMonth": {
         "title": "Première mensualité",
@@ -898,7 +813,11 @@
         "info": "💡 Si tu mets le même montant que le mensuel, l'option sera ignorée automatiquement."
       },
       "placeholders": {
-        "description": "Loyer, abonnement SaaS, facture..."
+        "description": "Loyer, abonnement SaaS, facture...",
+        "label": "ex : Abonnement Netflix"
+      },
+      "hint": {
+        "label": "Donnez un titre clair à votre lien."
       },
       "errors": {
         "connectWallet": "Connectez votre wallet",
@@ -907,7 +826,8 @@
         "executeAt": "Date d'exécution requise",
         "startAt": "Date de début requise",
         "periods": "Périodes requises",
-        "firstMonthAmount": "Montant de première mensualité invalide"
+        "firstMonthAmount": "Montant de première mensualité invalide",
+        "labelTooLong": "Libellé trop long"
       },
       "generate": "Générer le lien",
       "generating": "Génération...",
@@ -928,6 +848,11 @@
       "title": "Mes liens de paiement",
       "empty": "Aucun lien de paiement",
       "hint": "Une fois un paiement validé, vous le retrouvez directement dans votre dashboard.",
+      "unnamed": "Paiement sans nom",
+      "filter": {
+        "label": "Filtrer par catégorie",
+        "all": "Toutes"
+      },
       "status": "Statut",
       "amount": "Montant",
       "type": "Type",
@@ -956,7 +881,9 @@
         "type": "Type",
         "network": "Réseau",
         "beneficiary": "Bénéficiaire",
-        "description": "Description"
+        "description": "Description",
+        "label": "Libellé",
+        "unnamed": "Paiement sans nom"
       },
       "errors": {
         "notFound": "Lien de paiement introuvable",

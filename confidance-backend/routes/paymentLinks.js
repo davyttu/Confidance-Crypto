@@ -72,6 +72,12 @@ router.post('/', async (req, res) => {
       execute_at,
       chain_id,
       description,
+      payment_label,
+      payment_category,
+      payment_categorie,
+      label,
+      category,
+      categorie,
       device_id,
       user_agent,
       ip_address,
@@ -79,6 +85,22 @@ router.post('/', async (req, res) => {
 
     const paymentLinkId = generatePaymentLinkId();
     const creatorAddress = String(creator).toLowerCase();
+    const normalizedLabel =
+      typeof payment_label === 'string'
+        ? payment_label.trim()
+        : typeof label === 'string'
+        ? label.trim()
+        : '';
+    const normalizedCategory =
+      typeof payment_categorie === 'string'
+        ? payment_categorie.trim()
+        : typeof payment_category === 'string'
+        ? payment_category.trim()
+        : typeof categorie === 'string'
+        ? categorie.trim()
+        : typeof category === 'string'
+        ? category.trim()
+        : '';
 
     const { data: paymentLink, error } = await supabase
       .from('payment_links')
@@ -97,6 +119,8 @@ router.post('/', async (req, res) => {
         execute_at: execute_at ? Number(execute_at) : null,
         chain_id: Number(chain_id),
         description: description || null,
+        payment_label: normalizedLabel || null,
+        payment_categorie: normalizedCategory || null,
         status: 'pending',
         device_id: device_id || null,
         user_agent: user_agent || null,

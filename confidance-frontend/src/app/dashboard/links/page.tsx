@@ -6,12 +6,24 @@ import { useAccount } from 'wagmi';
 import { useTranslation } from 'react-i18next';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { usePaymentLinks } from '@/hooks/usePaymentLinks';
+import { CATEGORY_ICONS, CATEGORY_LABELS, type PaymentCategory } from '@/types/payment-identity';
 
 export default function DashboardLinksPage() {
-  const { t, ready } = useTranslation();
+  const { t, ready, i18n } = useTranslation();
   const { address, isConnected } = useAccount();
   const { listLinks, isLoading } = usePaymentLinks();
   const [links, setLinks] = useState<any[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<'all' | PaymentCategory>('all');
+  const currentLang = (i18n?.language?.split('-')[0] || 'en') as 'en' | 'fr' | 'es' | 'ru' | 'zh';
+  const categories: PaymentCategory[] = [
+    'housing',
+    'salary',
+    'subscription',
+    'utilities',
+    'services',
+    'transfer',
+    'other',
+  ];
 
   useEffect(() => {
     if (!address) return;
@@ -24,6 +36,14 @@ export default function DashboardLinksPage() {
     if (typeof window === 'undefined') return '';
     return window.location.origin;
   }, []);
+
+  const filteredLinks = useMemo(() => {
+    if (selectedCategory === 'all') return links;
+    return links.filter((link) => {
+      const rawCategory = link.payment_categorie || link.payment_category || null;
+      return rawCategory === selectedCategory;
+    });
+  }, [links, selectedCategory]);
 
   const statusStyles: Record<string, string> = {
     pending: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
@@ -75,8 +95,52 @@ export default function DashboardLinksPage() {
             <div className="text-gray-600">{ready ? t('links.dashboard.empty') : 'Aucun lien de paiement'}</div>
           ) : (
             <div className="space-y-4">
-              {links.map((link) => {
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-semibold text-gray-500">
+                  {ready ? t('links.dashboard.filter.label') : 'Filter by category'}:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory('all')}
+                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                    selectedCategory === 'all'
+                      ? 'bg-purple-600 text-white border-purple-600'
+                      : 'bg-white text-gray-600 border-gray-200 hover:border-purple-300'
+                  }`}
+                >
+                  {ready ? t('links.dashboard.filter.all') : 'All'}
+                </button>
+                {categories.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setSelectedCategory(cat)}
+                    className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                      selectedCategory === cat
+                        ? 'bg-purple-600 text-white border-purple-600'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-purple-300'
+                    }`}
+                  >
+                    <span>{CATEGORY_ICONS[cat]}</span>
+                    <span>{CATEGORY_LABELS[cat][currentLang]}</span>
+                  </button>
+                ))}
+              </div>
+
+              {filteredLinks.length === 0 ? (
+                <div className="text-gray-600">{ready ? t('links.dashboard.empty') : 'Aucun lien de paiement'}</div>
+              ) : (
+                filteredLinks.map((link) => {
                 const shareUrl = `${baseUrl}/pay/${link.id}`;
+                const rawCategory = link.payment_categorie || link.payment_category || null;
+                const categoryKey =
+                  rawCategory && rawCategory in CATEGORY_LABELS
+                    ? (rawCategory as PaymentCategory)
+                    : null;
+                const categoryLabel = categoryKey
+                  ? CATEGORY_LABELS[categoryKey][currentLang]
+                  : rawCategory;
+                const categoryIcon = categoryKey ? CATEGORY_ICONS[categoryKey] : '🏷️';
                 return (
                   <div key={link.id} className="border border-gray-200 rounded-xl p-4 flex flex-col md:flex-row md:items-center gap-4">
                     <div className="flex-1">
@@ -90,6 +154,19 @@ export default function DashboardLinksPage() {
                           {ready ? t(`links.status.${link.status}`) : link.status}
                         </span>
                       </div>
+                      {(link.payment_label || categoryLabel) && (
+                        <div className="flex items-center gap-3 mb-2 flex-wrap">
+                          <div className="text-base font-semibold text-gray-900">
+                            {link.payment_label || (ready ? t('links.dashboard.unnamed') : 'Unnamed payment')}
+                          </div>
+                          {categoryLabel && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 text-gray-700 px-2.5 py-1 text-xs font-medium">
+                              <span>{categoryIcon}</span>
+                              <span>{categoryLabel}</span>
+                            </span>
+                          )}
+                        </div>
+                      )}
                       <div className="text-lg font-semibold text-gray-900">
                         {link.amount} {link.token_symbol} · {link.payment_type}
                       </div>
@@ -114,7 +191,7 @@ export default function DashboardLinksPage() {
                     </div>
                   </div>
                 );
-              })}
+              }))}
             </div>
           )}
         </div>

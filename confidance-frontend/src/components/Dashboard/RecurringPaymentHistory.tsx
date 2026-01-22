@@ -12,24 +12,59 @@ interface MonthlyPayment {
   amount: string;
 }
 
+type RecurringPaymentWithStatus = Payment & {
+  __monthlyStatuses?: Array<'executed' | 'failed' | 'pending' | 'cancelled'>;
+};
+
 interface RecurringPaymentHistoryProps {
-  payment: Payment;
+  payment: RecurringPaymentWithStatus;
 }
 
-const MONTH_IN_SECONDS = 2592000; // 30 jours
+const MONTH_IN_SECONDS =
+  process.env.NEXT_PUBLIC_CHAIN === 'base_sepolia' ? 300 : 2592000; // 5 min en testnet
 
 export function RecurringPaymentHistory({ payment }: RecurringPaymentHistoryProps) {
   const { t, i18n } = useTranslation();
   
+  const resolveExecutedMonths = () => {
+    const totalMonths = Number(payment.total_months || 0);
+    const rawExecuted = Number(payment.executed_months || 0);
+    const isCompleted = payment.status === 'completed';
+    const hasSkip =
+      typeof payment.last_execution_hash === 'string' &&
+      payment.last_execution_hash.toLowerCase().startsWith('skipped');
+
+    let inferred = rawExecuted;
+    if (!hasSkip && inferred === 0 && payment.next_execution_time && payment.first_payment_time) {
+      const diff = Number(payment.next_execution_time) - Number(payment.first_payment_time);
+      if (Number.isFinite(diff) && diff > 0) {
+        inferred = Math.floor(diff / MONTH_IN_SECONDS);
+      }
+    }
+
+    if (isCompleted && totalMonths > 0) {
+      return totalMonths;
+    }
+
+    if (totalMonths > 0) {
+      return Math.min(inferred, totalMonths);
+    }
+
+    return Math.max(0, inferred);
+  };
+
   // Calculer l'historique des paiements mensuels
   const monthlyPayments = useMemo<MonthlyPayment[]>(() => {
     if (!payment.is_recurring || !payment.total_months || !payment.first_payment_time) {
       return [];
     }
 
-    const totalMonths = payment.total_months;
-    const executedMonths = payment.executed_months || 0;
-    const startTime = payment.first_payment_time;
+    const totalMonths = Number(payment.total_months || 0);
+    const rawExecutedMonths = resolveExecutedMonths();
+    const isCompleted =
+      payment.status === 'completed' || rawExecutedMonths >= totalMonths;
+    const executedMonths = isCompleted ? totalMonths : rawExecutedMonths;
+    const startTime = Number(payment.first_payment_time || 0);
     const now = Math.floor(Date.now() / 1000);
     const isCancelled = payment.status === 'cancelled';
 
@@ -50,7 +85,10 @@ export function RecurringPaymentHistory({ payment }: RecurringPaymentHistoryProp
 
       let status: 'executed' | 'pending' | 'failed' | 'cancelled';
 
-      if (monthIndex < executedMonths) {
+      const monthlyStatusOverride = payment.__monthlyStatuses?.[monthIndex];
+      if (monthlyStatusOverride) {
+        status = monthlyStatusOverride;
+      } else if (monthIndex < executedMonths) {
         // ✅ Les premiers N mois ont été exécutés avec succès
         status = 'executed';
       } else if (isCancelled) {
@@ -85,7 +123,10 @@ export function RecurringPaymentHistory({ payment }: RecurringPaymentHistoryProp
     payment.total_months,
     payment.first_payment_time,
     payment.executed_months,
+    payment.next_execution_time,
+    payment.last_execution_hash,
     payment.status,
+    payment.__monthlyStatuses,
     payment.first_month_amount,
     payment.is_first_month_custom,
     payment.monthly_amount,
@@ -167,7 +208,7 @@ export function RecurringPaymentHistory({ payment }: RecurringPaymentHistoryProp
           </h4>
           <p className="text-xs text-gray-500 dark:text-gray-400">
             {t('dashboard.recurringHistory.executed', {
-              executed: payment.executed_months || 0,
+              executed: resolveExecutedMonths(),
               total: payment.total_months
             })}
           </p>

@@ -2,6 +2,7 @@
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 const { addTimelineEvent } = require('../services/timeline/timelineService');
+const { sendRecurringFailureEmail } = require('../services/email/recurringFailureEmail');
 
 const router = express.Router();
 
@@ -15,11 +16,18 @@ const supabase = createClient(
 // ============================================================
 
 /**
- * Adresses des tokens supportés sur Base Mainnet
+ * Adresses des tokens supportés par réseau
  */
 const TOKEN_ADDRESSES = {
-  'USDC': '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
-  'USDT': '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2'
+  base_mainnet: {
+    USDC: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+    USDT: '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2'
+  },
+  base_sepolia: {
+    USDC: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
+    // USDT testnet non fourni → laissé vide si non utilisé
+    USDT: null
+  }
 };
 
 /**
@@ -169,21 +177,26 @@ router.post('/', async (req, res) => {
         ? label.trim()
         : '';
     const normalizedPaymentCategory =
-      typeof payment_categorie === 'string'
-        ? payment_categorie.trim()
-        : typeof payment_category === 'string'
+      typeof payment_category === 'string'
         ? payment_category.trim()
-        : typeof categorie === 'string'
-        ? categorie.trim()
+        : typeof payment_categorie === 'string'
+        ? payment_categorie.trim()
         : typeof category === 'string'
         ? category.trim()
+        : typeof categorie === 'string'
+        ? categorie.trim()
         : '';
 
     // Calculer next_execution_time (= first_payment_time au départ)
     const next_execution_time = first_payment_time;
 
-    // Récupérer l'adresse du token
-    const token_address = TOKEN_ADDRESSES[token_symbol];
+    // Récupérer l'adresse du token (en fonction du réseau)
+    const resolvedNetwork =
+      typeof network === 'string' && network.trim().length > 0
+        ? network.trim()
+        : 'base_mainnet';
+    const tokenAddressByNetwork = TOKEN_ADDRESSES[resolvedNetwork] || TOKEN_ADDRESSES.base_mainnet;
+    const token_address = tokenAddressByNetwork?.[token_symbol] || null;
 
     // Enregistrer dans Supabase
     const { data: recurringPayment, error } = await supabase
@@ -210,7 +223,7 @@ router.post('/', async (req, res) => {
         ticket_number,
         status: 'pending',
         payment_label: normalizedPaymentLabel || null,
-        payment_categorie: normalizedPaymentCategory || null
+        payment_category: normalizedPaymentCategory || null
       })
       .select()
       .single();
@@ -337,11 +350,22 @@ router.patch('/:id', async (req, res) => {
       next_execution_time,
       last_execution_time,
       status,
-      last_execution_hash
+      last_execution_hash,
+      failure_reason
     } = req.body;
 
     if (!id) {
       return res.status(400).json({ error: 'ID requis' });
+    }
+
+    const { data: existingPayment, error: existingError } = await supabase
+      .from('recurring_payments')
+      .select('last_execution_hash')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (existingError && existingError.code !== 'PGRST116') {
+      console.warn('⚠️ Erreur lecture paiement existant (non bloquant):', existingError.message);
     }
 
     // Construire l'objet de mise à jour
@@ -381,24 +405,83 @@ router.patch('/:id', async (req, res) => {
       });
     }
 
-    if (payment?.id && payment?.user_id && (last_execution_hash || status === 'completed')) {
+    const hasSkippedHash =
+      typeof last_execution_hash === 'string' &&
+      last_execution_hash.toLowerCase().startsWith('skipped');
+    const changedHash =
+      typeof last_execution_hash === 'string' &&
+      last_execution_hash !== existingPayment?.last_execution_hash;
+
+    if (payment?.id && payment?.user_id && last_execution_hash && changedHash) {
+      if (hasSkippedHash) {
+        addTimelineEvent({
+          payment_id: payment.id,
+          user_id: payment.user_id,
+          event_type: 'payment_failed',
+          event_label: 'Paiement échoué',
+          actor_type: 'system',
+          actor_label: 'Confidance',
+          explanation: 'Paiement mensuel non exécuté',
+          metadata: sanitizeMetadata({
+            amount: payment.monthly_amount,
+            currency: payment.token_symbol,
+            payment_type: 'recurring',
+            category: req.body.category ?? null,
+            tx_hash: last_execution_hash,
+            failure_reason: typeof failure_reason === 'string' ? failure_reason : null,
+            executed_months: payment.executed_months ?? null
+          })
+        });
+      } else {
+        addTimelineEvent({
+          payment_id: payment.id,
+          user_id: payment.user_id,
+          event_type: 'payment_executed',
+          event_label: 'Paiement exécuté',
+          actor_type: 'system',
+          actor_label: 'Confidance',
+          explanation: 'Paiement exécuté avec succès',
+          metadata: sanitizeMetadata({
+            amount: payment.monthly_amount,
+            currency: payment.token_symbol,
+            payment_type: 'recurring',
+            category: req.body.category ?? null,
+            tx_hash: last_execution_hash,
+            gas_fee: req.body.gas_fee ?? 0,
+            protocol_fee: req.body.protocol_fee ?? 0
+          })
+        });
+      }
+    }
+
+    if (payment?.id && payment?.user_id && status === 'completed') {
       addTimelineEvent({
         payment_id: payment.id,
         user_id: payment.user_id,
-        event_type: 'payment_executed',
-        event_label: 'Paiement exécuté',
+        event_type: 'payment_completed',
+        event_label: 'Paiement terminé',
         actor_type: 'system',
         actor_label: 'Confidance',
-        explanation: 'Paiement exécuté avec succès',
+        explanation: 'Toutes les mensualités ont été exécutées',
         metadata: sanitizeMetadata({
           amount: payment.monthly_amount,
           currency: payment.token_symbol,
           payment_type: 'recurring',
           category: req.body.category ?? null,
-          tx_hash: last_execution_hash,
-          gas_fee: req.body.gas_fee ?? 0,
-          protocol_fee: req.body.protocol_fee ?? 0
+          executed_months: payment.executed_months ?? null,
+          total_months: payment.total_months ?? null
         })
+      });
+    }
+
+    const shouldNotifyFailure = (hasSkippedHash && changedHash) || status === 'failed';
+
+    if (payment?.id && payment?.user_id && shouldNotifyFailure) {
+      await sendRecurringFailureEmail({
+        supabase,
+        payment,
+        reason: typeof failure_reason === 'string' ? failure_reason : undefined,
+        monthNumber: Number(payment.executed_months || 0),
       });
     }
 

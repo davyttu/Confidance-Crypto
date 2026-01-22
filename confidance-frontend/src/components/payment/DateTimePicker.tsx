@@ -134,6 +134,14 @@ export default function DateTimePicker({
     if (hours === undefined || minutes === undefined) return;
     const newDate = new Date(base);
     newDate.setHours(hours, minutes, 0, 0);
+    const now = new Date();
+    const isSameDay =
+      newDate.getFullYear() === now.getFullYear() &&
+      newDate.getMonth() === now.getMonth() &&
+      newDate.getDate() === now.getDate();
+    if (isSameDay && newDate.getTime() < now.getTime()) {
+      newDate.setDate(newDate.getDate() + 1);
+    }
     const minTarget = new Date(Date.now() + 10 * 60 * 1000);
     if (newDate < minTarget) {
       newDate.setTime(minTarget.getTime());

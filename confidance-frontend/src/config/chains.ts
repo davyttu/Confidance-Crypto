@@ -15,6 +15,13 @@ export const CHAINS: Record<number, ChainConfig> = {
     explorer: "https://basescan.org",
     nativeSymbol: "ETH",
   },
+  84532: {
+    chainId: 84532,
+    name: "Base Sepolia",
+    rpcUrl: "https://sepolia.base.org",
+    explorer: "https://sepolia.basescan.org",
+    nativeSymbol: "ETH",
+  },
 
   // Polygon
   137: {

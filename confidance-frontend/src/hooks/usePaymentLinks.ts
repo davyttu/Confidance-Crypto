@@ -44,6 +44,9 @@ export function usePaymentLinks() {
     execute_at?: number | null;
     chain_id: number;
     description?: string | null;
+    payment_label?: string | null;
+    payment_categorie?: string | null;
+    payment_category?: string | null;
     device_id?: string | null;
     user_agent?: string | null;
     ip_address?: string | null;

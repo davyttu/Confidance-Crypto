@@ -62,7 +62,7 @@
     }
   },
   "home": {
-    "title": "Schedule your crypto payments with Confidance",
+    "title": "Web3 payment protocol",
     "subtitle": "Release them automatically at a specific date.",
     "badge": "Multi-chain DeFi protocol.",
     "tagline": "No intermediaries. 100% on-chain.",
@@ -179,7 +179,8 @@
       "pending": "Pending",
       "released": "Released",
       "cancelled": "Cancelled",
-      "failed": "Failed"
+      "failed": "Failed",
+      "completed": "Completed"
     },
     "recurringHistory": {
       "title": "Monthly payment history",
@@ -331,8 +332,8 @@
     "nopayments": "No scheduled payments"
   },
   "create": {
-    "title": "Create an instant, scheduled or recurring payment",
-    "subtitle": "Send crypto that will be automatically released on the chosen date",
+    "title": "Create a payment",
+    "subtitle": "Define what it is for, when it executes, and who it is for.",
     "wallet": {
       "connectFirst": "To create a scheduled payment, first connect your wallet"
     },
@@ -806,6 +807,7 @@
       "title": "Create a payment link",
       "subtitle": "Generate a shareable link and get paid directly.",
       "sections": {
+        "identity": "Payment identity",
         "amountToken": "Amount & Token",
         "paymentType": "Payment type",
         "network": "Network",
@@ -823,7 +825,10 @@
         "frequency": "Frequency",
         "periods": "Periods",
         "startAt": "Start date",
-        "description": "Description (optional)"
+        "description": "Description (optional)",
+        "label": "Label",
+        "category": "Category",
+        "optional": "(optional)"
       },
       "firstMonth": {
         "title": "First monthly payment",
@@ -834,7 +839,11 @@
         "info": "💡 If you enter the same amount as the monthly payment, this option will be ignored automatically."
       },
       "placeholders": {
-        "description": "Rent, SaaS subscription, invoice..."
+        "description": "Rent, SaaS subscription, invoice...",
+        "label": "e.g., Netflix subscription"
+      },
+      "hint": {
+        "label": "Give your link a clear title."
       },
       "errors": {
         "connectWallet": "Connect your wallet first",
@@ -843,7 +852,8 @@
         "executeAt": "Execution date required",
         "startAt": "Start date required",
         "periods": "Periods required",
-        "firstMonthAmount": "Invalid first month amount"
+        "firstMonthAmount": "Invalid first month amount",
+        "labelTooLong": "Label is too long"
       },
       "generate": "Generate link",
       "generating": "Generating...",
@@ -864,6 +874,11 @@
       "title": "My payment links",
       "empty": "No payment links yet",
       "hint": "Once a payment is validated, you can find it directly in your dashboard.",
+      "unnamed": "Unnamed payment",
+      "filter": {
+        "label": "Filter by category",
+        "all": "All"
+      },
       "status": "Status",
       "amount": "Amount",
       "type": "Type",
@@ -892,7 +907,9 @@
         "type": "Type",
         "network": "Network",
         "beneficiary": "Beneficiary",
-        "description": "Description"
+        "description": "Description",
+        "label": "Payment label",
+        "unnamed": "Unnamed payment"
       },
       "errors": {
         "notFound": "Payment link not found",
@@ -902,96 +919,6 @@
         "weeklyUnsupported": "Weekly recurring not supported yet.",
         "recurringMissing": "Missing recurring info",
         "executeMissing": "Missing execution date"
-      }
-    }
-  },
-  "analytics": {
-    "title": "📊 Monthly Analytics",
-    "subtitle": "Analyze your overall activity on the platform",
-    "month": "Month",
-    "year": "Year",
-    "connectTitle": "Connect your wallet",
-    "connectSubtitle": "To access your analytics, connect your wallet first",
-    "loadError": "Error loading data:",
-    "emptyTitle": "No data available",
-    "emptySubtitle": "Create your first payments to see your analytics",
-    "kpi": {
-      "transactions": "Transactions",
-      "totalVolume": "Total Volume",
-      "totalFees": "Total Fees",
-      "realCost": "Real Cost"
-    },
-    "types": {
-      "instant": "Instant Payments",
-      "scheduled": "Scheduled Payments",
-      "recurring": "Recurring Payments"
-    },
-    "table": {
-      "title": "Breakdown by Transaction Type",
-      "type": "Transaction Type",
-      "count": "Count",
-      "volume": "Volume",
-      "avgFees": "Avg Fees",
-      "total": "TOTAL"
-    },
-    "fees": {
-      "title": "Fees Breakdown",
-      "gas": "Gas Fees (Base Network)",
-      "protocol": "Confidance Protocol Fees (1.79%)",
-      "totalMonthly": "TOTAL MONTHLY FEES",
-      "tipTitle": "💡 Optimization tip",
-      "tipHighGas": "Gas fees make up most of your costs. Favor off-peak hours (weekends, nights) to save up to 30%.",
-      "tipBalanced": "Your fees are balanced between gas and protocol. Keep it up!"
-    },
-    "history": {
-      "title": "Monthly History",
-      "month": "Month",
-      "txs": "Txs",
-      "volume": "Volume",
-      "fees": "Fees",
-      "ratio": "Ratio %",
-      "current": "Current",
-      "best": "Best",
-      "high": "High",
-      "bestMonth": "Best month:",
-      "worstMonth": "Most expensive month:",
-      "avgRatio": "Average ratio:"
-    },
-    "export": {
-      "title": "📥 Download this month",
-      "csvTitle": "CSV - Accounting",
-      "csvSubtitle": "For Excel/accounting tools",
-      "pdfTitle": "PDF - Statement",
-      "pdfSubtitle": "For printing/archives",
-      "inProgress": "Export in progress...",
-      "csvError": "Error exporting CSV",
-      "pdfError": "Error exporting PDF. Please install jspdf and jspdf-autotable.",
-      "csv": {
-        "month": "Month",
-        "transactions": "Transactions",
-        "totalVolume": "Total Volume (ETH)",
-        "totalFees": "Total Fees (ETH)",
-        "ratio": "Ratio %",
-        "gasFees": "Gas Fees (ETH)",
-        "protocolFees": "Protocol Fees (ETH)",
-        "instant": "Instant Payments",
-        "scheduled": "Scheduled Payments",
-        "recurring": "Recurring Payments"
-      },
-      "pdf": {
-        "title": "Monthly Analytics Report",
-        "period": "Period",
-        "wallet": "Wallet",
-        "generatedAt": "Generated on",
-        "indicator": "Indicator",
-        "value": "Value",
-        "type": "Type",
-        "count": "Count",
-        "volumeEth": "Volume (ETH)",
-        "feeType": "Fee Type",
-        "amount": "Amount",
-        "share": "Share",
-        "page": "Page {{page}} of {{total}}"
       }
     }
   },

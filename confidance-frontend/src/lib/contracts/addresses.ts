@@ -38,7 +38,7 @@ export const CONTRACT_ADDRESSES = {
     // placeholders testnet
     factory: "0x0000000000000000000000000000000000000000",
     factory_scheduled: "0x0000000000000000000000000000000000000000",
-    factory_recurring: "0x0000000000000000000000000000000000000000",
+    factory_recurring: "0xEFa8C5b8d7A7f7dcE6F68da21d9d5Ef8e1042cE6",
     factory_instant: "0x0000000000000000000000000000000000000000",
   },
 };

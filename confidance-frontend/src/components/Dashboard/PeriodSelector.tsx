@@ -8,7 +8,7 @@ import { getCurrentYearMonths } from '@/lib/utils/dateFormatter';
 import { usePublicClient } from 'wagmi';
 import { formatUnits } from 'viem';
 import { useEthUsdPrice } from '@/hooks/useEthUsdPrice';
-import { getToken } from '@/config/tokens';
+import { getToken, isZeroAddress } from '@/config/tokens';
 import { erc20Abi } from '@/lib/contracts/erc20Abi';
 
 type WalletInfo = {
@@ -154,6 +154,23 @@ export function PeriodSelector({
     let isMounted = true;
     const usdcToken = getToken('USDC');
     const usdtToken = getToken('USDT');
+    const canReadToken = (token: { address: string; isNative: boolean }) =>
+      !token.isNative && !isZeroAddress(token.address);
+
+    const readTokenBalance = async (token: typeof usdcToken, wallet: `0x${string}`) => {
+      if (!canReadToken(token)) return 0n;
+      try {
+        return await publicClient.readContract({
+          address: token.address,
+          abi: erc20Abi,
+          functionName: 'balanceOf',
+          args: [wallet],
+        }) as bigint;
+      } catch (err) {
+        console.warn('⚠️ BalanceOf failed for token', token.symbol, err);
+        return 0n;
+      }
+    };
 
     const loadTotals = async () => {
       const nextLoading: Record<string, boolean> = {};
@@ -168,18 +185,8 @@ export function PeriodSelector({
             const addressValue = wallet.wallet_address as `0x${string}`;
             const [eth, usdc, usdt] = await Promise.all([
               publicClient.getBalance({ address: addressValue }),
-              publicClient.readContract({
-                address: usdcToken.address,
-                abi: erc20Abi,
-                functionName: 'balanceOf',
-                args: [addressValue],
-              }) as Promise<bigint>,
-              publicClient.readContract({
-                address: usdtToken.address,
-                abi: erc20Abi,
-                functionName: 'balanceOf',
-                args: [addressValue],
-              }) as Promise<bigint>,
+              readTokenBalance(usdcToken, addressValue),
+              readTokenBalance(usdtToken, addressValue),
             ]);
 
             return {

@@ -1831,67 +1831,67 @@ export function useCreatePayment(): UseCreatePaymentReturn {
           setStatus('confirming');
           setProgressMessage('Récupération de l\'adresse du contrat...');
 
-          // ✅ FIX : Vérifier que la transaction est bien vers une factory (Scheduled OU Instant)
-          const tx = await publicClient.getTransaction({ hash: createTxHash });
-          
-          // ✅ Détecter quelle factory a été utilisée
-          const isToScheduledFactory = tx.to?.toLowerCase() === FACTORY_SCHEDULED_ADDRESS.toLowerCase();
-          const isToInstantFactory = tx.to?.toLowerCase() === FACTORY_INSTANT_ADDRESS.toLowerCase();
-          
-          if (!isToScheduledFactory && !isToInstantFactory) {
-            console.warn('⚠️ La transaction analysée n\'est pas vers une factory connue.');
-            console.warn('⚠️ Transaction "to":', tx.to);
-            console.warn('⚠️ Factories attendues:', {
-              scheduled: FACTORY_SCHEDULED_ADDRESS,
-              instant: FACTORY_INSTANT_ADDRESS,
-            });
-            console.warn('⚠️ Cela signifie que createTxHash pointe vers la transaction d\'approbation, pas la création.');
-            console.warn('⚠️ Attente de la transaction de création...');
-            // Ne pas bloquer, juste attendre que la bonne transaction arrive
-            return;
-          }
-          
-          // ✅ Déterminer la factory et l'ABI utilisés
-          const factoryAddressUsed = isToInstantFactory ? FACTORY_INSTANT_ADDRESS : FACTORY_SCHEDULED_ADDRESS;
-          const factoryAbiToUse = isToInstantFactory ? paymentFactoryInstantAbi : paymentFactoryScheduledAbi;
-          const isInstantPayment = isToInstantFactory;
-          
-          console.log('🔍 Factory détectée:', {
-            address: factoryAddressUsed,
-            type: isInstantPayment ? 'INSTANT' : 'SCHEDULED',
-          });
-
           // ✅ FIX : Utiliser le receipt de useWaitForTransactionReceipt si disponible
           const receiptToUse = receipt || await publicClient.getTransactionReceipt({
             hash: createTxHash,
           });
+
+          if (!receiptToUse) {
+            console.warn('⚠️ Receipt non disponible pour la transaction, nouvelle tentative plus tard.');
+            return;
+          }
+
+          // ✅ Détecter quelle factory a été utilisée (via receipt.to)
+          const txTo = receiptToUse.to?.toLowerCase();
+          const isToScheduledFactory = txTo === FACTORY_SCHEDULED_ADDRESS.toLowerCase();
+          const isToInstantFactory = txTo === FACTORY_INSTANT_ADDRESS.toLowerCase();
+
+          if (!isToScheduledFactory && !isToInstantFactory) {
+            console.warn('⚠️ La transaction analysée n\'est pas vers une factory connue (via receipt.to).');
+            console.warn('⚠️ Receipt "to":', receiptToUse.to);
+            console.warn('⚠️ Factories attendues:', {
+              scheduled: FACTORY_SCHEDULED_ADDRESS,
+              instant: FACTORY_INSTANT_ADDRESS,
+            });
+            // Ne pas bloquer : on tentera de décoder les logs avec les deux ABIs
+          }
+
+          // ✅ Déterminer les factories/ABIs candidats
+          const factoryCandidates = isToInstantFactory
+            ? [{ address: FACTORY_INSTANT_ADDRESS, abi: paymentFactoryInstantAbi, type: 'INSTANT' }]
+            : isToScheduledFactory
+              ? [{ address: FACTORY_SCHEDULED_ADDRESS, abi: paymentFactoryScheduledAbi, type: 'SCHEDULED' }]
+              : [
+                  { address: FACTORY_SCHEDULED_ADDRESS, abi: paymentFactoryScheduledAbi, type: 'SCHEDULED' },
+                  { address: FACTORY_INSTANT_ADDRESS, abi: paymentFactoryInstantAbi, type: 'INSTANT' },
+                ];
+
+          console.log('🔍 Factory candidates:', factoryCandidates.map(c => ({ address: c.address, type: c.type })));
 
           console.log('📋 Receipt complet:', receiptToUse);
           let foundAddress: `0x${string}` | undefined;
 
           // ✅ FIX CRITIQUE : Décoder les events PaymentCreated correctement
           // Les events ont paymentContract dans les data, pas dans les topics
-          
-          // Chercher les logs émis par la factory utilisée
+
+          // Chercher les logs émis par une factory candidate
+          const factoryAddressesLower = factoryCandidates.map(c => c.address.toLowerCase());
           const factoryLogs = receiptToUse.logs.filter(
-            log => log.address.toLowerCase() === factoryAddressUsed.toLowerCase()
+            log => factoryAddressesLower.includes(log.address.toLowerCase())
           );
 
-          console.log(`🔍 ${factoryLogs.length} log(s) trouvé(s) depuis la factory`);
-          console.log('📋 Factory address utilisée:', factoryAddressUsed);
-          console.log('📋 Factory type:', isInstantPayment ? 'INSTANT' : 'SCHEDULED');
+          console.log(`🔍 ${factoryLogs.length} log(s) trouvé(s) depuis une factory candidate`);
+          console.log('📋 Factories candidates:', factoryCandidates.map(c => c.address));
           console.log('📋 Tous les logs (adresses):', receiptToUse.logs.map(l => ({
             address: l.address,
-            isFactory: l.address.toLowerCase() === FACTORY_SCHEDULED_ADDRESS.toLowerCase(),
+            isFactory: factoryAddressesLower.includes(l.address.toLowerCase()),
             topicsCount: l.topics.length,
             firstTopic: l.topics[0],
           })));
-          
 
-          // ✅ FIX CRITIQUE : Si aucun log de la factory, essayer de décoder tous les logs
-          // Car il se peut que l'event soit émis mais que l'adresse ne corresponde pas exactement
+          // ✅ FIX CRITIQUE : Si aucun log de factory, essayer de décoder tous les logs
           const logsToDecode = factoryLogs.length > 0 ? factoryLogs : receiptToUse.logs;
-          
+
           if (factoryLogs.length === 0) {
             console.warn('⚠️ Aucun log trouvé depuis la factory, tentative de décodage de tous les logs...');
           }
@@ -1899,81 +1899,86 @@ export function useCreatePayment(): UseCreatePaymentReturn {
           // Essayer de décoder chaque event de création de paiement
           for (const log of logsToDecode) {
             try {
-              // Essayer PaymentCreatedETH
-              try {
-                const decoded = decodeEventLog({
-                  abi: factoryAbiToUse,
-                  data: log.data,
-                  topics: log.topics as any,
-                  eventName: 'PaymentCreatedETH',
-                }) as any;
-                
-                if (decoded?.args?.paymentContract) {
-                  foundAddress = decoded.args.paymentContract as `0x${string}`;
-                  console.log('✅ Contrat trouvé via PaymentCreatedETH event:', foundAddress);
-                  break;
+              for (const candidate of factoryCandidates) {
+                // Essayer PaymentCreatedETH
+                try {
+                  const decoded = decodeEventLog({
+                    abi: candidate.abi,
+                    data: log.data,
+                    topics: log.topics as any,
+                    eventName: 'PaymentCreatedETH',
+                  }) as any;
+                  
+                  if (decoded?.args?.paymentContract) {
+                    foundAddress = decoded.args.paymentContract as `0x${string}`;
+                    console.log('✅ Contrat trouvé via PaymentCreatedETH event:', foundAddress);
+                    break;
+                  }
+                } catch (e) {
+                  // Ce n'est pas PaymentCreatedETH, continuer
                 }
-              } catch (e) {
-                // Ce n'est pas PaymentCreatedETH, continuer
+
+                // Essayer PaymentCreatedERC20
+                try {
+                  const decoded = decodeEventLog({
+                    abi: candidate.abi,
+                    data: log.data,
+                    topics: log.topics as any,
+                    eventName: 'PaymentCreatedERC20',
+                  }) as any;
+                  
+                  console.log('📋 PaymentCreatedERC20 décodé:', decoded);
+                  
+                  if (decoded?.args?.paymentContract) {
+                    foundAddress = decoded.args.paymentContract as `0x${string}`;
+                    console.log('✅ Contrat trouvé via PaymentCreatedERC20 event:', foundAddress);
+                    break;
+                  } else {
+                    console.warn('⚠️ PaymentCreatedERC20 décodé mais paymentContract manquant');
+                  }
+                } catch (e) {
+                  // Ce n'est pas PaymentCreatedERC20, continuer
+                }
+
+                // Essayer InstantPaymentCreatedETH
+                try {
+                  const decoded = decodeEventLog({
+                    abi: candidate.abi,
+                    data: log.data,
+                    topics: log.topics as any,
+                    eventName: 'InstantPaymentCreatedETH',
+                  }) as any;
+                  
+                  if (decoded?.args?.paymentContract) {
+                    foundAddress = decoded.args.paymentContract as `0x${string}`;
+                    console.log('✅ Contrat trouvé via InstantPaymentCreatedETH event:', foundAddress);
+                    break;
+                  }
+                } catch (e) {
+                  // Ce n'est pas InstantPaymentCreatedETH, continuer
+                }
+
+                // Essayer InstantPaymentCreatedERC20
+                try {
+                  const decoded = decodeEventLog({
+                    abi: candidate.abi,
+                    data: log.data,
+                    topics: log.topics as any,
+                    eventName: 'InstantPaymentCreatedERC20',
+                  }) as any;
+                  
+                  if (decoded?.args?.paymentContract) {
+                    foundAddress = decoded.args.paymentContract as `0x${string}`;
+                    console.log('✅ Contrat trouvé via InstantPaymentCreatedERC20 event:', foundAddress);
+                    break;
+                  }
+                } catch (e) {
+                  // Ce n'est pas InstantPaymentCreatedERC20, continuer
+                }
               }
 
-              // Essayer PaymentCreatedERC20
-              try {
-                const decoded = decodeEventLog({
-                  abi: factoryAbiToUse,
-                  data: log.data,
-                  topics: log.topics as any,
-                  eventName: 'PaymentCreatedERC20',
-                }) as any;
-                
-                console.log('📋 PaymentCreatedERC20 décodé:', decoded);
-                
-                if (decoded?.args?.paymentContract) {
-                  foundAddress = decoded.args.paymentContract as `0x${string}`;
-                  console.log('✅ Contrat trouvé via PaymentCreatedERC20 event:', foundAddress);
-                  break;
-                } else {
-                  console.warn('⚠️ PaymentCreatedERC20 décodé mais paymentContract manquant');
-                }
-              } catch (e) {
-                // Ce n'est pas PaymentCreatedERC20, continuer
-                console.log('   ⚠️ Pas PaymentCreatedERC20:', (e as Error).message);
-              }
-
-              // Essayer InstantPaymentCreatedETH
-              try {
-                const decoded = decodeEventLog({
-                  abi: factoryAbiToUse,
-                  data: log.data,
-                  topics: log.topics as any,
-                  eventName: 'InstantPaymentCreatedETH',
-                }) as any;
-                
-                if (decoded?.args?.paymentContract) {
-                  foundAddress = decoded.args.paymentContract as `0x${string}`;
-                  console.log('✅ Contrat trouvé via InstantPaymentCreatedETH event:', foundAddress);
-                  break;
-                }
-              } catch (e) {
-                // Ce n'est pas InstantPaymentCreatedETH, continuer
-              }
-
-              // Essayer InstantPaymentCreatedERC20
-              try {
-                const decoded = decodeEventLog({
-                  abi: factoryAbiToUse,
-                  data: log.data,
-                  topics: log.topics as any,
-                  eventName: 'InstantPaymentCreatedERC20',
-                }) as any;
-                
-                if (decoded?.args?.paymentContract) {
-                  foundAddress = decoded.args.paymentContract as `0x${string}`;
-                  console.log('✅ Contrat trouvé via InstantPaymentCreatedERC20 event:', foundAddress);
-                  break;
-                }
-              } catch (e) {
-                // Ce n'est pas InstantPaymentCreatedERC20, continuer
+              if (foundAddress) {
+                break;
               }
             } catch (err) {
               // Erreur de décodage, continuer avec le log suivant

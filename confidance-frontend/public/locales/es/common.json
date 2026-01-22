@@ -61,7 +61,7 @@
     }
   },
   "home": {
-    "title": "Programa tus pagos cripto con confianza",
+    "title": "Protocolo de pago Web3",
     "subtitle": "Libéralas automáticamente en una fecha específica.",
     "badge": "Protocolo DeFi multichain.",
     "tagline": "Sin intermediarios. 100% on-chain.",
@@ -166,6 +166,14 @@
       "copyAddress": "Copiar dirección",
       "viewOnBasescan": "Ver en Basescan",
       "cancelPayment": "Cancelar pago"
+    },
+    "status": {
+      "pending": "Pendiente",
+      "active": "Activo",
+      "released": "Liberado",
+      "cancelled": "Cancelado",
+      "failed": "Fallido",
+      "completed": "Completado"
     },
     "period": {
       "all": "Todo",
@@ -439,6 +447,7 @@
       "title": "Crear un enlace de pago",
       "subtitle": "Genera un enlace compartible y recibe pagos directamente.",
       "sections": {
+        "identity": "Identidad del pago",
         "amountToken": "Monto y token",
         "paymentType": "Tipo de pago",
         "network": "Red",
@@ -456,7 +465,10 @@
         "frequency": "Frecuencia",
         "periods": "Períodos",
         "startAt": "Fecha de inicio",
-        "description": "Descripción (opcional)"
+        "description": "Descripción (opcional)",
+        "label": "Etiqueta",
+        "category": "Categoría",
+        "optional": "(opcional)"
       },
       "firstMonth": {
         "title": "Primer pago mensual",
@@ -467,7 +479,11 @@
         "info": "💡 Si introduces el mismo monto que el mensual, la opción se ignorará automáticamente."
       },
       "placeholders": {
-        "description": "Alquiler, suscripción SaaS, factura..."
+        "description": "Alquiler, suscripción SaaS, factura...",
+        "label": "p. ej., Suscripción Netflix"
+      },
+      "hint": {
+        "label": "Dale un título claro a tu enlace."
       },
       "errors": {
         "connectWallet": "Conecta tu wallet",
@@ -476,7 +492,8 @@
         "executeAt": "Fecha de ejecución requerida",
         "startAt": "Fecha de inicio requerida",
         "periods": "Períodos requeridos",
-        "firstMonthAmount": "Monto del primer pago mensual inválido"
+        "firstMonthAmount": "Monto del primer pago mensual inválido",
+        "labelTooLong": "La etiqueta es demasiado larga"
       },
       "generate": "Generar enlace",
       "generating": "Generando...",
@@ -496,6 +513,11 @@
       "button": "Mis enlaces de pago",
       "title": "Mis enlaces de pago",
       "empty": "No hay enlaces de pago",
+      "unnamed": "Pago sin nombre",
+      "filter": {
+        "label": "Filtrar por categoría",
+        "all": "Todas"
+      },
       "status": "Estado",
       "amount": "Monto",
       "type": "Tipo",
@@ -524,7 +546,9 @@
         "type": "Tipo",
         "network": "Red",
         "beneficiary": "Beneficiario",
-        "description": "Descripción"
+        "description": "Descripción",
+        "label": "Etiqueta del pago",
+        "unnamed": "Pago sin nombre"
       },
       "errors": {
         "notFound": "Enlace de pago no encontrado",

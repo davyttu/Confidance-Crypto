@@ -8,7 +8,7 @@ import { useTranslationReady } from '@/hooks/useTranslationReady';
 import { Payment } from '@/hooks/useDashboard';
 import { useEthUsdPrice } from '@/hooks/useEthUsdPrice';
 import { formatAmount } from '@/lib/utils/amountFormatter';
-import { getToken } from '@/config/tokens';
+import { getToken, isZeroAddress } from '@/config/tokens';
 import { erc20Abi } from '@/lib/contracts/erc20Abi';
 
 interface StatsCardsProps {
@@ -52,9 +52,15 @@ export function StatsCards({ payments, selectedWallets = [] }: StatsCardsProps) 
   }, [payments]);
 
   const pending = payments.filter(p => p.status === 'pending').length;
-  const recurringPending = payments.filter(p => {
-    const isRecurring = p.is_recurring || p.payment_type === 'recurring';
-    return isRecurring && p.status === 'pending';
+  const recurringActive = payments.filter((payment) => {
+    const isRecurring = payment.is_recurring || payment.payment_type === 'recurring';
+    if (!isRecurring) return false;
+    if (payment.status === 'completed') return false;
+    if (payment.status !== 'active' && payment.status !== 'pending') return false;
+    const executed = Number(payment.executed_months ?? 0);
+    const total = Number(payment.total_months ?? 0);
+    if (!Number.isFinite(total) || total <= 0) return true;
+    return executed < total;
   }).length;
 
   const addressesToQuery = useMemo(() => {
@@ -78,6 +84,23 @@ export function StatsCards({ payments, selectedWallets = [] }: StatsCardsProps) 
     let isMounted = true;
     const usdcToken = getToken('USDC');
     const usdtToken = getToken('USDT');
+    const canReadToken = (token: { address: string; isNative: boolean }) =>
+      !token.isNative && !isZeroAddress(token.address);
+
+    const readTokenBalance = async (token: typeof usdcToken, wallet: `0x${string}`) => {
+      if (!canReadToken(token)) return 0n;
+      try {
+        return await publicClient.readContract({
+          address: token.address,
+          abi: erc20Abi,
+          functionName: 'balanceOf',
+          args: [wallet],
+        }) as bigint;
+      } catch (err) {
+        console.warn('⚠️ BalanceOf failed for token', token.symbol, err);
+        return 0n;
+      }
+    };
 
     const fetchBalances = async () => {
       setBalancesLoading(true);
@@ -93,18 +116,8 @@ export function StatsCards({ payments, selectedWallets = [] }: StatsCardsProps) 
             const addressValue = wallet as `0x${string}`;
             const [eth, usdc, usdt] = await Promise.all([
               publicClient.getBalance({ address: addressValue }),
-              publicClient.readContract({
-                address: usdcToken.address,
-                abi: erc20Abi,
-                functionName: 'balanceOf',
-                args: [addressValue],
-              }) as Promise<bigint>,
-              publicClient.readContract({
-                address: usdtToken.address,
-                abi: erc20Abi,
-                functionName: 'balanceOf',
-                args: [addressValue],
-              }) as Promise<bigint>,
+              readTokenBalance(usdcToken, addressValue),
+              readTokenBalance(usdtToken, addressValue),
             ]);
 
             ethTotal += eth;
@@ -307,7 +320,7 @@ export function StatsCards({ payments, selectedWallets = [] }: StatsCardsProps) 
             </svg>
           </div>
         </div>
-        <p className="text-3xl font-bold mb-1">{recurringPending}</p>
+        <p className="text-3xl font-bold mb-1">{recurringActive}</p>
         <p className="text-xs opacity-85">
           {ready ? t('dashboard.stats.recurringPayments', { defaultValue: 'Recurring payment' }) : 'Recurring payment'}
         </p>

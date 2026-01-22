@@ -11,9 +11,26 @@ import { fr } from 'date-fns/locale';
 import { Copy, ExternalLink, Mail, X, Edit2, ChevronDown, ChevronRight } from 'lucide-react';
 import { BeneficiariesDropdown } from './BeneficiariesDropdown';
 import { RecurringPaymentHistory } from './RecurringPaymentHistory';
+import {
+  CATEGORY_COLORS,
+  CATEGORY_ICONS,
+  CATEGORY_LABELS,
+  PaymentCategory
+} from '@/types/payment-identity';
+
+type DashboardPayment = Payment & {
+  __isNew?: boolean;
+  __recurringInstance?: {
+    monthNumber: number;
+    executionTime: number;
+  };
+  __parentId?: string;
+  __parentPayment?: Payment;
+  __monthlyStatuses?: Array<'executed' | 'failed' | 'pending' | 'cancelled'>;
+};
 
 interface TransactionRowProps {
-  payment: Payment;
+  payment: DashboardPayment;
   onRename: (address: string) => void;
   onCancel: (payment: Payment) => void;
   onDelete: (payment: Payment) => void;
@@ -28,11 +45,31 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [showContractTooltip, setShowContractTooltip] = useState(false);
   const tooltipHideTimeoutRef = useRef<number | null>(null);
+  const isRecurringInstance = Boolean(payment.__recurringInstance);
+  const cancelTargetPayment = payment.__parentPayment ?? payment;
 
   // Vérifier si c'est un paiement récurrent
-  const isRecurring = payment.is_recurring || payment.payment_type === 'recurring';
+  const isRecurringParent = (payment.is_recurring || payment.payment_type === 'recurring') && !isRecurringInstance;
+  const isRecurring = isRecurringParent;
   const deletableStatuses = new Set(['released', 'cancelled', 'failed', 'completed']);
-  const canDelete = deletableStatuses.has(payment.status);
+  const canDelete = !isRecurringInstance && deletableStatuses.has(payment.status);
+  const totalMonths = Number(payment.total_months || 0);
+  const executedMonthsRaw = Number(payment.executed_months || 0);
+  const isCompletedRecurring =
+    isRecurringParent &&
+    totalMonths > 0 &&
+    (payment.status === 'completed' || executedMonthsRaw >= totalMonths);
+  const isLastRecurringInstance =
+    isRecurringInstance &&
+    totalMonths > 0 &&
+    Boolean(payment.__recurringInstance) &&
+    payment.__recurringInstance.monthNumber >= totalMonths;
+  const canCancelRecurringProcess =
+    payment.cancellable &&
+    !isCompletedRecurring &&
+    !isLastRecurringInstance &&
+    payment.status !== 'cancelled' &&
+    payment.status !== 'failed';
 
   const beneficiaryName = getBeneficiaryName(payment.payee_address);
   const displayName = beneficiaryName || `${payment.payee_address.slice(0, 6)}...${payment.payee_address.slice(-4)}`;
@@ -63,6 +100,12 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
   const getRecurringDisplayAmount = () => {
     const isFirstMonthCustom =
       payment.is_first_month_custom === true || payment.is_first_month_custom === 'true';
+    if (payment.__recurringInstance) {
+      return payment.amount;
+    }
+    if (isFirstMonthCustom && payment.monthly_amount) {
+      return payment.monthly_amount;
+    }
     if (isFirstMonthCustom && payment.first_month_amount) {
       return payment.first_month_amount;
     }
@@ -164,6 +207,37 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
     return types;
   };
 
+  const resolvePaymentLabel = () => {
+    const rawLabel =
+      typeof payment.payment_label === 'string'
+        ? payment.payment_label.trim()
+        : typeof payment.label === 'string'
+        ? payment.label.trim()
+        : '';
+    return rawLabel;
+  };
+
+  const resolvePaymentCategory = () => {
+    const rawCategory =
+      typeof payment.payment_categorie === 'string'
+        ? payment.payment_categorie.trim()
+        : typeof payment.payment_category === 'string'
+        ? payment.payment_category.trim()
+        : typeof payment.category === 'string'
+        ? payment.category.trim()
+        : '';
+
+    const categoryKeys = Object.keys(CATEGORY_LABELS) as PaymentCategory[];
+    const normalizedCategory = categoryKeys.includes(rawCategory as PaymentCategory)
+      ? (rawCategory as PaymentCategory)
+      : null;
+
+    return {
+      raw: rawCategory,
+      key: normalizedCategory
+    };
+  };
+
   // Statut avec badge
   const getStatusBadge = () => {
     const statusClass = {
@@ -172,6 +246,7 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
       released: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
       cancelled: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
       failed: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+      completed: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
     };
 
     const statusLabels = {
@@ -180,11 +255,27 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
       released: translationsReady ? t('dashboard.status.released') : 'Libéré',
       cancelled: translationsReady ? t('dashboard.status.cancelled') : 'Annulé',
       failed: translationsReady ? t('dashboard.status.failed') : 'Échoué',
+      completed: translationsReady ? t('dashboard.status.completed', { defaultValue: 'Terminé' }) : 'Terminé',
     };
 
+    const isRecurringParent = (payment.payment_type === 'recurring' || payment.is_recurring) && !isRecurringInstance;
+    const hasAllMonths =
+      isRecurringParent &&
+      typeof payment.executed_months === 'number' &&
+      typeof payment.total_months === 'number' &&
+      payment.executed_months >= payment.total_months;
+    const derivedStatus = isRecurringInstance
+      ? payment.status
+      : (hasAllMonths || payment.status === 'completed' ? 'completed' : payment.status);
+    const hasWarning =
+      derivedStatus === 'completed' &&
+      typeof payment.last_execution_hash === 'string' &&
+      payment.last_execution_hash.toLowerCase().startsWith('skipped');
+
     return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusClass[payment.status as keyof typeof statusClass] || statusClass.pending}`}>
-        {statusLabels[payment.status as keyof typeof statusLabels] || payment.status}
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusClass[derivedStatus as keyof typeof statusClass] || statusClass.pending}`}>
+        {hasWarning ? '⚠️ ' : ''}
+        {statusLabels[derivedStatus as keyof typeof statusLabels] || derivedStatus}
       </span>
     );
   };
@@ -199,6 +290,59 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
           setContextMenu({ x: event.clientX, y: event.clientY });
         }}
       >
+        {/* Libellé & catégorie */}
+        <td className="px-6 py-4 whitespace-nowrap">
+          {(() => {
+            const label = resolvePaymentLabel();
+            const { raw, key } = resolvePaymentCategory();
+            const lang = (i18n.language || 'fr').split('-')[0];
+            const categoryLabel = key
+              ? CATEGORY_LABELS[key][lang] || CATEGORY_LABELS[key].en
+              : raw;
+            const categoryIcon = key ? CATEGORY_ICONS[key] : raw ? '🏷️' : '📌';
+            const categoryStyles = key
+              ? CATEGORY_COLORS[key]
+              : {
+                  bg: 'bg-gray-50 dark:bg-gray-950/30',
+                  text: 'text-gray-700 dark:text-gray-300',
+                  border: 'border-gray-200 dark:border-gray-800'
+                };
+            const isNew = Boolean(payment.__isNew);
+            const recurringInstanceLabel = payment.__recurringInstance
+              ? `Mensualité ${payment.__recurringInstance.monthNumber}${payment.total_months ? `/${payment.total_months}` : ''}`
+              : null;
+
+            return (
+              <div className="flex min-w-[160px] flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <span
+                    className="text-sm font-medium text-gray-900 dark:text-white truncate max-w-[180px]"
+                    title={label || 'Sans libellé'}
+                  >
+                    {label || 'Sans libellé'}
+                  </span>
+                  {isNew && (
+                    <span className="inline-flex items-center rounded-full bg-gradient-to-r from-pink-500 to-purple-600 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow-sm">
+                      NEW
+                    </span>
+                  )}
+                </div>
+                <span
+                  className={`inline-flex w-fit items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${categoryStyles.bg} ${categoryStyles.text} ${categoryStyles.border}`}
+                  title={categoryLabel || 'Sans catégorie'}
+                >
+                  <span aria-hidden="true">{categoryIcon}</span>
+                  <span>{categoryLabel || 'Sans catégorie'}</span>
+                </span>
+                {recurringInstanceLabel && (
+                  <span className="inline-flex w-fit items-center rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs text-blue-700 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-200">
+                    {recurringInstanceLabel}
+                  </span>
+                )}
+              </div>
+            );
+          })()}
+        </td>
         {/* Bénéficiaire */}
         <td className="px-6 py-4 whitespace-nowrap">
           <div className="flex items-center gap-2">
@@ -363,9 +507,9 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
               <Mail className="w-4 h-4" />
             </button>
           )}
-          {payment.status === 'pending' && payment.cancellable && (
+          {(payment.status === 'pending' || isRecurringParent || isRecurringInstance) && canCancelRecurringProcess && (
             <button
-              onClick={() => onCancel(payment)}
+              onClick={() => onCancel(cancelTargetPayment)}
               className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
               title="Annuler"
             >
@@ -378,7 +522,7 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
     {contextMenuPortal}
     {isRecurring && isExpanded && (
       <tr className="border-b border-gray-200">
-        <td colSpan={7} className="p-0">
+        <td colSpan={8} className="p-0">
           <RecurringPaymentHistory payment={payment} />
         </td>
       </tr>

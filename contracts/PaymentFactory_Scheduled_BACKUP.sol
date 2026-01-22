@@ -30,6 +30,7 @@ contract PaymentFactory_Scheduled {
     
     address public constant PROTOCOL_WALLET = 0xa34eDf91Cc494450000Eef08e6563062B2F115a9;
     uint256 public constant FEE_BASIS_POINTS = 179;
+    uint256 public constant SECONDS_PER_MONTH = 30 * 24 * 60 * 60;
     
     // ============================================================
     // EVENTS
@@ -360,7 +361,8 @@ contract PaymentFactory_Scheduled {
             _totalMonths,
             _dayOfMonth,
             PROTOCOL_WALLET,
-            FEE_BASIS_POINTS
+            FEE_BASIS_POINTS,
+            SECONDS_PER_MONTH
         );
         
         emit RecurringPaymentCreatedERC20(

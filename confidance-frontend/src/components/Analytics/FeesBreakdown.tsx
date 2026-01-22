@@ -2,21 +2,19 @@
 'use client';
 
 import { MonthlyStats } from '@/hooks/useMonthlyAnalytics';
-import { useTranslationReady } from '@/hooks/useTranslationReady';
 
 interface FeesBreakdownProps {
   stats: MonthlyStats;
 }
 
 export function FeesBreakdown({ stats }: FeesBreakdownProps) {
-  const { t } = useTranslationReady();
   const { costs } = stats;
 
   return (
     <div className="bg-white rounded-xl shadow">
       <div className="px-6 py-4 border-b border-gray-200">
         <h2 className="text-lg font-semibold text-gray-900">
-          {t('analytics.fees.title', { defaultValue: 'Fees Breakdown' })} - {stats.displayMonth}
+          Décomposition des Frais - {stats.displayMonth}
         </h2>
       </div>
 
@@ -24,9 +22,7 @@ export function FeesBreakdown({ stats }: FeesBreakdownProps) {
         {/* Frais de Gas */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-700">
-              {t('analytics.fees.gas', { defaultValue: 'Gas Fees (Base Network)' })}
-            </span>
+            <span className="text-sm font-medium text-gray-700">Frais de Gaz (Base Network)</span>
             <span className="text-sm font-mono text-gray-900">
               {costs.gasFeesFormatted} ETH ({costs.gasPercentage.toFixed(0)}%)
             </span>
@@ -42,9 +38,7 @@ export function FeesBreakdown({ stats }: FeesBreakdownProps) {
         {/* Frais Protocole */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-700">
-              {t('analytics.fees.protocol', { defaultValue: 'Confidance Protocol Fees (1.79%)' })}
-            </span>
+            <span className="text-sm font-medium text-gray-700">Frais Protocole Confidance (1.79%)</span>
             <span className="text-sm font-mono text-gray-900">
               {costs.protocolFeesFormatted} ETH ({costs.protocolPercentage.toFixed(0)}%)
             </span>
@@ -60,9 +54,7 @@ export function FeesBreakdown({ stats }: FeesBreakdownProps) {
         {/* Total */}
         <div className="pt-4 border-t border-gray-200">
           <div className="flex items-center justify-between">
-            <span className="text-base font-bold text-gray-900">
-              {t('analytics.fees.totalMonthly', { defaultValue: 'TOTAL MONTHLY FEES' })}
-            </span>
+            <span className="text-base font-bold text-gray-900">TOTAL FRAIS MENSUELS</span>
             <span className="text-lg font-mono font-bold text-gray-900">
               {stats.totalFeesFormatted} ETH
             </span>
@@ -81,17 +73,11 @@ export function FeesBreakdown({ stats }: FeesBreakdownProps) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <div className="text-sm text-blue-800">
-              <p className="font-medium mb-1">
-                {t('analytics.fees.tipTitle', { defaultValue: '💡 Optimization tip' })}
-              </p>
+              <p className="font-medium mb-1">💡 Astuce d'optimisation</p>
               <p>
                 {costs.gasPercentage > 60 
-                  ? t('analytics.fees.tipHighGas', {
-                    defaultValue: 'Gas fees make up most of your costs. Favor off-peak hours (weekends, nights) to save up to 30%.',
-                  })
-                  : t('analytics.fees.tipBalanced', {
-                    defaultValue: 'Your fees are balanced between gas and protocol. Keep it up!',
-                  })
+                  ? "Vos frais de gaz représentent la majorité des coûts. Privilégiez les heures creuses (week-end, nuit) pour économiser jusqu'à 30%."
+                  : "Vos frais sont équilibrés entre gas et protocole. Continuez ainsi !"
                 }
               </p>
             </div>

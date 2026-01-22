@@ -58,7 +58,7 @@ contract RecurringPaymentERC20 is ReentrancyGuard {
     // Constantes
     address public constant PROTOCOL_WALLET = 0xa34eDf91Cc494450000Eef08e6563062B2F115a9;
     uint256 public constant BASIS_POINTS_DENOMINATOR = 10000;
-    uint256 public constant SECONDS_PER_MONTH = 30 days;
+    uint256 public immutable SECONDS_PER_MONTH;
 
     // ============================================================
     // EVENTS
@@ -116,6 +116,7 @@ contract RecurringPaymentERC20 is ReentrancyGuard {
         uint256 _dayOfMonth,
         address _protocolOwner,
         uint256 _feeBps
+    ,        uint256 _secondsPerMonth
     ) {
         require(_payer != address(0), "Invalid payer");
         require(_payee != address(0), "Invalid payee");
@@ -125,6 +126,7 @@ contract RecurringPaymentERC20 is ReentrancyGuard {
         require(_totalMonths >= 1 && _totalMonths <= 12, "Total months must be 1-12");
         require(_dayOfMonth >= 1 && _dayOfMonth <= 28, "Day of month must be 1-28");
         require(_protocolOwner != address(0), "Invalid protocol owner");
+        require(_secondsPerMonth > 0, "Invalid secondsPerMonth");
 
         payer = _payer;
         payee = _payee;
@@ -150,6 +152,7 @@ contract RecurringPaymentERC20 is ReentrancyGuard {
 
         protocolOwner = _protocolOwner;
         feeBps = _feeBps;
+        SECONDS_PER_MONTH = _secondsPerMonth;
 
         nextMonthToProcess = 0;
         totalPaid = 0;

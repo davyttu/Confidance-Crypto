@@ -15,63 +15,78 @@ async function main() {
   console.log("💰 Solde :", hre.ethers.formatEther(balance), "ETH");
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
-  // Vérifier qu'on est sur Base Mainnet
-  if (network.chainId !== 8453n) {
-    throw new Error("❌ Pas sur Base Mainnet ! ChainId devrait être 8453");
+  // ✅ Autoriser PROD (Base Mainnet) ou TEST (Base Sepolia)
+  const isBaseMainnet = network.chainId === 8453n;
+  const isBaseSepolia = network.chainId === 84532n;
+
+  if (!isBaseMainnet && !isBaseSepolia) {
+    throw new Error("❌ Réseau non supporté (Base Mainnet ou Base Sepolia requis)");
   }
 
+  // ===============================
+  // ⏱️ CONFIG TEMPS (CLÉ DU TEST)
+  // ===============================
+  const SECONDS_PER_MONTH = isBaseMainnet
+    ? 30 * 24 * 60 * 60   // PROD → 30 jours
+    : 300;                // TEST → 5 minutes
+
+  console.log("⏱️ Seconds per month :", SECONDS_PER_MONTH);
   console.log("📦 Compilation en cours...");
 
-  const PaymentFactory = await hre.ethers.getContractFactory("PaymentFactory_Recurring");
+  const PaymentFactory = await hre.ethers.getContractFactory(
+    "PaymentFactory_Recurring"
+  );
 
   console.log("🚀 Déploiement PaymentFactory_Recurring (Recurring Payments ERC20)...");
-  const factory = await PaymentFactory.deploy();
+
+  // ⚠️ CONSTRUCTOR MODIFIÉ (argument ajouté)
+  const factory = await PaymentFactory.deploy(SECONDS_PER_MONTH);
   await factory.waitForDeployment();
+
   const factoryAddress = await factory.getAddress();
 
   console.log("\n✅ Factory déployée avec succès !");
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
   console.log("📍 Adresse Factory :", factoryAddress);
-  console.log("🔍 Basescan :", `https://basescan.org/address/${factoryAddress}`);
+  console.log(
+    "🔍 Basescan :",
+    isBaseMainnet
+      ? `https://basescan.org/address/${factoryAddress}`
+      : `https://sepolia.basescan.org/address/${factoryAddress}`
+  );
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
   console.log("🔎 Fonctions disponibles :");
-  console.log("   ✅ createRecurringPaymentERC20() - Single recurring payment ERC20");
-  console.log("   ✅ createBatchRecurringPaymentERC20() - Batch recurring payment ERC20");
-  console.log("   ✅ adminExecutePayment() - Admin fallback pour exécuter un paiement");
-  console.log("   ✅ adminCancel() - Admin fallback pour annuler");
-  console.log("   ✅ previewFeePerMonth(payer) - Helper pour calculer les fees");
-  console.log("   ⚠️  Scheduled payments: utiliser PaymentFactory_Scheduled");
-  console.log("   ⚠️  Instant payments: utiliser PaymentFactory_Instant\n");
-  console.log("   ⚙️  Fees dynamiques via allowlist PRO (owner)\n");
+  console.log("   ✅ createRecurringPaymentERC20()");
+  console.log("   ✅ createBatchRecurringPaymentERC20()");
+  console.log("   ✅ adminExecutePayment()");
+  console.log("   ✅ adminCancel()");
+  console.log("   ✅ previewFeePerMonth()");
+  console.log("   ⚙️  Fees dynamiques via allowlist PRO\n");
 
   const deploymentInfo = {
     version: "RECURRING_ONLY",
-    network: "base_mainnet",
+    environment: isBaseMainnet ? "prod" : "test",
+    network: network.name,
     chainId: network.chainId.toString(),
     factoryAddress: factoryAddress,
     deployedAt: new Date().toISOString(),
     deployedBy: deployer.address,
-
-    features: [
-      "✅ Single Recurring Payment ERC20 (USDC/USDT)",
-      "✅ Batch Recurring Payment ERC20 (multi-bénéficiaires)",
-      "✅ Admin fallback functions (execute/cancel)",
-      "✅ Fees dynamiques (PRO allowlist)",
-      "❌ Scheduled Payments (disponibles dans PaymentFactory_Scheduled)",
-      "❌ Instant Payments (disponibles dans PaymentFactory_Instant)"
-    ],
 
     constants: {
       protocolWallet: "0xa34eDf91Cc494450000Eef08e6563062B2F115a9",
       feeBpsParticular: 179,
       feeBpsPro: 156,
       feePercentParticular: "1.79%",
-      feePercentPro: "1.56%"
+      feePercentPro: "1.56%",
+      secondsPerMonth: SECONDS_PER_MONTH
     }
   };
 
-  const filename = "factory-recurring-deployment.json";
+  const filename = isBaseMainnet
+    ? "factory-recurring-deployment.json"
+    : "factory-recurring-deployment.test.json";
+
   fs.writeFileSync(filename, JSON.stringify(deploymentInfo, null, 2));
   console.log(`📄 Info sauvegardée dans ${filename}\n`);
 
@@ -80,12 +95,14 @@ async function main() {
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
   console.log("1️⃣  VÉRIFIER LE CONTRAT SUR BASESCAN");
-  console.log(`   npx hardhat verify --network base_mainnet ${factoryAddress}\n`);
+  console.log(
+    `   npx hardhat verify --network ${
+      isBaseMainnet ? "base_mainnet" : "base_sepolia"
+    } ${factoryAddress} ${SECONDS_PER_MONTH}\n`
+  );
 
   console.log("2️⃣  METTRE À JOUR LE FRONTEND");
-  console.log(`   📁 confidance-frontend/src/lib/contracts/addresses.ts`);
-  console.log(`   📁 confidance-frontend/src/hooks/useCreateRecurringPayment.ts`);
-  console.log(`      const PAYMENT_FACTORY_RECURRING = '${factoryAddress}';\n`);
+  console.log("   ↳ utiliser l’adresse correspondant à l’environnement\n");
 
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 }

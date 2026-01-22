@@ -23,11 +23,15 @@ const CHECK_INTERVAL = parseInt(process.env.CHECK_INTERVAL) || 60000; // 60 seco
 // ✅ Mapping NETWORK -> network string pour Supabase
 const NETWORK_MAP = {
   base: "base_mainnet",
+  base_sepolia: "base_sepolia",
+  "base-sepolia": "base_sepolia",
   polygon: "polygon_mainnet",
   arbitrum: "arbitrum_mainnet",
   avalanche: "avalanche_mainnet",
 };
 const NETWORK_STRING = NETWORK_MAP[NETWORK] || `chain_${NETWORK}`;
+const EXPLORER_BASE =
+  NETWORK_STRING === "base_sepolia" ? "https://sepolia.basescan.org" : "https://basescan.org";
 
 // Supabase Configuration
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -196,7 +200,7 @@ const RECURRING_PAYMENT_ABI = [
 ];
 
 // Constante pour calcul du prochain mois (30 jours)
-const MONTH_IN_SECONDS = 2592000;
+const MONTH_IN_SECONDS = parseInt(process.env.SECONDS_PER_MONTH, 10) || 2592000;
 
 // ============================================================
 // HELPER : FORMATER MONTANT AVEC SYMBOLE
@@ -386,6 +390,7 @@ async function loadRecurringPayments() {
       .from("recurring_payments")
       .select("*")
       .in("status", ["pending", "active"])
+      .eq("network", NETWORK_STRING)
       .lte("next_execution_time", now)
       .order("next_execution_time", { ascending: true });
 
@@ -416,7 +421,7 @@ async function loadRecurringPayments() {
       nextExecutionTime: row.next_execution_time,
       status: row.status,
       userId: row.user_id,
-      category: row.category || null,
+      category: row.payment_category || null,
       name: `🔄 Recurring #${row.id.substring(0, 8)} (${row.token_symbol}, ${row.executed_months}/${row.total_months} mois)`,
     }));
 
@@ -562,7 +567,8 @@ async function updateRecurringAfterExecution(paymentId, txHash, executedMonths, 
     if (nextMonthToProcess !== null && startDate !== null && !isCompleted) {
       nextExecutionTime = startDate + (nextMonthToProcess * MONTH_IN_SECONDS);
     } else {
-      nextExecutionTime = isCompleted ? null : now + MONTH_IN_SECONDS;
+      // NOTE: next_execution_time est NOT NULL en DB → garder une valeur valide
+      nextExecutionTime = isCompleted ? now : now + MONTH_IN_SECONDS;
     }
     
     const newStatus = isCompleted ? "completed" : "active";
@@ -903,7 +909,7 @@ async function executeScheduledPayment(payment) {
 
     const receipt = await tx.wait();
     console.log(`   ✅ SUCCESS! Block: ${receipt.blockNumber}`);
-    console.log(`   🔗 https://basescan.org/tx/${tx.hash}`);
+    console.log(`   🔗 ${EXPLORER_BASE}/tx/${tx.hash}`);
 
     await markScheduledAsReleased(payment.id, tx.hash);
 
@@ -992,7 +998,7 @@ async function executeRecurringPayment(payment) {
 
     const receipt = await tx.wait();
     console.log(`   ✅ TX SUCCESS! Block: ${receipt.blockNumber}`);
-    console.log(`   🔗 https://basescan.org/tx/${tx.hash}`);
+    console.log(`   🔗 ${EXPLORER_BASE}/tx/${tx.hash}`);
 
     // ✅ FIX CRITIQUE : VÉRIFIER LES EVENTS pour savoir si le paiement a vraiment réussi
     // Le contrat peut retourner SUCCESS même si le transfert a échoué (strict skip)
@@ -1005,6 +1011,7 @@ async function executeRecurringPayment(payment) {
     let paymentSucceeded = false;
     let paymentFailed = false;
     let failureReason = null;
+    let failedMonthNumber = null;
 
     for (const log of receipt.logs) {
       if (log.topics[0] === MONTHLY_PAYMENT_EXECUTED_TOPIC) {
@@ -1021,6 +1028,7 @@ async function executeRecurringPayment(payment) {
           ]);
           const decoded = iface.parseLog({ topics: log.topics, data: log.data });
           failureReason = decoded.args.reason;
+          failedMonthNumber = Number(decoded.args.monthNumber || 0);
           console.log(`   📋 Failure reason: ${failureReason}`);
         } catch (e) {
           console.log(`   ⚠️ Could not decode failure reason: ${e.message}`);
@@ -1157,6 +1165,25 @@ async function executeRecurringPayment(payment) {
       console.log(`   ⏳ Payment not ready yet: ${errorMsg.substring(0, 100)}`);
       console.log(`   ✅ Will retry automatically when ready`);
       return; // Ne pas marquer comme failed, juste attendre
+    }
+
+    if (errorMsg.includes("All payment periods completed")) {
+      console.log(`   ✅ Payment completed on-chain, syncing DB as completed`);
+      try {
+        const contract = new ethers.Contract(payment.contractAddress, RECURRING_PAYMENT_ABI, wallet);
+        const executedMonthsOnChain = await contract.executedMonths();
+        const totalMonthsOnChain = await contract.totalMonths();
+
+        await updateRecurringAfterExecution(
+          payment.id,
+          "completed",
+          Number(executedMonthsOnChain),
+          Number(totalMonthsOnChain)
+        );
+      } catch (syncError) {
+        console.error(`   ⚠️ Erreur synchronisation DB (completed):`, syncError.message);
+      }
+      return;
     }
 
     // ⚠️ Skip-on-failure : Balance insuffisante ou transfert échoué

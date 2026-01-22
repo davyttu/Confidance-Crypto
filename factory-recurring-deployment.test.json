@@ -1,0 +1,17 @@
+{
+  "version": "RECURRING_ONLY",
+  "environment": "test",
+  "network": "base_sepolia",
+  "chainId": "84532",
+  "factoryAddress": "0xEFa8C5b8d7A7f7dcE6F68da21d9d5Ef8e1042cE6",
+  "deployedAt": "2026-01-21T16:37:58.843Z",
+  "deployedBy": "0x9DE23D58d4064Fcf7347E64D19FE64BB4aac2Bf6",
+  "constants": {
+    "protocolWallet": "0xa34eDf91Cc494450000Eef08e6563062B2F115a9",
+    "feeBpsParticular": 179,
+    "feeBpsPro": 156,
+    "feePercentParticular": "1.79%",
+    "feePercentPro": "1.56%",
+    "secondsPerMonth": 300
+  }
+}

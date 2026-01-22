@@ -14,6 +14,8 @@ create table if not exists public.payment_links (
   execute_at bigint,
   chain_id integer not null,
   description text,
+  payment_label text,
+  payment_categorie text,
   status text not null default 'pending', -- pending | active | paid | expired | cancelled
   first_month_amount text,
   is_first_month_custom boolean not null default false,

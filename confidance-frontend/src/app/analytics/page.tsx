@@ -7,7 +7,6 @@ import { useMonthlyAnalytics } from '@/hooks/useMonthlyAnalytics';
 import { useEthUsdPrice } from '@/hooks/useEthUsdPrice';
 import { usePaymentTransactions } from '@/hooks/usePaymentTransactions';
 import { useAuth } from '@/hooks/useAuth';
-import { useTranslationReady } from '@/hooks/useTranslationReady';
 import { KPICards } from '@/components/Analytics/KPICards';
 import { TransactionTypeTable } from '@/components/Analytics/TransactionTypeTable';
 import { FeesBreakdown } from '@/components/Analytics/FeesBreakdown';
@@ -16,7 +15,6 @@ import { ExportActions } from '@/components/Analytics/ExportActions';
 import { CategoryInsights, type CategoryInsight } from '@/components/Analytics/CategoryInsights';
 
 export default function AnalyticsPage() {
-  const { t, i18n } = useTranslationReady();
   const { address, isConnected } = useAccount();
   const { priceUsd } = useEthUsdPrice();
   const { user, isAuthenticated } = useAuth();
@@ -152,7 +150,6 @@ export default function AnalyticsPage() {
     ? monthlyData.find((month) => month.month === selectedMonthKey) || currentMonth
     : currentMonth;
 
-  const locale = i18n.language || 'en';
 
   useEffect(() => {
     if (!selectedYear && availableYears.length > 0) {
@@ -336,12 +333,10 @@ export default function AnalyticsPage() {
               </svg>
             </div>
             <h3 className="text-xl font-bold text-gray-900 mb-2">
-              {t('analytics.connectTitle', { defaultValue: 'Connect your wallet' })}
+              Connectez votre wallet
             </h3>
             <p className="text-gray-600">
-              {t('analytics.connectSubtitle', {
-                defaultValue: 'To access your analytics, connect your wallet first',
-              })}
+              Pour accéder à vos analytics, connectez d'abord votre wallet
             </p>
           </div>
         </div>
@@ -374,9 +369,7 @@ export default function AnalyticsPage() {
       <div className="min-h-screen bg-gray-50 py-12 px-4">
         <div className="max-w-7xl mx-auto">
           <div className="bg-red-50 border border-red-200 rounded-xl p-6">
-            <p className="text-red-800">
-              {t('analytics.loadError', { defaultValue: 'Error loading data:' })} {paymentsError.message}
-            </p>
+            <p className="text-red-800">Erreur lors du chargement des données : {paymentsError.message}</p>
           </div>
         </div>
       </div>
@@ -390,11 +383,9 @@ export default function AnalyticsPage() {
         <div className="max-w-7xl mx-auto space-y-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                {t('analytics.title', { defaultValue: '📊 Monthly Analytics' })}
-              </h1>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">📊 Analytics Mensuels</h1>
               <p className="text-gray-600">
-                {t('analytics.subtitle', { defaultValue: 'Analyze your overall activity on the platform' })}
+                Analysez votre activité globale sur la plateforme
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -404,7 +395,7 @@ export default function AnalyticsPage() {
                 className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 disabled
               >
-                <option value="" disabled>{t('analytics.month', { defaultValue: 'Month' })}</option>
+                <option value="" disabled>Mois</option>
               </select>
               <select
                 value={selectedYear || ''}
@@ -412,7 +403,7 @@ export default function AnalyticsPage() {
                 className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 disabled
               >
-                <option value="" disabled>{t('analytics.year', { defaultValue: 'Year' })}</option>
+                <option value="" disabled>Année</option>
               </select>
             </div>
           </div>
@@ -422,10 +413,10 @@ export default function AnalyticsPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
             <h3 className="text-xl font-bold text-gray-900 mb-2">
-              {t('analytics.emptyTitle', { defaultValue: 'No data available' })}
+              Aucune donnée disponible
             </h3>
             <p className="text-gray-600">
-              {t('analytics.emptySubtitle', { defaultValue: 'Create your first payments to see your analytics' })}
+              Créez vos premiers paiements pour voir vos analytics
             </p>
           </div>
         </div>
@@ -440,11 +431,9 @@ export default function AnalyticsPage() {
         {/* En-tête + Sélecteurs */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              {t('analytics.title', { defaultValue: '📊 Monthly Analytics' })}
-            </h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">📊 Analytics Mensuels</h1>
             <p className="text-gray-600">
-              {t('analytics.subtitle', { defaultValue: 'Analyze your overall activity on the platform' })}
+              Analysez votre activité globale sur la plateforme
             </p>
           </div>
           {monthlyData.length > 0 && (
@@ -455,10 +444,10 @@ export default function AnalyticsPage() {
                 className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 disabled={!selectedYear || monthsForSelectedYear.length === 0}
               >
-                <option value="" disabled>{t('analytics.month', { defaultValue: 'Month' })}</option>
+                <option value="" disabled>Mois</option>
                 {monthsForSelectedYear.map((month) => (
                   <option key={month} value={month}>
-                    {new Intl.DateTimeFormat(locale, { month: 'long' }).format(new Date(2024, month - 1, 1))}
+                    {new Intl.DateTimeFormat('fr-FR', { month: 'long' }).format(new Date(2024, month - 1, 1))}
                   </option>
                 ))}
               </select>
@@ -467,7 +456,7 @@ export default function AnalyticsPage() {
                 onChange={(e) => setSelectedYear(Number(e.target.value))}
                 className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="" disabled>{t('analytics.year', { defaultValue: 'Year' })}</option>
+                <option value="" disabled>Année</option>
                 {availableYears.map((year) => (
                   <option key={year} value={year}>{year}</option>
                 ))}
@@ -490,8 +479,8 @@ export default function AnalyticsPage() {
         <div className="flex items-center justify-between bg-white rounded-xl shadow px-6 py-4">
           <div className="text-sm text-gray-700">
             {timelineOpen
-              ? t('analytics.timeline.open', { defaultValue: 'Timeline des événements exécutés' })
-              : t('analytics.timeline.closed', { defaultValue: 'Basé sur les événements exécutés du mois' })}
+              ? 'Timeline des événements exécutés'
+              : 'Basé sur les événements exécutés du mois'}
           </div>
           <button
             type="button"
@@ -509,8 +498,8 @@ export default function AnalyticsPage() {
             disabled={!hasToken}
           >
             {timelineOpen
-              ? t('analytics.timeline.hide', { defaultValue: 'Masquer la timeline' })
-              : t('analytics.timeline.show', { defaultValue: 'Voir les événements' })}
+              ? 'Masquer la timeline'
+              : 'Voir les événements'}
           </button>
         </div>
 
@@ -518,7 +507,7 @@ export default function AnalyticsPage() {
           <div className="bg-white rounded-xl shadow px-6 py-4 space-y-3">
             {timelineLoading && (
               <p className="text-sm text-gray-500">
-                {t('analytics.timeline.loading', { defaultValue: 'Chargement des événements...' })}
+                Chargement des événements...
               </p>
             )}
             {timelineError && (
@@ -528,7 +517,7 @@ export default function AnalyticsPage() {
             )}
             {!timelineLoading && !timelineError && timelineEvents.length === 0 && (
               <p className="text-sm text-gray-500">
-                {t('analytics.timeline.empty', { defaultValue: 'Aucun événement ce mois-ci.' })}
+                Aucun événement ce mois-ci.
               </p>
             )}
             {!timelineLoading && !timelineError && timelineEvents.length > 0 && (
@@ -537,7 +526,7 @@ export default function AnalyticsPage() {
                   <div key={`${event.created_at}-${index}`} className="border border-gray-200 rounded-lg p-3">
                     <div className="flex items-center justify-between text-sm text-gray-500">
                       <span>{event.event_label}</span>
-                      <span>{new Date(event.created_at).toLocaleDateString(locale)}</span>
+                      <span>{new Date(event.created_at).toLocaleDateString('fr-FR')}</span>
                     </div>
                     <div className="mt-1 text-gray-900">
                       {event.explanation}
