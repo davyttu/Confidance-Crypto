@@ -2,7 +2,8 @@
   "nav": {
     "home": "Home",
     "create": "Create",
-    "dashboard": "My Dashboard",
+    "dashboard": "Dashboard",
+    "liquidity": "Liquidity",
     "help": "Help",
     "analytics": "Analytics"
   },
@@ -143,6 +144,9 @@
     "title": "My Dashboard",
     "subtitle": "Manage your scheduled payments",
     "loading": "Loading your dashboard...",
+    "liquidity": {
+      "button": "My Liquidity"
+    },
     "stats": {
       "total": "Total sent",
       "pending": "Pending",

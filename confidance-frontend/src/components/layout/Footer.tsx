@@ -27,6 +27,7 @@ export function Footer() {
       { label: isMounted && ready ? t('footer.support') : 'Support', href: '/support' },
     ],
     legal: [
+      { label: isMounted && ready ? t('footer.legal') : 'Legal Notice', href: '/legal' },
       { label: isMounted && ready ? t('footer.terms') : 'Conditions', href: '/terms' },
       { label: isMounted && ready ? t('footer.privacy') : 'Confidentialité', href: '/privacy' },
     ],

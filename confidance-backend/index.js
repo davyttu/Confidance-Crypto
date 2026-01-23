@@ -1,4 +1,5 @@
 require('dotenv').config();
+const cron = require('node-cron'); // 🆕 AJOUTÉ pour le keeper de liquidité
 const express = require('express');
 const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
@@ -149,7 +150,7 @@ console.log('━━━━━━━━━━━━━━━━━━━━━━�
 console.log('🚀 CONFIDANCE CRYPTO API - BACKEND');
 console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 console.log(`📡 Port: ${PORT}`);
-console.log(`✨ Features: Auth + Payments + Beneficiaries + Recurring`); // ✅ MODIFIÉ (ajouté "+ Recurring")
+console.log(`✨ Features: Auth + Payments + Beneficiaries + Recurring + Liquidity`); // ✅ MODIFIÉ (ajouté "+ Recurring")
 console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
 // Routes d'authentification
@@ -165,7 +166,7 @@ app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
-    features: ['auth', 'single-payments', 'batch-payments', 'beneficiaries', 'recurring-payments', 'status-update'] // ✅ MODIFIÉ (ajouté 'recurring-payments')
+    features: ['auth', 'single-payments', 'batch-payments', 'beneficiaries', 'recurring-payments', 'status-update', 'liquidity'], keeper: { active: true, interval: '5 minutes', monitoring: ['liquidity-positions'] } // ✅ MODIFIÉ (ajouté 'recurring-payments')
   });
 });
 
@@ -1278,4 +1279,47 @@ app.listen(PORT, () => {
   console.log(`   GET  /api/payments/recurring/stats/:wallet - Stats récurrents`);
   console.log(`   POST /api/payment-transactions            - Enregistrer frais de gas`);
   console.log(`   GET  /api/payment-transactions/:id/:type  - Récupérer frais de gas\n`);
+   console.log(`   POST /api/liquidity/create                - Créer position liquidité`);
+  console.log(`   GET  /api/liquidity/position/:address     - Récupérer position active`);
+  console.log(`   POST /api/liquidity/repay                 - Rembourser dette`);
+  console.log(`   POST /api/liquidity/add-collateral        - Ajouter ETH collatéral`);
+  console.log(`   POST /api/liquidity/close                 - Clôturer position`);
+  console.log(`   GET  /api/liquidity/events/:positionId    - Historique événements`);
+  console.log(`   GET  /api/liquidity/health/:positionId    - Health factor temps réel`);
+  console.log(`   GET  /api/liquidity/calculate             - Calculer montants`);
 });
+// ============================================================
+// 🆕 ROUTES LIQUIDITÉ - AJOUTÉ POUR LA FONCTIONNALITÉ LIQUIDITÉ
+// ============================================================
+const liquidityRoutes = require('./routes/liquidity');
+app.use('/api/liquidity', liquidityRoutes);
+
+// ============================================================
+// 🆕 KEEPER SERVICE - SURVEILLANCE AUTOMATIQUE DES POSITIONS DE LIQUIDITÉ
+// ============================================================
+const keeperService = require('./services/keeperService');
+
+// Lancer la surveillance toutes les 5 minutes
+cron.schedule('*/5 * * * *', async () => {
+  console.log('🤖 [LIQUIDITY KEEPER] Running position monitoring...');
+  try {
+    await keeperService.monitorAllPositions();
+    console.log('✅ [LIQUIDITY KEEPER] Monitoring complete');
+  } catch (error) {
+    console.error('❌ [LIQUIDITY KEEPER] Monitoring failed:', error.message);
+  }
+});
+
+console.log('✅ Liquidity keeper scheduled (every 5 minutes)');
+
+// Optionnel : Exécuter immédiatement au démarrage (après 30 secondes)
+setTimeout(async () => {
+  console.log('🚀 [LIQUIDITY KEEPER] Initial monitoring run...');
+  try {
+    await keeperService.monitorAllPositions();
+    console.log('✅ [LIQUIDITY KEEPER] Initial monitoring complete');
+  } catch (error) {
+    console.error('❌ [LIQUIDITY KEEPER] Initial monitoring failed:', error.message);
+  }
+}, 30000);
+

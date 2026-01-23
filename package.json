@@ -11,13 +11,16 @@
   "dependencies": {
     "@gelatonetwork/automate-sdk": "^3.1.0",
     "@openzeppelin/contracts": "^5.4.0",
+    "@rainbow-me/rainbowkit": "^2.2.10",
     "@react-email/components": "^1.0.3",
     "@supabase/supabase-js": "^2.75.0",
     "ethers": "^5.7.2",
     "lucide-react": "^0.562.0",
     "next-intl": "^4.6.1",
     "react-email": "^5.1.1",
-    "resend": "^6.6.0"
+    "resend": "^6.6.0",
+    "viem": "^2.44.4",
+    "wagmi": "^3.4.1"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-ethers": "^3.0.8",

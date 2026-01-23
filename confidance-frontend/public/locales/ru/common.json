@@ -1,8 +1,9 @@
 {
   "nav": {
     "home": "Главная",
-    "create": "Создать",
-    "dashboard": "Моя панель",
+    "create": "Crear",
+    "dashboard": "Dashboard",
+    "liquidity": "Ликвидность",
     "help": "Помощь",
     "analytics": "Analytics"
   },
@@ -134,6 +135,9 @@
     "title": "Моя панель",
     "subtitle": "Управляйте запланированными платежами",
     "loading": "Загрузка панели...",
+    "liquidity": {
+      "button": "Моя Ликвидность"
+    },
     "stats": {
       "total": "Всего отправлено",
       "pending": "В ожидании",

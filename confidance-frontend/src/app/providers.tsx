@@ -11,7 +11,29 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { I18nextProvider, useTranslation } from 'react-i18next';
 import i18n from '@/lib/i18n';
 
-const queryClient = new QueryClient();
+// Singleton pour éviter les multiples initialisations de WalletConnect Core
+function makeQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 60 * 1000,
+      },
+    },
+  });
+}
+
+let browserQueryClient: QueryClient | undefined = undefined;
+
+function getQueryClient() {
+  if (typeof window === 'undefined') {
+    // Côté serveur: nouvelle instance à chaque fois
+    return makeQueryClient();
+  } else {
+    // Côté navigateur: réutilise la même instance
+    if (!browserQueryClient) browserQueryClient = makeQueryClient();
+    return browserQueryClient;
+  }
+}
 
 // Composant interne pour accéder à la langue i18n
 function RainbowKitProviderWithLocale({ children }: { children: React.ReactNode }) {
@@ -42,6 +64,8 @@ function RainbowKitProviderWithLocale({ children }: { children: React.ReactNode 
 }
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  const queryClient = getQueryClient();
+
   return (
     <I18nextProvider i18n={i18n}>
       <WagmiProvider config={config}>

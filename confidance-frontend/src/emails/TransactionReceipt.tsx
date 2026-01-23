@@ -54,7 +54,8 @@ export const TransactionReceiptEmail = ({
   paymentType,
   cancellable,
 }: TransactionReceiptEmailProps) => {
-  const statusInfo = statusLabels[status];
+  // Valeur par défaut si le status n'est pas reconnu
+  const statusInfo = statusLabels[status] || statusLabels['pending'];
   const displayBeneficiary = beneficiaryName || `${beneficiaryAddress.slice(0, 6)}...${beneficiaryAddress.slice(-4)}`;
 
   return (
@@ -65,9 +66,26 @@ export const TransactionReceiptEmail = ({
       </Preview>
       <Body style={main}>
         <Container style={container}>
-          {/* Logo */}
+          {/* Logo - Repris de la navbar */}
           <Section style={logoSection}>
-            <Heading style={logo}>💎 Confidance Crypto</Heading>
+            <table cellPadding="0" cellSpacing="0" border={0} style={{ margin: '0 auto' }}>
+              <tbody>
+                <tr>
+                  <td style={{ verticalAlign: 'middle', paddingRight: '12px' }}>
+                    <table cellPadding="0" cellSpacing="0" border={0} style={logoIcon}>
+                      <tbody>
+                        <tr>
+                          <td style={logoIconText}>C</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </td>
+                  <td style={{ verticalAlign: 'middle' }}>
+                    <span style={logoText}>Confidance</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
             <Text style={tagline}>Paiements programmés décentralisés</Text>
           </Section>
 
@@ -176,7 +194,7 @@ export const TransactionReceiptEmail = ({
             <Text style={footerText}>
               Cet email est envoyé par{' '}
               <a href="https://confidance-defi.com" style={link}>
-                Confidance Crypto
+                Confidance-defi
               </a>
               , votre plateforme de paiements programmés décentralisés.
             </Text>
@@ -187,7 +205,7 @@ export const TransactionReceiptEmail = ({
               </a>
             </Text>
             <Text style={copyrightText}>
-              © 2025 Confidance Crypto. Tous droits réservés.
+              © 2025 Confidance-defi. Tous droits réservés.
             </Text>
           </Section>
         </Container>
@@ -229,6 +247,30 @@ const logo = {
   margin: '0',
   padding: '0',
 };
+
+const logoIcon = {
+  width: '40px',
+  height: '40px',
+  backgroundColor: '#667eea',
+  borderRadius: '12px',
+  textAlign: 'center' as const,
+};
+
+const logoIconText = {
+  color: '#ffffff',
+  fontSize: '20px',
+  fontWeight: '700',
+  textAlign: 'center' as const,
+  lineHeight: '40px',
+  padding: '0',
+  margin: '0',
+};
+
+const logoText = {
+  color: '#ffffff',
+  fontSize: '24px',
+  fontWeight: '700',
+} as React.CSSProperties;
 
 const tagline = {
   color: '#e0e7ff',

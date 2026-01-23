@@ -2,7 +2,8 @@
   "nav": {
     "home": "首页",
     "create": "创建",
-    "dashboard": "我的仪表板",
+    "dashboard": "Dashboard",
+    "liquidity": "流动性",
     "help": "帮助",
     "analytics": "Analytics"
   },
@@ -134,6 +135,9 @@
     "title": "我的仪表板",
     "subtitle": "管理您的定期支付",
     "loading": "正在加载仪表板...",
+    "liquidity": {
+      "button": "我的流动性"
+    },
     "stats": {
       "total": "总发送额",
       "pending": "待处理",

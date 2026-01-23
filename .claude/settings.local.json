@@ -8,7 +8,8 @@
       "Bash(node -e \"const { ethers } = require\\(''ethers''\\); const provider = new ethers.JsonRpcProvider\\(''https://mainnet.base.org''\\); \\(async \\(\\) => { const testContract = ''0x862601FF3642F6AC1294B2657f0224aa575A5124''; const code = await provider.getCode\\(testContract\\); console.log\\(''Test payment contract:'', testContract\\); console.log\\(''Exists:'', code.length > 2\\); console.log\\(''Code length:'', code.length\\); }\\)\\(\\);\")",
       "Bash(npx hardhat:*)",
       "Bash(curl -s \"https://api.basescan.org/api?module=proxy&action=eth_getTransactionReceipt&txhash=0x1ebd9c33f2766b8b0890cc340c5d96a3737e1e6ef592c240fdfeee98a1ec2f5d&apikey=YourApiKeyToken\")",
-      "Bash(node -e:*)"
+      "Bash(node -e:*)",
+      "Bash(grep:*)"
     ]
   }
 }

@@ -206,7 +206,7 @@ export function EmailTransactionModal({
               <p className="text-sm text-red-600 mt-2">{emailError}</p>
             )}
             <p className="text-xs text-gray-500 mt-1">
-              💡 <strong>Mode test Resend :</strong> Vous pouvez envoyer uniquement à <strong>davyes0101@gmail.com</strong> tant qu'aucun domaine n'est vérifié.
+              💡 L'email sera envoyé via Brevo à l'adresse indiquée.
             </p>
           </div>
 
@@ -236,20 +236,6 @@ export function EmailTransactionModal({
                 <div className="flex-1">
                   <p className="font-semibold mb-1">Erreur lors de l'envoi</p>
                   <p className="text-red-700">{error.message}</p>
-                  {error.message?.includes('testing emails') || error.message?.includes('verify a domain') ? (
-                    <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-800 text-xs">
-                      <p className="font-semibold mb-1">💡 Solution :</p>
-                      <p>Pour envoyer des emails à n'importe quelle adresse :</p>
-                      <ol className="list-decimal list-inside mt-1 space-y-1">
-                        <li>Allez sur <a href="https://resend.com/domains" target="_blank" rel="noopener noreferrer" className="underline font-semibold">resend.com/domains</a></li>
-                        <li>Vérifiez votre domaine</li>
-                        <li>Configurez <code className="bg-yellow-100 px-1 rounded">RESEND_FROM_EMAIL</code> dans <code className="bg-yellow-100 px-1 rounded">.env.local</code></li>
-                      </ol>
-                      <p className="mt-2 text-yellow-900">
-                        <strong>Pour les tests :</strong> Vous pouvez envoyer uniquement à <strong>davyes0101@gmail.com</strong>
-                      </p>
-                    </div>
-                  ) : null}
                 </div>
               </div>
             </div>

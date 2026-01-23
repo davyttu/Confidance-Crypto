@@ -2,7 +2,8 @@
   "nav": {
     "home": "Accueil",
     "create": "Créer",
-    "dashboard": "Mon Dashboard",
+    "dashboard": "Dashboard",
+    "liquidity": "Liquidité",
     "help": "Aide",
     "analytics": "Analytics"
   },
@@ -141,6 +142,9 @@
     "title": "Mon Dashboard",
     "subtitle": "Gérez vos paiements programmés",
     "loading": "Chargement de votre dashboard...",
+    "liquidity": {
+      "button": "My Liquidity"
+    },
     "stats": {
       "total": "Total envoyé",
       "pending": "En cours",

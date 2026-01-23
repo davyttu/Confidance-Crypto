@@ -2,7 +2,8 @@
   "nav": {
     "home": "Inicio",
     "create": "Crear",
-    "dashboard": "Mi panel",
+    "dashboard": "Dashboard",
+    "liquidity": "Liquidez",
     "help": "Ayuda",
     "analytics": "Analytics"
   },
@@ -135,6 +136,9 @@
     "title": "Mi Panel",
     "subtitle": "Gestiona tus pagos programados",
     "loading": "Cargando tu panel...",
+    "liquidity": {
+      "button": "Mi Liquidez"
+    },
     "stats": {
       "total": "Total enviado",
       "pending": "Pendientes",
