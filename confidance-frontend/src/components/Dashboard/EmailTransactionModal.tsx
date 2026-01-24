@@ -6,7 +6,7 @@ import { Payment } from '@/hooks/useDashboard';
 import { useBeneficiaries } from '@/hooks/useBeneficiaries';
 import { useEmailTransaction } from '@/hooks/useEmailTransaction';
 import { useAuth } from '@/contexts/AuthContext';
-import { formatAmount } from '@/lib/utils/amountFormatter';
+import { formatAmount, sumAmounts } from '@/lib/utils/amountFormatter';
 import { formatDate } from '@/lib/utils/dateFormatter';
 import { truncateAddress } from '@/lib/utils/addressFormatter';
 
@@ -47,8 +47,51 @@ export function EmailTransactionModal({
 
   if (!payment) return null;
 
-  const beneficiaryName = getBeneficiaryName(payment.payee_address);
-  const displayBeneficiary = beneficiaryName || truncateAddress(payment.payee_address);
+  const tokenDecimals = payment.token_symbol === 'USDC' || payment.token_symbol === 'USDT' ? 6 : 18;
+  const resolvedBeneficiaries = (() => {
+    if (payment.__batchChildren && payment.__batchChildren.length > 1) {
+      return payment.__batchChildren.map((child) => ({
+        address: child.payee_address,
+        amount: child.amount,
+      }));
+    }
+    if (payment.batch_beneficiaries && payment.batch_beneficiaries.length > 0) {
+      return payment.batch_beneficiaries.map((beneficiary) => ({
+        address: beneficiary.address,
+        amount: beneficiary.amount,
+      }));
+    }
+    return [{ address: payment.payee_address, amount: payment.amount }];
+  })();
+
+  const displayBeneficiary = (() => {
+    if (resolvedBeneficiaries.length === 1) {
+      const beneficiaryName = getBeneficiaryName(resolvedBeneficiaries[0].address);
+      return beneficiaryName || truncateAddress(resolvedBeneficiaries[0].address);
+    }
+    const names = resolvedBeneficiaries.map((beneficiary) => {
+      return getBeneficiaryName(beneficiary.address) || truncateAddress(beneficiary.address);
+    });
+    if (names.length <= 2) {
+      return names.join(', ');
+    }
+    return `${names[0]}, ${names[1]} +${names.length - 2}`;
+  })();
+
+  const isFirstMonthCustom =
+    payment.is_first_month_custom === true || payment.is_first_month_custom === 'true';
+  const totalAmount = (() => {
+    if (resolvedBeneficiaries.length > 1) {
+      if (isFirstMonthCustom && payment.first_month_amount) {
+        return BigInt(payment.first_month_amount) * BigInt(resolvedBeneficiaries.length);
+      }
+      return sumAmounts(resolvedBeneficiaries.map((beneficiary) => beneficiary.amount || '0'));
+    }
+    if (isFirstMonthCustom && payment.first_month_amount) {
+      return BigInt(payment.first_month_amount);
+    }
+    return BigInt(payment.amount || '0');
+  })();
 
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -107,11 +150,13 @@ export function EmailTransactionModal({
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-gray-600">Montant</span>
               <span className="text-lg font-bold text-gray-900">
-                {formatAmount(payment.amount)} {payment.token_symbol}
+                {formatAmount(totalAmount, tokenDecimals)} {payment.token_symbol}
               </span>
             </div>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-600">Bénéficiaire</span>
+              <span className="text-sm text-gray-600">
+                {resolvedBeneficiaries.length > 1 ? 'Bénéficiaires' : 'Bénéficiaire'}
+              </span>
               <span className="text-sm font-medium text-gray-900">{displayBeneficiary}</span>
             </div>
             <div className="flex items-center justify-between mb-2">

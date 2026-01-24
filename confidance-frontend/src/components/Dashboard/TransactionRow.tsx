@@ -8,7 +8,7 @@ import { Payment } from '@/hooks/useDashboard';
 import { useBeneficiaries } from '@/hooks/useBeneficiaries';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Copy, ExternalLink, Mail, X, Edit2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Copy, ExternalLink, Mail, X, Edit2, ChevronDown, ChevronRight, Info } from 'lucide-react';
 import { sumAmounts } from '@/lib/utils/amountFormatter';
 import { BeneficiariesDropdown } from './BeneficiariesDropdown';
 import { RecurringPaymentHistory } from './RecurringPaymentHistory';
@@ -447,12 +447,16 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
             : (isRecurring ? getRecurringDisplayAmount() : payment.amount);
           return (
             <div className="flex flex-col">
-              <div className="text-sm font-medium text-gray-900 dark:text-white">
+              <div className={`text-sm font-semibold ${nextInstallment ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-white'}`}>
                 {formatAmount(displayAmount, tokenSymbol)} {tokenSymbol}
               </div>
               {nextInstallment && (
-                <span className="text-xs text-gray-500 dark:text-gray-400">
-                  {t('dashboard.table.nextInstallment', { defaultValue: 'Next installment' })}
+                <span
+                  className="mt-1 inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                  title={t('dashboard.table.nextInstallmentNote', { defaultValue: 'Funds not locked' })}
+                >
+                  <Info className="h-3 w-3" />
+                  {t('dashboard.table.nextInstallmentNote', { defaultValue: 'Funds not locked' })}
                 </span>
               )}
             </div>

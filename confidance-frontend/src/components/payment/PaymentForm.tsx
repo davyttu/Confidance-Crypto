@@ -2526,6 +2526,7 @@ export default function PaymentForm() {
               label=""
               hidePresets={true}
               disabled={paymentTiming === 'instant'}
+              showTime={!isRecurringMode}
             />
 
             {/* Info jour du mois si mensualisation */}

@@ -257,7 +257,7 @@ export function StatsCards({ payments, selectedWallets = [] }: StatsCardsProps) 
       {/* Mon compte */}
       <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg p-4 text-white border border-indigo-400/30 shadow-md md:col-span-2">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wide opacity-95">
+          <h3 className="text-sm font-extrabold uppercase tracking-[0.2em] text-white drop-shadow-sm">
             {ready ? t('dashboard.stats.account') : 'Mon compte'}
           </h3>
           <div className="w-12 h-12 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">

@@ -9,7 +9,10 @@
       "Bash(npx hardhat:*)",
       "Bash(curl -s \"https://api.basescan.org/api?module=proxy&action=eth_getTransactionReceipt&txhash=0x1ebd9c33f2766b8b0890cc340c5d96a3737e1e6ef592c240fdfeee98a1ec2f5d&apikey=YourApiKeyToken\")",
       "Bash(node -e:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(timeout 5 tail:*)",
+      "Bash(npx next lint:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

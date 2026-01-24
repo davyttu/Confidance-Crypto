@@ -151,4 +151,26 @@ export const recurringPaymentERC20Abi = [
     name: 'RecurringPaymentCancelled',
     type: 'event',
   },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: false, name: 'monthNumber', type: 'uint256' },
+      { indexed: true, name: 'payee', type: 'address' },
+      { indexed: false, name: 'amount', type: 'uint256' },
+      { indexed: false, name: 'protocolFee', type: 'uint256' },
+      { indexed: false, name: 'nextPaymentDate', type: 'uint256' },
+    ],
+    name: 'MonthlyPaymentExecuted',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: false, name: 'monthNumber', type: 'uint256' },
+      { indexed: true, name: 'payer', type: 'address' },
+      { indexed: false, name: 'reason', type: 'string' },
+    ],
+    name: 'MonthlyPaymentFailed',
+    type: 'event',
+  },
 ] as const;

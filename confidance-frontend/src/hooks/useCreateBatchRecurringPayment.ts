@@ -47,6 +47,57 @@ const getNetworkFromChainId = (chainId: number): string => {
 
 const BASIS_POINTS_DENOMINATOR = 10000;
 
+const getFriendlyCreateErrorMessage = (error: Error, t: (key: string, options?: Record<string, string>) => string) => {
+  const candidates = [
+    error.message,
+    (error as any)?.shortMessage,
+    (error as any)?.cause?.message,
+  ].filter(Boolean) as string[];
+  const errorMsgLower = candidates.join(' | ').toLowerCase();
+
+  if (
+    errorMsgLower.includes('user rejected') ||
+    errorMsgLower.includes('user denied') ||
+    errorMsgLower.includes('user cancelled')
+  ) {
+    return t('create.modal.errorUserRejected', {
+      defaultValue: 'Transaction cancelled. No charge was made. You can try again anytime.',
+    });
+  }
+  if (
+    errorMsgLower.includes('insufficient funds') ||
+    errorMsgLower.includes('insufficient balance') ||
+    errorMsgLower.includes('balance') ||
+    errorMsgLower.includes('gas * price + value')
+  ) {
+    return t('create.modal.errorInsufficientEthGas', {
+      defaultValue: 'Insufficient ETH to pay transaction fees (gas). Please add ETH to your wallet.',
+    });
+  }
+  if (errorMsgLower.includes('nonce') || errorMsgLower.includes('replacement transaction')) {
+    return t('create.modal.errorNonce', {
+      defaultValue: 'Nonce error. Please try again in a moment.',
+    });
+  }
+  if (errorMsgLower.includes('network') || errorMsgLower.includes('connection') || errorMsgLower.includes('rpc')) {
+    return t('create.modal.errorNetworkRpc', {
+      defaultValue: 'Network or RPC error. Check your connection and try again.',
+    });
+  }
+  if (errorMsgLower.includes('gas') || errorMsgLower.includes('transaction underpriced')) {
+    return t('create.modal.errorGas', {
+      defaultValue: 'Gas error. Check your network connection and try again.',
+    });
+  }
+  if (candidates.length > 0) {
+    return t('create.modal.errorCreatingWithDetails', {
+      defaultValue: 'Transaction failed. {{details}}',
+      details: candidates[0],
+    });
+  }
+  return t('create.modal.errorCreating', { defaultValue: 'Error during creation' });
+};
+
 interface BatchBeneficiary {
   address: string;
   amount: string; // Amount per month for this beneficiary
@@ -253,9 +304,10 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
 
     } catch (err) {
       console.error('Erreur createBatchRecurringPayment:', err);
-      setError(err as Error);
+      const friendlyMessage = getFriendlyCreateErrorMessage(err as Error, t);
+      setError(new Error(friendlyMessage));
       setStatus('error');
-      setProgressMessage(t('create.modal.errorCreating', { defaultValue: 'Error during creation' }));
+      setProgressMessage(friendlyMessage);
     }
   };
 
@@ -315,9 +367,10 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
           console.log('📤 [BATCH RECURRING] writeContract appelé');
         } catch (err) {
           console.error('❌ [BATCH RECURRING] Erreur création:', err);
-          setError(err as Error);
+          const friendlyMessage = getFriendlyCreateErrorMessage(err as Error, t);
+          setError(new Error(friendlyMessage));
           setStatus('error');
-          setProgressMessage(t('create.modal.errorCreating', { defaultValue: 'Error during creation' }));
+          setProgressMessage(friendlyMessage);
         }
       }
     };
@@ -393,9 +446,10 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
 
         } catch (err) {
           console.error('❌ [BATCH RECURRING] Erreur extraction:', err);
-          setError(err as Error);
+          const friendlyMessage = getFriendlyCreateErrorMessage(err as Error, t);
+          setError(new Error(friendlyMessage));
           setStatus('error');
-          setProgressMessage(t('create.modal.errorExtractingAddress', { defaultValue: 'Error extracting address' }));
+          setProgressMessage(friendlyMessage);
         }
       }
     };
@@ -480,11 +534,10 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
 
         } catch (err) {
           console.error(`❌ [BATCH RECURRING] Erreur approbation contrat ${currentApprovingIndex + 1}:`, err);
-          setError(err as Error);
+          const friendlyMessage = getFriendlyCreateErrorMessage(err as Error, t);
+          setError(new Error(friendlyMessage));
           setStatus('error');
-          setProgressMessage(
-            t('create.modal.errorApprovingContract', { defaultValue: 'Error approving contract' })
-          );
+          setProgressMessage(friendlyMessage);
         }
       }
     };
@@ -565,15 +618,17 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
   useEffect(() => {
     if (writeError) {
       console.error('❌ [BATCH RECURRING] Erreur writeContract:', writeError);
-      setError(writeError as Error);
+      const friendlyMessage = getFriendlyCreateErrorMessage(writeError as Error, t);
+      setError(new Error(friendlyMessage));
       setStatus('error');
-      setProgressMessage(t('create.modal.transactionCancelledOrFailed', { defaultValue: 'Transaction cancelled or failed. Check MetaMask.' }));
+      setProgressMessage(friendlyMessage);
     }
     if (confirmError) {
       console.error('❌ [BATCH RECURRING] Erreur confirmation:', confirmError);
-      setError(confirmError as Error);
+      const friendlyMessage = getFriendlyCreateErrorMessage(confirmError as Error, t);
+      setError(new Error(friendlyMessage));
       setStatus('error');
-      setProgressMessage(t('create.modal.errorConfirmingCreation', { defaultValue: 'Error confirming creation transaction' }));
+      setProgressMessage(friendlyMessage);
     }
     if (approvalFactoryHook.approveError && status === 'approving_factory') {
       console.error('❌ [BATCH RECURRING] Erreur approbation Factory:', approvalFactoryHook.approveError);

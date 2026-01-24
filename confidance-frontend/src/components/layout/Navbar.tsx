@@ -106,11 +106,11 @@ export function Navbar() {
   const links = isMounted && translationsReady ? [
     { href: '/create', label: t('nav.create') },
     { href: '/dashboard', label: t('nav.dashboard') },
-    { href: '/liquidity', label: '💧 ' + (t('nav.liquidity') || 'Liquidité') },
+    { href: '/liquidity', label: t('nav.liquidity') || 'Liquidité' },
   ] : [
     { href: '/create', label: 'Créer' },
     { href: '/dashboard', label: 'Dashboard' },
-    { href: '/liquidity', label: '💧 Liquidité' },
+    { href: '/liquidity', label: 'Liquidité' },
   ];
 
   // MODIFIED — on récupère aussi accountType choisi à l’inscription
