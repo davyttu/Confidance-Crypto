@@ -1,7 +1,7 @@
 {
   "nav": {
     "home": "Home",
-    "create": "Create",
+    "create": "Payments",
     "dashboard": "Dashboard",
     "liquidity": "Liquidity",
     "help": "Help",
@@ -477,7 +477,7 @@
       "contractAddress": "Contract address",
       "contractAddresses": "Contract addresses",
       "approvalSummaryTitle": "Approval summary",
-      "approvalSummaryLine": "{{amount}} {{token}} per month, for {{months}} months, to approve per beneficiary",
+      "approvalSummaryLine": "Total to approve: {{amount}} {{token}} for {{months}} months, per beneficiary",
       "transactionHash": "Transaction Hash",
       "viewOnBasescan": "View on Basescan",
       "viewPayment": "View payment",
@@ -821,7 +821,7 @@
     "legal": "Legal",
     "documentation": "Documentation",
     "support": "Support",
-    "terms": "Terms",
+    "terms": "Legal notice",
     "privacy": "Privacy",
     "copyright": "© {{year}} Confidance Crypto. All rights reserved."
   },

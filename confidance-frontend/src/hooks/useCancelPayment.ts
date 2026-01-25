@@ -79,6 +79,50 @@ export function useCancelPayment(): UseCancelPaymentReturn {
     }
   }, [txHash, isConfirming, isConfirmed, receipt, confirmError, status, currentPaymentId]);
 
+  const updateCancellationInDb = async (paymentId: string, isRecurring: boolean) => {
+    const normalizePaymentId = (rawId: string) => rawId.replace(/-m\d+$/, '');
+    const normalizedId = normalizePaymentId(paymentId);
+    const attemptUpdate = async (recurring: boolean) => {
+      const endpoint = recurring
+        ? `${API_URL}/api/payments/recurring/${normalizedId}`
+        : `${API_URL}/api/payments/${normalizedId}`;
+      const body = recurring
+        ? { status: 'cancelled' }
+        : { status: 'cancelled', cancelled_at: new Date().toISOString() };
+      const response = await fetch(endpoint, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '');
+        return {
+          ok: false as const,
+          endpoint,
+          status: response.status,
+          errorText,
+          recurring,
+        };
+      }
+
+      const data = await response.json();
+      return { ok: true as const, endpoint, data, recurring };
+    };
+
+    let result = await attemptUpdate(isRecurring);
+    if (!result.ok && isRecurring) {
+      console.warn('⚠️ [CANCEL] Échec update recurring, tentative scheduled...', {
+        paymentId,
+        status: result.status,
+        errorText: result.errorText,
+      });
+      result = await attemptUpdate(false);
+    }
+
+    return result;
+  };
+
   const cancelPayment = async ({ contractAddress, paymentId, payerAddress: payerAddressFromDB, isRecurring: isRecurringParam }: CancelPaymentParams) => {
     try {
       setError(null);
@@ -424,30 +468,16 @@ export function useCancelPayment(): UseCancelPaymentReturn {
                   isRecurring: isRecurringForPolling,
                 });
                 
-                // ✅ Utiliser le bon endpoint selon le type de paiement
-                const apiEndpoint = isRecurringForPolling 
-                  ? `${API_URL}/api/payments/recurring/${paymentIdToUpdate}`
-                  : `${API_URL}/api/payments/${paymentIdToUpdate}`;
-                
-                const response = await fetch(apiEndpoint, {
-                  method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    status: 'cancelled',
-                    ...(isRecurringForPolling ? {} : { cancelled_at: new Date().toISOString() }) // cancelled_at seulement pour scheduled
-                  }),
-                });
+                const result = await updateCancellationInDb(paymentIdToUpdate, isRecurringForPolling);
 
-                if (response.ok) {
-                  const result = await response.json();
-                  console.log('✅✅✅ [POLLING] Statut mis à jour dans la DB:', result);
+                if (result.ok) {
+                  console.log('✅✅✅ [POLLING] Statut mis à jour dans la DB:', result.data);
                   setStatus('success');
                   window.dispatchEvent(new CustomEvent('payment-cancelled', { 
                     detail: { paymentId: paymentIdToUpdate, txHash: undefined, status: 'cancelled' } 
                   }));
                 } else {
-                  const errorText = await response.text();
-                  console.error('❌ [POLLING] Erreur HTTP:', response.status, errorText);
+                  console.error('❌ [POLLING] Erreur HTTP:', result.status, result.errorText);
                 }
               } catch (err) {
                 console.error('❌ [POLLING] Erreur mise à jour DB:', err);
@@ -523,31 +553,17 @@ export function useCancelPayment(): UseCancelPaymentReturn {
             isRecurring,
           });
 
-          // ✅ Utiliser le bon endpoint selon le type de paiement
-          const apiEndpoint = isRecurring 
-            ? `${API_URL}/api/payments/recurring/${currentPaymentId}`
-            : `${API_URL}/api/payments/${currentPaymentId}`;
+          const result = await updateCancellationInDb(currentPaymentId, isRecurring);
 
-          const response = await fetch(apiEndpoint, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              status: 'cancelled',
-              ...(isRecurring ? {} : { cancelled_at: new Date().toISOString() }) // cancelled_at seulement pour scheduled
-            }),
-          });
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error('❌ Erreur HTTP:', response.status, errorText);
-            throw new Error(`Erreur lors de la mise à jour du statut: ${response.status} ${errorText}`);
+          if (!result.ok) {
+            console.error('❌ Erreur HTTP:', result.status, result.errorText);
+            throw new Error(`Erreur lors de la mise à jour du statut: ${result.status} ${result.errorText}`);
           }
 
-          const result = await response.json();
-          console.log('✅ Réponse du serveur:', result);
+          console.log('✅ Réponse du serveur:', result.data);
 
           // Vérifier que le statut a bien été mis à jour
-          if (result.payment && result.payment.status === 'cancelled') {
+          if (result.data?.payment && result.data.payment.status === 'cancelled') {
             console.log('✅✅✅ SUCCÈS: Statut = cancelled dans la DB - Dashboard doit se rafraîchir IMMÉDIATEMENT');
             setStatus('success');
             
@@ -556,7 +572,7 @@ export function useCancelPayment(): UseCancelPaymentReturn {
               detail: { paymentId: currentPaymentId, txHash, status: 'cancelled' } 
             }));
           } else {
-            console.warn('⚠️ Le statut dans la réponse ne correspond pas:', result);
+            console.warn('⚠️ Le statut dans la réponse ne correspond pas:', result.data);
             setStatus('success'); // On considère que c'est OK quand même
             
             // Émettre l'événement quand même pour rafraîchir
@@ -619,30 +635,16 @@ export function useCancelPayment(): UseCancelPaymentReturn {
                 const isRecurring = isRecurringPaymentRef.current;
                 console.log('📝 [FALLBACK] Envoi de la requête PATCH...', { isRecurring });
                 
-                // ✅ Utiliser le bon endpoint selon le type de paiement
-                const apiEndpoint = isRecurring 
-                  ? `${API_URL}/api/payments/recurring/${currentPaymentId}`
-                  : `${API_URL}/api/payments/${currentPaymentId}`;
-                
-                const response = await fetch(apiEndpoint, {
-                  method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    status: 'cancelled',
-                    ...(isRecurring ? {} : { cancelled_at: new Date().toISOString() }) // cancelled_at seulement pour scheduled
-                  }),
-                });
+                const result = await updateCancellationInDb(currentPaymentId, isRecurring);
 
-                if (response.ok) {
-                  const result = await response.json();
-                  console.log('✅✅✅ [FALLBACK] Statut mis à jour via fallback:', result);
+                if (result.ok) {
+                  console.log('✅✅✅ [FALLBACK] Statut mis à jour via fallback:', result.data);
                   setStatus('success');
                   window.dispatchEvent(new CustomEvent('payment-cancelled', { 
                     detail: { paymentId: currentPaymentId, txHash, status: 'cancelled' } 
                   }));
                 } else {
-                  const errorText = await response.text();
-                  console.error('❌ [FALLBACK] Erreur HTTP:', response.status, errorText);
+                  console.error('❌ [FALLBACK] Erreur HTTP:', result.status, result.errorText);
                 }
               } catch (err) {
                 console.error('❌ [FALLBACK] Erreur mise à jour DB:', err);
@@ -705,25 +707,17 @@ export function useCancelPayment(): UseCancelPaymentReturn {
               
               try {
                 setStatus('updating-db');
-                const response = await fetch(`${API_URL}/api/payments/${paymentId}`, {
-                  method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    status: 'cancelled',
-                    cancelled_at: new Date().toISOString()
-                  }),
-                });
+                const isRecurring = isRecurringPaymentRef.current;
+                const result = await updateCancellationInDb(paymentId, isRecurring);
 
-                if (response.ok) {
-                  const result = await response.json();
-                  console.log('✅✅✅ [FALLBACK CONTRAT] Statut mis à jour:', result);
+                if (result.ok) {
+                  console.log('✅✅✅ [FALLBACK CONTRAT] Statut mis à jour:', result.data);
                   setStatus('success');
                   window.dispatchEvent(new CustomEvent('payment-cancelled', { 
                     detail: { paymentId, txHash: undefined, status: 'cancelled' } 
                   }));
                 } else {
-                  const errorText = await response.text();
-                  console.error('❌ [FALLBACK CONTRAT] Erreur HTTP:', response.status, errorText);
+                  console.error('❌ [FALLBACK CONTRAT] Erreur HTTP:', result.status, result.errorText);
                 }
               } catch (err) {
                 console.error('❌ [FALLBACK CONTRAT] Erreur mise à jour DB:', err);

@@ -1,7 +1,7 @@
 {
   "nav": {
     "home": "首页",
-    "create": "创建",
+    "create": "支付",
     "dashboard": "Dashboard",
     "liquidity": "流动性",
     "help": "帮助",
@@ -675,7 +675,7 @@
       "contractAddress": "合约地址",
       "contractAddresses": "合约地址列表",
       "approvalSummaryTitle": "批准摘要",
-      "approvalSummaryLine": "{{amount}} {{token}} 每月，持续 {{months}} 个月，每位受益人需授权"
+      "approvalSummaryLine": "总授权额度：{{amount}} {{token}}，共 {{months}} 个月，每位受益人"
     },
     "recurring": {
       "onlyUSDCUSDT": "定期支付仅适用于 USDC 和 USDT",
@@ -722,5 +722,16 @@
   },
   "common": {
     "connectWallet": "请连接您的钱包"
+  },
+  "footer": {
+    "description": "支付不应依赖信任，而应依赖代码。",
+    "product": "产品",
+    "resources": "资源",
+    "legal": "法律",
+    "documentation": "文档",
+    "support": "支持",
+    "terms": "法律声明",
+    "privacy": "隐私",
+    "copyright": "© {{year}} Confidance Crypto. 版权所有."
   }
 }

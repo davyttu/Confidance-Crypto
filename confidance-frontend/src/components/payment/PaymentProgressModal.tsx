@@ -42,6 +42,8 @@ export default function PaymentProgressModal({
   totalMonths,
 }: PaymentProgressModalProps) {
   const { t } = useTranslation();
+  const clampedStep =
+    totalSteps > 0 ? Math.min(Math.max(currentStep, 1), totalSteps) : 0;
   const formatTokenAmount = (amount: bigint | null | undefined) => {
     if (amount === null || amount === undefined) return null;
     const decimals = tokenSymbol === 'ETH' ? 18 : 6;
@@ -281,7 +283,7 @@ export default function PaymentProgressModal({
                 {progressMessage}
               </h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                {t('create.modal.step', { current: currentStep, total: totalSteps, defaultValue: `Step ${currentStep} of ${totalSteps}` })}
+                {t('create.modal.step', { current: clampedStep, total: totalSteps, defaultValue: `Step ${clampedStep} of ${totalSteps}` })}
               </p>
             </div>
 
@@ -297,8 +299,7 @@ export default function PaymentProgressModal({
               {/* Barre de progression */}
               <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                 {(() => {
-                  const baseStep = Math.max(currentStep - 1, 0);
-                  const progressStep = status === 'success' ? totalSteps : baseStep;
+                  const progressStep = status === 'success' ? totalSteps : clampedStep;
                   const progressPercent = totalSteps > 0 ? (progressStep / totalSteps) * 100 : 0;
                   return (
                 <div
@@ -314,36 +315,36 @@ export default function PaymentProgressModal({
                 {totalSteps > 3 ? (
                   <>
                     {/* Paiements récurrents BATCH : 2 + N étapes */}
-                    <span className={currentStep >= 1 ? 'text-primary-600 font-medium' : ''}>
+                    <span className={clampedStep >= 1 ? 'text-primary-600 font-medium' : ''}>
                       {t('create.modal.approvalFactory', { defaultValue: '1. Factory approval' })}
                     </span>
-                    <span className={currentStep >= 2 ? 'text-primary-600 font-medium' : ''}>
+                    <span className={clampedStep >= 2 ? 'text-primary-600 font-medium' : ''}>
                       {t('create.modal.creation', { defaultValue: '2. Creation' })}
                     </span>
-                    <span className={currentStep >= 3 ? 'text-primary-600 font-medium' : ''}>
+                    <span className={clampedStep >= 3 ? 'text-primary-600 font-medium' : ''}>
                       {t('create.modal.approvingContracts', { total: totalSteps, defaultValue: `3-${totalSteps}. Approvals` })}
                     </span>
                   </>
                 ) : totalSteps === 3 ? (
                   <>
                     {/* Paiements récurrents single : 3 étapes */}
-                    <span className={currentStep >= 1 ? 'text-primary-600 font-medium' : ''}>
+                    <span className={clampedStep >= 1 ? 'text-primary-600 font-medium' : ''}>
                       {t('create.modal.approvalFactory', { defaultValue: '1. Factory approval' })}
                     </span>
-                    <span className={currentStep >= 2 ? 'text-primary-600 font-medium' : ''}>
+                    <span className={clampedStep >= 2 ? 'text-primary-600 font-medium' : ''}>
                       {t('create.modal.creation', { defaultValue: '2. Creation' })}
                     </span>
-                    <span className={currentStep >= 3 ? 'text-primary-600 font-medium' : ''}>
+                    <span className={clampedStep >= 3 ? 'text-primary-600 font-medium' : ''}>
                       {t('create.modal.approvalContract', { defaultValue: '3. Contract approval' })}
                     </span>
                   </>
                 ) : totalSteps === 2 ? (
                   <>
                     {/* Ordre standard: Approbation puis Création (pour paiements programmés) */}
-                    <span className={currentStep >= 1 ? 'text-primary-600 font-medium' : ''}>
+                    <span className={clampedStep >= 1 ? 'text-primary-600 font-medium' : ''}>
                     {t('create.modal.approval', { defaultValue: '1. Approval' })}
                     </span>
-                    <span className={currentStep >= 2 ? 'text-primary-600 font-medium' : ''}>
+                    <span className={clampedStep >= 2 ? 'text-primary-600 font-medium' : ''}>
                     {t('create.modal.creation', { defaultValue: '2. Creation' })}
                     </span>
                   </>
@@ -362,7 +363,7 @@ export default function PaymentProgressModal({
                 </p>
                 <p>
                   {t('create.modal.approvalSummaryLine', {
-                    defaultValue: '{{amount}} {{token}} per month to approve for each beneficiary',
+                    defaultValue: 'Total to approve: {{amount}} {{token}} for {{months}} months, per beneficiary',
                     amount: approvalSummary.perBeneficiary,
                     token: tokenSymbol,
                     beneficiaries: approvalSummary.beneficiariesCount,

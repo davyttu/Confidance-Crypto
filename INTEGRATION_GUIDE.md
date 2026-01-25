@@ -377,7 +377,7 @@ router.post('/api/payments', async (req, res) => {
 
 ### 7.1 Test Création Simple
 
-1. Va sur `/create`
+1. Va sur `/payment`
 2. Remplis :
    - Label : `Loyer appartement Paris`
    - Bénéficiaire : `0x...`

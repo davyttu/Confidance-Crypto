@@ -18,7 +18,7 @@ export function Footer() {
   const links = {
     product: [
       { label: isMounted && ready ? t('nav.dashboard') : 'Dashboard', href: '/dashboard' },
-      { label: isMounted && ready ? t('payment.create') : 'Créer un paiement', href: '/create' },
+      { label: isMounted && ready ? t('payment.create') : 'Créer un paiement', href: '/payment' },
       { label: isMounted && ready ? t('footer.documentation') : 'Documentation', href: '/docs' },
     ],
     resources: [
@@ -27,8 +27,7 @@ export function Footer() {
       { label: isMounted && ready ? t('footer.support') : 'Support', href: '/support' },
     ],
     legal: [
-      { label: isMounted && ready ? t('footer.legal') : 'Legal Notice', href: '/legal' },
-      { label: isMounted && ready ? t('footer.terms') : 'Conditions', href: '/terms' },
+      { label: isMounted && ready ? t('footer.terms') : 'Conditions', href: '/legal' },
       { label: isMounted && ready ? t('footer.privacy') : 'Confidentialité', href: '/privacy' },
     ],
   };

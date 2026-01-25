@@ -1,4 +1,4 @@
-// src/app/create/page.tsx
+// src/app/payment/page.tsx
 'use client';
 
 import PaymentForm from '@/components/payment/PaymentForm';
@@ -6,7 +6,7 @@ import GuestBanner from '@/components/GuestBanner';
 import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 
-export default function CreatePaymentPage() {
+export default function PaymentPage() {
   const { t, ready } = useTranslation();
   const [isMounted, setIsMounted] = useState(false);
   const [voiceLang, setVoiceLang] = useState('FR');

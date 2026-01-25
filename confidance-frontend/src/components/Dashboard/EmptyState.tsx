@@ -43,7 +43,7 @@ export function EmptyState() {
 
       {/* Call-to-action principal */}
       <Link
-        href="/create"
+        href="/payment"
         className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl"
       >
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

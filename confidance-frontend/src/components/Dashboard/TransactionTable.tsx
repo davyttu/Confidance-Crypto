@@ -62,12 +62,37 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete }: Tra
         monthExecuted: Array<boolean | null>;
         monthStatusByIndex?: Record<number, 'executed' | 'failed'>;
         nextMonthToProcess?: number;
+        cancelled?: boolean;
       }
     >
   >({});
   
   // State pour gérer le modal email
   const [emailModalPayment, setEmailModalPayment] = useState<Payment | null>(null);
+  const getPaginationItems = (current: number, total: number): Array<number | 'ellipsis'> => {
+    if (total <= 7) {
+      return Array.from({ length: total }, (_, i) => i + 1);
+    }
+
+    const items: Array<number | 'ellipsis'> = [1];
+    const left = Math.max(2, current - 1);
+    const right = Math.min(total - 1, current + 1);
+
+    if (left > 2) {
+      items.push('ellipsis');
+    }
+
+    for (let page = left; page <= right; page += 1) {
+      items.push(page);
+    }
+
+    if (right < total - 1) {
+      items.push('ellipsis');
+    }
+
+    items.push(total);
+    return items;
+  };
 
   useEffect(() => {
     setIsMounted(true);
@@ -96,78 +121,31 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete }: Tra
   }, [sessionStartAt]);
 
   useEffect(() => {
-    console.log(`🚀 useEffect triggered! publicClient=${!!publicClient}, payments.length=${payments.length}`);
+    if (!publicClient) return;
 
-    if (!publicClient) {
-      console.log(`⚠️ No publicClient, skipping on-chain fetch`);
-      return;
-    }
-
-    // 🔧 FIX: Get ALL unique contracts including batch children
     const allContractsMap = new Map<string, Payment>();
-
-    const addPaymentIfRecurring = (payment: Payment, source: string) => {
+    const addPaymentIfRecurring = (payment: Payment) => {
       const hasMonths = Number(payment.total_months || 0) > 0;
       const hasFirstPaymentTime = Number(payment.first_payment_time || 0) > 0;
-      // 🔧 FIX: Relax condition - accept any truthy value for is_recurring
       const isRecurringType =
         payment.is_recurring === true ||
         payment.is_recurring === 'true' ||
         payment.is_recurring === 1 ||
         payment.payment_type === 'recurring';
+      const isRecurring = isRecurringType || hasMonths || hasFirstPaymentTime;
       const hasContract = typeof payment.contract_address === 'string' && payment.contract_address.length > 0;
-
-      // 🔧 FIX: A payment is recurring if it has months OR first_payment_time
-      const isRecurring = isRecurringType && (hasMonths || hasFirstPaymentTime);
-
-      console.log(`  🔍 Checking ${source} payment ${payment.id.slice(0, 8)}:`, {
-        contract: payment.contract_address?.slice(0, 10),
-        hasMonths,
-        hasFirstPaymentTime,
-        total_months: payment.total_months,
-        first_payment_time: payment.first_payment_time,
-        total_months_type: typeof payment.total_months,
-        isRecurringType,
-        is_recurring: payment.is_recurring,
-        is_recurring_type: typeof payment.is_recurring,
-        payment_type: payment.payment_type,
-        hasContract,
-        finalDecision: isRecurring,
-      });
 
       if (hasContract && isRecurring) {
         const key = payment.contract_address.toLowerCase();
         if (!allContractsMap.has(key)) {
           allContractsMap.set(key, payment);
-          console.log(`    ✅ Added to fetch list`);
-        } else {
-          console.log(`    ⏩ Already in fetch list`);
         }
-      } else {
-        console.log(`    ❌ Skipped (missing: hasContract=${hasContract}, isRecurringType=${isRecurringType}, hasMonths=${hasMonths})`);
       }
     };
 
-    console.log(`🔎 Scanning ${payments.length} payments for recurring contracts...`);
-    payments.forEach((payment) => {
-      addPaymentIfRecurring(payment, 'direct');
-    });
-
+    payments.forEach((payment) => addPaymentIfRecurring(payment));
     const recurringPayments = Array.from(allContractsMap.values());
-
-    console.log(`📋 Found ${recurringPayments.length} unique recurring contracts to fetch`);
-    if (recurringPayments.length === 0) {
-      console.log(`⚠️ No recurring contracts found, skipping fetch`);
-      return;
-    }
-
-    console.log(`🔄 Fetching on-chain data for ${recurringPayments.length} recurring contracts:`,
-      recurringPayments.map(p => ({
-        id: p.id.slice(0, 8),
-        contract: p.contract_address.slice(0, 10),
-        payee: p.payee_address.slice(0, 8),
-      }))
-    );
+    if (recurringPayments.length === 0) return;
 
     let isMounted = true;
 
@@ -177,11 +155,7 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete }: Tra
           recurringPayments.map(async (payment) => {
             try {
               const address = payment.contract_address as `0x${string}`;
-              console.log(`  📡 Reading contract ${address.slice(0, 10)}... for payment ${payment.id.slice(0, 8)}`);
-
-              const payeeName = payment.payee_address.slice(0, 8);
-
-              // 🔧 FIX: First check if contract has totalMonths (recurring contract)
+              // First check if contract has totalMonths (recurring contract)
               let totalMonthsRaw: bigint | number;
               try {
                 totalMonthsRaw = await publicClient.readContract({
@@ -191,7 +165,6 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete }: Tra
                 }) as bigint;
               } catch (error) {
                 // Contract doesn't have totalMonths, not a recurring contract
-                console.log(`⏩ Skipping non-recurring contract ${address}`);
                 return null;
               }
 
@@ -213,6 +186,16 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete }: Tra
                   functionName: 'nextMonthToProcess',
                 }),
               ]);
+              let cancelled = false;
+              try {
+                cancelled = await publicClient.readContract({
+                  address,
+                  abi: recurringPaymentERC20Abi,
+                  functionName: 'cancelled',
+                }) as boolean;
+              } catch (error) {
+                cancelled = false;
+              }
               let monthExecuted: Array<boolean | null> = [];
               if (totalMonths > 0) {
                 const monthReads = Array.from({ length: totalMonths }, (_, index) =>
@@ -267,56 +250,23 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete }: Tra
                     return a.blockNumber > b.blockNumber ? 1 : -1;
                   });
                 const statusMap: Record<number, 'executed' | 'failed'> = {};
-
-                // 🔧 FIX: Improved 0-based vs 1-based detection
-                // Use monthExecuted as source of truth to determine indexing
                 const rawNumbers = merged.map((entry) => entry.monthNumber);
                 const maxNumber = rawNumbers.length > 0 ? Math.max(...rawNumbers) : -1;
-
-                // Determine if 0-based or 1-based
-                let isZeroBased = true; // Default 0-based (Solidity standard)
-
-                // If we have logs and monthExecuted
-                if (rawNumbers.length > 0 && monthExecuted.length > 0) {
-                  // Check if index 0 is really executed
-                  const hasZero = rawNumbers.includes(0);
-                  const hasOne = rawNumbers.includes(1);
-
-                  if (hasZero && monthExecuted[0] === true) {
+                let isZeroBased = rawNumbers.includes(0);
+                if (!isZeroBased && totalMonths > 0 && maxNumber >= 0) {
+                  if (maxNumber === totalMonths - 1) {
                     isZeroBased = true;
-                  } else if (hasOne && monthExecuted[0] === true) {
-                    isZeroBased = false;
-                  } else if (maxNumber === totalMonths) {
-                    // If maxNumber = totalMonths, it's probably 1-based
-                    isZeroBased = false;
                   }
                 }
-
                 const resolveIndex = (monthNumber: number) =>
                   isZeroBased ? monthNumber : monthNumber - 1;
-
-                console.log(`🔢 Indexing detection for ${address}:`, {
-                  isZeroBased,
-                  rawNumbers,
-                  monthExecuted: monthExecuted.slice(0, 3),
-                  maxNumber,
-                });
-
                 merged.forEach((entry) => {
                   const index = resolveIndex(entry.monthNumber);
-                  console.log(`  📍 Event monthNumber=${entry.monthNumber} → index=${index}, status=${entry.status}`);
-                  if (index < 0 || (totalMonths > 0 && index >= totalMonths)) {
-                    console.log(`    ⚠️ Index out of bounds, skipping`);
-                    return;
-                  }
+                  if (index < 0 || (totalMonths > 0 && index >= totalMonths)) return;
                   statusMap[index] = entry.status;
                 });
-
                 if (Object.keys(statusMap).length > 0) {
                   monthStatusByIndex = statusMap;
-                  console.log(`  ✅ Final statusMap:`, statusMap);
-                } else {
-                  console.log(`  ⚠️ No valid status entries found`);
                 }
               } catch (error) {
                 console.warn('⚠️ Unable to read monthly logs', payment.id, error);
@@ -328,18 +278,8 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete }: Tra
                 monthExecuted,
                 monthStatusByIndex,
                 nextMonthToProcess: Number(nextMonthToProcessRaw ?? 0),
+                cancelled,
               };
-
-              // 🔍 Debug: Logs to verify on-chain data
-              console.log(`📊 On-chain data for payment ${payment.id.slice(0, 8)}:`, {
-                contract: address,
-                executedMonths: result.executedMonths,
-                totalMonths: result.totalMonths,
-                nextMonthToProcess: result.nextMonthToProcess,
-                monthExecuted: result.monthExecuted,
-                monthStatusByIndex: result.monthStatusByIndex,
-              });
-
               return [payment.id, result] as const;
             } catch (error) {
               console.warn('⚠️ Error reading on-chain recurring state', payment.id, error);
@@ -357,6 +297,7 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete }: Tra
             monthExecuted: Array<boolean | null>;
             monthStatusByIndex?: Record<number, 'executed' | 'failed'>;
             nextMonthToProcess?: number;
+            cancelled?: boolean;
           }
         > = {};
         for (const entry of entries) {
@@ -483,6 +424,7 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete }: Tra
         monthExecuted: Array<boolean | null>;
         monthStatusByIndex?: Record<number, 'executed' | 'failed'>;
         nextMonthToProcess?: number;
+        cancelled?: boolean;
       }
     ) => {
       // 🔧 FIX: Prefer on-chain data but fallback to DB data
@@ -498,88 +440,96 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete }: Tra
 
       const monthExecuted = onchainState?.monthExecuted || [];
       const baseStatus = sourcePayment.status;
+      const isCancelled = typeof onchainState?.cancelled === 'boolean'
+        ? onchainState.cancelled
+        : baseStatus === 'cancelled';
 
       const resolvedNextMonth =
         typeof onchainState?.nextMonthToProcess === 'number'
           ? onchainState.nextMonthToProcess
           : resolvedExecutedMonths;
+      const now = Math.floor(Date.now() / 1000);
+      const startTime = Number(sourcePayment.first_payment_time || 0);
+      const hasStartTime = Number.isFinite(startTime) && startTime > 0;
 
-      console.log(`🔍 Resolving statuses for payment ${sourcePayment.id.slice(0, 8)}:`, {
-        hasOnchainData: !!onchainState,
-        resolvedExecutedMonths,
-        resolvedTotalMonths,
-        baseStatus,
-        monthStatusByIndex: onchainState?.monthStatusByIndex,
-      });
+      // 🆕 Lire monthly_statuses depuis la DB (mis à jour par le keeper)
+      const dbMonthlyStatuses = sourcePayment.monthly_statuses || {};
+      const dbStatusKeys = Object.keys(dbMonthlyStatuses);
+      const dbUsesZeroBased = dbStatusKeys.includes('0');
+      const normalizeDbStatus = (value: string | undefined) => {
+        if (!value) return null;
+        const normalized = value.toLowerCase();
+        if (normalized === 'released' || normalized === 'executed') return 'executed';
+        if (normalized === 'failed') return 'failed';
+        if (normalized === 'pending') return 'pending';
+        if (normalized === 'cancelled') return 'cancelled';
+        return null;
+      };
       const monthlyStatuses: Array<'executed' | 'failed' | 'pending' | 'cancelled'> = [];
 
       if (resolvedTotalMonths > 0) {
-        const startTime = Number(sourcePayment.first_payment_time || 0);
-        const now = Math.floor(Date.now() / 1000);
-
         for (let monthIndex = 0; monthIndex < resolvedTotalMonths; monthIndex++) {
-          // 🔧 PRIORITY 1: On-chain logs (absolute source of truth)
+          // DB monthly_statuses (mis à jour par le keeper)
+          const dbKey = dbUsesZeroBased ? String(monthIndex) : String(monthIndex + 1);
+          const dbStatusRaw = dbMonthlyStatuses[dbKey];
+          const dbStatus = normalizeDbStatus(dbStatusRaw);
+          if (dbStatus) {
+            monthlyStatuses.push(dbStatus);
+            continue;
+          }
+
+          // On-chain logs (fallback pour les anciens paiements)
           const logStatus = onchainState?.monthStatusByIndex?.[monthIndex];
           if (logStatus) {
-            console.log(`      Month ${monthIndex + 1}: Using log status = ${logStatus}`);
             monthlyStatuses.push(logStatus);
             continue;
           }
 
-          // 🔧 PRIORITY 2: Contract monthExecuted flag
+          // Contract monthExecuted flag
           const executedFlag = monthExecuted[monthIndex];
           if (executedFlag === true) {
-            console.log(`      Month ${monthIndex + 1}: monthExecuted flag = true → executed`);
             monthlyStatuses.push('executed');
             continue;
           }
 
-          // 🔧 PRIORITY 3: Contract cancelled
-          if (baseStatus === 'cancelled') {
-            console.log(`      Month ${monthIndex + 1}: Contract cancelled → cancelled`);
+          // Contract cancelled
+          if (isCancelled) {
+            if (hasStartTime) {
+              const paymentDate = startTime + (monthIndex * MONTH_IN_SECONDS);
+              if (paymentDate > now) {
+                monthlyStatuses.push('pending');
+                continue;
+              }
+            }
             monthlyStatuses.push('cancelled');
             continue;
           }
 
-          // 🔧 PRIORITY 4: Month less than executedMonths (confirmed by contract)
+          // Month less than executedMonths (confirmed by contract)
           if (monthIndex < resolvedExecutedMonths) {
-            console.log(`      Month ${monthIndex + 1}: monthIndex < executedMonths (${monthIndex} < ${resolvedExecutedMonths}) → executed`);
             monthlyStatuses.push('executed');
             continue;
           }
 
-          // 🔧 PRIORITY 5: Check if truly "failed" or just "pending"
-          // Mark "failed" only if:
-          // - executedFlag === false (explicitly marked as not executed)
-          // - AND execution date has passed
-          // - AND keeper already tried (monthIndex < resolvedNextMonth)
-          const executionTime = startTime + (monthIndex * MONTH_IN_SECONDS);
-          const isPastDue = executionTime <= now;
-          const wasAttempted = monthIndex < resolvedNextMonth;
-
-          if (executedFlag === false && isPastDue && wasAttempted) {
-            console.log(`      Month ${monthIndex + 1}: executedFlag=false, isPastDue=true, wasAttempted=true → failed`);
-            monthlyStatuses.push('failed');
-            continue;
-          }
-
-          // 🔧 Default: pending (waiting)
-          console.log(`      Month ${monthIndex + 1}: No match, defaulting to pending (executedFlag=${executedFlag}, isPastDue=${isPastDue}, wasAttempted=${wasAttempted})`);
+          // Default: pending (waiting)
           monthlyStatuses.push('pending');
         }
       }
 
-      const allExecuted =
-        monthlyStatuses.length > 0 &&
-        monthlyStatuses.every((status) => status === 'executed');
-      const hasExecuted = monthlyStatuses.some((status) => status === 'executed');
+      // 🔧 FIX SIMPLE: Un paiement est "completed" si tous les mois ont été traités (executed ou failed)
+      const processedMonthsCount = monthlyStatuses.filter(
+        (status) => status === 'executed' || status === 'failed'
+      ).length;
+      const allTerminal = processedMonthsCount >= resolvedTotalMonths && resolvedTotalMonths > 0;
 
+      // Distinguer pending (aucun mois traité) vs active (au moins 1 mois traité)
+      const hasAnyStatus = monthlyStatuses.length > 0;
       const resolvedStatus =
-        baseStatus === 'cancelled'
+        isCancelled
           ? 'cancelled'
-          : allExecuted
+          : allTerminal
           ? 'completed'
-          : hasExecuted
+          : processedMonthsCount > 0
           ? 'active'
           : baseStatus;
 
@@ -660,12 +610,16 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete }: Tra
             if (totalMonths > 0) {
               for (let monthIndex = 0; monthIndex < totalMonths; monthIndex++) {
                 const statuses = perChild.map((entry) => entry.monthlyStatuses[monthIndex] || 'pending');
-                if (statuses.some((status) => status === 'failed')) {
+                const hasFailed = statuses.some((status) => status === 'failed');
+                const hasCancelled = statuses.some((status) => status === 'cancelled');
+                const hasExecuted = statuses.some((status) => status === 'executed');
+                const allCancelled = statuses.every((status) => status === 'cancelled');
+                if (hasFailed) {
                   monthlyStatuses.push('failed');
                   continue;
                 }
-                if (statuses.some((status) => status === 'cancelled')) {
-                  monthlyStatuses.push('cancelled');
+                if (hasCancelled) {
+                  monthlyStatuses.push(allCancelled ? 'cancelled' : hasExecuted ? 'failed' : 'cancelled');
                   continue;
                 }
                 if (statuses.every((status) => status === 'executed')) {
@@ -676,33 +630,27 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete }: Tra
               }
             }
             const resolvedExecutedMonths = monthlyStatuses.filter((status) => status === 'executed').length;
-            const hasExecuted = monthlyStatuses.includes('executed');
-            const hasFailed = monthlyStatuses.includes('failed');
-            const allCancelled = batchChildren.every((child) => child.status === 'cancelled');
-            const hasCancelled = batchChildren.some((child) => child.status === 'cancelled');
-            const hasPendingOrActive = batchChildren.some(
-              (child) => child.status === 'pending' || child.status === 'active'
+            const allCancelled = perChild.every((entry) => entry.resolvedStatus === 'cancelled');
+            const hasCancelled = perChild.some((entry) => entry.resolvedStatus === 'cancelled');
+            const hasPendingOrActive = perChild.some(
+              (entry) => entry.resolvedStatus === 'pending' || entry.resolvedStatus === 'active'
             );
-            const resolvedStatus =
-              allCancelled || (hasCancelled && !hasPendingOrActive)
-                ? 'cancelled'
-                : totalMonths > 0 && resolvedExecutedMonths >= totalMonths
-                ? 'completed'
-                : hasExecuted
-                ? 'active'
-                : hasFailed
-                ? 'failed'
-                : payment.status;
 
-            console.log(`📦 Batch aggregation for payment ${payment.id.slice(0, 8)}:`, {
-              totalMonths,
-              monthlyStatuses,
-              resolvedStatus,
-              childStatuses: perChild.map((p, i) => ({
-                payee: batchChildren[i].payee_address.slice(0, 8),
-                monthlyStatuses: p.monthlyStatuses,
-              })),
-            });
+            // 🔧 FIX SIMPLE: Compter les mois traités (executed ou failed)
+            const processedMonthsCount = monthlyStatuses.filter(
+              (status) => status === 'executed' || status === 'failed'
+            ).length;
+            const allTerminal = processedMonthsCount >= totalMonths && totalMonths > 0;
+
+            const resolvedStatus = allTerminal
+              ? allCancelled
+                ? 'cancelled'
+                : 'completed'
+              : allCancelled || (hasCancelled && !hasPendingOrActive)
+              ? 'cancelled'
+              : processedMonthsCount > 0
+              ? 'active'
+              : payment.status;
 
             return { resolvedExecutedMonths, resolvedTotalMonths: totalMonths, resolvedStatus, monthlyStatuses };
           })()
@@ -732,9 +680,7 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete }: Tra
       if (!isRecurring || !normalizedPayment.first_payment_time) continue;
 
       if (hasBatchChildren && batchChildren) {
-        console.log(`👥 Processing batch recurring with ${batchChildren.length} children`);
-
-        batchChildren.forEach((child, childIdx) => {
+        batchChildren.forEach((child) => {
           const childState = resolveMonthlyStatuses(child, onchainRecurring[child.id]);
           const childNormalized: Payment = {
             ...child,
@@ -742,44 +688,26 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete }: Tra
             total_months: childState.resolvedTotalMonths,
             status: childState.resolvedStatus,
           };
-          const totalMonths = Number(childNormalized.total_months || 0);
+          const totalMonths = Number(
+            childNormalized.total_months || normalizedPayment.total_months || aggregated.resolvedTotalMonths || 0
+          );
           if (!totalMonths) return;
-
-          console.log(`  📝 Child ${childIdx + 1}/${batchChildren.length} (${child.payee_address.slice(0, 8)}):`, {
-            monthlyStatuses: childState.monthlyStatuses,
-            status: childState.resolvedStatus,
-          });
-
-          const startTime = Number(childNormalized.first_payment_time || 0);
+          const startTime = Number(
+            childNormalized.first_payment_time || normalizedPayment.first_payment_time || 0
+          );
           const isFirstMonthCustom =
             childNormalized.is_first_month_custom === true || childNormalized.is_first_month_custom === 'true';
           const firstMonthAmount = childNormalized.first_month_amount || '';
           const monthlyAmount = childNormalized.monthly_amount || childNormalized.amount || '';
 
           for (let monthIndex = 0; monthIndex < totalMonths; monthIndex++) {
-            // 🔧 FIX: Use child status AND check batch aggregation
             const childMonthStatus = childState.monthlyStatuses?.[monthIndex] || 'pending';
             const batchMonthStatus = aggregated.monthlyStatuses?.[monthIndex];
-
-            // 🔧 If batch aggregation says "executed", all children must have a line
-            // This ensures we see 1 line per beneficiary when the monthly is executed
-            const shouldShow =
-              childMonthStatus === 'executed' ||
-              childMonthStatus === 'failed' ||
-              (batchMonthStatus === 'executed' && childMonthStatus !== 'cancelled');
-
-            console.log(`    📅 Month ${monthIndex + 1}:`, {
-              childMonthStatus,
-              batchMonthStatus,
-              shouldShow,
-              childExecuted: childState.monthlyStatuses?.[monthIndex],
-              payee: child.payee_address.slice(0, 8),
-            });
-
-            if (!shouldShow) {
-              console.log(`      ⏩ Skipping month ${monthIndex + 1} for ${child.payee_address.slice(0, 8)} (shouldShow=false)`);
-              continue;
-            }
+            const resolvedChildStatus =
+              childMonthStatus === 'pending' && batchMonthStatus && batchMonthStatus !== 'pending'
+                ? batchMonthStatus
+                : childMonthStatus;
+            if (resolvedChildStatus === 'pending' || resolvedChildStatus === 'cancelled') continue;
 
             const executionTime = startTime + (monthIndex * MONTH_IN_SECONDS);
             const amount = monthIndex === 0 && isFirstMonthCustom && firstMonthAmount
@@ -787,20 +715,12 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete }: Tra
               : monthlyAmount || childNormalized.amount;
             const isNew = shouldShowNewBadge(executionTime * 1000);
 
-            // 🔧 Determine final status: priority to child status, otherwise use aggregation
-            let finalStatus: 'released' | 'failed' | 'cancelled';
-            if (childMonthStatus === 'failed') {
-              finalStatus = 'failed';
-            } else if (childMonthStatus === 'cancelled') {
-              finalStatus = 'cancelled';
-            } else if (childMonthStatus === 'executed') {
-              finalStatus = 'released';
-            } else if (batchMonthStatus === 'executed') {
-              // If batch is executed but no child status, consider executed
-              finalStatus = 'released';
-            } else {
-              finalStatus = 'failed';
-            }
+            const finalStatus: 'released' | 'failed' | 'cancelled' =
+              resolvedChildStatus === 'failed'
+                ? 'failed'
+                : resolvedChildStatus === 'cancelled'
+                ? 'cancelled'
+                : 'released';
 
             expanded.push({
               ...childNormalized,
@@ -1100,19 +1020,25 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete }: Tra
             </button>
 
             <div className="flex gap-1">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                <button
-                  key={page}
-                  onClick={() => setCurrentPage(page)}
-                  className={`px-3 py-1 rounded-lg ${
-                    currentPage === page
-                      ? 'bg-blue-600 text-white'
-                      : 'border border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  {page}
-                </button>
-              ))}
+              {getPaginationItems(currentPage, totalPages).map((item, index) =>
+                item === 'ellipsis' ? (
+                  <span key={`ellipsis-${index}`} className="px-2 py-1 text-gray-500">
+                    ...
+                  </span>
+                ) : (
+                  <button
+                    key={item}
+                    onClick={() => setCurrentPage(item)}
+                    className={`px-3 py-1 rounded-lg ${
+                      currentPage === item
+                        ? 'bg-blue-600 text-white'
+                        : 'border border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    {item}
+                  </button>
+                )
+              )}
             </div>
 
             <button

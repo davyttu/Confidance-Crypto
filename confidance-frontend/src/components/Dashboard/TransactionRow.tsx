@@ -445,9 +445,18 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
           const displayAmount = nextInstallment
             ? nextInstallment.toString()
             : (isRecurring ? getRecurringDisplayAmount() : payment.amount);
+          const isFailed = payment.status === 'failed';
           return (
             <div className="flex flex-col">
-              <div className={`text-sm font-semibold ${nextInstallment ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-white'}`}>
+              <div
+                className={`text-sm font-semibold ${
+                  isFailed
+                    ? 'text-gray-400 dark:text-gray-500'
+                    : nextInstallment
+                    ? 'text-gray-500 dark:text-gray-400'
+                    : 'text-gray-900 dark:text-white'
+                }`}
+              >
                 {formatAmount(displayAmount, tokenSymbol)} {tokenSymbol}
               </div>
               {nextInstallment && (

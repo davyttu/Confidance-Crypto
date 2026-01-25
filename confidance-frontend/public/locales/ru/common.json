@@ -1,7 +1,7 @@
 {
   "nav": {
     "home": "Главная",
-    "create": "Crear",
+    "create": "Платежи",
     "dashboard": "Dashboard",
     "liquidity": "Ликвидность",
     "help": "Помощь",
@@ -675,7 +675,7 @@
       "contractAddress": "Адрес контракта",
       "contractAddresses": "Адреса контрактов",
       "approvalSummaryTitle": "Сводка одобрения",
-      "approvalSummaryLine": "{{amount}} {{token}} в месяц, на {{months}} месяцев, для подтверждения на каждого получателя"
+      "approvalSummaryLine": "Итого к одобрению: {{amount}} {{token}} за {{months}} месяцев, на каждого получателя"
     },
     "recurring": {
       "onlyUSDCUSDT": "Повторяющиеся платежи доступны только для USDC и USDT",
@@ -722,5 +722,16 @@
   },
   "common": {
     "connectWallet": "Пожалуйста, подключите кошелёк"
+  },
+  "footer": {
+    "description": "Потому что платежи не должны зависеть от доверия. Они должны зависеть от кода.",
+    "product": "Продукт",
+    "resources": "Ресурсы",
+    "legal": "Правовая информация",
+    "documentation": "Документация",
+    "support": "Поддержка",
+    "terms": "Юридическое уведомление",
+    "privacy": "Конфиденциальность",
+    "copyright": "© {{year}} Confidance Crypto. Все права защищены."
   }
 }

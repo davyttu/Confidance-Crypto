@@ -162,7 +162,7 @@ export default function Home() {
               {/* CTA Buttons */}
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
                 <Link
-                  href="/create"
+                  href="/payment"
                   className="group relative px-8 py-4 bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-2xl transition-all hover:scale-105"
                 >
                   <span className="flex items-center gap-2">
@@ -316,7 +316,7 @@ export default function Home() {
                 </p>
 
                 <Link
-                  href="/create"
+                  href="/payment"
                   className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-primary-500 via-purple-500 to-pink-500 text-white rounded-xl font-semibold shadow-2xl shadow-primary-500/50 hover:shadow-primary-500/70 transition-all hover:scale-105"
                 >
                   {isMounted && ready ? t('home.ctaSection.button') : 'Créer mon premier paiement'}

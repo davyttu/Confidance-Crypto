@@ -19,6 +19,8 @@ const { createClient } = require("@supabase/supabase-js");
 const NETWORK = process.env.NETWORK || "base";
 const RPC_URL = process.env.RPC_URL || "https://mainnet.base.org";
 const CHECK_INTERVAL = parseInt(process.env.CHECK_INTERVAL) || 60000; // 60 secondes
+const BACKEND_API_URL = process.env.BACKEND_API_URL || "http://localhost:3001";
+const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
 
 // ✅ Mapping NETWORK -> network string pour Supabase
 const NETWORK_MAP = {
@@ -61,6 +63,51 @@ async function addTimelineEvent(payload) {
     }
   } catch (error) {
     console.error("⚠️ Timeline insert error:", error.message);
+  }
+}
+
+async function getMonthlyStatus(paymentId, monthIndex) {
+  try {
+    const { data, error } = await supabase
+      .from("recurring_payments")
+      .select("monthly_statuses")
+      .eq("id", paymentId)
+      .single();
+    if (error || !data) {
+      return null;
+    }
+    const statuses = data.monthly_statuses || {};
+    return statuses[monthIndex] || null;
+  } catch (error) {
+    console.error("⚠️ getMonthlyStatus error:", error.message);
+    return null;
+  }
+}
+
+async function notifyRecurringFailureEmail({ paymentId, reason, monthNumber }) {
+  try {
+    if (!BACKEND_API_URL) {
+      return;
+    }
+    const headers = { "Content-Type": "application/json" };
+    if (INTERNAL_API_KEY) {
+      headers["x-internal-key"] = INTERNAL_API_KEY;
+    }
+    const response = await fetch(`${BACKEND_API_URL}/api/payments/recurring/notify-failed`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        payment_id: paymentId,
+        failure_reason: reason || null,
+        month_number: monthNumber || null,
+      }),
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      console.warn("⚠️ Failed to notify recurring failure:", response.status, text);
+    }
+  } catch (error) {
+    console.warn("⚠️ notifyRecurringFailureEmail error:", error?.message || error);
   }
 }
 
@@ -556,11 +603,13 @@ async function markRecurringAsCancelled(paymentId) {
   }
 }
 
-async function updateRecurringAfterExecution(paymentId, txHash, executedMonths, totalMonths, nextMonthToProcess = null, startDate = null) {
+async function updateRecurringAfterExecution(paymentId, txHash, executedMonths, totalMonths, nextMonthToProcess = null, startDate = null, monthlyStatusUpdate = null) {
   try {
     const now = Math.floor(Date.now() / 1000);
-    const isCompleted = executedMonths >= totalMonths;
-    
+    // ✅ FIX: Utiliser nextMonthToProcess pour déterminer si terminé
+    // executedMonths ne compte que les succès, pas les échecs
+    const isCompleted = (nextMonthToProcess !== null && nextMonthToProcess >= totalMonths) || executedMonths >= totalMonths;
+
     // ✅ FIX : Calculer next_execution_time basé sur nextMonthToProcess si fourni
     // Sinon, utiliser l'ancienne méthode (now + MONTH_IN_SECONDS)
     let nextExecutionTime;
@@ -570,20 +619,49 @@ async function updateRecurringAfterExecution(paymentId, txHash, executedMonths, 
       // NOTE: next_execution_time est NOT NULL en DB → garder une valeur valide
       nextExecutionTime = isCompleted ? now : now + MONTH_IN_SECONDS;
     }
-    
+
     const newStatus = isCompleted ? "completed" : "active";
+
+    // 🆕 Gérer monthly_statuses
+    let updateData = {
+      executed_months: executedMonths,
+      next_execution_time: nextExecutionTime,
+      last_execution_hash: txHash,
+      status: newStatus,
+      updated_at: new Date().toISOString(),
+    };
+
+    // Si on a un update de statut mensuel, lire les statuts existants et merger
+    if (monthlyStatusUpdate !== null) {
+      try {
+        // Lire les statuts existants
+        const { data: currentData, error: readError } = await supabase
+          .from("recurring_payments")
+          .select("monthly_statuses")
+          .eq("id", paymentId)
+          .single();
+
+        if (!readError && currentData) {
+          // Merger avec les statuts existants
+          const currentStatuses = currentData.monthly_statuses || {};
+          const mergedStatuses = { ...currentStatuses, ...monthlyStatusUpdate };
+          updateData.monthly_statuses = mergedStatuses;
+
+          console.log(`   📋 Updated monthly_statuses:`, mergedStatuses);
+        } else {
+          // Si erreur de lecture, créer un nouvel objet
+          updateData.monthly_statuses = monthlyStatusUpdate;
+        }
+      } catch (e) {
+        console.log(`   ⚠️ Could not read existing monthly_statuses, creating new: ${e.message}`);
+        updateData.monthly_statuses = monthlyStatusUpdate;
+      }
+    }
 
     // ✅ FIX : Ne pas utiliser last_execution_at si la colonne n'existe pas
     const { error } = await supabase
       .from("recurring_payments")
-      .update({
-        executed_months: executedMonths,
-        next_execution_time: nextExecutionTime,
-        last_execution_hash: txHash,
-        // last_execution_at: new Date().toISOString(), // ✅ RETIRÉ si colonne n'existe pas
-        status: newStatus,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq("id", paymentId);
 
     if (error) {
@@ -1012,11 +1090,24 @@ async function executeRecurringPayment(payment) {
     let paymentFailed = false;
     let failureReason = null;
     let failedMonthNumber = null;
+    let executedMonthNumber = null; // 🆕 Capturer le numéro du mois depuis l'event
 
     for (const log of receipt.logs) {
       if (log.topics[0] === MONTHLY_PAYMENT_EXECUTED_TOPIC) {
         console.log(`   ✅ Event MonthlyPaymentExecuted detected - Payment succeeded!`);
         paymentSucceeded = true;
+        // 🆕 Décoder l'event pour obtenir le monthNumber
+        try {
+          // ✅ Vraie signature du contrat : seul payee est indexed
+          const iface = new ethers.Interface([
+            "event MonthlyPaymentExecuted(uint256 monthNumber, address indexed payee, uint256 amount, uint256 protocolFee, uint256 nextPaymentDate)"
+          ]);
+          const decoded = iface.parseLog({ topics: log.topics, data: log.data });
+          executedMonthNumber = Number(decoded.args.monthNumber || 0);
+          console.log(`   📊 Event decoded: monthNumber=${executedMonthNumber} (1-based from contract)`);
+        } catch (e) {
+          console.log(`   ⚠️ Could not decode MonthlyPaymentExecuted event: ${e.message}`);
+        }
         break;
       } else if (log.topics[0] === MONTHLY_PAYMENT_FAILED_TOPIC) {
         console.log(`   ⚠️ Event MonthlyPaymentFailed detected - Payment failed (strict skip)!`);
@@ -1065,13 +1156,37 @@ async function executeRecurringPayment(payment) {
       // ✅ FIX CRITIQUE : Mettre à jour la DB selon le résultat réel du paiement
       if (paymentSucceeded) {
         // Paiement réussi : mettre à jour normalement
+        // 🆕 FIX: Utiliser le monthNumber de l'event (1-based) et le convertir en index 0-based
+        let executedMonthIndex;
+        if (executedMonthNumber !== null && executedMonthNumber > 0) {
+          // L'event contient monthNumber 1-based, on le convertit en 0-based
+          executedMonthIndex = executedMonthNumber - 1;
+          console.log(`   📊 Using month from event: ${executedMonthNumber} → index ${executedMonthIndex}`);
+        } else if (nextMonthToProcessOnChain > 0n) {
+          // Fallback: utiliser nextMonthToProcess - 1
+          executedMonthIndex = Number(nextMonthToProcessOnChain) - 1;
+          console.log(`   📊 Using nextMonthToProcess: ${Number(nextMonthToProcessOnChain)} → index ${executedMonthIndex}`);
+        } else if (Number(newExecutedMonths) > 0) {
+          // Fallback: utiliser executedMonths - 1
+          executedMonthIndex = Number(newExecutedMonths) - 1;
+          console.log(`   📊 Using executedMonths: ${Number(newExecutedMonths)} → index ${executedMonthIndex}`);
+        } else {
+          // Dernier fallback: 0
+          console.warn(`   ⚠️ Cannot determine executed month index, using 0 as fallback`);
+          executedMonthIndex = 0;
+        }
+
+        console.log(`   📊 Executed month index: ${executedMonthIndex} (from event=${executedMonthNumber}, nextMonthToProcess=${Number(nextMonthToProcessOnChain)}, executedMonths=${Number(newExecutedMonths)})`);
+        const monthlyStatusUpdate = { [executedMonthIndex]: 'executed' };
+
         await updateRecurringAfterExecution(
           payment.id,
           tx.hash,
           Number(newExecutedMonths),
           Number(totalMonthsOnChain),
           nextMonthToProcessOnChain > 0n ? Number(nextMonthToProcessOnChain) : null,
-          startDateOnChain > 0n ? Number(startDateOnChain) : null
+          startDateOnChain > 0n ? Number(startDateOnChain) : null,
+          monthlyStatusUpdate
         );
 
         if (payment.userId) {
@@ -1097,13 +1212,19 @@ async function executeRecurringPayment(payment) {
       } else if (paymentFailed) {
         // Paiement échoué : synchroniser la DB avec l'état du contrat (le mois a été skip)
         console.log(`   ⚠️ Payment failed - synchronizing DB with contract state (month skipped)`);
+        // failedMonthNumber est 1-based dans l'événement, convertir en 0-based pour la DB
+        const failedMonthIndex = failedMonthNumber > 0 ? failedMonthNumber - 1 : Number(newExecutedMonths) - 1;
+        const monthlyStatusUpdate = { [failedMonthIndex]: 'failed' };
+        const existingStatus = await getMonthlyStatus(payment.id, failedMonthIndex);
+
         await updateRecurringAfterExecution(
           payment.id,
           "skipped_" + tx.hash, // Préfixe "skipped_" pour indiquer que c'est un skip
           Number(newExecutedMonths),
           Number(totalMonthsOnChain),
           nextMonthToProcessOnChain > 0n ? Number(nextMonthToProcessOnChain) : null,
-          startDateOnChain > 0n ? Number(startDateOnChain) : null
+          startDateOnChain > 0n ? Number(startDateOnChain) : null,
+          monthlyStatusUpdate
         );
 
         // Émettre un event pour notifier l'échec
@@ -1115,6 +1236,15 @@ async function executeRecurringPayment(payment) {
           executedMonths: Number(newExecutedMonths),
           totalMonths: Number(totalMonthsOnChain),
         });
+
+        if (existingStatus !== "failed") {
+          const monthNumber = failedMonthNumber > 0 ? failedMonthNumber : failedMonthIndex + 1;
+          await notifyRecurringFailureEmail({
+            paymentId: payment.id,
+            reason: failureReason || "Unknown",
+            monthNumber,
+          });
+        }
       } else {
         // Cas inattendu : mettre à jour quand même mais avec un warning
         console.log(`   ⚠️ Unexpected: no clear success or failure event, updating DB anyway`);
@@ -1262,7 +1392,34 @@ async function executeRecurringPayment(payment) {
 
     console.error(`   ❌ Error:`, errorMsg.substring(0, 300));
     console.error(`   📋 Full error:`, error);
-    await markRecurringAsFailed(payment.id, errorMsg);
+
+    // 🆕 FIX CRITIQUE: Ne PAS marquer comme "failed" pour les erreurs temporaires
+    // Ces erreurs devraient déclencher un retry au prochain cycle
+    const isTemporaryError =
+      errorMsg.includes('nonce') ||
+      errorMsg.includes('NONCE_EXPIRED') ||
+      errorMsg.includes('replacement') ||
+      errorMsg.includes('REPLACEMENT_UNDERPRICED') ||
+      errorMsg.includes('rate limit') ||
+      errorMsg.includes('network') ||
+      errorMsg.includes('timeout') ||
+      errorMsg.includes('connection') ||
+      errorMsg.includes('RPC');
+
+    if (isTemporaryError) {
+      console.log(`   ℹ️ Erreur temporaire détectée, le paiement sera réessayé au prochain cycle`);
+      console.log(`   ✅ Paiement ${payment.id.substring(0, 8)} reste en "${payment.status}", ne sera PAS marqué comme failed`);
+
+      await emitEvent({
+        type: "RECURRING_TEMP_ERROR",
+        paymentId: payment.id,
+        error: errorMsg.substring(0, 200),
+        note: "will_retry_next_cycle"
+      });
+    } else {
+      // Erreur permanente, marquer comme failed
+      await markRecurringAsFailed(payment.id, errorMsg);
+    }
   }
 }
 

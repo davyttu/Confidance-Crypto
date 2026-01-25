@@ -1,7 +1,7 @@
 {
   "nav": {
     "home": "Inicio",
-    "create": "Crear",
+    "create": "Pagos",
     "dashboard": "Dashboard",
     "liquidity": "Liquidez",
     "help": "Ayuda",
@@ -674,7 +674,7 @@
       "contractAddress": "Dirección del contrato",
       "contractAddresses": "Direcciones de contratos",
       "approvalSummaryTitle": "Resumen de aprobación",
-      "approvalSummaryLine": "{{amount}} {{token}} por mes, durante {{months}} meses, para aprobar por beneficiario"
+      "approvalSummaryLine": "Total a aprobar: {{amount}} {{token}} por {{months}} meses, por beneficiario"
     },
     "recurring": {
       "onlyUSDCUSDT": "Pagos recurrentes disponibles solo para USDC y USDT",
@@ -728,5 +728,16 @@
       "amountLabel": "Monto del primer pago mensual",
       "info": "💡 Si introduces el mismo monto que el mensual, la opción se ignorará automáticamente."
     }
+  },
+  "footer": {
+    "description": "Porque los pagos no deberían depender de la confianza. Deberían depender del código.",
+    "product": "Producto",
+    "resources": "Recursos",
+    "legal": "Legal",
+    "documentation": "Documentación",
+    "support": "Soporte",
+    "terms": "Aviso legal",
+    "privacy": "Privacidad",
+    "copyright": "© {{year}} Confidance Crypto. Todos los derechos reservados."
   }
 }

@@ -1,7 +1,7 @@
 {
   "nav": {
     "home": "Accueil",
-    "create": "Créer",
+    "create": "Paiements",
     "dashboard": "Dashboard",
     "liquidity": "Liquidité",
     "help": "Aide",
@@ -483,7 +483,7 @@
       "contractAddress": "Adresse du contrat",
       "contractAddresses": "Adresses des contrats",
       "approvalSummaryTitle": "Résumé d'approbation",
-      "approvalSummaryLine": "{{amount}} {{token}} par mois, pour {{months}} mois, à valider par bénéficiaire",
+      "approvalSummaryLine": "Total à approuver : {{amount}} {{token}} pour {{months}} mois, par bénéficiaire",
       "transactionHash": "Transaction Hash",
       "viewOnBasescan": "Voir sur Basescan",
       "viewPayment": "Voir le paiement",
@@ -943,13 +943,13 @@
     }
   },
   "footer": {
-    "description": "Because payments shouldn't depend on trust. They should depend on code.",
+    "description": "Parce que les paiements ne devraient pas dépendre de la confiance. Ils devraient dépendre du code.",
     "product": "Produit",
     "resources": "Ressources",
     "legal": "Légal",
     "documentation": "Documentation",
     "support": "Support",
-    "terms": "Conditions",
+    "terms": "Mentions légales",
     "privacy": "Confidentialité",
     "copyright": "© {{year}} Confidance Crypto. Tous droits réservés."
   }

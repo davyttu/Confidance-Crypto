@@ -7,7 +7,7 @@ import { Payment } from '@/hooks/useDashboard';
 
 interface MonthlyPayment {
   monthNumber: number;
-  date: number; // Timestamp
+  date: number; // Timestamp (ms or seconds)
   status: 'executed' | 'pending' | 'failed' | 'cancelled';
   amount: string;
 }
@@ -22,6 +22,13 @@ interface RecurringPaymentHistoryProps {
 
 const MONTH_IN_SECONDS =
   process.env.NEXT_PUBLIC_CHAIN === 'base_sepolia' ? 300 : 2592000; // 5 min en testnet
+
+const normalizeTimestampMs = (timestamp?: number | null) => {
+  if (!timestamp) return 0;
+  const numeric = Number(timestamp);
+  if (!Number.isFinite(numeric)) return 0;
+  return numeric > 1e12 ? numeric : numeric * 1000;
+};
 
 export function RecurringPaymentHistory({ payment }: RecurringPaymentHistoryProps) {
   const { t, i18n } = useTranslation();
@@ -64,9 +71,11 @@ export function RecurringPaymentHistory({ payment }: RecurringPaymentHistoryProp
     const isCompleted =
       payment.status === 'completed' || rawExecutedMonths >= totalMonths;
     const executedMonths = isCompleted ? totalMonths : rawExecutedMonths;
-    const startTime = Number(payment.first_payment_time || 0);
-    const now = Math.floor(Date.now() / 1000);
+    const startTimeMs = normalizeTimestampMs(payment.first_payment_time);
+    const nowMs = Date.now();
     const isCancelled = payment.status === 'cancelled';
+    const useCalendarMonths = process.env.NEXT_PUBLIC_CHAIN !== 'base_sepolia';
+    const startDate = new Date(startTimeMs);
 
     const payments: MonthlyPayment[] = [];
 
@@ -82,7 +91,18 @@ export function RecurringPaymentHistory({ payment }: RecurringPaymentHistoryProp
 
     let firstMonthFailed = false;
     for (let monthIndex = 0; monthIndex < totalMonths; monthIndex++) {
-      const paymentDate = startTime + (monthIndex * MONTH_IN_SECONDS);
+      const paymentDateMs = useCalendarMonths
+        ? new Date(
+            Date.UTC(
+              startDate.getUTCFullYear(),
+              startDate.getUTCMonth() + monthIndex,
+              startDate.getUTCDate(),
+              startDate.getUTCHours(),
+              startDate.getUTCMinutes(),
+              startDate.getUTCSeconds()
+            )
+          ).getTime()
+        : startTimeMs + (monthIndex * MONTH_IN_SECONDS * 1000);
 
       let status: 'executed' | 'pending' | 'failed' | 'cancelled';
 
@@ -100,7 +120,7 @@ export function RecurringPaymentHistory({ payment }: RecurringPaymentHistoryProp
         status = 'cancelled';
       } else if (firstMonthFailed) {
         status = 'cancelled';
-      } else if (paymentDate > now) {
+      } else if (paymentDateMs > nowMs) {
         // Date dans le futur
         status = 'pending';
       } else {
@@ -117,7 +137,7 @@ export function RecurringPaymentHistory({ payment }: RecurringPaymentHistoryProp
 
       payments.push({
         monthNumber: monthIndex + 1,
-        date: paymentDate,
+        date: paymentDateMs,
         status,
         amount,
       });
@@ -141,7 +161,8 @@ export function RecurringPaymentHistory({ payment }: RecurringPaymentHistoryProp
 
   // Formater la date avec la locale actuelle
   const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp * 1000);
+    const normalizedMs = timestamp > 1e12 ? timestamp : timestamp * 1000;
+    const date = new Date(normalizedMs);
     // Mapper les langues i18n vers les locales de formatage
     const localeMap: Record<string, string> = {
       'fr': 'fr-FR',

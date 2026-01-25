@@ -576,8 +576,8 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
                 token_symbol: currentParams.tokenSymbol,
                 token_address: tokenData?.address || null,
                 monthly_amount: monthlyAmount.toString(),
-                first_month_amount: currentParams.firstMonthAmount && currentParams.firstMonthAmount > 0n && currentParams.firstMonthAmount !== monthlyAmount ? currentParams.firstMonthAmount.toString() : null, // ⭐ ADD
-                is_first_month_custom: !!(currentParams.firstMonthAmount && currentParams.firstMonthAmount > 0n && currentParams.firstMonthAmount !== monthlyAmount), // ⭐ ADD
+                first_month_amount: currentParams.firstMonthAmount && currentParams.firstMonthAmount > 0n && currentParams.firstMonthAmount !== monthlyAmount ? currentParams.firstMonthAmount.toString() : null,
+                is_first_month_custom: !!(currentParams.firstMonthAmount && currentParams.firstMonthAmount > 0n && currentParams.firstMonthAmount !== monthlyAmount),
                 first_payment_time: currentParams.firstPaymentTime,
                 total_months: currentParams.totalMonths,
                 day_of_month: currentParams.dayOfMonth,

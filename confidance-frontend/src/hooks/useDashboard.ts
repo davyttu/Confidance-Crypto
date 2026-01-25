@@ -52,6 +52,7 @@ export interface Payment {
   next_execution_time?: number | null;
   is_recurring?: boolean;
   last_execution_hash?: string | null;
+  monthly_statuses?: Record<string, 'executed' | 'failed' | 'pending'> | null;
   // UI-only aggregation
   __batchChildren?: Payment[];
 }

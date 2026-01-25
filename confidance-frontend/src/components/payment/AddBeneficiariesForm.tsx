@@ -141,12 +141,12 @@ export default function AddBeneficiariesForm() {
     localStorage.setItem('additionalBeneficiaries', JSON.stringify(validAddresses));
     updateHistoryWithAddresses(validAddresses);
 
-    // Retour sur /create
-    router.push('/create#payment-description');
+    // Retour sur /payment
+    router.push('/payment#payment-description');
   };
 
   const handleCancel = () => {
-    router.push('/create');
+    router.push('/payment');
   };
 
   return (

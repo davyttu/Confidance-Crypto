@@ -67,6 +67,19 @@ const sanitizeMetadata = (metadata) =>
     Object.entries(metadata || {}).filter(([, value]) => value !== undefined)
   );
 
+const requireInternalKey = (req, res) => {
+  const internalKey = process.env.INTERNAL_API_KEY;
+  if (!internalKey) {
+    return true;
+  }
+  const headerKey = req.headers['x-internal-key'];
+  if (headerKey && headerKey === internalKey) {
+    return true;
+  }
+  res.status(401).json({ error: 'Unauthorized' });
+  return false;
+};
+
 // ============================================================
 // HELPERS
 // ============================================================
@@ -493,6 +506,80 @@ router.patch('/:id', async (req, res) => {
   } catch (error) {
     console.error('❌ Erreur PATCH /api/payments/recurring/:id:', error);
     res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
+ * POST /api/payments/recurring/notify-failed
+ * Notification email pour une mensualité échouée (appel interne keeper)
+ */
+router.post('/notify-failed', async (req, res) => {
+  if (!requireInternalKey(req, res)) return;
+
+  try {
+    const { payment_id, failure_reason, month_number } = req.body || {};
+
+    if (!payment_id) {
+      return res.status(400).json({ error: 'payment_id requis' });
+    }
+
+    const { data: payment, error: fetchError } = await supabase
+      .from('recurring_payments')
+      .select('*')
+      .eq('id', payment_id)
+      .single();
+
+    if (fetchError || !payment) {
+      return res.status(404).json({ error: 'Paiement non trouvé' });
+    }
+
+    const monthNumber = Number.isFinite(Number(month_number))
+      ? Number(month_number)
+      : Math.max(1, Number(payment.executed_months || 0) + 1);
+    const shouldCheckTimeline = Boolean(monthNumber && payment?.id);
+
+    if (shouldCheckTimeline) {
+      const { data: existingEvents, error: existingError } = await supabase
+        .from('payment_timeline_events')
+        .select('id')
+        .eq('payment_id', payment.id)
+        .eq('event_type', 'recurring_month_failed')
+        .contains('metadata', { month_number: monthNumber })
+        .limit(1);
+
+      if (!existingError && Array.isArray(existingEvents) && existingEvents.length > 0) {
+        return res.json({ success: true, skipped: true });
+      }
+    }
+
+    await sendRecurringFailureEmail({
+      supabase,
+      payment,
+      reason: typeof failure_reason === 'string' ? failure_reason : undefined,
+      monthNumber
+    });
+
+    if (payment?.id && payment?.user_id) {
+      addTimelineEvent({
+        payment_id: payment.id,
+        user_id: payment.user_id,
+        event_type: 'recurring_month_failed',
+        event_label: 'Mensualité échouée',
+        actor_type: 'system',
+        actor_label: 'Confidance',
+        explanation: 'Une mensualité a échoué',
+        metadata: sanitizeMetadata({
+          month_number: monthNumber,
+          reason: typeof failure_reason === 'string' ? failure_reason : null,
+          network: payment.network || null
+        })
+      });
+    }
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('❌ Erreur POST /api/payments/recurring/notify-failed:', error);
+    return res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 

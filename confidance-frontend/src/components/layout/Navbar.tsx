@@ -104,11 +104,11 @@ export function Navbar() {
 
   // ✅ FIX : Utiliser des valeurs par défaut pendant l'hydratation
   const links = isMounted && translationsReady ? [
-    { href: '/create', label: t('nav.create') },
+    { href: '/payment', label: t('nav.create') },
     { href: '/dashboard', label: t('nav.dashboard') },
     { href: '/liquidity', label: t('nav.liquidity') || 'Liquidité' },
   ] : [
-    { href: '/create', label: 'Créer' },
+    { href: '/payment', label: 'Paiements' },
     { href: '/dashboard', label: 'Dashboard' },
     { href: '/liquidity', label: 'Liquidité' },
   ];

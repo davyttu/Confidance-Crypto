@@ -4,6 +4,16 @@ const nextConfig: NextConfig = {
   // Définir la racine du workspace pour éviter les warnings sur les lockfiles multiples
   outputFileTracingRoot: require('path').join(__dirname),
   
+  async redirects() {
+    return [
+      {
+        source: '/create',
+        destination: '/payment',
+        permanent: true,
+      },
+    ];
+  },
+
   webpack: (config, { isServer }) => {
     // Fix MetaMask SDK async-storage issue
     config.resolve.fallback = {
