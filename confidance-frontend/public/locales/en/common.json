@@ -879,7 +879,8 @@
         "label": "e.g., Netflix subscription"
       },
       "hint": {
-        "label": "Give your link a clear title."
+        "label": "Give your link a clear title.",
+        "startAtInformative": "The first monthly payment starts when the recipient opens the link and confirms the payment."
       },
       "errors": {
         "connectWallet": "Connect your wallet first",
@@ -894,6 +895,9 @@
       "generate": "Generate link",
       "generating": "Generating...",
       "success": "Your payment link is ready",
+      "successDescription": "Share this link to receive payments",
+      "shareInfo": "Share this link via email, social media, or messaging apps",
+      "copied": "Copied!",
       "copy": "Copy"
     },
     "types": {
@@ -930,15 +934,52 @@
       "cancelled": "Cancelled"
     },
     "pay": {
-      "title": "Pay a link",
-      "subtitle": "Review the payment details and pay securely.",
+      "securePayments": "Secure payments",
+      "secureConnection": "Secure connection",
+      "title": "Pay a payment link",
+      "subtitle": "Review the payment link details and pay securely.",
       "loading": "Loading payment link...",
+      "backHome": "Back to home",
       "cta": "Pay now",
+      "types": {
+        "instant": "Instant",
+        "scheduled": "Scheduled",
+        "recurring": "Recurring"
+      },
+      "verified": "Verified",
+      "copyAddress": "Copy address",
+      "recurringPayment": "Recurring payment",
+      "months": "months",
+      "scheduledPayment": "Scheduled payment",
+      "securityChecks": "Security checks",
+      "security": {
+        "ssl": "Secure connection",
+        "sslDesc": "SSL/TLS encryption active",
+        "contract": "Verified smart contract",
+        "contractDesc": "Audited on Base Mainnet",
+        "blockchain": "Blockchain secured",
+        "blockchainDesc": "Transparent and immutable"
+      },
+      "connectWallet": "Connect your wallet to continue",
+      "processing": "Processing...",
+      "warning": "Verify all details before confirming. Blockchain transactions are irreversible.",
+      "footer": {
+        "security": "Security",
+        "securityDesc": "Your payments are protected by blockchain and audited smart contracts",
+        "support": "Support",
+        "supportDesc": "Need help? Contact our 24/7 support at support@confidance.crypto",
+        "info": "Information",
+        "infoDesc": "Powered by Confidance Crypto - Secure DeFi payments",
+        "rights": "All rights reserved",
+        "terms": "Terms",
+        "privacy": "Privacy"
+      },
       "recurringDetails": {
         "firstMonth": "First month",
         "nextMonths": "Next months"
       },
       "summary": {
+        "title": "Summary",
         "amount": "Amount",
         "type": "Type",
         "network": "Network",

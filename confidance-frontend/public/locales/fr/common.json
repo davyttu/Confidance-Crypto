@@ -863,7 +863,8 @@
         "label": "ex : Abonnement Netflix"
       },
       "hint": {
-        "label": "Donnez un titre clair à votre lien."
+        "label": "Donnez un titre clair à votre lien.",
+        "startAtInformative": "La première mensualité démarre quand le destinataire ouvre le lien et valide le paiement."
       },
       "errors": {
         "connectWallet": "Connectez votre wallet",
@@ -878,6 +879,9 @@
       "generate": "Générer le lien",
       "generating": "Génération...",
       "success": "Votre lien de paiement est prêt",
+      "successDescription": "Partagez ce lien pour recevoir des paiements",
+      "shareInfo": "Partagez ce lien par e-mail, réseaux sociaux ou messageries",
+      "copied": "Copié !",
       "copy": "Copier"
     },
     "types": {
@@ -914,10 +918,46 @@
       "cancelled": "Annulé"
     },
     "pay": {
-      "title": "Payer un lien",
-      "subtitle": "Vérifiez les détails et payez en toute sécurité.",
+      "securePayments": "Paiements sécurisés",
+      "secureConnection": "Connexion sécurisée",
+      "title": "Payer un lien de paiement",
+      "subtitle": "Vérifiez les détails du lien de paiement et payez en toute sécurité.",
       "loading": "Chargement du lien...",
+      "backHome": "Retour à l'accueil",
       "cta": "Payer maintenant",
+      "types": {
+        "instant": "Instantané",
+        "scheduled": "Programmé",
+        "recurring": "Récurrent"
+      },
+      "verified": "Vérifié",
+      "copyAddress": "Copier l'adresse",
+      "recurringPayment": "Paiement récurrent",
+      "months": "mois",
+      "scheduledPayment": "Paiement programmé",
+      "securityChecks": "Vérifications de sécurité",
+      "security": {
+        "ssl": "Connexion sécurisée",
+        "sslDesc": "Chiffrement SSL/TLS actif",
+        "contract": "Smart contract vérifié",
+        "contractDesc": "Audité sur Base Mainnet",
+        "blockchain": "Sécurisé par la blockchain",
+        "blockchainDesc": "Transparent et immuable"
+      },
+      "connectWallet": "Connectez votre wallet pour continuer",
+      "processing": "Traitement...",
+      "warning": "Vérifiez tous les détails avant de confirmer. Les transactions blockchain sont irréversibles.",
+      "footer": {
+        "security": "Sécurité",
+        "securityDesc": "Vos paiements sont protégés par la blockchain et des smart contracts audités",
+        "support": "Support",
+        "supportDesc": "Besoin d'aide ? Contactez-nous à support@confidance.crypto",
+        "info": "Information",
+        "infoDesc": "Propulsé par Confidance Crypto - Paiements DeFi sécurisés",
+        "rights": "Tous droits réservés",
+        "terms": "Conditions",
+        "privacy": "Confidentialité"
+      },
       "recurringDetails": {
         "firstMonth": "Premier mois",
         "nextMonths": "Mois suivants"

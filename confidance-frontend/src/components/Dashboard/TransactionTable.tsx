@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { usePublicClient } from 'wagmi';
+import { useAccount, usePublicClient } from 'wagmi';
 import { Payment } from '@/hooks/useDashboard';
 import { TransactionRow } from './TransactionRow';
 import { useBeneficiaries } from '@/hooks/useBeneficiaries';
@@ -39,6 +39,8 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete }: Tra
   const { t, ready: translationsReady } = useTranslation();
   const [isMounted, setIsMounted] = useState(false);
   const [batchMainByTx, setBatchMainByTx] = useState<Record<string, string>>({});
+  const { address } = useAccount();
+  const normalizedWallet = address?.toLowerCase() || '';
   const { getBeneficiaryName } = useBeneficiaries();
   const publicClient = usePublicClient();
   const [searchTerm, setSearchTerm] = useState('');
@@ -357,6 +359,16 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete }: Tra
     const groupedPayments: Array<Payment & { __batchChildren?: Payment[] }> = [];
     const batchGroups = new Map<string, Payment & { __batchChildren: Payment[] }>();
     const signatureCounts = new Map<string, number>();
+    const isIncomingForPayment = (payment: Payment) => {
+      if (!normalizedWallet) return false;
+      if (payment.payee_address?.toLowerCase() === normalizedWallet) return true;
+      return (
+        Array.isArray(payment.batch_beneficiaries) &&
+        payment.batch_beneficiaries.some(
+          (beneficiary) => beneficiary.address?.toLowerCase() === normalizedWallet
+        )
+      );
+    };
 
     const buildSignature = (payment: Payment) => [
       payment.payer_address,
@@ -669,14 +681,18 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete }: Tra
       const baseTimestamp = Number.isFinite(createdAtMs) ? createdAtMs : fallbackMs;
       const baseIsNew = shouldShowNewBadge(baseTimestamp);
 
-      expanded.push({
-        ...normalizedPayment,
-        __isNew: baseIsNew,
-        __monthlyStatuses: aggregated.monthlyStatuses.length > 0 ? aggregated.monthlyStatuses : undefined,
-        __batchChildren: hasBatchChildren ? batchChildren : undefined,
-      });
-
+      const isIncomingParent = isIncomingForPayment(normalizedPayment);
       const isRecurring = normalizedPayment.is_recurring || normalizedPayment.payment_type === 'recurring';
+
+      if (!(isRecurring && isIncomingParent)) {
+        expanded.push({
+          ...normalizedPayment,
+          __isNew: baseIsNew,
+          __monthlyStatuses: aggregated.monthlyStatuses.length > 0 ? aggregated.monthlyStatuses : undefined,
+          __batchChildren: hasBatchChildren ? batchChildren : undefined,
+        });
+      }
+
       if (!isRecurring || !normalizedPayment.first_payment_time) continue;
 
       if (hasBatchChildren && batchChildren) {
@@ -707,7 +723,13 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete }: Tra
               childMonthStatus === 'pending' && batchMonthStatus && batchMonthStatus !== 'pending'
                 ? batchMonthStatus
                 : childMonthStatus;
-            if (resolvedChildStatus === 'pending' || resolvedChildStatus === 'cancelled') continue;
+            const isIncomingChild = isIncomingForPayment(childNormalized) || isIncomingForPayment(normalizedPayment);
+            const shouldIncludeChild = isIncomingChild
+              ? resolvedChildStatus === 'executed'
+              : resolvedChildStatus !== 'pending' && resolvedChildStatus !== 'cancelled';
+            if (!shouldIncludeChild) {
+              continue;
+            }
 
             const executionTime = startTime + (monthIndex * MONTH_IN_SECONDS);
             const amount = monthIndex === 0 && isFirstMonthCustom && firstMonthAmount
@@ -753,7 +775,11 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete }: Tra
 
       for (let monthIndex = 0; monthIndex < totalMonths; monthIndex++) {
         const monthStatus = aggregated.monthlyStatuses?.[monthIndex] || 'pending';
-        if (monthStatus === 'pending' || monthStatus === 'cancelled') continue;
+        const isIncomingPayment = isIncomingForPayment(normalizedPayment);
+        const shouldIncludeMonth = isIncomingPayment
+          ? monthStatus === 'executed'
+          : monthStatus !== 'pending' && monthStatus !== 'cancelled';
+        if (!shouldIncludeMonth) continue;
 
         const executionTime = startTime + (monthIndex * MONTH_IN_SECONDS);
         const amount = monthIndex === 0 && isFirstMonthCustom && firstMonthAmount
@@ -785,7 +811,7 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete }: Tra
     }
 
     return expanded;
-  }, [payments, lastSeenAt, onchainRecurring, sessionStartAt, batchMainByTx]);
+  }, [payments, lastSeenAt, onchainRecurring, sessionStartAt, batchMainByTx, normalizedWallet]);
 
   // Filtrer et trier les paiements
   const processedPayments = useMemo(() => {

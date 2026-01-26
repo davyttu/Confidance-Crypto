@@ -60,7 +60,16 @@ export function usePaymentLinks() {
         body: JSON.stringify(payload),
       });
       if (!response.ok) {
-        throw new Error('Failed to create payment link');
+        let message = 'Failed to create payment link';
+        try {
+          const data = await response.json();
+          if (data?.error && typeof data.error === 'string') {
+            message = data.error;
+          }
+        } catch {
+          // Ignore JSON parse errors and keep default message.
+        }
+        throw new Error(message);
       }
       const data = await response.json();
       return data.paymentLink as PaymentLink;

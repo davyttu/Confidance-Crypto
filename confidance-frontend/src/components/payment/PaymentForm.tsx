@@ -26,7 +26,7 @@ interface PaymentFormData {
   amount: string;
   releaseDate: Date | null;
   label: string;
-  category: PaymentCategory;
+  category: PaymentCategory | null;
 }
 
 type PaymentTiming = 'instant' | 'scheduled' | 'recurring';
@@ -1194,6 +1194,7 @@ export default function PaymentForm() {
 
   // Erreurs de validation
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isPaymentDescriptionDisabled, setIsPaymentDescriptionDisabled] = useState(false);
 
   // Balance du token sélectionné
   const { balance, formatted: balanceFormatted } = useTokenBalance(
@@ -1273,7 +1274,7 @@ export default function PaymentForm() {
           amount: data.amount || '',
           releaseDate: data.releaseDate ? new Date(data.releaseDate) : null,
           label: data.label || '',
-          category: data.category || 'other',
+          category: data.category ?? 'other',
         });
         localStorage.removeItem('paymentFormData');
       } catch (error) {
@@ -1436,6 +1437,18 @@ export default function PaymentForm() {
     setFormData(prev => ({ ...prev, category }));
   };
 
+  const handlePaymentDescriptionToggle = () => {
+    if (isPaymentDescriptionDisabled) {
+      setIsPaymentDescriptionDisabled(false);
+      setFormData(prev => ({ ...prev, category: 'other' }));
+      return;
+    }
+
+    setIsPaymentDescriptionDisabled(true);
+    setFormData(prev => ({ ...prev, label: '', category: null }));
+    setErrors(prev => ({ ...prev, label: '' }));
+  };
+
 
   const handleTokenChange = (token: TokenSymbol) => {
     setFormData((prev) => ({ ...prev, tokenSymbol: token }));
@@ -1539,8 +1552,8 @@ export default function PaymentForm() {
       beneficiary: formData.beneficiary,
       amount: formData.amount,
       releaseDate: formData.releaseDate?.toISOString(),
-        label: formData.label,
-        category: formData.category,
+      label: formData.label,
+      category: formData.category,
     }));
 
     router.push('/create-batch');
@@ -1664,8 +1677,8 @@ export default function PaymentForm() {
           totalMonths: recurringMonths,
           dayOfMonth: dayOfMonth,
           cancellable,
-            label: formData.label,
-            category: formData.category,
+          label: formData.label,
+          category: formData.category ?? undefined,
         });
       } else if (isRecurringMode) {
         // ✅ Paiement récurrent SINGLE
@@ -1682,8 +1695,8 @@ export default function PaymentForm() {
           totalMonths: recurringMonths,
           dayOfMonth: dayOfMonth, // ✅ AJOUTÉ - Jour extrait automatiquement du calendrier
           cancellable,
-            label: formData.label,
-            category: formData.category,
+          label: formData.label,
+          category: formData.category ?? undefined,
         });
       } else if (isBatchMode && additionalBeneficiaries.length > 0) {
         const allBeneficiaries = [
@@ -1705,8 +1718,8 @@ export default function PaymentForm() {
           amount: amountBigInt.toString(),
           releaseTime,
           cancellable,
-            label: formData.label,
-            category: formData.category,
+          label: formData.label,
+          category: formData.category ?? undefined,
         });
         await singlePayment.createPayment({
           tokenSymbol: formData.tokenSymbol,
@@ -1714,8 +1727,8 @@ export default function PaymentForm() {
           amount: amountBigInt,
           releaseTime,
           cancellable,
-            label: formData.label,
-            category: formData.category,
+          label: formData.label,
+          category: formData.category ?? undefined,
         });
         console.log('✅ [FORM SUBMIT] singlePayment.createPayment() appelé');
       }
@@ -2088,6 +2101,8 @@ export default function PaymentForm() {
           confidence={confidence}
           matchedKeywords={matchedKeywords}
           error={errors.label}
+          disabled={isPaymentDescriptionDisabled}
+          onToggleDisabled={handlePaymentDescriptionToggle}
         />
       </div>
 

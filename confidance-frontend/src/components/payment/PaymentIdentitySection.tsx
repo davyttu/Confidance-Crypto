@@ -13,9 +13,13 @@ import { useCategorySuggestion } from '@/hooks/useCategorySuggestion';
 
 interface PaymentIdentitySectionProps {
   label: string;
-  category: PaymentCategory;
+  category: PaymentCategory | null;
   onLabelChange: (label: string) => void;
   onCategoryChange: (category: PaymentCategory) => void;
+  onToggleDisabled?: () => void;
+  suggestedCategory?: PaymentCategory;
+  confidence?: number;
+  matchedKeywords?: string[];
   error?: string;
   disabled?: boolean;
 }
@@ -25,13 +29,20 @@ export default function PaymentIdentitySection({
   category,
   onLabelChange,
   onCategoryChange,
+  onToggleDisabled,
+  suggestedCategory: suggestedCategoryProp,
+  confidence: confidenceProp,
+  matchedKeywords: matchedKeywordsProp,
   error,
   disabled = false
 }: PaymentIdentitySectionProps) {
   const { t, i18n } = useTranslation();
   
   // Auto-suggestion de catégorie
-  const { suggestedCategory, confidence, matchedKeywords } = useCategorySuggestion(label);
+  const suggestion = useCategorySuggestion(label);
+  const suggestedCategory = suggestedCategoryProp ?? suggestion.suggestedCategory;
+  const confidence = confidenceProp ?? suggestion.confidence;
+  const matchedKeywords = matchedKeywordsProp ?? suggestion.matchedKeywords;
   
   // Langue actuelle
   const currentLang = (i18n?.language?.split('-')[0] || 'en') as 'en' | 'fr' | 'es' | 'ru' | 'zh';
@@ -49,11 +60,12 @@ export default function PaymentIdentitySection({
   
   // Afficher suggestion si différente de la sélection actuelle et confiance > 50%
   const showSuggestion = useMemo(() => {
-    return suggestedCategory !== category && 
+    return !disabled &&
+           suggestedCategory !== category && 
            confidence > 0.5 && 
            label.trim().length > 0 &&
            suggestedCategory !== 'other';
-  }, [suggestedCategory, category, confidence, label]);
+  }, [suggestedCategory, category, confidence, label, disabled]);
 
   // Handler pour accepter la suggestion
   const handleAcceptSuggestion = () => {
@@ -61,13 +73,26 @@ export default function PaymentIdentitySection({
   };
 
   return (
-    <div className="glass rounded-2xl p-6 space-y-4">
+    <div className={`glass rounded-2xl p-6 space-y-4 ${disabled ? 'opacity-60' : ''}`}>
       {/* En-tête avec icône */}
       <div className="flex items-center gap-2">
         <span className="text-2xl">💡</span>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
           {t('create.identity.title', 'Payment description')}
         </label>
+        {onToggleDisabled && (
+          <button
+            type="button"
+            onClick={onToggleDisabled}
+            className="ml-1 h-4 w-4 rounded-full border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600 transition-colors flex items-center justify-center"
+            aria-label={disabled ? 'Enable payment description' : 'Disable payment description'}
+            title={disabled ? 'Enable payment description' : 'Disable payment description'}
+          >
+            <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* Input Label */}

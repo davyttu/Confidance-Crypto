@@ -8,10 +8,11 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { parseUnits } from 'viem';
 import { useTranslation } from 'react-i18next';
 import { CHAINS } from '@/config/chains';
-import { getToken } from '@/config/tokens';
+import { getToken, type TokenSymbol } from '@/config/tokens';
 import { usePaymentLinks } from '@/hooks/usePaymentLinks';
 import { useCreatePayment } from '@/hooks/useCreatePayment';
 import { useCreateRecurringPayment } from '@/hooks/useCreateRecurringPayment';
+import PaymentProgressModal from '@/components/payment/PaymentProgressModal';
 import { CATEGORY_ICONS, CATEGORY_LABELS, type PaymentCategory } from '@/types/payment-identity';
 import { 
   Shield, 
@@ -33,12 +34,29 @@ export default function PayLinkPage() {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { fetchLink, updateLinkStatus } = usePaymentLinks();
-  const { createPayment, status: createStatus, error: createError, reset: resetCreate } = useCreatePayment();
+  const {
+    createPayment,
+    status: createStatus,
+    error: createError,
+    reset: resetCreate,
+    currentStep: createCurrentStep,
+    totalSteps: createTotalSteps,
+    progressMessage: createProgressMessage,
+    approveTxHash: createApproveTxHash,
+    createTxHash: createCreateTxHash,
+    contractAddress: createContractAddress,
+  } = useCreatePayment();
   const {
     createRecurringPayment,
     status: recurringStatus,
     error: recurringError,
     reset: resetRecurring,
+    currentStep: recurringCurrentStep,
+    totalSteps: recurringTotalSteps,
+    progressMessage: recurringProgressMessage,
+    approveTxHash: recurringApproveTxHash,
+    createTxHash: recurringCreateTxHash,
+    contractAddress: recurringContractAddress,
   } = useCreateRecurringPayment();
 
   const [link, setLink] = useState<any | null>(null);
@@ -87,7 +105,8 @@ export default function PayLinkPage() {
 
   const networkName = link?.chain_id ? (CHAINS[link.chain_id]?.name || `Chain ${link.chain_id}`) : '-';
   const isChainMismatch = link?.chain_id && chainId && link.chain_id !== chainId;
-  const isUnsupportedChain = link?.chain_id && link.chain_id !== 8453;
+  const supportedChainIds = [8453, 84532];
+  const isUnsupportedChain = link?.chain_id && !supportedChainIds.includes(link.chain_id);
   const isWeekly = link?.frequency === 'weekly';
 
   const isFirstMonthCustom =
@@ -138,7 +157,7 @@ export default function PayLinkPage() {
         setError(ready ? t('links.pay.errors.weeklyUnsupported') : 'Weekly recurring not supported');
         return;
       }
-      if (!link.start_at || !link.periods) {
+      if (!link.periods) {
         setError(ready ? t('links.pay.errors.recurringMissing') : 'Missing recurring info');
         return;
       }
@@ -148,7 +167,11 @@ export default function PayLinkPage() {
       const firstMonthAmount = isFirstMonthCustom && link.first_month_amount
         ? parseUnits(link.first_month_amount, token.decimals)
         : undefined;
-      const startDate = new Date(link.start_at * 1000);
+      const now = Math.floor(Date.now() / 1000);
+      const startAt = link.start_at && Number(link.start_at) > now
+        ? Number(link.start_at)
+        : now + 600;
+      const startDate = new Date(startAt * 1000);
       const dayOfMonth = startDate.getUTCDate();
       const totalMonths = Math.min(Number(link.periods), 12);
 
@@ -157,7 +180,7 @@ export default function PayLinkPage() {
         beneficiary: link.creator_address,
         monthlyAmount: amount,
         firstMonthAmount,
-        firstPaymentTime: link.start_at,
+        firstPaymentTime: startAt,
         totalMonths,
         dayOfMonth,
       });
@@ -222,6 +245,16 @@ export default function PayLinkPage() {
   };
 
   const isProcessing = createStatus === 'creating' || recurringStatus === 'creating';
+  const isRecurringLink = link?.payment_type === 'recurring';
+  const activeStatus = isRecurringLink ? recurringStatus : createStatus;
+  const activeError = isRecurringLink ? recurringError : createError;
+  const activeCurrentStep = isRecurringLink ? recurringCurrentStep : createCurrentStep;
+  const activeTotalSteps = isRecurringLink ? recurringTotalSteps : createTotalSteps;
+  const activeProgressMessage = isRecurringLink ? recurringProgressMessage : createProgressMessage;
+  const activeApproveTxHash = isRecurringLink ? recurringApproveTxHash : createApproveTxHash;
+  const activeCreateTxHash = isRecurringLink ? recurringCreateTxHash : createCreateTxHash;
+  const activeContractAddress = isRecurringLink ? recurringContractAddress : createContractAddress;
+  const tokenSymbol = (link?.token_symbol || 'USDC') as TokenSymbol;
 
   if (isLoading) {
     return (
@@ -694,6 +727,24 @@ export default function PayLinkPage() {
           </div>
         </div>
       </div>
+
+      <PaymentProgressModal
+        isOpen={activeStatus !== 'idle'}
+        status={activeStatus}
+        currentStep={activeCurrentStep || 1}
+        totalSteps={activeTotalSteps || 1}
+        progressMessage={activeProgressMessage || ''}
+        error={activeError}
+        approveTxHash={activeApproveTxHash}
+        createTxHash={activeCreateTxHash}
+        contractAddress={activeContractAddress}
+        tokenSymbol={tokenSymbol}
+        totalMonths={isRecurringLink ? Number(link?.periods || 0) || undefined : undefined}
+        onClose={() => {
+          resetCreate();
+          resetRecurring();
+        }}
+      />
     </div>
   );
 }

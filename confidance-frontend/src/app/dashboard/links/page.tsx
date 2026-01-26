@@ -49,8 +49,35 @@ export default function DashboardLinksPage() {
     pending: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
     active: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200',
     paid: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+    released: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+    completed: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
     expired: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
     cancelled: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+  };
+  const monthSeconds =
+    process.env.NEXT_PUBLIC_CHAIN === 'base_sepolia' ? 300 : 2592000;
+  const deriveStatus = (link: any) => {
+    const baseStatus = link.status as string;
+    if (baseStatus === 'cancelled' || baseStatus === 'expired') return baseStatus;
+    const now = Math.floor(Date.now() / 1000);
+    if (link.payment_type === 'instant') {
+      if (baseStatus === 'paid') return 'paid';
+      return link.payer_address ? 'paid' : baseStatus;
+    }
+    if (link.payment_type === 'scheduled') {
+      if (typeof link.execute_at === 'number' && link.execute_at <= now) {
+        return 'released';
+      }
+      return baseStatus;
+    }
+    if (link.payment_type === 'recurring') {
+      if (typeof link.start_at === 'number' && link.periods) {
+        const endAt = link.start_at + (Number(link.periods) * monthSeconds);
+        if (now >= endAt) return 'completed';
+      }
+      return baseStatus;
+    }
+    return baseStatus;
   };
 
   if (!isConnected) {
@@ -132,6 +159,7 @@ export default function DashboardLinksPage() {
               ) : (
                 filteredLinks.map((link) => {
                 const shareUrl = `${baseUrl}/pay/${link.id}`;
+                const displayStatus = deriveStatus(link);
                 const rawCategory = link.payment_categorie || link.payment_category || null;
                 const categoryKey =
                   rawCategory && rawCategory in CATEGORY_LABELS
@@ -148,10 +176,14 @@ export default function DashboardLinksPage() {
                         {ready ? t('links.dashboard.status') : 'Statut'}:{' '}
                         <span
                           className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
-                            statusStyles[link.status] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+                            statusStyles[displayStatus] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
                           }`}
                         >
-                          {ready ? t(`links.status.${link.status}`) : link.status}
+                          {ready
+                            ? t(`links.status.${displayStatus}`, {
+                                defaultValue: String(displayStatus).toUpperCase(),
+                              })
+                            : String(displayStatus).toUpperCase()}
                         </span>
                       </div>
                       {(link.payment_label || categoryLabel) && (

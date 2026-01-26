@@ -4,7 +4,7 @@ import { ConnectButton, useAccountModal, useConnectModal } from '@rainbow-me/rai
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Copy, Menu, X } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { RegisterModal } from '@/components/Auth/RegisterModal';
 import { LoginModal } from '@/components/Auth/LoginModal';
@@ -12,7 +12,7 @@ import { VerifyEmailModal } from '@/components/Auth/VerifyEmailModal';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { useTranslation } from 'react-i18next';
 import { useEffect, useState as useStateReact } from 'react';
-import { useAccount } from 'wagmi';
+import { useAccount, useDisconnect } from 'wagmi';
 import { ProAccountModal } from '@/components/Pro/ProAccountModal'; // ADDED
 import { AccountSecurityModal } from '@/components/Auth/AccountSecurityModal';
 
@@ -24,6 +24,7 @@ export function Navbar() {
 
   const { user, isAuthenticated, logout, isLoading, refreshUser } = useAuth();
   const { address } = useAccount();
+  const { disconnect } = useDisconnect();
   const { openAccountModal } = useAccountModal();
   const { openConnectModal: openConnectModalHook } = useConnectModal();
   const [showRegisterModal, setShowRegisterModal] = useState(false);
@@ -32,6 +33,8 @@ export function Navbar() {
   const [verifyEmail, setVerifyEmail] = useState('');
   const [verifyCode, setVerifyCode] = useState('');
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [showWalletMenu, setShowWalletMenu] = useState(false);
+  const walletMenuCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [walletAliases, setWalletAliases] = useState<Record<string, string>>({});
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
 
@@ -158,6 +161,30 @@ export function Navbar() {
     if (openConnectModalHook) {
       openConnectModalHook();
     }
+  };
+
+  const handleDisconnectWallet = (event?: React.SyntheticEvent) => {
+    event?.preventDefault();
+    event?.stopPropagation();
+    disconnect();
+    setShowWalletMenu(false);
+  };
+
+  const handleWalletMenuEnter = () => {
+    if (walletMenuCloseTimer.current) {
+      clearTimeout(walletMenuCloseTimer.current);
+      walletMenuCloseTimer.current = null;
+    }
+    setShowWalletMenu(true);
+  };
+
+  const handleWalletMenuLeave = () => {
+    if (walletMenuCloseTimer.current) {
+      clearTimeout(walletMenuCloseTimer.current);
+    }
+    walletMenuCloseTimer.current = setTimeout(() => {
+      setShowWalletMenu(false);
+    }, 1500);
   };
 
   return (
@@ -441,41 +468,50 @@ export function Navbar() {
                               </button>
 
                               <div
-                                role="button"
-                                tabIndex={0}
-                                onClick={handleWalletModalOpen}
-                                onPointerDown={handleWalletModalOpen}
-                                onKeyDown={(event) => {
-                                  if (event.key === 'Enter' || event.key === ' ') {
-                                    handleWalletModalOpen(event);
-                                  }
-                                }}
-                                className="relative group cursor-pointer"
+                                className="relative"
+                                onMouseEnter={handleWalletMenuEnter}
+                                onMouseLeave={handleWalletMenuLeave}
                               >
-                                {getWalletLabel(account.address, account.displayName)}
-                                {account.displayBalance
-                                  ? ` (${account.displayBalance})`
-                                  : ''}
-                                <div className="absolute right-0 top-full mt-2 w-60 rounded-lg border border-gray-200 bg-white shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all">
-                                  <div className="px-3 py-2 flex items-center justify-between gap-2">
-                                    <span
-                                      className="text-xs font-mono text-gray-500 truncate max-w-[170px]"
-                                      title={account.address}
-                                    >
-                                      {formatAddressShort(account.address)}
-                                    </span>
-                                    <button
-                                      type="button"
-                                      onClick={(event) => handleCopyAddress(event, account.address)}
-                                      className="p-1 rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50"
-                                      title={copiedAddress === account.address
-                                        ? (isMounted && translationsReady ? t('beneficiary.copied') : 'Copied!')
-                                        : (isMounted && translationsReady ? t('beneficiary.copyAddress') : 'Copy address')}
-                                    >
-                                      <Copy className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
-                                </div>
+                                <button type="button" className="cursor-pointer">
+                                  {getWalletLabel(account.address, account.displayName)}
+                                  {account.displayBalance
+                                    ? ` (${account.displayBalance})`
+                                    : ''}
+                                </button>
+                                {showWalletMenu && (
+                                  <div
+                                    className="absolute right-0 top-full mt-2 w-60 rounded-lg border border-gray-200 bg-white shadow-xl z-20"
+                                    onMouseEnter={handleWalletMenuEnter}
+                                    onMouseLeave={handleWalletMenuLeave}
+                                  >
+                                      <div className="px-3 py-2 flex items-center justify-between gap-2">
+                                        <span
+                                          className="text-xs font-mono text-gray-500 truncate max-w-[170px]"
+                                          title={account.address}
+                                        >
+                                          {formatAddressShort(account.address)}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={(event) => handleCopyAddress(event, account.address)}
+                                          className="p-1 rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+                                          title={copiedAddress === account.address
+                                            ? (isMounted && translationsReady ? t('beneficiary.copied') : 'Copied!')
+                                            : (isMounted && translationsReady ? t('beneficiary.copyAddress') : 'Copy address')}
+                                        >
+                                          <Copy className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+                                      <div className="border-t border-gray-100"></div>
+                                      <button
+                                        type="button"
+                                        onClick={handleDisconnectWallet}
+                                        className="w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-red-50"
+                                      >
+                                        {isMounted && translationsReady ? t('common.disconnect') : 'Déconnexion'}
+                                      </button>
+                                    </div>
+                                )}
                               </div>
                             </div>
                           );
@@ -671,6 +707,13 @@ export function Navbar() {
                                 {account.displayBalance
                                   ? ` (${account.displayBalance})`
                                   : ''}
+                              </button>
+                              <button
+                                onClick={handleDisconnectWallet}
+                                type="button"
+                                className="w-full px-4 py-2.5 text-sm font-medium text-red-600 rounded-lg text-left hover:bg-red-50"
+                              >
+                                {isMounted && translationsReady ? t('common.disconnect') : 'Déconnexion'}
                               </button>
                             </div>
                           );

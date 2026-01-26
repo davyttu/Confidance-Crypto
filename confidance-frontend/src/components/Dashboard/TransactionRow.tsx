@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import { useAccount } from 'wagmi';
 import { Payment } from '@/hooks/useDashboard';
 import { useBeneficiaries } from '@/hooks/useBeneficiaries';
 import { formatDistanceToNow } from 'date-fns';
@@ -41,6 +42,7 @@ interface TransactionRowProps {
 
 export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailClick }: TransactionRowProps) {
   const { t, i18n, ready: translationsReady } = useTranslation();
+  const { address } = useAccount();
   const { getBeneficiaryName } = useBeneficiaries();
   const [copied, setCopied] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -75,6 +77,14 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
 
   const beneficiaryName = getBeneficiaryName(payment.payee_address);
   const displayName = beneficiaryName || `${payment.payee_address.slice(0, 6)}...${payment.payee_address.slice(-4)}`;
+  const normalizedWallet = address?.toLowerCase();
+  const isIncoming = Boolean(
+    normalizedWallet &&
+    (payment.payee_address?.toLowerCase() === normalizedWallet ||
+      payment.batch_beneficiaries?.some(
+        (beneficiary) => beneficiary.address?.toLowerCase() === normalizedWallet
+      ))
+  );
   const contractAddresses = (() => {
     const addresses = new Set<string>();
     if (payment.contract_address) {
@@ -446,18 +456,30 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
             ? nextInstallment.toString()
             : (isRecurring ? getRecurringDisplayAmount() : payment.amount);
           const isFailed = payment.status === 'failed';
+          const now = Math.floor(Date.now() / 1000);
+          const isInstantOrScheduled = payment.payment_type === 'instant' || payment.payment_type === 'scheduled';
+          const hasReachedReleaseTime = Number.isFinite(payment.release_time) && payment.release_time <= now;
+          const isSettledStatus =
+            payment.status === 'released' ||
+            payment.status === 'completed' ||
+            payment.status === 'paid' ||
+            (payment.status === 'active' && isInstantOrScheduled && hasReachedReleaseTime);
+          const isIncomingAmount = isIncoming && (isRecurringInstance || isSettledStatus);
+          const amountPrefix = isIncomingAmount && !isFailed ? '+' : '';
           return (
             <div className="flex flex-col">
               <div
                 className={`text-sm font-semibold ${
                   isFailed
                     ? 'text-gray-400 dark:text-gray-500'
+                    : isIncomingAmount
+                    ? 'text-green-600 dark:text-green-400'
                     : nextInstallment
                     ? 'text-gray-500 dark:text-gray-400'
                     : 'text-gray-900 dark:text-white'
                 }`}
               >
-                {formatAmount(displayAmount, tokenSymbol)} {tokenSymbol}
+                {amountPrefix}{formatAmount(displayAmount, tokenSymbol)} {tokenSymbol}
               </div>
               {nextInstallment && (
                 <span

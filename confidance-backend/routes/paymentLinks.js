@@ -38,7 +38,7 @@ function validatePayload(body) {
   }
 
   if (payment_type === 'recurring') {
-    if (!frequency || !periods || !start_at) {
+    if (!periods) {
       return 'Missing recurring fields';
     }
   }
@@ -102,6 +102,10 @@ router.post('/', async (req, res) => {
         ? category.trim()
         : '';
 
+    const normalizedFrequency = payment_type === 'recurring'
+      ? (frequency || 'monthly')
+      : frequency || null;
+
     const { data: paymentLink, error } = await supabase
       .from('payment_links')
       .insert({
@@ -113,7 +117,7 @@ router.post('/', async (req, res) => {
         token_symbol: token,
         token_address: token_address || null,
         payment_type,
-        frequency: frequency || null,
+        frequency: normalizedFrequency,
         periods: periods ? Number(periods) : null,
         start_at: start_at ? Number(start_at) : null,
         execute_at: execute_at ? Number(execute_at) : null,
