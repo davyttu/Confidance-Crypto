@@ -141,6 +141,43 @@ export function usePaymentLinks() {
     }
   }, []);
 
+  const deleteLink = useCallback(async (id: string, creator: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetchWithTimeout(
+        `${API_URL}/api/payment-links/${id}?creator=${encodeURIComponent(creator)}`,
+        {
+          method: 'DELETE',
+        }
+      );
+      if (!response.ok) {
+        let message = 'Failed to delete payment link';
+        try {
+          const data = await response.json();
+          if (data?.error && typeof data.error === 'string') {
+            message = data.error;
+          }
+        } catch {
+          try {
+            const text = await response.text();
+            if (text) message = text;
+          } catch {
+            // Ignore parse errors and keep default message.
+          }
+        }
+        throw new Error(message);
+      }
+      const data = await response.json();
+      return data.paymentLink as PaymentLink;
+    } catch (err) {
+      setError(err as Error);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   return {
     isLoading,
     error,
@@ -148,5 +185,6 @@ export function usePaymentLinks() {
     fetchLink,
     listLinks,
     updateLinkStatus,
+    deleteLink,
   };
 }

@@ -62,6 +62,15 @@ export default function NewPaymentLinkPage() {
   const [copied, setCopied] = useState(false);
   const isTranslationReady = ready && isClient;
   const selectedToken = getToken(token as TokenSymbol);
+  const selectedChain = CHAINS[chainId];
+  const chainIconById: Record<number, string> = {
+    8453: '/blockchains/base.svg',
+    42161: '/blockchains/arbitrum.svg',
+    43114: '/blockchains/avalanche.svg',
+    137: '/blockchains/polygon.svg',
+    84532: '/globe.svg',
+  };
+  const selectedChainIcon = chainIconById[chainId] || '/globe.svg';
   const currentLang = (isTranslationReady ? i18n?.language?.split('-')[0] : 'en') as 'en' | 'fr' | 'es' | 'ru' | 'zh';
   const categories: PaymentCategory[] = [
     'housing',
@@ -368,17 +377,26 @@ export default function NewPaymentLinkPage() {
               {isTranslationReady ? t('links.create.sections.network', { defaultValue: 'Network' }) : 'Network'}
             </h3>
             
-            <select
-              value={chainId}
-              onChange={(e) => setChainId(Number(e.target.value))}
-              className="w-full px-3 py-2 border-2 border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm font-semibold transition-all cursor-pointer"
-            >
+            <div className="relative">
+              <div className="absolute left-2 top-1/2 -translate-y-1/2 h-6 w-6 rounded-full overflow-hidden bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
+                <img
+                  src={selectedChainIcon}
+                  alt={selectedChain?.name || 'Network'}
+                  className="w-full h-full object-contain p-1"
+                />
+              </div>
+              <select
+                value={chainId}
+                onChange={(e) => setChainId(Number(e.target.value))}
+                className="w-full px-3 py-2 pl-10 border-2 border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm font-semibold transition-all cursor-pointer"
+              >
               {Object.values(CHAINS).map((chain) => (
                 <option key={chain.chainId} value={chain.chainId}>
-                  🌐 {chain.name}
+                  {chain.name}
                 </option>
               ))}
-            </select>
+              </select>
+            </div>
           </div>
 
           {/* Payment type - Horizontal compact */}

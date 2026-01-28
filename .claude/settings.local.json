@@ -12,7 +12,11 @@
       "Bash(grep:*)",
       "Bash(timeout 5 tail:*)",
       "Bash(npx next lint:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(tasklist:*)",
+      "Bash(findstr:*)",
+      "Bash(node scripts/check-notification-setup.js:*)",
+      "Bash(node scripts/check-recurring-details.js:*)"
     ]
   }
 }

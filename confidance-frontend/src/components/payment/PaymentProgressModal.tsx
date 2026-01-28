@@ -19,6 +19,8 @@ interface PaymentProgressModalProps {
   approvalTotalPerContract?: bigint | null;
   beneficiariesCount?: number;
   totalMonths?: number;
+  firstMonthAmount?: bigint | null; // Montant du premier mois si personnalisé
+  monthlyAmount?: bigint | null; // Montant mensuel récurrent
   onClose: () => void;
   onViewPayment?: () => void;
 }
@@ -40,6 +42,8 @@ export default function PaymentProgressModal({
   approvalTotalPerContract,
   beneficiariesCount,
   totalMonths,
+  firstMonthAmount,
+  monthlyAmount,
 }: PaymentProgressModalProps) {
   const { t } = useTranslation();
   const clampedStep =
@@ -53,14 +57,22 @@ export default function PaymentProgressModal({
     const fractionalStr = fractionalPart.toString().padStart(decimals, '0').replace(/0+$/, '');
     return fractionalStr ? `${integerPart}.${fractionalStr}` : `${integerPart}`;
   };
-  const approvalSummary =
-    approvalTotalPerContract && beneficiariesCount && totalMonths
-      ? {
-          perBeneficiary: formatTokenAmount(approvalTotalPerContract),
-          beneficiariesCount,
-          totalMonths
-        }
-      : null;
+  const approvalSummary = useMemo(() => {
+    if (!approvalTotalPerContract || !beneficiariesCount || !totalMonths) {
+      return null;
+    }
+
+    const hasCustomFirstMonth = firstMonthAmount && monthlyAmount && firstMonthAmount > 0n && firstMonthAmount !== monthlyAmount;
+    
+    return {
+      perBeneficiary: formatTokenAmount(approvalTotalPerContract),
+      beneficiariesCount,
+      totalMonths,
+      hasCustomFirstMonth,
+      firstMonthAmount: hasCustomFirstMonth ? formatTokenAmount(firstMonthAmount) : null,
+      monthlyAmount: hasCustomFirstMonth ? formatTokenAmount(monthlyAmount) : null,
+    };
+  }, [approvalTotalPerContract, beneficiariesCount, totalMonths, firstMonthAmount, monthlyAmount]);
   const scrollingWords = useMemo(
     () => [
       t('create.modal.progressWords.preparing', { defaultValue: 'Preparing transaction' }),
@@ -361,15 +373,40 @@ export default function PaymentProgressModal({
                 <p className="font-semibold">
                   {t('create.modal.approvalSummaryTitle', { defaultValue: 'Approval summary' })}
                 </p>
-                <p>
-                  {t('create.modal.approvalSummaryLine', {
-                    defaultValue: 'Total to approve: {{amount}} {{token}} for {{months}} months, per beneficiary',
-                    amount: approvalSummary.perBeneficiary,
-                    token: tokenSymbol,
-                    beneficiaries: approvalSummary.beneficiariesCount,
-                    months: approvalSummary.totalMonths
-                  })}
-                </p>
+                {approvalSummary.hasCustomFirstMonth ? (
+                  <div className="space-y-1">
+                    <p>
+                      {t('create.modal.approvalSummaryFirstMonth', {
+                        defaultValue: 'First month: {{amount}} {{token}}',
+                        amount: approvalSummary.firstMonthAmount,
+                        token: tokenSymbol,
+                      })}
+                    </p>
+                    <p>
+                      {t('create.modal.approvalSummaryRecurring', {
+                        defaultValue: 'Then {{amount}} {{token}} per month for {{remaining}} months',
+                        amount: approvalSummary.monthlyAmount,
+                        token: tokenSymbol,
+                        remaining: approvalSummary.totalMonths - 1,
+                      })}
+                    </p>
+                    <p className="text-blue-600 dark:text-blue-400 mt-1">
+                      {t('create.modal.approvalSummaryPerBeneficiary', {
+                        defaultValue: 'Per beneficiary',
+                      })}
+                    </p>
+                  </div>
+                ) : (
+                  <p>
+                    {t('create.modal.approvalSummaryLine', {
+                      defaultValue: 'Total to approve: {{amount}} {{token}} for {{months}} months, per beneficiary',
+                      amount: approvalSummary.perBeneficiary,
+                      token: tokenSymbol,
+                      beneficiaries: approvalSummary.beneficiariesCount,
+                      months: approvalSummary.totalMonths
+                    })}
+                  </p>
+                )}
               </div>
             )}
 

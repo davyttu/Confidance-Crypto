@@ -54,7 +54,7 @@ interface IWrappedTokenGatewayV3 {
 contract ConfidanceBorrowRouterV1 {
   // --- Base Aave V3 addresses (hardcoded for V1) ---
   address public constant AAVE_POOL_BASE = 0xA238Dd80C259a72e81d7e4664a9801593F98d1c5;
-  address public constant WETH_GATEWAY_BASE = 0xB90493d0876734F77A088538E9d49065F9dE4D30;
+  address public constant WETH_GATEWAY_BASE = 0xB90493d0876734f77a088538e9d49065F9De4D30;
 
   // Supported debt assets (Base)
   address public constant USDC_BASE = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;

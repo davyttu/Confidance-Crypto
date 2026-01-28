@@ -680,6 +680,17 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
             first_payment_time: params.firstPaymentTime,
           });
 
+          console.log('📤 [RECURRING] Préparation de la requête API...');
+          console.log('📋 [RECURRING] Données à envoyer:', {
+            contract_address: contractAddress,
+            payer_address: userAddress,
+            payee_address: params.beneficiary,
+            token_symbol: params.tokenSymbol,
+            monthly_amount: params.monthlyAmount.toString(),
+            first_payment_time: params.firstPaymentTime,
+            total_months: params.totalMonths,
+          });
+
           const response = await fetch(`${API_URL}/api/payments/recurring`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -709,14 +720,26 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
             }),
           });
 
+          console.log('📡 [RECURRING] Réponse API reçue:', {
+            status: response.status,
+            statusText: response.statusText,
+            ok: response.ok,
+          });
+
           if (!response.ok) {
             const errorText = await response.text();
-            console.error('❌ Erreur enregistrement Supabase:', errorText);
+            console.error('❌ [RECURRING] Erreur enregistrement Supabase:', {
+              status: response.status,
+              statusText: response.statusText,
+              errorText,
+            });
             setStatus('success');
             setProgressMessage('Paiement récurrent créé ! (Erreur enregistrement DB)');
           } else {
             const result = await response.json();
-            console.log('✅✅✅ Paiement récurrent enregistré dans Supabase:', result.recurringPayment?.id);
+            console.log('✅✅✅ [RECURRING] Paiement récurrent enregistré dans Supabase !');
+            console.log('📋 [RECURRING] ID du paiement:', result.recurringPayment?.id);
+            console.log('📋 [RECURRING] Détails complets:', result.recurringPayment);
             console.log('🎉 [RECURRING] Processus complet terminé avec succès !');
             setStatus('success');
             setProgressMessage('Paiement récurrent créé avec succès !');

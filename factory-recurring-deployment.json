@@ -1,23 +1,17 @@
 {
   "version": "RECURRING_ONLY",
+  "environment": "prod",
   "network": "base_mainnet",
   "chainId": "8453",
-  "factoryAddress": "0x535FE2BA7F85e1b2aC28d4ccBD5F2d8C54254E2a",
-  "deployedAt": "2026-01-17T23:47:20.079Z",
+  "factoryAddress": "0x4129092F74159736146984a830F624075e1bC63D",
+  "deployedAt": "2026-01-28T21:06:55.991Z",
   "deployedBy": "0x9DE23D58d4064Fcf7347E64D19FE64BB4aac2Bf6",
-  "features": [
-    "✅ Single Recurring Payment ERC20 (USDC/USDT)",
-    "✅ Batch Recurring Payment ERC20 (multi-bénéficiaires)",
-    "✅ Admin fallback functions (execute/cancel)",
-    "✅ Fees dynamiques (PRO allowlist)",
-    "❌ Scheduled Payments (disponibles dans PaymentFactory_Scheduled)",
-    "❌ Instant Payments (disponibles dans PaymentFactory_Instant)"
-  ],
   "constants": {
     "protocolWallet": "0xa34eDf91Cc494450000Eef08e6563062B2F115a9",
     "feeBpsParticular": 179,
     "feeBpsPro": 156,
     "feePercentParticular": "1.79%",
-    "feePercentPro": "1.56%"
+    "feePercentPro": "1.56%",
+    "secondsPerMonth": 2592000
   }
 }

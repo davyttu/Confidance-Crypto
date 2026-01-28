@@ -15,6 +15,9 @@ import { useEffect, useState as useStateReact } from 'react';
 import { useAccount, useDisconnect } from 'wagmi';
 import { ProAccountModal } from '@/components/Pro/ProAccountModal'; // ADDED
 import { AccountSecurityModal } from '@/components/Auth/AccountSecurityModal';
+import { useNotifications } from '@/hooks/useNotifications';
+import { NotificationsPanel } from '@/components/Notifications/NotificationsPanel';
+import { useLinkWallet } from '@/hooks/useLinkWallet';
 
 export function Navbar() {
   const { t, ready: translationsReady } = useTranslation();
@@ -27,6 +30,10 @@ export function Navbar() {
   const { disconnect } = useDisconnect();
   const { openAccountModal } = useAccountModal();
   const { openConnectModal: openConnectModalHook } = useConnectModal();
+  const { unreadCount } = useNotifications();
+
+  // 🔗 Lier automatiquement le wallet à l'utilisateur
+  useLinkWallet();
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showVerifyModal, setShowVerifyModal] = useState(false);
@@ -42,6 +49,7 @@ export function Navbar() {
   const [pendingAccountType, setPendingAccountType] = useState<'particular' | 'professional' | null>(null);
   const [showProModal, setShowProModal] = useState(false);
   const [showAccountSecurityModal, setShowAccountSecurityModal] = useState(false);
+  const [showNotificationsPanel, setShowNotificationsPanel] = useState(false);
 
   // ✅ FIX : Éviter le mismatch d'hydratation en attendant que les traductions soient chargées
   useEffect(() => {
@@ -247,6 +255,14 @@ export function Navbar() {
                   ) : (
                     // Menu utilisateur quand connecté
                     <div className="hidden sm:block relative">
+                      {/* Badge de notifications */}
+                      {unreadCount > 0 && (
+                        <div className="absolute -top-1 -right-1 z-10">
+                          <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 bg-red-500 text-white text-xs font-bold rounded-full shadow-lg">
+                            {unreadCount > 9 ? '9+' : unreadCount}
+                          </span>
+                        </div>
+                      )}
                       <button
                         onClick={() => setShowUserDropdown(!showUserDropdown)}
                         className="flex items-center gap-3 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all"
@@ -374,6 +390,22 @@ export function Navbar() {
                                 <span aria-hidden="true">📊</span>
                                 {isMounted && translationsReady ? t('nav.analytics') : 'Analytics'}
                               </Link>
+
+                              <button
+                                onClick={() => {
+                                  setShowUserDropdown(false);
+                                  setShowNotificationsPanel(true);
+                                }}
+                                className="flex items-center gap-2.5 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left"
+                              >
+                                <span aria-hidden="true">🔔</span>
+                                {isMounted && translationsReady ? t('nav.notifications') : 'Notifications'}
+                                {unreadCount > 0 && (
+                                  <span className="ml-auto inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full">
+                                    {unreadCount > 9 ? '9+' : unreadCount}
+                                  </span>
+                                )}
+                              </button>
 
                             <div className="border-t border-gray-200 dark:border-gray-700 my-1.5"></div>
 
@@ -782,6 +814,12 @@ export function Navbar() {
         isOpen={showAccountSecurityModal}
         onClose={() => setShowAccountSecurityModal(false)}
         userEmail={user?.email}
+      />
+
+      {/* Panneau de notifications */}
+      <NotificationsPanel
+        isOpen={showNotificationsPanel}
+        onClose={() => setShowNotificationsPanel(false)}
       />
     </>
   );

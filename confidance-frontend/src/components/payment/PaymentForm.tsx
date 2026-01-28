@@ -2947,6 +2947,8 @@ export default function PaymentForm() {
         approvalTotalPerContract={isRecurringMode && isBatchMode ? batchRecurringPayment.approvalTotalPerContract : null}
         beneficiariesCount={isRecurringMode && isBatchMode ? additionalBeneficiaries.length + 1 : undefined}
         totalMonths={isRecurringMode ? recurringMonths : undefined}
+        firstMonthAmount={isRecurringMode && isBatchMode ? batchRecurringPayment.firstMonthAmount : null}
+        monthlyAmount={isRecurringMode && isBatchMode ? batchRecurringPayment.monthlyAmount : null}
         onClose={handleCloseModal}
         onViewPayment={handleViewPayment}
       />

@@ -81,6 +81,7 @@ export function useDashboard(): UseDashboardReturn {
       setIsLoading(true);
       setError(null);
 
+      console.log('🔍 [useDashboard] Fetching payments for address:', address);
       const response = await fetch(`${API_URL}/api/payments/${address}`);
       
       if (!response.ok) {
@@ -88,6 +89,7 @@ export function useDashboard(): UseDashboardReturn {
       }
 
       const data = await response.json();
+      console.log('✅ [useDashboard] Received payments:', data.payments?.length || 0);
       setPayments(data.payments || []);
     } catch (err) {
       console.error('Erreur useDashboard:', err);

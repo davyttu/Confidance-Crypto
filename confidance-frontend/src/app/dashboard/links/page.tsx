@@ -5,15 +5,20 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAccount } from 'wagmi';
 import { useTranslation } from 'react-i18next';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { Trash2 } from 'lucide-react';
 import { usePaymentLinks } from '@/hooks/usePaymentLinks';
 import { CATEGORY_ICONS, CATEGORY_LABELS, type PaymentCategory } from '@/types/payment-identity';
 
 export default function DashboardLinksPage() {
   const { t, ready, i18n } = useTranslation();
   const { address, isConnected } = useAccount();
-  const { listLinks, isLoading } = usePaymentLinks();
+  const { listLinks, deleteLink, isLoading } = usePaymentLinks();
   const [links, setLinks] = useState<any[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<'all' | PaymentCategory>('all');
+  const [linkToDelete, setLinkToDelete] = useState<any | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
   const currentLang = (i18n?.language?.split('-')[0] || 'en') as 'en' | 'fr' | 'es' | 'ru' | 'zh';
   const categories: PaymentCategory[] = [
     'housing',
@@ -26,11 +31,31 @@ export default function DashboardLinksPage() {
   ];
 
   useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
     if (!address) return;
     listLinks(address)
       .then(setLinks)
       .catch(() => setLinks([]));
   }, [address, listLinks]);
+
+  const handleConfirmDelete = async () => {
+    if (!linkToDelete || !address) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteLink(linkToDelete.id, address);
+      setLinks((prev) => prev.filter((item) => item.id !== linkToDelete.id));
+      setLinkToDelete(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unable to delete link';
+      setDeleteError(message);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const baseUrl = useMemo(() => {
     if (typeof window === 'undefined') return '';
@@ -85,10 +110,10 @@ export default function DashboardLinksPage() {
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="max-w-md w-full space-y-6 text-center">
           <h2 className="text-2xl font-bold">
-            {ready ? t('wallet.connectionRequired') : 'Connexion requise'}
+            {isMounted && ready ? t('wallet.connectionRequired') : 'Connexion requise'}
           </h2>
           <p className="text-gray-600">
-            {ready ? t('wallet.connectToAccess') : 'Connectez votre wallet pour accéder à cette page'}
+            {isMounted && ready ? t('wallet.connectToAccess') : 'Connectez votre wallet pour accéder à cette page'}
           </p>
           <ConnectButton />
         </div>
@@ -220,6 +245,14 @@ export default function DashboardLinksPage() {
                       >
                         {ready ? t('links.dashboard.copy') : 'Copier'}
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => setLinkToDelete(link)}
+                        className="p-2 rounded-lg border border-gray-200 text-gray-500 hover:text-red-600 hover:border-red-300 transition-colors"
+                        title={ready ? t('links.dashboard.delete') : 'Delete'}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
                   </div>
                 );
@@ -228,6 +261,43 @@ export default function DashboardLinksPage() {
           )}
         </div>
       </div>
+      {linkToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setLinkToDelete(null)} />
+          <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-900">
+              {ready ? t('links.dashboard.deleteTitle') : 'Delete payment link'}
+            </h3>
+            <p className="mt-2 text-sm text-gray-600">
+              {ready
+                ? t('links.dashboard.deleteDescription')
+                : 'This link will be removed from your history. This action cannot be undone.'}
+            </p>
+            {deleteError && (
+              <p className="mt-3 text-sm text-red-600">{deleteError}</p>
+            )}
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setLinkToDelete(null)}
+                className="px-4 py-2 rounded-lg border border-gray-200 text-gray-700"
+              >
+                {ready ? t('links.dashboard.deleteCancel') : 'Cancel'}
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white disabled:opacity-60"
+              >
+                {isDeleting
+                  ? (ready ? t('links.dashboard.deleting') : 'Deleting...')
+                  : (ready ? t('links.dashboard.deleteConfirm') : 'Delete')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

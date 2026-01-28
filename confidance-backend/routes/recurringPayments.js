@@ -211,13 +211,18 @@ router.post('/', async (req, res) => {
     const tokenAddressByNetwork = TOKEN_ADDRESSES[resolvedNetwork] || TOKEN_ADDRESSES.base_mainnet;
     const token_address = tokenAddressByNetwork?.[token_symbol] || null;
 
+    // Normaliser les adresses en lowercase
+    const normalizedContractAddress = String(contract_address).toLowerCase();
+    const normalizedPayerAddress = String(payer_address).toLowerCase();
+    const normalizedPayeeAddress = String(payee_address).toLowerCase();
+
     // Enregistrer dans Supabase
     const { data: recurringPayment, error } = await supabase
       .from('recurring_payments')
       .insert({
-        contract_address,
-        payer_address,
-        payee_address,
+        contract_address: normalizedContractAddress,
+        payer_address: normalizedPayerAddress,
+        payee_address: normalizedPayeeAddress,
         token_symbol,
         token_address,
         monthly_amount,

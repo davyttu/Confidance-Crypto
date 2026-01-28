@@ -354,21 +354,27 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete }: Tra
     return Math.max(0, inferred);
   };
 
+  const isIncomingForPayment = (payment: Payment) => {
+    if (!normalizedWallet) return false;
+    if (payment.payee_address?.toLowerCase() === normalizedWallet) return true;
+    return (
+      Array.isArray(payment.batch_beneficiaries) &&
+      payment.batch_beneficiaries.some(
+        (beneficiary) => beneficiary.address?.toLowerCase() === normalizedWallet
+      )
+    );
+  };
+
+  const isOutgoingForPayment = (payment: Payment) => {
+    if (!normalizedWallet) return false;
+    return payment.payer_address?.toLowerCase() === normalizedWallet;
+  };
+
   const expandedPayments = useMemo<DashboardPayment[]>(() => {
     const expanded: DashboardPayment[] = [];
     const groupedPayments: Array<Payment & { __batchChildren?: Payment[] }> = [];
     const batchGroups = new Map<string, Payment & { __batchChildren: Payment[] }>();
     const signatureCounts = new Map<string, number>();
-    const isIncomingForPayment = (payment: Payment) => {
-      if (!normalizedWallet) return false;
-      if (payment.payee_address?.toLowerCase() === normalizedWallet) return true;
-      return (
-        Array.isArray(payment.batch_beneficiaries) &&
-        payment.batch_beneficiaries.some(
-          (beneficiary) => beneficiary.address?.toLowerCase() === normalizedWallet
-        )
-      );
-    };
 
     const buildSignature = (payment: Payment) => [
       payment.payer_address,
@@ -440,15 +446,25 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete }: Tra
       }
     ) => {
       // 🔧 FIX: Prefer on-chain data but fallback to DB data
-      const resolvedExecutedMonths =
+      const dbExecutedMonths = Number(sourcePayment.executed_months || 0);
+      const chainExecutedMonths =
         typeof onchainState?.executedMonths === 'number'
           ? onchainState.executedMonths
-          : Number(sourcePayment.executed_months || 0);
+          : null;
+      const resolvedExecutedMonths =
+        chainExecutedMonths === null
+          ? dbExecutedMonths
+          : Math.max(dbExecutedMonths, chainExecutedMonths);
 
-      const resolvedTotalMonths =
+      const dbTotalMonths = Number(sourcePayment.total_months || 0);
+      const chainTotalMonths =
         typeof onchainState?.totalMonths === 'number'
           ? onchainState.totalMonths
-          : Number(sourcePayment.total_months || 0);
+          : null;
+      const resolvedTotalMonths =
+        chainTotalMonths === null
+          ? dbTotalMonths
+          : Math.max(dbTotalMonths, chainTotalMonths);
 
       const monthExecuted = onchainState?.monthExecuted || [];
       const baseStatus = sourcePayment.status;
@@ -682,9 +698,10 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete }: Tra
       const baseIsNew = shouldShowNewBadge(baseTimestamp);
 
       const isIncomingParent = isIncomingForPayment(normalizedPayment);
+      const isOutgoingParent = isOutgoingForPayment(normalizedPayment);
       const isRecurring = normalizedPayment.is_recurring || normalizedPayment.payment_type === 'recurring';
 
-      if (!(isRecurring && isIncomingParent)) {
+      if (!(isRecurring && isIncomingParent && !isOutgoingParent)) {
         expanded.push({
           ...normalizedPayment,
           __isNew: baseIsNew,
@@ -723,11 +740,7 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete }: Tra
               childMonthStatus === 'pending' && batchMonthStatus && batchMonthStatus !== 'pending'
                 ? batchMonthStatus
                 : childMonthStatus;
-            const isIncomingChild = isIncomingForPayment(childNormalized) || isIncomingForPayment(normalizedPayment);
-            const shouldIncludeChild = isIncomingChild
-              ? resolvedChildStatus === 'executed'
-              : resolvedChildStatus !== 'pending' && resolvedChildStatus !== 'cancelled';
-            if (!shouldIncludeChild) {
+            if (resolvedChildStatus === 'pending' || resolvedChildStatus === 'cancelled') {
               continue;
             }
 
@@ -775,11 +788,7 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete }: Tra
 
       for (let monthIndex = 0; monthIndex < totalMonths; monthIndex++) {
         const monthStatus = aggregated.monthlyStatuses?.[monthIndex] || 'pending';
-        const isIncomingPayment = isIncomingForPayment(normalizedPayment);
-        const shouldIncludeMonth = isIncomingPayment
-          ? monthStatus === 'executed'
-          : monthStatus !== 'pending' && monthStatus !== 'cancelled';
-        if (!shouldIncludeMonth) continue;
+        if (monthStatus === 'pending' || monthStatus === 'cancelled') continue;
 
         const executionTime = startTime + (monthIndex * MONTH_IN_SECONDS);
         const amount = monthIndex === 0 && isFirstMonthCustom && firstMonthAmount
@@ -815,11 +824,16 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete }: Tra
 
   // Filtrer et trier les paiements
   const processedPayments = useMemo(() => {
-    let filtered = expandedPayments;
+    let filtered = expandedPayments.filter((payment) => {
+      if (payment.__recurringInstance) return true;
+      const isRecurringParent = payment.is_recurring || payment.payment_type === 'recurring';
+      if (isRecurringParent && isIncomingForPayment(payment) && !isOutgoingForPayment(payment)) return false;
+      return true;
+    });
 
     // Recherche
     if (searchTerm) {
-      filtered = expandedPayments.filter(payment => {
+      filtered = filtered.filter(payment => {
         const beneficiaryName = getBeneficiaryName(payment.payee_address);
         const searchLower = searchTerm.toLowerCase();
         const paymentLabel =
@@ -882,7 +896,7 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete }: Tra
     });
 
     return sorted;
-  }, [expandedPayments, searchTerm, sortField, sortDirection, getBeneficiaryName]);
+  }, [expandedPayments, searchTerm, sortField, sortDirection, getBeneficiaryName, normalizedWallet]);
 
   // Pagination
   const totalPages = Math.ceil(processedPayments.length / itemsPerPage);

@@ -196,7 +196,7 @@ router.get('/:walletAddress', async (req, res) => {
     const { data: simplePayments, error: simpleError } = await supabase
       .from('scheduled_payments')
       .select('*')
-      .or(`payer_address.eq.${walletAddress},payee_address.eq.${walletAddress}`)
+      .or(`payer_address.ilike.${walletAddress},payee_address.ilike.${walletAddress}`)
       .order('created_at', { ascending: false });
 
     if (simpleError) {
@@ -208,7 +208,7 @@ router.get('/:walletAddress', async (req, res) => {
     const { data: recurringPayments, error: recurringError } = await supabase
       .from('recurring_payments')
       .select('*')
-      .or(`payer_address.eq.${walletAddress},payee_address.eq.${walletAddress}`)
+      .or(`payer_address.ilike.${walletAddress},payee_address.ilike.${walletAddress}`)
       .order('created_at', { ascending: false });
 
     if (recurringError) {

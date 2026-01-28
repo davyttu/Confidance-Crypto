@@ -5,7 +5,8 @@
     "dashboard": "Dashboard",
     "liquidity": "Liquidez",
     "help": "Ayuda",
-    "analytics": "Analytics"
+    "analytics": "Analytics",
+    "notifications": "Notificaciones"
   },
   "common": {
     "connect": "Conectar cartera",
@@ -83,7 +84,7 @@
     },
     "why": {
       "title": "¿Por qué Confidance?",
-      "description": "La plataforma más simple y segura para programar tus pagos cripto"
+      "description": "La plataforma más simple y segura para programar tus pagos cripto y mantener el control de tus finanzas."
     },
     "useCases": {
       "salaries": {
@@ -115,6 +116,11 @@
       "executed": "Pagos ejecutados",
       "success": "Tasa de éxito",
       "users": "Usuarios activos"
+    },
+    "ctaSection": {
+      "title": "¿Listo para empezar?",
+      "description": "Conecta tu cartera y descubre todas las funcionalidades de gestión contable del panel.",
+      "button": "Crear mi primer pago"
     }
   },
   "payment": {
@@ -539,12 +545,20 @@
       "type": "Tipo",
       "created": "Creado",
       "link": "Enlace",
-      "copy": "Copiar"
+      "copy": "Copiar",
+      "delete": "Eliminar",
+      "deleteTitle": "Eliminar enlace de pago",
+      "deleteDescription": "Este enlace se eliminará de tu historial. Esta acción no se puede deshacer.",
+      "deleteConfirm": "Eliminar",
+      "deleteCancel": "Cancelar",
+      "deleting": "Eliminando..."
     },
     "status": {
       "pending": "Pendiente",
       "active": "Activo",
       "paid": "Pagado",
+      "released": "Liberado",
+      "completed": "Completado",
       "expired": "Expirado",
       "cancelled": "Cancelado"
     },
@@ -775,6 +789,7 @@
     "product": "Producto",
     "resources": "Recursos",
     "legal": "Legal",
+    "firstStep": "Primer paso",
     "documentation": "Documentación",
     "support": "Soporte",
     "terms": "Aviso legal",

@@ -226,7 +226,7 @@ export default function Home() {
                 {isMounted && ready ? t('home.why.title') : 'Pourquoi Confidance ?'}
               </h2>
               <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto animate-slide-in-left">
-                {isMounted && ready ? t('home.why.description') : 'La plateforme la plus simple et sécurisée pour programmer vos paiements crypto'}
+                {isMounted && ready ? t('home.why.description') : 'La plateforme la plus simple et sécurisée pour programmer vos paiements crypto et garder le contrôle de vos finances.'}
               </p>
             </div>
 
@@ -312,7 +312,7 @@ export default function Home() {
                 </h2>
                 
                 <p className="text-xl text-gray-600 dark:text-gray-400">
-                  {isMounted && ready ? t('home.ctaSection.description') : 'Connectez votre wallet et créez votre premier paiement programmé en moins de 2 minutes'}
+                  {isMounted && ready ? t('home.ctaSection.description') : 'Connectez votre wallet et découvrez toutes les fonctionnalités de gestion comptable du dashboard'}
                 </p>
 
                 <Link

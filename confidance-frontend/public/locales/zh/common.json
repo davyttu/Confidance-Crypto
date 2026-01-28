@@ -5,7 +5,8 @@
     "dashboard": "Dashboard",
     "liquidity": "流动性",
     "help": "帮助",
-    "analytics": "Analytics"
+    "analytics": "Analytics",
+    "notifications": "通知"
   },
   "common": {
     "connect": "连接钱包",
@@ -82,7 +83,7 @@
     },
     "why": {
       "title": "为什么选择 Confidance？",
-      "description": "用于安排加密支付的最简单、最安全的平台"
+      "description": "用于安排加密支付、掌控财务状况的最简单、最安全的平台。"
     },
     "useCases": {
       "salaries": {
@@ -114,6 +115,11 @@
       "executed": "已执行支付",
       "success": "成功率",
       "users": "活跃用户"
+    },
+    "ctaSection": {
+      "title": "准备开始？",
+      "description": "连接您的钱包，探索仪表板中的所有财务管理功能。",
+      "button": "创建我的首次支付"
     }
   },
   "payment": {
@@ -566,12 +572,20 @@
       "type": "类型",
       "created": "创建时间",
       "link": "链接",
-      "copy": "复制"
+      "copy": "复制",
+      "delete": "删除",
+      "deleteTitle": "删除支付链接",
+      "deleteDescription": "该链接将从历史记录中删除，此操作不可撤销。",
+      "deleteConfirm": "删除",
+      "deleteCancel": "取消",
+      "deleting": "删除中..."
     },
     "status": {
       "pending": "待处理",
       "active": "进行中",
       "paid": "已支付",
+      "released": "已释放",
+      "completed": "已完成",
       "expired": "已过期",
       "cancelled": "已取消"
     },
@@ -769,6 +783,7 @@
     "product": "产品",
     "resources": "资源",
     "legal": "法律",
+    "firstStep": "第一步",
     "documentation": "文档",
     "support": "支持",
     "terms": "法律声明",

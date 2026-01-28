@@ -1,0 +1,216 @@
+{
+  "title": "Guide Wallet Crypto",
+  "slug": "guide-wallet-crypto",
+  "description": "Apprenez à créer votre premier wallet crypto en 5 minutes pour utiliser Confidance",
+  "sections": [
+    {
+      "id": "hero",
+      "type": "hero",
+      "layout": "center",
+      "background": {
+        "type": "gradient",
+        "colors": ["#667eea", "#764ba2", "#f093fb"],
+        "animation": "subtle-wave"
+      },
+      "content": {
+        "icon": "🔐",
+        "iconSize": "xl",
+        "title": {
+          "text": "Avant la DeFi, il y a le wallet",
+          "gradient": true,
+          "size": "4xl"
+        },
+        "subtitle": {
+          "text": "La première clé de votre liberté financière",
+          "size": "xl",
+          "color": "white-80"
+        },
+        "description": {
+          "text": "Avant d'utiliser Confidance pour gérer vos paiements crypto en toute autonomie, vous avez besoin d'une seule chose : votre wallet. Pas d'inscription, pas de formulaire. Juste vous, votre wallet, et la blockchain.",
+          "maxWidth": "2xl",
+          "color": "white-90"
+        },
+        "badge": {
+          "text": "✨ Confidance se connecte automatiquement",
+          "style": "glass"
+        }
+      }
+    },
+    {
+      "id": "what-is-wallet",
+      "type": "content-with-visual",
+      "layout": "left-content-right-visual",
+      "background": "white",
+      "visual": {
+        "type": "illustration",
+        "name": "digital-safe",
+        "style": "3d-isometric",
+        "colors": ["primary", "purple", "pink"]
+      },
+      "content": {
+        "badge": { "text": "💼 Les bases", "color": "blue" },
+        "title": { "text": "C'est quoi, un wallet crypto ?", "size": "3xl" },
+        "description": {
+          "text": "Imaginez un coffre-fort numérique que vous seul pouvez ouvrir. Ou mieux : une clé magique qui vous donne accès à vos fonds, où que vous soyez, 24h/24, sans intermédiaire.",
+          "size": "lg"
+        },
+        "cards": [
+          { "icon": "👤", "title": "Votre identité", "description": "Sur la blockchain" },
+          { "icon": "💸", "title": "Votre moyen de paiement", "description": "Pour envoyer et recevoir" },
+          { "icon": "✍️", "title": "Votre signature", "description": "Pour valider chaque action" },
+          { "icon": "🏆", "title": "Votre propriété", "description": "Personne d'autre ne peut y toucher" }
+        ],
+        "highlight": {
+          "type": "callout",
+          "style": "info",
+          "icon": "💡",
+          "text": "Contrairement à un compte bancaire où la banque gère tout, ici c'est vous le propriétaire. Personne ne peut bloquer, limiter ou accéder à vos fonds sans votre permission."
+        }
+      }
+    },
+    {
+      "id": "why-wallet-confidance",
+      "type": "feature-comparison",
+      "background": { "type": "gradient", "colors": ["#f8f9ff", "#fff"] },
+      "content": {
+        "badge": { "text": "🔗 Connexion directe", "color": "purple" },
+        "title": { "text": "Pourquoi un wallet est indispensable pour Confidance", "size": "3xl" },
+        "subtitle": { "text": "Confidance ne fonctionne pas comme une banque classique", "size": "lg", "color": "gray-600" },
+        "comparison": {
+          "left": {
+            "title": "Banque classique",
+            "icon": "🏦",
+            "color": "gray",
+            "items": [
+              { "icon": "❌", "text": "Email + mot de passe" },
+              { "icon": "❌", "text": "La banque détient vos fonds" },
+              { "icon": "❌", "text": "Frais cachés et délais" },
+              { "icon": "❌", "text": "Peut bloquer votre compte" }
+            ]
+          },
+          "right": {
+            "title": "Confidance + Wallet",
+            "icon": "💎",
+            "color": "gradient",
+            "items": [
+              { "icon": "✅", "text": "Votre wallet = votre identité" },
+              { "icon": "✅", "text": "Vous contrôlez vos fonds" },
+              { "icon": "✅", "text": "Transparent et instantané" },
+              { "icon": "✅", "text": "Personne ne peut vous bloquer" }
+            ]
+          }
+        },
+        "summary": {
+          "type": "highlight-box",
+          "style": "gradient",
+          "icon": "🎯",
+          "title": "En résumé",
+          "text": "Confidance vous donne les outils pour gérer vos paiements automatiques. Mais c'est vous qui contrôlez l'argent, via votre wallet."
+        }
+      }
+    },
+    {
+      "id": "how-to-create",
+      "type": "step-by-step",
+      "background": "white",
+      "content": {
+        "badge": { "text": "🚀 Démarrage rapide", "color": "green" },
+        "title": { "text": "Créer son premier wallet", "size": "3xl" },
+        "subtitle": { "text": "En moins de 5 minutes", "size": "xl", "color": "gradient" },
+        "steps": [
+          { "number": "1", "icon": "🎯", "title": "Choisir un wallet", "description": "Plusieurs options existent (voir plus bas). Choisissez celui qui vous plaît.", "color": "blue" },
+          { "number": "2", "icon": "📥", "title": "Installer l'application", "description": "Sur mobile : téléchargez l'app depuis l'App Store ou Google Play. Sur ordinateur : ajoutez l'extension à votre navigateur (Chrome, Firefox, Brave…).", "color": "purple" },
+          { "number": "3", "icon": "✨", "title": "Créer un nouveau wallet", "description": "Suivez les instructions à l'écran. C'est guidé et intuitif.", "color": "pink" },
+          { "number": "4", "icon": "🔒", "title": "Sauvegarder votre phrase secrète", "description": "Votre wallet va générer une phrase de récupération (12 ou 24 mots). Cette phrase est LA clé de votre coffre-fort.", "color": "red", "warning": { "text": "Notez-la sur papier, conservez-la en lieu sûr, ne la partagez JAMAIS.", "icon": "⚠️" } }
+        ],
+        "completion": { "icon": "🎉", "text": "C'est fait ! Vous avez votre wallet.", "style": "success-banner" }
+      }
+    },
+    {
+      "id": "recommended-wallets",
+      "type": "wallet-cards",
+      "background": { "type": "gradient", "colors": ["#fff", "#f8f9ff"] },
+      "content": {
+        "badge": { "text": "🌈 Choix populaires", "color": "gradient" },
+        "title": { "text": "Wallets recommandés", "size": "3xl" },
+        "subtitle": { "text": "Confidance est compatible avec tous ces wallets", "size": "lg" },
+        "wallets": [
+          { "id": "metamask", "name": "MetaMask", "tagline": "Le plus populaire et polyvalent", "description": "MetaMask est le wallet le plus utilisé au monde. Disponible en extension navigateur et application mobile.", "icon": "🦊", "color": "orange", "platforms": ["Web", "Mobile"], "url": "https://metamask.io", "features": ["Extension navigateur", "Application mobile", "Interface intuitive", "Support multichain"], "difficulty": "Débutant", "recommended": true },
+          { "id": "rainbow", "name": "Rainbow", "tagline": "Le plus intuitif pour mobile", "description": "Rainbow mise tout sur la simplicité et l'esthétique. Idéal si vous préférez gérer vos crypto depuis votre smartphone.", "icon": "🌈", "color": "gradient", "platforms": ["Mobile"], "url": "https://rainbow.me", "features": ["Design épuré", "Ultra simple", "Mobile first", "Parfait pour débuter"], "difficulty": "Débutant" },
+          { "id": "trust-wallet", "name": "Trust Wallet", "tagline": "Le couteau suisse mobile", "description": "Trust Wallet supporte des milliers de tokens et blockchains. Très complet.", "icon": "🛡️", "color": "blue", "platforms": ["Mobile"], "url": "https://trustwallet.com", "features": ["Milliers de tokens", "Multi-blockchain", "Staking intégré", "Très complet"], "difficulty": "Intermédiaire" },
+          { "id": "coinbase-wallet", "name": "Coinbase Wallet", "tagline": "Pour ceux qui connaissent Coinbase", "description": "Si vous utilisez déjà Coinbase, leur wallet est une extension naturelle, simple et fiable.", "icon": "🔵", "color": "blue", "platforms": ["Web", "Mobile"], "url": "https://www.coinbase.com/wallet", "features": ["Intégration Coinbase", "Interface familière", "Support client", "Sécurité renforcée"], "difficulty": "Débutant" }
+        ],
+        "warning": { "type": "security-alert", "icon": "⚠️", "title": "Important", "text": "Téléchargez toujours depuis les sites officiels listés ci-dessus. Méfiez-vous des liens sur les réseaux sociaux ou par email.", "style": "warning" }
+      }
+    },
+    {
+      "id": "golden-rules",
+      "type": "security-rules",
+      "background": { "type": "gradient", "colors": ["#fef3c7", "#fef3c7", "#fff"] },
+      "content": {
+        "badge": { "text": "🛡️ Sécurité", "color": "yellow" },
+        "title": { "text": "Les règles d'or à connaître", "size": "3xl" },
+        "subtitle": { "text": "Votre wallet est puissant, mais la sécurité dépend de vous", "size": "lg" },
+        "rules": [
+          { "number": "1", "icon": "🔒", "title": "Ne partagez JAMAIS votre phrase secrète", "description": "Personne ne doit la connaître. Ni Confidance, ni un support technique, ni un \"conseiller\". Jamais.", "severity": "critical", "color": "red" },
+          { "number": "2", "icon": "🚫", "title": "Confidance ne vous la demandera jamais", "description": "Si quelqu'un vous demande votre phrase secrète en prétendant être de Confidance, c'est une arnaque.", "severity": "critical", "color": "orange" },
+          { "number": "3", "icon": "📝", "title": "Perdre la phrase = perdre l'accès", "description": "Si vous perdez votre phrase de récupération, vous perdez l'accès à votre wallet. Personne ne pourra vous aider. Notez-la précieusement.", "severity": "high", "color": "yellow" },
+          { "number": "4", "icon": "🌐", "title": "Vérifiez toujours les sites que vous visitez", "description": "Assurez-vous que l'URL est correcte avant d'interagir avec un site (phishing = fake sites très courants).", "severity": "high", "color": "blue" }
+        ],
+        "bonus": { "type": "tip-card", "icon": "💡", "title": "Conseil bonus", "text": "Commencez petit : testez d'abord avec de petites sommes pour vous familiariser. La confiance se construit avec l'expérience. Libre à vous de créer plusieurs wallets pour le pro, perso…. C'est totalement gratuit.", "style": "gradient", "color": "green" }
+      }
+    },
+    {
+      "id": "wallet-gateway",
+      "type": "philosophy",
+      "background": { "type": "gradient", "colors": ["#667eea", "#764ba2"], "overlay": "dark" },
+      "content": {
+        "badge": { "text": "🌍 Vision", "color": "white", "style": "glass" },
+        "title": { "text": "Votre wallet : première étape vers la DeFi", "size": "3xl", "color": "white" },
+        "subtitle": { "text": "Créer un wallet, c'est bien plus qu'installer une application. C'est franchir la porte d'un nouveau système financier.", "size": "lg", "color": "white-90" },
+        "features": [
+          { "icon": "💸", "title": "Vous payez", "description": "Qui vous voulez, quand vous voulez" },
+          { "icon": "📥", "title": "Vous recevez", "description": "Sans intermédiaire" },
+          { "icon": "⚡", "title": "Vous automatisez", "description": "Vos flux avec Confidance" },
+          { "icon": "🏆", "title": "Vous êtes propriétaire", "description": "De vos fonds" }
+        ],
+        "principles": {
+          "title": "La philosophie DeFi",
+          "items": [
+            { "icon": "🎯", "title": "Autonomie", "description": "Vous décidez, vous signez, vous contrôlez" },
+            { "icon": "🔍", "title": "Transparence", "description": "Tout est visible sur la blockchain" },
+            { "icon": "🤝", "title": "Responsabilité", "description": "Avec le pouvoir vient la responsabilité" }
+          ]
+        },
+        "conclusion": { "text": "Votre wallet est le pont entre vous et la DeFi. Une fois qu'il est prêt, tout devient possible.", "style": "highlight", "color": "white" }
+      }
+    },
+    {
+      "id": "cta-final",
+      "type": "final-cta",
+      "background": "white",
+      "content": {
+        "icon": "✨",
+        "iconSize": "2xl",
+        "title": { "text": "Votre wallet est prêt ?", "size": "3xl" },
+        "subtitle": { "text": "Bienvenue dans Confidance", "size": "2xl", "color": "gradient" },
+        "description": {
+          "text": "Vous avez franchi la première étape, celle qui ouvre toutes les autres. Vous êtes maintenant prêt à gérer vos paiements crypto en toute liberté.",
+          "maxWidth": "2xl"
+        },
+        "cta": {
+          "primary": { "text": "Connecter mon wallet", "icon": "🚀", "url": "/dashboard", "style": "gradient", "size": "xl" },
+          "secondary": { "text": "Voir la démo", "icon": "▶️", "url": "/demo", "style": "outline" }
+        },
+        "helpLinks": {
+          "title": "Besoin d'aide ?",
+          "links": [
+            { "text": "Consultez notre FAQ", "icon": "❓", "url": "/aide/faq" },
+            { "text": "Rejoignez notre Discord", "icon": "💬", "url": "/discord" },
+            { "text": "Support par email", "icon": "📧", "url": "mailto:support@confidance.com" }
+          ]
+        }
+      }
+    }
+  ]
+}

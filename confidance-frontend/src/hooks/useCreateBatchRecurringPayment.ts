@@ -131,6 +131,8 @@ interface UseCreateBatchRecurringPaymentReturn {
   createTxHash: `0x${string}` | undefined;
   contractAddresses: `0x${string}`[];
   approvalTotalPerContract: bigint | null;
+  firstMonthAmount: bigint | null; // Montant du premier mois si personnalisé
+  monthlyAmount: bigint | null; // Montant mensuel récurrent
 
   createBatchRecurringPayment: (params: CreateBatchRecurringPaymentParams) => Promise<void>;
   reset: () => void;
@@ -179,9 +181,13 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
   const [currentParams, setCurrentParams] = useState<CreateBatchRecurringPaymentParams | null>(null);
   const [progressMessage, setProgressMessage] = useState<string>('');
   const [capturedPayerAddress, setCapturedPayerAddress] = useState<`0x${string}` | undefined>();
+  const [firstMonthAmount, setFirstMonthAmount] = useState<bigint | null>(null);
+  const [monthlyAmount, setMonthlyAmount] = useState<bigint | null>(null);
 
   // Pour gérer les approbations multiples
   const [currentApprovingIndex, setCurrentApprovingIndex] = useState<number>(0);
+  // État pour suivre si une transaction d'approbation est en attente de confirmation
+  const [isApprovalPending, setIsApprovalPending] = useState<boolean>(false);
 
   const [guestEmail, setGuestEmail] = useState<string>('');
   const [needsGuestEmail, setNeedsGuestEmail] = useState(false);
@@ -334,34 +340,52 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
           // Préparer les arrays pour le batch
           const payees: `0x${string}`[] = [];
           const monthlyAmounts: bigint[] = [];
+          const firstMonthAmounts: bigint[] = [];
 
           for (const beneficiary of currentParams.beneficiaries) {
             payees.push(beneficiary.address as `0x${string}`);
             const amount = BigInt(Math.floor(parseFloat(beneficiary.amount) * 10 ** tokenData.decimals));
             monthlyAmounts.push(amount);
+            // ✅ FIX: Ajouter le montant du premier mois pour chaque destinataire
+            firstMonthAmounts.push(currentParams.firstMonthAmount || 0n);
           }
+
+          // ✅ Utiliser V2 si firstMonthAmount est défini
+          const useV2 = currentParams.firstMonthAmount && currentParams.firstMonthAmount > 0n;
 
           console.log('📋 [BATCH RECURRING] Arguments création:', {
             tokenAddress: tokenData.address,
             payees,
             monthlyAmounts: monthlyAmounts.map(a => a.toString()),
+            firstMonthAmounts: useV2 ? firstMonthAmounts.map(a => a.toString()) : 'N/A',
             firstPaymentTime: currentParams.firstPaymentTime,
             totalMonths: currentParams.totalMonths,
             dayOfMonth: currentParams.dayOfMonth,
+            useV2,
           });
 
           writeContract({
             abi: paymentFactoryAbi,
-              address: factoryAddress,
-            functionName: 'createBatchRecurringPaymentERC20',
-            args: [
-              tokenData.address as `0x${string}`,
-              payees,
-              monthlyAmounts,
-              BigInt(currentParams.firstPaymentTime), // _startDate dans le contrat
-              BigInt(currentParams.totalMonths),
-              BigInt(currentParams.dayOfMonth),
-            ],
+            address: factoryAddress,
+            functionName: useV2 ? 'createBatchRecurringPaymentERC20_V2' : 'createBatchRecurringPaymentERC20',
+            args: useV2
+              ? [
+                  tokenData.address as `0x${string}`,
+                  payees,
+                  monthlyAmounts,
+                  firstMonthAmounts,
+                  BigInt(currentParams.firstPaymentTime),
+                  BigInt(currentParams.totalMonths),
+                  BigInt(currentParams.dayOfMonth),
+                ]
+              : [
+                  tokenData.address as `0x${string}`,
+                  payees,
+                  monthlyAmounts,
+                  BigInt(currentParams.firstPaymentTime),
+                  BigInt(currentParams.totalMonths),
+                  BigInt(currentParams.dayOfMonth),
+                ],
           });
 
           console.log('📤 [BATCH RECURRING] writeContract appelé');
@@ -477,11 +501,11 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
             throw new Error('Token address manquante');
           }
 
-          const monthlyAmount = BigInt(Math.floor(parseFloat(beneficiary.amount) * 10 ** tokenData.decimals));
+          const monthlyAmountValue = BigInt(Math.floor(parseFloat(beneficiary.amount) * 10 ** tokenData.decimals));
           const isProVerified = user?.accountType === 'professional' && user?.proStatus === 'verified';
           const feeBps = getProtocolFeeBps({ isInstantPayment: false, isProVerified });
           const totalRequired = calculateRecurringTotal(
-            monthlyAmount,
+            monthlyAmountValue,
             currentParams.totalMonths,
             feeBps,
             currentParams.firstMonthAmount
@@ -500,6 +524,9 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
             })
           );
           setApprovalTotalPerContract(totalRequired);
+          // ✅ Stocker les montants pour l'affichage du résumé
+          setFirstMonthAmount(currentParams.firstMonthAmount && currentParams.firstMonthAmount > 0n && currentParams.firstMonthAmount !== monthlyAmountValue ? currentParams.firstMonthAmount : null);
+          setMonthlyAmount(monthlyAmountValue);
 
           // Approuver le contrat
           const USDC = new (await import('viem')).getContract({
@@ -517,6 +544,7 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
           const { writeContract: writeApprove } = await import('wagmi/actions');
           const { config } = await import('@/lib/wagmi');
 
+          setIsApprovalPending(true);
           writeApprove(config, {
             address: tokenData.address as `0x${string}`,
             abi: erc20Abi,
@@ -528,8 +556,12 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
             // Attendre la confirmation
             publicClient.waitForTransactionReceipt({ hash }).then(() => {
               console.log(`✅ [BATCH RECURRING] Approbation ${currentApprovingIndex + 1} confirmée`);
+              setIsApprovalPending(false);
               setCurrentApprovingIndex(currentApprovingIndex + 1);
             });
+          }).catch((err) => {
+            setIsApprovalPending(false);
+            throw err;
           });
 
         } catch (err) {
@@ -664,6 +696,7 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
     setApprovalTotalPerContract(null);
     setCapturedPayerAddress(undefined);
     setCurrentApprovingIndex(0);
+    setIsApprovalPending(false);
     setGuestEmail('');
     setNeedsGuestEmail(false);
     resetWrite();
@@ -676,7 +709,16 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
   let currentStep = 0;
   if (status === 'approving_factory' || approvalFactoryHook.isApproving) currentStep = 1;
   if (status === 'creating' || status === 'confirming') currentStep = 2;
-  if (status === 'approving_contracts') currentStep = 2 + currentApprovingIndex + 1;
+  // ✅ FIX: currentStep doit refléter le contrat en cours d'approbation, pas le suivant
+  // Quand on approuve le contrat à l'index N, on est à l'étape 2 + N + 1
+  // Mais on ne doit incrémenter que quand la transaction est confirmée, pas quand elle est envoyée
+  if (status === 'approving_contracts') {
+    // currentApprovingIndex est l'index du contrat qu'on est en train d'approuver
+    // On est donc à l'étape 2 (création) + 1 (premier contrat) + currentApprovingIndex
+    currentStep = 2 + currentApprovingIndex + 1;
+    // Mais on ne doit pas aller au-delà du total
+    if (currentStep > totalSteps) currentStep = totalSteps;
+  }
   if (status === 'success') currentStep = totalSteps;
 
   return {
@@ -690,7 +732,8 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
     totalSteps,
     progressMessage,
     approvalTotalPerContract,
-    approvalTotalPerContract,
+    firstMonthAmount,
+    monthlyAmount,
     isAuthenticated,
     needsGuestEmail,
     setGuestEmail,

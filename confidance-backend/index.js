@@ -11,6 +11,8 @@ const paymentLinksRoutes = require('./routes/paymentLinks');
 const paymentTransactionsRoutes = require('./routes/paymentTransactions');
 const chatRoutes = require('./routes/chat'); // ✅ Chat Agent
 const aiAdvisorRoutes = require('./routes/aiAdvisor');
+const notificationsRoutes = require('./routes/notifications');
+const linkWalletRoutes = require('./routes/linkWallet');
 const { authenticateToken, optionalAuth } = require('./middleware/auth');
 const { addTimelineEvent } = require('./services/timeline/timelineService');
 const { buildCategoryInsights } = require('./services/analytics/categoryInsights');
@@ -160,6 +162,8 @@ app.use('/api/chat', chatRoutes); // ✅ Chat Agent
 app.use('/api/ai/advisor', aiAdvisorRoutes);
 app.use('/api/payment-links', paymentLinksRoutes);
 app.use('/api/payment-transactions', paymentTransactionsRoutes);
+app.use('/api/notifications', notificationsRoutes);
+app.use('/api/link-wallet', linkWalletRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
@@ -885,16 +889,19 @@ app.get('/api/payments/:paymentId/timeline', authenticateToken, async (req, res)
 
 // GET /api/payments/:address - Liste des paiements d'un utilisateur (SIMPLE + RÉCURRENTS)
 app.get('/api/payments/:address', async (req, res) => {
+  console.log('🔥 ROUTE :address APPELÉE - params:', req.params, 'url:', req.url);
   try {
     const { address } = req.params;
 
-    console.log('📊 Liste paiements pour:', address);
+    // Normaliser l'adresse en lowercase pour la comparaison
+    const normalizedAddress = address.toLowerCase();
+    console.log('📊 Liste paiements pour:', normalizedAddress);
 
     // ✅ ÉTAPE 1 : Charger les paiements SIMPLES/BATCH
     const { data: simplePayments, error: simpleError } = await supabase
       .from('scheduled_payments')
       .select('*')
-      .or(`payer_address.eq.${address},payee_address.eq.${address}`)
+      .or(`payer_address.eq.${normalizedAddress},payee_address.eq.${normalizedAddress}`)
       .order('created_at', { ascending: false });
 
     if (simpleError) {
@@ -906,7 +913,7 @@ app.get('/api/payments/:address', async (req, res) => {
     const { data: recurringPayments, error: recurringError } = await supabase
       .from('recurring_payments')
       .select('*')
-      .or(`payer_address.eq.${address},payee_address.eq.${address}`)
+      .or(`payer_address.eq.${normalizedAddress},payee_address.eq.${normalizedAddress}`)
       .order('created_at', { ascending: false });
 
     if (recurringError) {

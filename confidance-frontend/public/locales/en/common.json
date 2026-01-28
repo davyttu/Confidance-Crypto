@@ -5,7 +5,8 @@
     "dashboard": "Dashboard",
     "liquidity": "Liquidity",
     "help": "Help",
-    "analytics": "Analytics"
+    "analytics": "Analytics",
+    "notifications": "Notifications"
   },
   "common": {
     "connect": "Connect Wallet",
@@ -84,7 +85,7 @@
     },
     "why": {
       "title": "Why Confidance?",
-      "description": "The simplest and most secure platform for scheduling your crypto payments"
+      "description": "The simplest and most secure platform for scheduling your crypto payments and keeping control of your finances."
     },
     "useCases": {
       "title": "Use Cases",
@@ -121,7 +122,7 @@
     },
     "ctaSection": {
       "title": "Ready to get started?",
-      "description": "Connect your wallet and create your first scheduled payment in less than 2 minutes",
+      "description": "Connect your wallet and discover all the accounting management features of the dashboard",
       "button": "Create my first payment"
     }
   },
@@ -819,6 +820,7 @@
     "product": "Product",
     "resources": "Resources",
     "legal": "Legal",
+    "firstStep": "First step",
     "documentation": "Documentation",
     "support": "Support",
     "terms": "Legal notice",
@@ -924,12 +926,20 @@
       "type": "Type",
       "created": "Created",
       "link": "Link",
-      "copy": "Copy"
+      "copy": "Copy",
+      "delete": "Delete",
+      "deleteTitle": "Delete payment link",
+      "deleteDescription": "This link will be removed from your history. This action cannot be undone.",
+      "deleteConfirm": "Delete",
+      "deleteCancel": "Cancel",
+      "deleting": "Deleting..."
     },
     "status": {
       "pending": "Pending",
       "active": "Active",
       "paid": "Paid",
+      "released": "Released",
+      "completed": "Completed",
       "expired": "Expired",
       "cancelled": "Cancelled"
     },

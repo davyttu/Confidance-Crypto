@@ -17,7 +17,7 @@ export function Footer() {
 
   const links = {
     product: [
-      { label: isMounted && ready ? t('nav.dashboard') : 'Dashboard', href: '/dashboard' },
+      { label: isMounted && ready ? t('footer.firstStep') : 'First step', href: '/premiere-etape' },
       { label: isMounted && ready ? t('payment.create') : 'Créer un paiement', href: '/payment' },
       { label: isMounted && ready ? t('footer.documentation') : 'Documentation', href: '/docs' },
     ],

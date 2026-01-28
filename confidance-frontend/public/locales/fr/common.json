@@ -5,7 +5,8 @@
     "dashboard": "Dashboard",
     "liquidity": "Liquidité",
     "help": "Aide",
-    "analytics": "Analytics"
+    "analytics": "Analytics",
+    "notifications": "Notifications"
   },
   "common": {
     "connect": "Connecter le portefeuille",
@@ -84,7 +85,7 @@
     },
     "why": {
       "title": "Pourquoi Confidance ?",
-      "description": "La plateforme la plus simple et sécurisée pour programmer vos paiements crypto"
+      "description": "La plateforme la plus simple et sécurisée pour programmer vos paiements crypto et garder le contrôle de vos finances."
     },
     "useCases": {
       "salaries": {
@@ -119,7 +120,7 @@
     },
     "ctaSection": {
       "title": "Prêt à commencer ?",
-      "description": "Connectez votre wallet et créez votre premier paiement programmé en moins de 2 minutes",
+      "description": "Connectez votre wallet et découvrez toutes les fonctionnalités de gestion comptable du dashboard",
       "button": "Créer mon premier paiement"
     }
   },
@@ -908,12 +909,20 @@
       "type": "Type",
       "created": "Créé le",
       "link": "Lien",
-      "copy": "Copier"
+      "copy": "Copier",
+      "delete": "Supprimer",
+      "deleteTitle": "Supprimer le lien de paiement",
+      "deleteDescription": "Ce lien sera retiré de votre historique. Cette action est irréversible.",
+      "deleteConfirm": "Supprimer",
+      "deleteCancel": "Annuler",
+      "deleting": "Suppression..."
     },
     "status": {
       "pending": "En attente",
       "active": "Actif",
       "paid": "Payé",
+      "released": "Libéré",
+      "completed": "Terminé",
       "expired": "Expiré",
       "cancelled": "Annulé"
     },
@@ -987,6 +996,7 @@
     "product": "Produit",
     "resources": "Ressources",
     "legal": "Légal",
+    "firstStep": "Première étape",
     "documentation": "Documentation",
     "support": "Support",
     "terms": "Mentions légales",

@@ -272,6 +272,71 @@ contract PaymentFactory_Recurring {
     }
 
     // ============================================================
+    // BATCH RECURRING ERC20 V2 (avec premier mois personnalisé)
+    // ============================================================
+
+    function createBatchRecurringPaymentERC20_V2(
+        address _tokenAddress,
+        address[] calldata _payees,
+        uint256[] calldata _monthlyAmounts,
+        uint256[] calldata _firstMonthAmounts,
+        uint256 _startDate,
+        uint256 _totalMonths,
+        uint256 _dayOfMonth
+    ) external returns (address[] memory) {
+        require(_tokenAddress != address(0), "Invalid token");
+        require(_payees.length > 0, "No payees");
+        require(_payees.length <= 50, "Max 50 payees");
+        require(_payees.length == _monthlyAmounts.length, "Length mismatch");
+        require(_payees.length == _firstMonthAmounts.length, "First month amounts length mismatch");
+        require(_startDate > block.timestamp, "Start date must be in future");
+        require(_totalMonths >= 1 && _totalMonths <= 12, "Total months must be 1-12");
+        require(_dayOfMonth >= 1 && _dayOfMonth <= 28, "Day of month must be 1-28");
+
+        address[] memory payments = new address[](_payees.length);
+
+        uint256 feeBps = _feeBpsFor(msg.sender);
+
+        for (uint256 i = 0; i < _payees.length; i++) {
+            require(_payees[i] != address(0), "Invalid payee");
+            require(_monthlyAmounts[i] > 0, "Monthly amount must be > 0");
+
+            RecurringPaymentERC20 p = new RecurringPaymentERC20(
+                msg.sender,
+                _payees[i],
+                _tokenAddress,
+                _monthlyAmounts[i],
+                _firstMonthAmounts[i],
+                _startDate,
+                _totalMonths,
+                _dayOfMonth,
+                PROTOCOL_WALLET,
+                feeBps,
+                secondsPerMonth
+            );
+
+            payments[i] = address(p);
+
+            // Event par payment (utile pour indexer côté DB)
+            uint256 protocolFeePerMonth = (_monthlyAmounts[i] * feeBps) / BASIS_POINTS_DENOMINATOR;
+            emit RecurringPaymentCreatedERC20(
+                msg.sender,
+                _payees[i],
+                _tokenAddress,
+                address(p),
+                _monthlyAmounts[i],
+                protocolFeePerMonth,
+                _startDate,
+                _totalMonths
+            );
+        }
+
+        emit BatchRecurringPaymentCreatedERC20(msg.sender, _tokenAddress, _payees.length, _startDate, _totalMonths);
+
+        return payments;
+    }
+
+    // ============================================================
     // ADMIN FALLBACK
     // ============================================================
 
