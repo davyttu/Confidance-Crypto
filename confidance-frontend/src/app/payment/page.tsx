@@ -9,12 +9,26 @@ import { useEffect, useState } from 'react';
 export default function PaymentPage() {
   const { t, ready } = useTranslation();
   const [isMounted, setIsMounted] = useState(false);
+  const [voiceSessionActive, setVoiceSessionActive] = useState(false);
+  const [hasBeneficiaries, setHasBeneficiaries] = useState(false);
   const [voiceLang, setVoiceLang] = useState('FR');
   const voiceLangOptions = ['FR', 'EN', 'ES', 'RU', 'ZH'];
   const voiceLangStorageKey = 'voiceRecognitionLang';
 
   useEffect(() => {
     setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onActive = () => setVoiceSessionActive(true);
+    const onInactive = () => setVoiceSessionActive(false);
+    window.addEventListener('voice-session-active', onActive);
+    window.addEventListener('voice-session-inactive', onInactive);
+    return () => {
+      window.removeEventListener('voice-session-active', onActive);
+      window.removeEventListener('voice-session-inactive', onInactive);
+    };
   }, []);
 
   useEffect(() => {
@@ -33,34 +47,58 @@ export default function PaymentPage() {
         <GuestBanner />
 
         <div className="max-w-2xl mx-auto text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold mb-8 gradient-text leading-relaxed pb-2">
-            {isMounted && ready ? t('create.title') : 'Create a payment'}
-          </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-400">
+          <h1 className="text-xl md:text-2xl font-bold mb-8 bg-gradient-to-r from-primary-600 via-purple-500 to-red-500 bg-clip-text text-transparent dark:from-primary-400 dark:via-purple-400 dark:to-red-400 leading-relaxed pb-2">
             {isMounted && ready ? t('create.subtitle') : 'Define what it is for, when it executes, and who it is for.'}
-          </p>
+          </h1>
+          {!hasBeneficiaries && (
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 max-w-md mx-auto">
+              {isMounted && ready ? t('create.voiceNeedBeneficiary', { defaultValue: 'To use the voice command, save at least one beneficiary (they will appear in favorites).' }) : 'To use the voice command, save at least one beneficiary (they will appear in favorites).'}
+            </p>
+          )}
           <div className="mt-6 flex justify-center">
             <div className="group inline-flex items-center gap-3 rounded-full border border-primary-200 bg-white/80 px-3 py-2 text-sm font-semibold text-primary-700 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary-300 hover:shadow-md dark:border-primary-800 dark:bg-gray-900/70 dark:text-primary-300">
-              <button
-                type="button"
-                onClick={() => {
-                  document.getElementById('payment-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  window.dispatchEvent(new CustomEvent('voice-payment-start'));
-                }}
-                className="inline-flex items-center gap-3 px-2"
-              >
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-100 text-primary-600 group-hover:bg-primary-200 dark:bg-primary-900 dark:text-primary-300">
-                  <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 14a3 3 0 003-3V7a3 3 0 10-6 0v4a3 3 0 003 3z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-14 0" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v3" />
-                  </svg>
-                </span>
-                <span>
-                  {isMounted && ready ? t('create.voiceCta', { defaultValue: 'Create a payment by voice' }) : 'Create a payment by voice'}
-                </span>
-                <span className="text-primary-400 group-hover:text-primary-500">→</span>
-              </button>
+              {voiceSessionActive ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    document.getElementById('payment-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    window.dispatchEvent(new CustomEvent('voice-payment-stop'));
+                  }}
+                  className="inline-flex items-center gap-3 px-2 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                >
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-red-100 text-red-600 group-hover:bg-red-200 dark:bg-red-900/50 dark:text-red-400">
+                    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
+                      <rect x="6" y="6" width="12" height="12" rx="1" />
+                    </svg>
+                  </span>
+                  <span>
+                    {isMounted && ready ? t('create.voiceStopCta', { defaultValue: 'Stop the voice command' }) : 'Stop the voice command'}
+                  </span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!hasBeneficiaries) return;
+                    document.getElementById('payment-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    window.dispatchEvent(new CustomEvent('voice-payment-start'));
+                  }}
+                  disabled={!hasBeneficiaries}
+                  className={`inline-flex items-center gap-3 px-2 ${!hasBeneficiaries ? 'opacity-60 cursor-not-allowed' : ''}`}
+                >
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-100 text-primary-600 group-hover:bg-primary-200 dark:bg-primary-900 dark:text-primary-300">
+                    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 14a3 3 0 003-3V7a3 3 0 10-6 0v4a3 3 0 003 3z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-14 0" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v3" />
+                    </svg>
+                  </span>
+                  <span>
+                    {isMounted && ready ? t('create.voiceCta', { defaultValue: 'Create a payment by voice' }) : 'Create a payment by voice'}
+                  </span>
+                  <span className="text-primary-400 group-hover:text-primary-500">→</span>
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => {
@@ -90,7 +128,7 @@ export default function PaymentPage() {
 
         {/* Formulaire */}
         <div id="payment-form" className="max-w-3xl mx-auto">
-          <PaymentForm />
+          <PaymentForm onBeneficiariesChange={setHasBeneficiaries} />
         </div>
 
         {/* Section info */}

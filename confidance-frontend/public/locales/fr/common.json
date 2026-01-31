@@ -64,7 +64,7 @@
     }
   },
   "home": {
-    "title": "Protocole de paiement Web 3",
+    "title": "Protocole de paiement Web3",
     "subtitle": "Libérez-les automatiquement à une date précise.",
     "badge": "Protocole DeFi multi-chaînes.",
     "tagline": "Sans intermédiaire. 100% on-chain.",
@@ -72,20 +72,20 @@
     "features": {
       "automatic": {
         "title": "Automatique",
-        "description": "Un keeper 24/7 surveille et exécute vos paiements à la seconde près"
+        "description": "Une fois réglé, ça fonctionne."
       },
       "secure": {
         "title": "Sécurisé",
-        "description": "Smart contracts audités. Vos fonds sont sécurisés on-chain"
+        "description": "Pas de garde. Pas de raccourcis."
       },
       "flexible": {
         "title": "Flexible",
-      "description": "ETH, USDT, USDC... Multi-chaînes, quand vous le souhaitez."
+        "description": "Vous décidez. Toujours."
       }
     },
     "why": {
       "title": "Pourquoi Confidance ?",
-      "description": "La plateforme la plus simple et sécurisée pour programmer vos paiements crypto et garder le contrôle de vos finances."
+      "description": "Confidance a été conçu pour rendre les paiements crypto prévisibles, vérifiables et indépendants des intermédiaires."
     },
     "useCases": {
       "salaries": {
@@ -121,7 +121,7 @@
     "ctaSection": {
       "title": "Prêt à commencer ?",
       "description": "Connectez votre wallet et découvrez toutes les fonctionnalités de gestion comptable du dashboard",
-      "button": "Créer mon premier paiement"
+      "button": "Mon dashboard"
     }
   },
   "payment": {
@@ -356,6 +356,8 @@
     "title": "Créer un paiement instantané, programmé ou récurrent",
     "subtitle": "Envoyez de la crypto qui sera automatiquement libérée à la date choisie",
     "voiceCta": "Créer un paiement par la voix",
+    "voiceStopCta": "Arrêter la commande vocale",
+    "voiceNeedBeneficiary": "Pour activer la commande vocale, enregistrez au moins un bénéficiaire (ils apparaîtront dans les favoris).",
     "voiceLang": "Langue vocale",
     "wallet": {
       "connectFirst": "Pour créer un paiement programmé, connectez d'abord votre wallet"
@@ -365,7 +367,27 @@
       "available": "disponibles",
       "native": "ETH natif : 1 seule transaction nécessaire",
       "erc20": "Token ERC20 : 2 transactions nécessaires (approbation + création)",
-      "nativeLabel": "Natif"
+      "nativeLabel": "Natif",
+      "registerCrypto": "Enregistrer une cryptomonnaie"
+    },
+    "customToken": {
+      "title": "Enregistrer une cryptomonnaie",
+      "addressLabel": "Adresse du contrat ERC20",
+      "verify": "Vérifier",
+      "name": "Nom",
+      "symbol": "Symbole",
+      "decimals": "Décimales",
+      "cancel": "Annuler",
+      "add": "Ajouter",
+      "testnetWarning": "Token non vérifié (testnet)",
+      "errors": {
+        "invalidAddress": "Adresse de contrat invalide",
+        "invalidAddressFormat": "Adresse de contrat invalide (doit être 0x suivi de 40 caractères hexadécimaux)",
+        "connectWallet": "Connectez votre wallet et assurez-vous d'être sur le bon réseau.",
+        "readContract": "Impossible de lire le contrat. Vérifiez l'adresse et le réseau.",
+        "verifyFirst": "Cliquez sur « Vérifier » pour remplir les informations du token.",
+        "decimalsNotSupported": "Ce token utilise plus de 18 décimales et n'est pas pris en charge."
+      }
     },
     "beneficiary": {
       "address": "Adresse du bénéficiaire",
@@ -823,6 +845,7 @@
   },
   "links": {
     "cta": "Créer un lien de paiement",
+    "ctaDescription": "Créez un lien en un clic, partagez-le à vos clients ou partenaires : ils règlent en crypto sur votre wallet, sans compte ni intermédiaire. Simple, sécurisé, universel.",
     "create": {
       "badge": "Générateur de lien de paiement",
       "title": "Créer un lien de paiement",
@@ -997,6 +1020,7 @@
     "resources": "Ressources",
     "legal": "Légal",
     "firstStep": "Première étape",
+    "secondStep": "Deuxième étape",
     "documentation": "Documentation",
     "support": "Support",
     "terms": "Mentions légales",

@@ -80,6 +80,14 @@ module.exports = {
         },
       },
       {
+        network: "base_sepolia",
+        chainId: 84532,
+        urls: {
+          apiURL: "https://api-sepolia.basescan.org/api",
+          browserURL: "https://sepolia.basescan.org",
+        },
+      },
+      {
         network: "polygon_mainnet",
         chainId: 137,
         urls: {

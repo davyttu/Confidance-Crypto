@@ -71,20 +71,20 @@
     "features": {
       "automatic": {
         "title": "Automático",
-        "description": "Un keeper 24/7 monitorea y ejecuta tus pagos al segundo"
+        "description": "Configurado una vez, funciona."
       },
       "secure": {
         "title": "Seguro",
-        "description": "Contratos inteligentes auditados. Tus fondos están asegurados on-chain"
+        "description": "Sin custodia. Sin atajos."
       },
       "flexible": {
         "title": "Flexible",
-      "description": "ETH, USDT, USDC... Multicadena, cuando quieras."
+      "description": "Tú decides. Siempre."
       }
     },
     "why": {
       "title": "¿Por qué Confidance?",
-      "description": "La plataforma más simple y segura para programar tus pagos cripto y mantener el control de tus finanzas."
+      "description": "Confidance fue creado para hacer los pagos cripto predecibles, verificables e independientes de intermediarios."
     },
     "useCases": {
       "salaries": {
@@ -120,7 +120,7 @@
     "ctaSection": {
       "title": "¿Listo para empezar?",
       "description": "Conecta tu cartera y descubre todas las funcionalidades de gestión contable del panel.",
-      "button": "Crear mi primer pago"
+      "button": "Mi panel"
     }
   },
   "payment": {
@@ -460,6 +460,7 @@
   },
   "links": {
     "cta": "Crear un enlace de pago",
+    "ctaDescription": "Cree un enlace en un clic, compártalo con sus clientes o socios: pagan en cripto a su wallet, sin cuenta ni intermediario. Simple, seguro, universal.",
     "create": {
       "badge": "Generador de enlaces de pago",
       "title": "Crear un enlace de pago",
@@ -632,7 +633,36 @@
     "title": "Crear un pago instantáneo, programado o recurrente",
     "subtitle": "Envía cripto que se liberará automáticamente en la fecha elegida",
     "voiceCta": "Crear un pago por voz",
+    "voiceStopCta": "Detener el comando de voz",
+    "voiceNeedBeneficiary": "Para usar el comando de voz, guarde al menos un beneficiario (aparecerán en favoritos).",
     "voiceLang": "Idioma de voz",
+    "currency": {
+      "select": "Elige la cripto a enviar",
+      "available": "disponibles",
+      "native": "ETH nativo: 1 transacción necesaria",
+      "erc20": "Token ERC20: 2 transacciones necesarias (aprobación + creación)",
+      "nativeLabel": "Nativo",
+      "registerCrypto": "Registrar una criptomoneda"
+    },
+    "customToken": {
+      "title": "Registrar una criptomoneda",
+      "addressLabel": "Dirección del contrato ERC20",
+      "verify": "Verificar",
+      "name": "Nombre",
+      "symbol": "Símbolo",
+      "decimals": "Decimales",
+      "cancel": "Cancelar",
+      "add": "Añadir",
+      "testnetWarning": "Token no verificado (testnet)",
+      "errors": {
+        "invalidAddress": "Dirección de contrato inválida",
+        "invalidAddressFormat": "Dirección de contrato inválida (debe ser 0x seguido de 40 caracteres hexadecimales)",
+        "connectWallet": "Conecta tu cartera y asegúrate de estar en la red correcta.",
+        "readContract": "No se puede leer el contrato. Verifica la dirección y la red.",
+        "verifyFirst": "Haz clic en \"Verificar\" para rellenar los datos del token.",
+        "decimalsNotSupported": "Este token usa más de 18 decimales y no está soportado."
+      }
+    },
     "beneficiary": {
       "address": "Dirección del beneficiario",
       "addMultiple": "Añadir varios beneficiarios",
@@ -790,6 +820,7 @@
     "resources": "Recursos",
     "legal": "Legal",
     "firstStep": "Primer paso",
+    "secondStep": "Segundo paso",
     "documentation": "Documentación",
     "support": "Soporte",
     "terms": "Aviso legal",

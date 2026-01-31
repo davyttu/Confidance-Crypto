@@ -1,12 +1,20 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAccount, useDisconnect } from 'wagmi';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { type TokenSymbol, getToken, getProtocolFeeBps } from '@/config/tokens';
+import {
+  getCustomTokens,
+  saveCustomTokens,
+  addCustomToken as addCustomTokenToStorage,
+  type CustomToken,
+} from '@/lib/custom-tokens';
+import { useErc20Balance } from '@/hooks/useErc20Balance';
 import CurrencySelector from './CurrencySelector';
+import AddCustomTokenModal from './AddCustomTokenModal';
 import DateTimePicker from './DateTimePicker';
 import FeeDisplay from './FeeDisplay';
 import PaymentProgressModal from './PaymentProgressModal';
@@ -19,6 +27,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { type PaymentCategory } from '@/types/payment-identity';
 import { useSuggestedCategory } from '@/hooks/useCategorySuggestion';
 import PaymentIdentitySection from '@/components/payment/PaymentIdentitySection';
+import { speakWithMarilynVoice, ensureVoicesLoaded } from '@/lib/speech';
 
 interface PaymentFormData {
   tokenSymbol: TokenSymbol;
@@ -36,7 +45,11 @@ interface BeneficiaryHistoryItem {
   name?: string;
 }
 
-export default function PaymentForm() {
+interface PaymentFormProps {
+  onBeneficiariesChange?: (hasBeneficiaries: boolean) => void;
+}
+
+export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps = {}) {
   const { t, ready: translationsReady, i18n } = useTranslation();
   const [isMounted, setIsMounted] = useState(false);
   const [isVoiceSupported, setIsVoiceSupported] = useState(false);
@@ -64,6 +77,9 @@ export default function PaymentForm() {
   const whisperTimeoutRef = useRef<number | null>(null);
   const formRef = useRef<HTMLFormElement | null>(null);
   const voiceIdleTimeoutRef = useRef<number | null>(null);
+  const voiceAwaitingConfirmRef = useRef(false);
+  const voiceCommandModeRef = useRef(false);
+  const isListeningRef = useRef(false);
   const pendingVoiceCommandRef = useRef<ReturnType<typeof parseVoiceCommand> | null>(null);
   const lastVoiceRef = useRef<{
     amount?: string;
@@ -172,17 +188,27 @@ export default function PaymentForm() {
   };
 
   const speak = (message: string, onEnd?: () => void) => {
-    if (typeof window === 'undefined' || !window.speechSynthesis) {
-      onEnd?.();
-      return;
-    }
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(message);
-    utterance.lang = voiceLanguage || locale;
-    utterance.rate = 0.95;
-    utterance.onend = () => onEnd?.();
-    window.speechSynthesis.speak(utterance);
+    speakWithMarilynVoice(message, voiceLanguage || locale, onEnd);
   };
+
+  const stopVoiceSession = useCallback(() => {
+    if (voiceIdleTimeoutRef.current) {
+      window.clearTimeout(voiceIdleTimeoutRef.current);
+      voiceIdleTimeoutRef.current = null;
+    }
+    setVoiceCommandMode(false);
+    setVoiceAwaitingConfirm(false);
+    setVoiceAwaitingDate(false);
+    setVoiceCommandSummary('');
+    setVoiceHelpShown(false);
+    setIsListening(false);
+    if (mediaRecorderRef.current?.state === 'recording') {
+      mediaRecorderRef.current.stop();
+    }
+    recognitionRef.current?.stop?.();
+    speak(translate('create.voice.stopped', "C'est arrêté. Vous pouvez relancer quand vous voulez."));
+    window.dispatchEvent(new CustomEvent('voice-session-inactive'));
+  }, [translate, speak]);
 
   const startWhisperCapture = async () => {
     if (isWhisperRecording || typeof window === 'undefined') return;
@@ -231,7 +257,7 @@ export default function PaymentForm() {
         if (recorder.state !== 'inactive') {
           recorder.stop();
         }
-      }, 6000);
+      }, 20000);
       mediaRecorderRef.current = recorder;
     } catch {
       setVoiceHint(
@@ -466,13 +492,48 @@ export default function PaymentForm() {
         return { amount: `${left}.${rightDigits}`, decimalDigits: rightDigits.length, hasDecimal: true };
       }
     }
+    // Prefer amount next to currency ("10 USDC", "de 10") to avoid "un" -> "1" or date "30" being picked
+    const nearCurrency = combinedTens.match(/(?:de|à)\s+(\d+(?:\.\d+)?)\s*(?:usdc|usdt|eth)?/i)
+      || combinedTens.match(/(\d+(?:\.\d+)?)\s*(?:usdc|usdt|eth)/i);
+    if (nearCurrency?.[1]) {
+      let amount = nearCurrency[1];
+      const amountNum = parseFloat(amount);
+      // If amount looks like a day-of-month (1-31) and text contains a date (e.g. "30 janvier"), prefer another number
+      const dateDayMatch = combinedTens.match(/(?:le\s+)?(\d{1,2})\s*(?:janvier|février|fevrier|mars|avril|mai|juin|juillet|aout|août|septembre|octobre|novembre|décembre|decembre)/i)
+        || combinedTens.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+      const dateDay = dateDayMatch ? parseInt(dateDayMatch[1], 10) : null;
+      if (dateDay != null && amountNum >= 1 && amountNum <= 31 && amountNum === dateDay) {
+        const allNearCurrency = [...combinedTens.matchAll(/(?:de|à)\s+(\d+(?:\.\d+)?)\s*(?:usdc|usdt|eth)?/gi)];
+        const allBeforeUsdc = [...combinedTens.matchAll(/(\d+(?:\.\d+)?)\s*(?:usdc|usdt|eth)/gi)];
+        const candidates = [...allNearCurrency, ...allBeforeUsdc]
+          .map((m) => m[1])
+          .filter((n) => parseInt(n, 10) !== dateDay);
+        if (candidates.length > 0) amount = candidates[0];
+      }
+      const parts = amount.split('.');
+      return {
+        amount,
+        decimalDigits: parts[1]?.length || 0,
+        hasDecimal: amount.includes('.'),
+      };
+    }
     const match = combinedTens.match(/(\d+(?:\.\d+)?)/);
     if (match?.[1]) {
-      const parts = match[1].split('.');
+      let amount = match[1];
+      const amountNum = parseFloat(amount);
+      const dateDayMatch = combinedTens.match(/(?:le\s+)?(\d{1,2})\s*(?:janvier|février|fevrier|mars|avril|mai|juin|juillet|aout|août|septembre|octobre|novembre|décembre|decembre)/i)
+        || combinedTens.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+      const dateDay = dateDayMatch ? parseInt(dateDayMatch[1], 10) : null;
+      if (dateDay != null && amountNum >= 1 && amountNum <= 31 && amountNum === dateDay) {
+        const nearDate = combinedTens.match(/(?:de|à)\s+(\d+(?:\.\d+)?)\s*(?:usdc|usdt|eth)?/i)
+          || combinedTens.match(/(\d+(?:\.\d+)?)\s*(?:usdc|usdt|eth)/i);
+        if (nearDate?.[1] && parseInt(nearDate[1], 10) !== dateDay) amount = nearDate[1];
+      }
+      const parts = amount.split('.');
       return {
-        amount: match[1],
+        amount,
         decimalDigits: parts[1]?.length || 0,
-        hasDecimal: match[1].includes('.'),
+        hasDecimal: amount.includes('.'),
       };
     }
     return { amount: undefined, decimalDigits: 0, hasDecimal: false };
@@ -575,13 +636,32 @@ export default function PaymentForm() {
       return;
     }
 
+    const isStopPhrase =
+      /\b(stop|arrête|arrêter|stoppe)\b/i.test(normalized) ||
+      /arrêter la commande vocale|stop la commande vocale|arrête la commande vocale/i.test(normalized);
+    if (isStopPhrase && (voiceCommandMode || voiceAwaitingConfirm || isListening)) {
+      stopVoiceSession();
+      return;
+    }
+
     if (voiceAwaitingConfirm) {
-      if (normalized.includes('oui') || normalized.includes('yes') || normalized.includes('ok')) {
+      const isConfirm =
+        /\b(oui|ouais|ouaip|yes|yeah|yep|ok|okay|confirmer|confirm|valider|validate|d'accord|daccord|c'est bon|vas-y|vas y|go)\b/i.test(normalized) ||
+        normalized.trim() === 'oui' ||
+        normalized.trim() === 'ouais' ||
+        normalized.trim() === 'ok';
+      if (isConfirm) {
+        if (voiceIdleTimeoutRef.current) {
+          window.clearTimeout(voiceIdleTimeoutRef.current);
+          voiceIdleTimeoutRef.current = null;
+        }
         setVoiceAwaitingConfirm(false);
         setVoiceCommandMode(false);
         setVoiceHelpShown(false);
+        setErrors((prev) => ({ ...prev, amount: '' }));
+        window.dispatchEvent(new CustomEvent('voice-session-inactive'));
         speak(
-          translate('create.voice.confirmed', 'Confirmation reçue. Ouverture de MetaMask.'),
+          translate('create.voice.confirmed', 'Parfait, c’est parti. J’ouvre MetaMask pour vous.'),
           () => {
             formRef.current?.requestSubmit();
           }
@@ -589,10 +669,40 @@ export default function PaymentForm() {
         return;
       }
       if (normalized.includes('non') || normalized.includes('no') || normalized.includes('annuler')) {
+        if (voiceIdleTimeoutRef.current) {
+          window.clearTimeout(voiceIdleTimeoutRef.current);
+          voiceIdleTimeoutRef.current = null;
+        }
         setVoiceAwaitingConfirm(false);
         setVoiceCommandMode(false);
         setVoiceHelpShown(false);
-        speak(translate('create.voice.cancelled', 'D\'accord, j\'annule.'));
+        window.dispatchEvent(new CustomEvent('voice-session-inactive'));
+        speak(translate('create.voice.cancelled', 'Pas de souci, j’annule.'));
+        return;
+      }
+      // "modifier" / "change" / "nouveau" sans nouvelle commande complète : inviter à décrire le paiement
+      const wantsModify =
+        /\b(modifier|change|nouveau|new|another|autre)\b/.test(normalized) &&
+        normalized.trim().length < 40;
+      if (wantsModify) {
+        speak(
+          translate(
+            'create.voice.describeNewPayment',
+            'D’accord. Dites-moi le nouveau paiement, par exemple : 20 USDC à Paul, paiement instantané.'
+          ),
+          () => {
+            try {
+              if (useWhisper && isWhisperSupported) {
+                startWhisperCapture();
+              } else {
+                recognitionRef.current?.start?.();
+                setIsListening(true);
+              }
+            } catch {
+              setIsListening(false);
+            }
+          }
+        );
         return;
       }
     }
@@ -643,7 +753,7 @@ export default function PaymentForm() {
     if ((command.timing === 'scheduled' || command.timing === 'recurring') && !command.date) {
       pendingVoiceCommandRef.current = command;
       setVoiceAwaitingDate(true);
-      speak(translate('create.voice.askDate', 'Quelle date pour le premier paiement ?'));
+      speak(translate('create.voice.askDate', 'Quelle date souhaitez-vous pour le premier paiement ?'));
       return;
     }
     if (!command.beneficiary?.address || !command.amount) {
@@ -669,7 +779,7 @@ export default function PaymentForm() {
         speak(
           translate(
             'create.voice.help',
-            'Dites par exemple : "envoyer à Ali 3 usdc paiement instantané".'
+            'Vous pouvez dire par exemple : envoyer 3 USDC à Ali, paiement instantané.'
           )
         );
       }
@@ -688,15 +798,58 @@ export default function PaymentForm() {
       setErrors((prev) => ({ ...prev, amount: '' }));
     }
 
-    const summary = `Je vais envoyer ${command.amount || ''} ${command.token} à ${command.beneficiary?.label || 'le bénéficiaire'} en paiement ${
-      command.timing === 'instant' ? 'instantané' : command.timing === 'scheduled' ? 'programmé' : 'récurrent'
-    }${command.timing === 'recurring' && command.months ? ` pour ${command.months} mois` : ''}${
-      command.date ? `, première date ${command.date.toLocaleDateString(locale)}` : ''
-    }${command.cancellable ? ', annulable' : ', non annulable'}. Dites oui pour confirmer.`;
+    const summary = `D’accord. Je prépare un paiement de ${command.amount || ''} ${command.token} à ${command.beneficiary?.label || 'votre bénéficiaire'}, en ${
+      command.timing === 'instant' ? 'paiement instantané' : command.timing === 'scheduled' ? 'paiement programmé' : 'paiement récurrent'
+    }${command.timing === 'recurring' && command.months ? ` sur ${command.months} mois` : ''}${
+      command.date ? `, à partir du ${command.date.toLocaleDateString(locale)}` : ''
+    }. ${command.cancellable ? 'Vous pourrez l’annuler plus tard.' : 'Ce paiement ne sera pas annulable.'} Si tout vous convient, dites oui pour confirmer.`;
     setVoiceCommandSummary(summary);
     setVoiceAwaitingConfirm(true);
     recognitionRef.current?.stop?.();
-    speak(summary);
+    if (voiceIdleTimeoutRef.current) {
+      window.clearTimeout(voiceIdleTimeoutRef.current);
+      voiceIdleTimeoutRef.current = null;
+    }
+    voiceIdleTimeoutRef.current = window.setTimeout(() => {
+      setVoiceCommandMode(false);
+      setVoiceAwaitingConfirm(false);
+      setVoiceAwaitingDate(false);
+      setIsListening(false);
+      if (mediaRecorderRef.current?.state === 'recording') {
+        mediaRecorderRef.current.stop();
+      }
+      recognitionRef.current?.stop?.();
+      speak(translate('create.voice.timeout', "Je m'arrête là. Vous pouvez relancer le micro quand vous voulez."));
+      window.dispatchEvent(new CustomEvent('voice-session-inactive'));
+    }, 25000);
+    speak(summary, () => {
+      if (voiceIdleTimeoutRef.current) {
+        window.clearTimeout(voiceIdleTimeoutRef.current);
+        voiceIdleTimeoutRef.current = null;
+      }
+      voiceIdleTimeoutRef.current = window.setTimeout(() => {
+        setVoiceCommandMode(false);
+        setVoiceAwaitingConfirm(false);
+        setVoiceAwaitingDate(false);
+        setIsListening(false);
+        if (mediaRecorderRef.current?.state === 'recording') {
+          mediaRecorderRef.current.stop();
+        }
+        recognitionRef.current?.stop?.();
+        speak(translate('create.voice.timeout', "Je m'arrête là. Vous pouvez relancer le micro quand vous voulez."));
+        window.dispatchEvent(new CustomEvent('voice-session-inactive'));
+      }, 20000);
+      try {
+        if (useWhisper && isWhisperSupported) {
+          startWhisperCapture();
+        } else {
+          recognitionRef.current?.start?.();
+          setIsListening(true);
+        }
+      } catch {
+        setIsListening(false);
+      }
+    });
   };
 
   const handleReconnectWallet = () => {
@@ -708,6 +861,7 @@ export default function PaymentForm() {
 
   useEffect(() => {
     setIsMounted(true);
+    ensureVoicesLoaded();
   }, []);
 
   useEffect(() => {
@@ -765,16 +919,60 @@ export default function PaymentForm() {
   }, [isListening, isVoiceSupported]);
 
   useEffect(() => {
+    voiceAwaitingConfirmRef.current = voiceAwaitingConfirm;
+  }, [voiceAwaitingConfirm]);
+
+  useEffect(() => {
+    voiceCommandModeRef.current = voiceCommandMode;
+  }, [voiceCommandMode]);
+
+  useEffect(() => {
+    isListeningRef.current = isListening;
+  }, [isListening]);
+
+  useEffect(() => {
     const handleVoiceStart = () => {
+      // Éviter double démarrage : si une session vocale est déjà en cours (sans être en attente de confirmation), ignorer le clic
+      if ((voiceCommandModeRef.current || isListeningRef.current) && !voiceAwaitingConfirmRef.current) {
+        return;
+      }
+      if (voiceAwaitingConfirmRef.current) {
+        // Déjà en attente de confirmation : relancer l'écoute pour valider, annuler ou nouveau paiement
+        try {
+          recognitionRef.current?.stop?.();
+          speak(
+            translate(
+              'create.voice.sayConfirmModifyOrNew',
+              'Vous pouvez dire oui pour confirmer, non pour annuler, ou me décrire un nouveau paiement si vous voulez modifier.'
+            ),
+            () => {
+              try {
+                if (useWhisper && isWhisperSupported) {
+                  startWhisperCapture();
+                } else {
+                  recognitionRef.current?.start?.();
+                  setIsListening(true);
+                }
+              } catch {
+                setIsListening(false);
+              }
+            }
+          );
+        } catch {
+          setIsListening(false);
+        }
+        return;
+      }
       setVoiceCommandMode(true);
       setVoiceAwaitingConfirm(false);
       setVoiceCommandSummary('');
       setVoiceHelpShown(false);
       setErrors((prev) => ({ ...prev, amount: '', beneficiary: '' }));
       syncVoiceBeneficiaries();
+      window.dispatchEvent(new CustomEvent('voice-session-active'));
       try {
         recognitionRef.current?.stop?.();
-        speak(translate('create.voice.start', 'Je vous écoute.'), () => {
+        speak(translate('create.voice.start', 'D’accord, je vous écoute. Dites-moi votre paiement.'), () => {
           try {
             if (useWhisper && isWhisperSupported) {
               startWhisperCapture();
@@ -791,23 +989,28 @@ export default function PaymentForm() {
         }
         voiceIdleTimeoutRef.current = window.setTimeout(() => {
           setVoiceCommandMode(false);
-          setVoiceAwaitingConfirm(false);
           setVoiceAwaitingDate(false);
           setIsListening(false);
           if (mediaRecorderRef.current?.state === 'recording') {
             mediaRecorderRef.current.stop();
           }
           recognitionRef.current?.stop?.();
-          speak(translate('create.voice.timeout', 'J’arrête l’écoute.'));
-        }, 12000);
+          speak(translate('create.voice.timeout', 'Je m’arrête là. Vous pouvez relancer le micro quand vous voulez.'));
+          window.dispatchEvent(new CustomEvent('voice-session-inactive'));
+        }, 30000);
       } catch {
         setIsListening(false);
       }
     };
 
+    const handleVoiceStop = () => stopVoiceSession();
     window.addEventListener('voice-payment-start', handleVoiceStart as EventListener);
-    return () => window.removeEventListener('voice-payment-start', handleVoiceStart as EventListener);
-  }, [translate, speak]);
+    window.addEventListener('voice-payment-stop', handleVoiceStop as EventListener);
+    return () => {
+      window.removeEventListener('voice-payment-start', handleVoiceStart as EventListener);
+      window.removeEventListener('voice-payment-stop', handleVoiceStop as EventListener);
+    };
+  }, [translate, speak, stopVoiceSession]);
 
   const applyParsedResult = (text: string, corrections?: Record<string, string>) => {
     const corrected = applyCorrections(text, corrections);
@@ -833,7 +1036,8 @@ export default function PaymentForm() {
       setFormData((prev) => ({
         ...prev,
         amount: finalAmount as string,
-        tokenSymbol: token || 'USDC',
+        tokenSymbol: (token as TokenSymbol) || 'USDC',
+        customTokenAddress: null,
       }));
       setErrors((prev) => ({ ...prev, amount: '' }));
       return;
@@ -843,7 +1047,8 @@ export default function PaymentForm() {
     if (token) {
       setFormData((prev) => ({
         ...prev,
-        tokenSymbol: token,
+        tokenSymbol: token as TokenSymbol,
+        customTokenAddress: null,
       }));
       setErrors((prev) => ({ ...prev, amount: '' }));
       setVoiceHint(
@@ -1162,15 +1367,49 @@ export default function PaymentForm() {
   const [isBatchMode, setIsBatchMode] = useState(false);
   const [additionalBeneficiaries, setAdditionalBeneficiaries] = useState<string[]>([]);
 
+  // Tokens personnalisés (localStorage, max 3)
+  const [customTokens, setCustomTokens] = useState<CustomToken[]>(() =>
+    typeof window !== 'undefined' ? getCustomTokens() : []
+  );
+  const [showAddCustomTokenModal, setShowAddCustomTokenModal] = useState(false);
+
   // État du formulaire
   const [formData, setFormData] = useState<PaymentFormData>({
     tokenSymbol: 'USDC',
+    customTokenAddress: null,
     beneficiary: '',
     amount: '',
     releaseDate: null,
     label: '',
     category: 'other',
   });
+
+  // Token effectif (built-in ou custom) pour address, symbol, decimals
+  type EffectiveToken = { address: string; symbol: string; name: string; decimals: number; isNative?: boolean };
+  const getEffectiveToken = (): EffectiveToken => {
+    if (formData.customTokenAddress) {
+      const custom = customTokens.find(
+        (t) => t.address.toLowerCase() === formData.customTokenAddress!.toLowerCase()
+      );
+      if (custom)
+        return {
+          address: custom.address,
+          symbol: custom.symbol,
+          name: custom.name,
+          decimals: custom.decimals,
+          isNative: false,
+        };
+    }
+    const builtIn = getToken(formData.tokenSymbol);
+    return {
+      address: builtIn.address === 'NATIVE' ? '' : builtIn.address,
+      symbol: builtIn.symbol,
+      name: builtIn.name,
+      decimals: builtIn.decimals,
+      isNative: builtIn.isNative,
+    };
+  };
+  const effectiveToken = getEffectiveToken();
 
   const { suggestedCategory, confidence, matchedKeywords } = useSuggestedCategory(formData.label);
 
@@ -1192,20 +1431,49 @@ export default function PaymentForm() {
   const [favoriteAddresses, setFavoriteAddresses] = useState<string[]>([]);
   const [showBeneficiaryHistory, setShowBeneficiaryHistory] = useState(false);
 
+  useEffect(() => {
+    onBeneficiariesChange?.(beneficiaryHistory.length > 0);
+  }, [beneficiaryHistory, onBeneficiariesChange]);
+
   // Erreurs de validation
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isPaymentDescriptionDisabled, setIsPaymentDescriptionDisabled] = useState(false);
 
-  // Balance du token sélectionné
-  const { balance, formatted: balanceFormatted } = useTokenBalance(
-    formData.tokenSymbol
+  // Balance du token sélectionné (built-in ou custom)
+  const builtInBalance = useTokenBalance(formData.tokenSymbol);
+  const customBalance = useErc20Balance(
+    formData.customTokenAddress ? (formData.customTokenAddress as `0x${string}`) : undefined,
+    { enabled: !!formData.customTokenAddress }
   );
+  const balance = formData.customTokenAddress ? customBalance.balance : builtInBalance.balance;
+  const balanceFormatted =
+    formData.customTokenAddress && customBalance.balance !== undefined
+      ? (() => {
+          const d = effectiveToken.decimals;
+          const div = BigInt(10 ** d);
+          const int = customBalance.balance! / div;
+          const frac = customBalance.balance! % div;
+          const fracStr = frac.toString().padStart(d, '0').slice(0, 4).replace(/0+$/, '');
+          return fracStr ? `${int}.${fracStr} ${effectiveToken.symbol}` : `${int} ${effectiveToken.symbol}`;
+        })()
+      : builtInBalance.formatted;
 
-  // Vérifier si la mensualisation est disponible
-  const isRecurringAvailable = formData.tokenSymbol === 'USDT' || formData.tokenSymbol === 'USDC';
-  
-  // Vérifier si les paiements batch sont disponibles (ETH, USDC, USDT)
-  const isBatchAvailable = formData.tokenSymbol === 'ETH' || formData.tokenSymbol === 'USDC' || formData.tokenSymbol === 'USDT';
+  // Sync custom tokens from localStorage on mount
+  useEffect(() => {
+    setCustomTokens(getCustomTokens());
+  }, []);
+
+  // Vérifier si la mensualisation est disponible (USDC/USDT uniquement, pas de custom)
+  const isRecurringAvailable =
+    (formData.tokenSymbol === 'USDT' || formData.tokenSymbol === 'USDC') &&
+    !formData.customTokenAddress;
+
+  // Vérifier si les paiements batch sont disponibles (ETH, USDC, USDT ou token custom)
+  const isBatchAvailable =
+    formData.tokenSymbol === 'ETH' ||
+    formData.tokenSymbol === 'USDC' ||
+    formData.tokenSymbol === 'USDT' ||
+    !!formData.customTokenAddress;
 
   const isProVerified = user?.accountType === 'professional' && user?.proStatus === 'verified';
   const recurringFeeBps = getProtocolFeeBps({ isInstantPayment: false, isProVerified });
@@ -1270,6 +1538,7 @@ export default function PaymentForm() {
         const data = JSON.parse(storedFormData);
         setFormData({
           tokenSymbol: data.tokenSymbol || 'ETH',
+          customTokenAddress: data.customTokenAddress ?? null,
           beneficiary: data.beneficiary || '',
           amount: data.amount || '',
           releaseDate: data.releaseDate ? new Date(data.releaseDate) : null,
@@ -1314,8 +1583,7 @@ export default function PaymentForm() {
     }
 
     if (balance) {
-      const decimals = formData.tokenSymbol === 'ETH' ? 18 : 
-                       formData.tokenSymbol === 'USDC' || formData.tokenSymbol === 'USDT' ? 6 : 8;
+      const decimals = effectiveToken.decimals;
       const totalBeneficiaries = isBatchMode ? additionalBeneficiaries.length + 1 : 1;
       const totalAmount = amountNum * totalBeneficiaries;
       const amountBigInt = BigInt(Math.floor(totalAmount * 10 ** decimals));
@@ -1450,17 +1718,36 @@ export default function PaymentForm() {
   };
 
 
-  const handleTokenChange = (token: TokenSymbol) => {
-    setFormData((prev) => ({ ...prev, tokenSymbol: token }));
-    setErrors((prev) => ({ ...prev, amount: '' }));
-    
-    // Désactiver la mensualisation si on passe à ETH
-    if (token === 'ETH' && isRecurringMode) {
-      setIsRecurringMode(false);
-      setPaymentTiming('scheduled');
-      setIsFirstMonthDifferent(false);
-      setFirstMonthAmountInput('');
+  const handleTokenChange = (token: TokenSymbol | string) => {
+    const isBuiltIn = token === 'ETH' || token === 'USDC' || token === 'USDT';
+    if (isBuiltIn) {
+      setFormData((prev) => ({ ...prev, tokenSymbol: token as TokenSymbol, customTokenAddress: null }));
+      if (token === 'ETH' && isRecurringMode) {
+        setIsRecurringMode(false);
+        setPaymentTiming('scheduled');
+        setIsFirstMonthDifferent(false);
+        setFirstMonthAmountInput('');
+      }
+    } else {
+      const custom = customTokens.find((t) => t.address.toLowerCase() === String(token).toLowerCase());
+      if (custom) {
+        setFormData((prev) => ({ ...prev, customTokenAddress: custom.address, tokenSymbol: 'USDC' }));
+        if (isRecurringMode) {
+          setIsRecurringMode(false);
+          setPaymentTiming('scheduled');
+          setIsFirstMonthDifferent(false);
+          setFirstMonthAmountInput('');
+        }
+      }
     }
+    setErrors((prev) => ({ ...prev, amount: '' }));
+  };
+
+  const handleAddCustomToken = (token: CustomToken) => {
+    const next = addCustomTokenToStorage(token);
+    setCustomTokens(next);
+    setFormData((prev) => ({ ...prev, customTokenAddress: token.address, tokenSymbol: 'USDC' }));
+    setShowAddCustomTokenModal(false);
   };
 
   // Handler changement bénéficiaire
@@ -1535,9 +1822,8 @@ export default function PaymentForm() {
   const getAmountBigInt = (): bigint | null => {
     if (!formData.amount || parseFloat(formData.amount) <= 0) return null;
 
-    const decimals = formData.tokenSymbol === 'ETH' ? 18 : 
-                     formData.tokenSymbol === 'USDC' || formData.tokenSymbol === 'USDT' ? 6 : 8;
-    
+    const decimals = effectiveToken.decimals;
+
     try {
       return BigInt(Math.floor(parseFloat(formData.amount) * 10 ** decimals));
     } catch {
@@ -1640,9 +1926,8 @@ export default function PaymentForm() {
       const firstNum = parseFloat(firstMonthAmountInput);
       const monthlyNum = parseFloat(formData.amount);
       if (!firstMonthAmountInput || isNaN(firstNum) || firstNum <= 0) return undefined;
-      // Si identique au montant mensuel, on ignore l'option
       if (!isNaN(monthlyNum) && firstNum === monthlyNum) return undefined;
-      return BigInt(Math.floor(firstNum * 10 ** token.decimals));
+      return BigInt(Math.floor(firstNum * 10 ** effectiveToken.decimals));
     })();
 
     const releaseTime = Math.floor(formData.releaseDate!.getTime() / 1000);
@@ -1723,6 +2008,7 @@ export default function PaymentForm() {
         });
         await singlePayment.createPayment({
           tokenSymbol: formData.tokenSymbol,
+          customToken: customTokenPayload,
           beneficiary: formData.beneficiary as `0x${string}`,
           amount: amountBigInt,
           releaseTime,
@@ -1858,8 +2144,15 @@ export default function PaymentForm() {
       {/* Section 1 : Choix de la crypto */}
       <div className="glass rounded-2xl p-6">
         <CurrencySelector
-          selectedToken={formData.tokenSymbol}
+          selectedToken={formData.customTokenAddress ?? formData.tokenSymbol}
           onSelectToken={handleTokenChange}
+          customTokens={customTokens}
+          onOpenAddModal={() => setShowAddCustomTokenModal(true)}
+        />
+        <AddCustomTokenModal
+          isOpen={showAddCustomTokenModal}
+          onClose={() => setShowAddCustomTokenModal(false)}
+          onAdd={handleAddCustomToken}
         />
         
         <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
@@ -2209,7 +2502,7 @@ export default function PaymentForm() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v3" />
               </svg>
             </button>
-            <span>{formData.tokenSymbol}</span>
+            <span>{effectiveToken.symbol}</span>
           </div>
         </div>
         {errors.amount && (
@@ -2330,11 +2623,53 @@ export default function PaymentForm() {
             {translate('create.amount.voiceCorrectionLast', 'Dernière correction :')} {lastVoiceCorrection}
           </p>
         )}
+
+        {voiceAwaitingConfirm && voiceCommandSummary && (
+          <div className="mt-4 p-4 rounded-xl border-2 border-primary-200 dark:border-primary-700 bg-primary-50/50 dark:bg-primary-950/20 space-y-3">
+            <p className="text-sm text-gray-700 dark:text-gray-300">{voiceCommandSummary}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {translate(
+                'create.voice.confirmOptions',
+                'Confirmer pour envoyer, annuler pour abandonner, ou relancer le micro pour modifier / nouveau paiement.'
+              )}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setVoiceAwaitingConfirm(false);
+                  setVoiceCommandMode(false);
+                  setErrors((prev) => ({ ...prev, amount: '' }));
+                  window.dispatchEvent(new CustomEvent('voice-session-inactive'));
+                  speak(translate('create.voice.confirmed', 'Parfait, c’est parti. J’ouvre MetaMask pour vous.'), () => {
+                    formRef.current?.requestSubmit();
+                  });
+                }}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary-600 text-white font-medium hover:bg-primary-700"
+              >
+                {translate('create.voice.confirmButton', 'Confirmer le paiement')}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setVoiceAwaitingConfirm(false);
+                  setVoiceCommandMode(false);
+                  setVoiceCommandSummary('');
+                  window.dispatchEvent(new CustomEvent('voice-session-inactive'));
+                  speak(translate('create.voice.cancelled', 'Pas de souci, j’annule.'));
+                }}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                {translate('create.voice.cancelButton', 'Annuler')}
+              </button>
+            </div>
+          </div>
+        )}
         
         {isBatchMode && formData.amount && parseFloat(formData.amount) > 0 && (
           <div className="text-sm text-gray-600 dark:text-gray-400">
             {isMounted && translationsReady ? t('create.amount.total') : 'Total'} : <span className="font-semibold">
-              {(parseFloat(formData.amount) * (additionalBeneficiaries.length + 1)).toFixed(4)} {formData.tokenSymbol}
+              {(parseFloat(formData.amount) * (additionalBeneficiaries.length + 1)).toFixed(4)} {effectiveToken.symbol}
             </span>
             {' '}{isMounted && translationsReady ? t('create.amount.forBeneficiaries', { count: additionalBeneficiaries.length + 1 }) : `for ${additionalBeneficiaries.length + 1} beneficiaries`}
           </div>
@@ -2346,7 +2681,7 @@ export default function PaymentForm() {
               months: recurringMonths
             })}{' '}
             <span className="font-semibold">
-              {(parseFloat(formData.amount) * recurringMonths).toFixed(4)} {formData.tokenSymbol}
+              {(parseFloat(formData.amount) * recurringMonths).toFixed(4)} {effectiveToken.symbol}
             </span>
           </div>
         )}
@@ -2515,7 +2850,7 @@ export default function PaymentForm() {
                         } focus:outline-none focus:ring-4 focus:ring-indigo-500/20`}
                       />
                       <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">
-                        {formData.tokenSymbol}
+                        {effectiveToken.symbol}
                       </div>
                     </div>
                     {errors.firstMonthAmount && (
@@ -2684,7 +3019,7 @@ export default function PaymentForm() {
                     {isMounted && translationsReady ? t('create.date.beneficiaryWillReceive') : 'Beneficiary will receive (per month)'}
                   </span>
                   <span className="font-semibold text-gray-900 dark:text-white">
-                    {recurringAmountValue.toFixed(2)} {formData.tokenSymbol}
+                    {recurringAmountValue.toFixed(2)} {effectiveToken.symbol}
                   </span>
                 </div>
 
@@ -2695,7 +3030,7 @@ export default function PaymentForm() {
                       : `Protocol fees (${recurringFeeBps / 100}%)`}
                   </span>
                   <span className="font-medium text-orange-600 dark:text-orange-400">
-                    {recurringMonthlyFee.toFixed(6)} {formData.tokenSymbol}
+                    {recurringMonthlyFee.toFixed(6)} {effectiveToken.symbol}
                   </span>
                 </div>
 
@@ -2704,7 +3039,7 @@ export default function PaymentForm() {
                     {isMounted && translationsReady ? t('create.date.totalPerMonth') : 'TOTAL per monthly payment'}
                   </span>
                   <span className="font-bold text-blue-600 dark:text-blue-400">
-                    {recurringTotalPerMonthAll.toFixed(6)} {formData.tokenSymbol}
+                    {recurringTotalPerMonthAll.toFixed(6)} {effectiveToken.symbol}
                   </span>
                 </div>
               </div>
@@ -2727,7 +3062,7 @@ export default function PaymentForm() {
                   {isMounted && translationsReady ? t('create.date.totalToApprove') : 'TOTAL to approve'}
                 </span>
                 <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                  {recurringTotalToApprove.toFixed(6)} {formData.tokenSymbol}
+                  {recurringTotalToApprove.toFixed(6)} {effectiveToken.symbol}
                 </span>
               </div>
 
@@ -2781,11 +3116,11 @@ export default function PaymentForm() {
                         <span dangerouslySetInnerHTML={{ __html: t('create.date.onlyAmountDebitedMonthly', { 
                           amount: recurringTotalPerMonthAll.toFixed(2),
                           token: formData.tokenSymbol,
-                          defaultValue: `Only <strong>${recurringTotalPerMonthAll.toFixed(2)} ${formData.tokenSymbol}</strong> will be debited each month from your wallet.`
+                          defaultValue: `Only <strong>${recurringTotalPerMonthAll.toFixed(2)} ${effectiveToken.symbol}</strong> will be debited each month from your wallet.`
                         }) }} />
                       ) : (
                         <>
-                          Only <span className="font-bold">{recurringTotalPerMonthAll.toFixed(2)} {formData.tokenSymbol}</span> will be debited each month from your wallet.
+                          Only <span className="font-bold">{recurringTotalPerMonthAll.toFixed(2)} {effectiveToken.symbol}</span> will be debited each month from your wallet.
                         </>
                       )}
                     </p>
@@ -2795,11 +3130,11 @@ export default function PaymentForm() {
                           <span dangerouslySetInnerHTML={{ __html: t('create.date.firstMonthOverride', {
                             amount: firstMonthTotalAll.toFixed(2),
                             token: formData.tokenSymbol,
-                            defaultValue: `Except the first monthly payment: <strong>${firstMonthTotalAll.toFixed(2)} ${formData.tokenSymbol}</strong> will be debited for the first month.`
+                            defaultValue: `Except the first monthly payment: <strong>${firstMonthTotalAll.toFixed(2)} ${effectiveToken.symbol}</strong> will be debited for the first month.`
                           }) }} />
                         ) : (
                           <>
-                            Except the first monthly payment: <span className="font-bold">{firstMonthTotalAll.toFixed(2)} {formData.tokenSymbol}</span> will be debited for the first month.
+                            Except the first monthly payment: <span className="font-bold">{firstMonthTotalAll.toFixed(2)} {effectiveToken.symbol}</span> will be debited for the first month.
                           </>
                         )}
                       </p>
@@ -2898,7 +3233,8 @@ export default function PaymentForm() {
             /* Affichage normal pour paiement one-time ou batch */
             <FeeDisplay 
               amount={getAmountBigInt()! * BigInt(isBatchMode ? additionalBeneficiaries.length + 1 : 1)} 
-              tokenSymbol={formData.tokenSymbol}
+              tokenSymbol={effectiveToken.symbol}
+              tokenDecimals={formData.customTokenAddress ? effectiveToken.decimals : undefined}
               releaseDate={formData.releaseDate}
             />
           )}
@@ -2943,7 +3279,8 @@ export default function PaymentForm() {
         createTxHash={activePayment.createTxHash}
         contractAddress={activePayment.contractAddress}
         contractAddresses={isRecurringMode && isBatchMode ? batchRecurringPayment.contractAddresses : undefined}
-        tokenSymbol={formData.tokenSymbol}
+        tokenSymbol={effectiveToken.symbol}
+        tokenDecimals={formData.customTokenAddress ? effectiveToken.decimals : undefined}
         approvalTotalPerContract={isRecurringMode && isBatchMode ? batchRecurringPayment.approvalTotalPerContract : null}
         beneficiariesCount={isRecurringMode && isBatchMode ? additionalBeneficiaries.length + 1 : undefined}
         totalMonths={isRecurringMode ? recurringMonths : undefined}

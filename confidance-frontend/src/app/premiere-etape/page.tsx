@@ -1,9 +1,53 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import guideData from '@/data/guide-wallet-crypto.json';
+import Image from 'next/image';
+import { Wallet } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import guideFr from '@/data/guide-wallet-crypto.json';
+import guideEn from '@/data/guide-wallet-crypto.en.json';
+import guideEs from '@/data/guide-wallet-crypto.es.json';
+import guideRu from '@/data/guide-wallet-crypto.ru.json';
+import guideZh from '@/data/guide-wallet-crypto.zh.json';
 
-type Section = (typeof guideData.sections)[number];
+const guideByLang: Record<string, typeof guideFr> = {
+  fr: guideFr,
+  en: guideEn,
+  es: guideEs,
+  ru: guideRu,
+  zh: guideZh,
+};
+
+function WalletIcon({ w }: { w: { id: string; name: string; icon: string; iconUrl?: string; iconImage?: string } }) {
+  const [urlFailed, setUrlFailed] = useState(false);
+  if (w.iconUrl && !urlFailed) {
+    return (
+      <span className="flex items-center justify-center w-14 h-14 rounded-xl overflow-hidden bg-gray-50 dark:bg-gray-800 shrink-0 p-1.5">
+        <img
+          src={w.iconUrl}
+          alt={w.name}
+          width={56}
+          height={56}
+          className="object-contain w-full h-full"
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          onError={() => setUrlFailed(true)}
+        />
+      </span>
+    );
+  }
+  if (w.iconImage) {
+    return (
+      <span className="flex items-center justify-center w-14 h-14 rounded-xl overflow-hidden bg-gray-50 dark:bg-gray-800 shrink-0 p-1">
+        <Image src={w.iconImage} alt={w.name} width={56} height={56} className="object-contain w-full h-full" />
+      </span>
+    );
+  }
+  return <span className="text-3xl">{w.icon}</span>;
+}
+
+type Section = (typeof guideFr.sections)[number];
 
 function SectionHero({ section }: { section: Section }) {
   if (section.type !== 'hero' || !section.content) return null;
@@ -23,7 +67,9 @@ function SectionHero({ section }: { section: Section }) {
       }}
     >
       <div className="max-w-4xl mx-auto text-center relative z-10">
-        {c.icon && <span className="text-5xl block mb-4">{c.icon}</span>}
+        <span className="inline-flex items-center justify-center w-16 h-16 rounded-full border-2 border-white/40 bg-white/10 backdrop-blur-sm shadow-lg mb-4 ring-4 ring-white/10">
+          <Wallet className="w-8 h-8 text-white" strokeWidth={1.75} />
+        </span>
         <h1
           className={`text-4xl md:text-5xl font-bold text-white mb-4 ${
             c.title?.gradient ? 'bg-white/90 bg-clip-text text-transparent' : ''
@@ -102,10 +148,15 @@ function SectionContentWithVisual({ section }: { section: Section }) {
             )}
           </div>
           <div className="flex justify-center">
-            <div
-              className="w-64 h-64 rounded-2xl bg-gradient-to-br from-primary-500 via-purple-500 to-pink-500 opacity-90"
-              aria-hidden
-            />
+            {/* Même logo que la navbar, agrandi par scale pour garder dégradé et forme identiques */}
+            <div className="relative w-64 h-64 flex items-center justify-center">
+              <div
+                className="absolute w-10 h-10 gradient-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary-500/50 origin-center scale-[6.4]"
+                aria-hidden
+              >
+                <span className="text-white font-bold text-[0.9375rem] select-none">C</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -280,6 +331,8 @@ function SectionWalletCards({ section }: { section: Section }) {
       tagline: string;
       description: string;
       icon: string;
+      iconImage?: string;
+      iconUrl?: string;
       color?: string;
       platforms?: string[];
       url: string;
@@ -318,7 +371,7 @@ function SectionWalletCards({ section }: { section: Section }) {
               className="block p-6 rounded-2xl border-2 border-gray-200 dark:border-gray-700 hover:border-primary-400 dark:hover:border-primary-600 transition-all hover:shadow-lg"
             >
               <div className="flex items-start justify-between mb-3">
-                <span className="text-3xl">{w.icon}</span>
+                <WalletIcon w={w} />
                 {w.recommended && (
                   <span className="px-2 py-0.5 rounded-md bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs font-medium">
                     Recommandé
@@ -534,15 +587,6 @@ function SectionFinalCta({ section }: { section: Section }) {
               {c.cta.primary.text}
             </Link>
           )}
-          {c.cta?.secondary && (
-            <Link
-              href={c.cta.secondary.url}
-              className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-            >
-              <span>{c.cta.secondary.icon}</span>
-              {c.cta.secondary.text}
-            </Link>
-          )}
         </div>
         {c.helpLinks && (
           <div>
@@ -550,16 +594,18 @@ function SectionFinalCta({ section }: { section: Section }) {
               {c.helpLinks.title}
             </p>
             <div className="flex flex-wrap justify-center gap-4">
-              {c.helpLinks.links.map((link, i) => (
-                <a
-                  key={i}
-                  href={link.url}
-                  className="inline-flex items-center gap-2 text-sm text-primary-600 dark:text-primary-400 hover:underline"
-                >
-                  <span>{link.icon}</span>
-                  {link.text}
-                </a>
-              ))}
+              {c.helpLinks.links
+                .filter((link) => !link.url.toLowerCase().includes('discord'))
+                .map((link, i) => (
+                  <a
+                    key={i}
+                    href={link.url}
+                    className="inline-flex items-center gap-2 text-sm text-primary-600 dark:text-primary-400 hover:underline"
+                  >
+                    <span>{link.icon}</span>
+                    {link.text}
+                  </a>
+                ))}
             </div>
           </div>
         )}
@@ -592,6 +638,20 @@ function RenderSection({ section }: { section: Section }) {
 }
 
 export default function PremiereEtapePage() {
+  const { i18n } = useTranslation();
+  // Use fixed 'fr' until mount to avoid hydration mismatch (server vs client language)
+  const [lang, setLang] = useState<string>('fr');
+
+  useEffect(() => {
+    setLang((i18n.language || 'fr').split('-')[0]);
+  }, [i18n.language]);
+
+  const guideData = guideByLang[lang] || guideFr;
+
+  useEffect(() => {
+    if (guideData.title) document.title = `${guideData.title} | Confidance`;
+  }, [guideData.title]);
+
   return (
     <div className="min-h-screen">
       {guideData.sections.map((section) => (

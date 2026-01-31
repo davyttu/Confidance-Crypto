@@ -13,7 +13,8 @@ import { useAuth } from '@/contexts/AuthContext';
 
 interface FeeDisplayProps {
   amount: bigint | null;
-  tokenSymbol: TokenSymbol;
+  tokenSymbol: TokenSymbol | string;
+  tokenDecimals?: number;
   showDetails?: boolean;
   releaseDate?: Date | null; // Pour détecter les paiements instantanés
 }
@@ -21,13 +22,17 @@ interface FeeDisplayProps {
 export default function FeeDisplay({
   amount,
   tokenSymbol,
+  tokenDecimals,
   showDetails = true,
   releaseDate,
 }: FeeDisplayProps) {
   const { t, ready: translationsReady } = useTranslation();
   const [isMounted, setIsMounted] = useState(false);
   const { user } = useAuth();
-  const token = getToken(tokenSymbol);
+  const token =
+    tokenDecimals !== undefined
+      ? { symbol: tokenSymbol, decimals: tokenDecimals, name: '' }
+      : getToken(tokenSymbol as TokenSymbol);
 
   useEffect(() => {
     setIsMounted(true);

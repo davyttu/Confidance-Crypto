@@ -1,11 +1,11 @@
 // src/app/links/new/page.tsx
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useAccount } from 'wagmi';
 import { useTranslation } from 'react-i18next';
 import { CHAINS } from '@/config/chains';
-import { TOKEN_LIST, getToken, type Token, type TokenSymbol } from '@/config/tokens';
+import { getToken, type Token, type TokenSymbol } from '@/config/tokens';
 import { usePaymentLinks } from '@/hooks/usePaymentLinks';
 import {
   PaymentCategory,
@@ -17,11 +17,14 @@ import {
 type PaymentType = 'instant' | 'scheduled' | 'recurring';
 type Frequency = 'monthly' | 'weekly';
 
-function TokenIcon({ token }: { token: Token }) {
-  if (!token.icon) {
+const PAYMENT_LINK_TOKENS: TokenSymbol[] = ['ETH', 'USDC', 'USDT'];
+
+function TokenIcon({ token, className }: { token: Token; className?: string }) {
+  const [imgError, setImgError] = useState(false);
+  if (!token.icon || imgError) {
     return (
       <div
-        className="w-full h-full flex items-center justify-center text-white text-xs font-semibold"
+        className={`flex items-center justify-center text-white text-xs font-semibold ${className ?? ''}`}
         style={{ backgroundColor: token.color }}
       >
         {token.symbol.charAt(0)}
@@ -33,8 +36,166 @@ function TokenIcon({ token }: { token: Token }) {
     <img
       src={token.icon}
       alt={token.name}
-      className="w-full h-full object-contain"
+      className={className ?? 'w-full h-full object-contain'}
+      onError={() => setImgError(true)}
     />
+  );
+}
+
+function TokenSelect({
+  value,
+  onChange,
+}: {
+  value: 'ETH' | 'USDC' | 'USDT';
+  onChange: (v: 'ETH' | 'USDC' | 'USDT') => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedToken = getToken(value as TokenSymbol);
+  const tokens = PAYMENT_LINK_TOKENS.map((s) => getToken(s));
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full px-3 py-2 pl-10 border-2 border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white font-semibold transition-all cursor-pointer flex items-center gap-2 text-left"
+      >
+        <div className="absolute left-2 top-1/2 -translate-y-1/2 h-6 w-6 rounded-full overflow-hidden bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 flex-shrink-0">
+          <TokenIcon token={selectedToken} className="w-full h-full object-contain p-0.5" />
+        </div>
+        <span>{selectedToken.symbol}</span>
+        <svg
+          className={`w-4 h-4 ml-auto flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute z-20 mt-1 w-full rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg overflow-hidden">
+          {tokens.map((t) => (
+            <button
+              key={t.symbol}
+              type="button"
+              onClick={() => {
+                onChange(t.symbol as 'ETH' | 'USDC' | 'USDT');
+                setOpen(false);
+              }}
+              className={`relative w-full px-3 py-2 pl-10 flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-800 text-left transition-colors ${
+                value === t.symbol ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400' : 'text-gray-900 dark:text-white'
+              }`}
+            >
+              <div className="absolute left-2 top-1/2 -translate-y-1/2 h-6 w-6 rounded-full overflow-hidden bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 flex-shrink-0">
+                <TokenIcon token={t} className="w-full h-full object-contain p-0.5" />
+              </div>
+              <span className="font-semibold">{t.symbol}</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{t.name}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const CHAIN_ICON_BY_ID: Record<number, string> = {
+  8453: '/blockchains/base.svg',
+  42161: '/blockchains/arbitrum.svg',
+  43114: '/blockchains/avalanche.svg',
+  137: '/blockchains/polygon.svg',
+  84532: '/globe.svg',
+};
+
+function NetworkSelect({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (chainId: number) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const chains = Object.values(CHAINS);
+  const selectedChain = CHAINS[value];
+  const selectedIcon = CHAIN_ICON_BY_ID[value] ?? '/globe.svg';
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full px-3 py-2 pl-10 border-2 border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm font-semibold transition-all cursor-pointer flex items-center gap-2 text-left"
+      >
+        <div className="absolute left-2 top-1/2 -translate-y-1/2 h-6 w-6 rounded-full overflow-hidden bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 flex-shrink-0">
+          <img
+            src={selectedIcon}
+            alt={selectedChain?.name ?? 'Network'}
+            className="w-full h-full object-contain p-1"
+          />
+        </div>
+        <span>{selectedChain?.name ?? 'Network'}</span>
+        <svg
+          className={`w-4 h-4 ml-auto flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute z-20 mt-1 w-full rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg overflow-hidden">
+          {chains.map((chain) => {
+            const icon = CHAIN_ICON_BY_ID[chain.chainId] ?? '/globe.svg';
+            return (
+              <button
+                key={chain.chainId}
+                type="button"
+                onClick={() => {
+                  onChange(chain.chainId);
+                  setOpen(false);
+                }}
+                className={`relative w-full px-3 py-2 pl-10 flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-800 text-left transition-colors text-sm ${
+                  value === chain.chainId ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400' : 'text-gray-900 dark:text-white'
+                }`}
+              >
+                <div className="absolute left-2 top-1/2 -translate-y-1/2 h-6 w-6 rounded-full overflow-hidden bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 flex-shrink-0">
+                  <img
+                    src={icon}
+                    alt={chain.name}
+                    className="w-full h-full object-contain p-1"
+                  />
+                </div>
+                <span className="font-semibold">{chain.name}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -63,14 +224,6 @@ export default function NewPaymentLinkPage() {
   const isTranslationReady = ready && isClient;
   const selectedToken = getToken(token as TokenSymbol);
   const selectedChain = CHAINS[chainId];
-  const chainIconById: Record<number, string> = {
-    8453: '/blockchains/base.svg',
-    42161: '/blockchains/arbitrum.svg',
-    43114: '/blockchains/avalanche.svg',
-    137: '/blockchains/polygon.svg',
-    84532: '/globe.svg',
-  };
-  const selectedChainIcon = chainIconById[chainId] || '/globe.svg';
   const currentLang = (isTranslationReady ? i18n?.language?.split('-')[0] : 'en') as 'en' | 'fr' | 'es' | 'ru' | 'zh';
   const categories: PaymentCategory[] = [
     'housing',
@@ -350,20 +503,7 @@ export default function NewPaymentLinkPage() {
                 <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
                   {isTranslationReady ? t('links.create.fields.token') : 'Token'}
                 </label>
-                <div className="relative">
-                  <div className="absolute left-2 top-1/2 -translate-y-1/2 h-6 w-6 rounded-full overflow-hidden bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
-                    <TokenIcon token={selectedToken} />
-                  </div>
-                  <select
-                    value={token}
-                    onChange={(e) => setToken(e.target.value as 'ETH' | 'USDC' | 'USDT')}
-                    className="w-full px-3 py-2 pl-10 border-2 border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white font-semibold transition-all cursor-pointer"
-                  >
-                    <option value="ETH">ETH</option>
-                    <option value="USDC">USDC</option>
-                    <option value="USDT">USDT</option>
-                  </select>
-                </div>
+                <TokenSelect value={token} onChange={setToken} />
               </div>
             </div>
           </div>
@@ -376,27 +516,7 @@ export default function NewPaymentLinkPage() {
               </svg>
               {isTranslationReady ? t('links.create.sections.network', { defaultValue: 'Network' }) : 'Network'}
             </h3>
-            
-            <div className="relative">
-              <div className="absolute left-2 top-1/2 -translate-y-1/2 h-6 w-6 rounded-full overflow-hidden bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
-                <img
-                  src={selectedChainIcon}
-                  alt={selectedChain?.name || 'Network'}
-                  className="w-full h-full object-contain p-1"
-                />
-              </div>
-              <select
-                value={chainId}
-                onChange={(e) => setChainId(Number(e.target.value))}
-                className="w-full px-3 py-2 pl-10 border-2 border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm font-semibold transition-all cursor-pointer"
-              >
-              {Object.values(CHAINS).map((chain) => (
-                <option key={chain.chainId} value={chain.chainId}>
-                  {chain.name}
-                </option>
-              ))}
-              </select>
-            </div>
+            <NetworkSelect value={chainId} onChange={setChainId} />
           </div>
 
           {/* Payment type - Horizontal compact */}

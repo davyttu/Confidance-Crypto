@@ -1,0 +1,216 @@
+{
+  "title": "加密钱包指南",
+  "slug": "guide-wallet-crypto",
+  "description": "5分钟学会创建您的第一个加密钱包，使用 Confidance",
+  "sections": [
+    {
+      "id": "hero",
+      "type": "hero",
+      "layout": "center",
+      "background": {
+        "type": "gradient",
+        "colors": ["#667eea", "#764ba2", "#f093fb"],
+        "animation": "subtle-wave"
+      },
+      "content": {
+        "icon": "👛",
+        "iconSize": "xl",
+        "title": {
+          "text": "DeFi 之前，先有钱包",
+          "gradient": true,
+          "size": "4xl"
+        },
+        "subtitle": {
+          "text": "通往财务自由的第一把钥匙",
+          "size": "xl",
+          "color": "white-80"
+        },
+        "description": {
+          "text": "在使用 Confidance 自主管理加密支付之前，您只需要一样东西：您的钱包。无需注册、无需填表。只有您、您的钱包和区块链。",
+          "maxWidth": "2xl",
+          "color": "white-90"
+        },
+        "badge": {
+          "text": "✨ Confidance 自动连接",
+          "style": "glass"
+        }
+      }
+    },
+    {
+      "id": "what-is-wallet",
+      "type": "content-with-visual",
+      "layout": "left-content-right-visual",
+      "background": "white",
+      "visual": {
+        "type": "illustration",
+        "name": "digital-safe",
+        "style": "3d-isometric",
+        "colors": ["primary", "purple", "pink"]
+      },
+      "content": {
+        "badge": { "text": "💼 基础", "color": "blue" },
+        "title": { "text": "什么是加密钱包？", "size": "3xl" },
+        "description": {
+          "text": "想象一个只有您能打开的数字保险箱。或者说：一把让您随时随地、24/7、无需中介即可使用资金的“魔法钥匙”。",
+          "size": "lg"
+        },
+        "cards": [
+          { "icon": "👤", "title": "您的身份", "description": "在区块链上" },
+          { "icon": "💸", "title": "您的支付方式", "description": "用于发送和接收" },
+          { "icon": "✍️", "title": "您的签名", "description": "用于确认每一笔操作" },
+          { "icon": "🏆", "title": "您的资产", "description": "他人无法动用" }
+        ],
+        "highlight": {
+          "type": "callout",
+          "style": "info",
+          "icon": "💡",
+          "text": "与银行管理一切的银行账户不同，在这里您是主人。未经您同意，无人可以冻结、限制或动用您的资金。"
+        }
+      }
+    },
+    {
+      "id": "why-wallet-confidance",
+      "type": "feature-comparison",
+      "background": { "type": "gradient", "colors": ["#f8f9ff", "#fff"] },
+      "content": {
+        "badge": { "text": "🔗 直接连接", "color": "purple" },
+        "title": { "text": "为什么使用 Confidance 必须有钱包", "size": "3xl" },
+        "subtitle": { "text": "Confidance 不像传统银行那样运作", "size": "lg", "color": "gray-600" },
+        "comparison": {
+          "left": {
+            "title": "传统银行",
+            "icon": "🏦",
+            "color": "gray",
+            "items": [
+              { "icon": "❌", "text": "邮箱 + 密码" },
+              { "icon": "❌", "text": "银行托管您的资金" },
+              { "icon": "❌", "text": "隐性费用与延迟" },
+              { "icon": "❌", "text": "可冻结您的账户" }
+            ]
+          },
+          "right": {
+            "title": "Confidance + 钱包",
+            "icon": "💎",
+            "color": "gradient",
+            "items": [
+              { "icon": "✅", "text": "钱包 = 您的身份" },
+              { "icon": "✅", "text": "您掌控资金" },
+              { "icon": "✅", "text": "透明、即时" },
+              { "icon": "✅", "text": "无人可封锁您" }
+            ]
+          }
+        },
+        "summary": {
+          "type": "highlight-box",
+          "style": "gradient",
+          "icon": "🎯",
+          "title": "总结",
+          "text": "Confidance 提供管理自动支付的工具，但资金始终由您通过钱包掌控。"
+        }
+      }
+    },
+    {
+      "id": "how-to-create",
+      "type": "step-by-step",
+      "background": "white",
+      "content": {
+        "badge": { "text": "🚀 快速入门", "color": "green" },
+        "title": { "text": "创建您的第一个钱包", "size": "3xl" },
+        "subtitle": { "text": "不到 5 分钟", "size": "xl", "color": "gradient" },
+        "steps": [
+          { "number": "1", "icon": "🎯", "title": "选择钱包", "description": "有多种选择（见下方）。选一个您喜欢的即可。", "color": "blue" },
+          { "number": "2", "icon": "📥", "title": "安装应用", "description": "手机：从 App Store 或 Google Play 下载。电脑：在浏览器（Chrome、Firefox、Brave…）中安装扩展。", "color": "purple" },
+          { "number": "3", "icon": "✨", "title": "创建新钱包", "description": "按屏幕提示操作，步骤清晰、易上手。", "color": "pink" },
+          { "number": "4", "icon": "🔒", "title": "保管好助记词", "description": "钱包会生成恢复短语（12 或 24 个词）。这句话就是您保险箱的钥匙。", "color": "red", "warning": { "text": "请抄写在纸上、妥善保管，绝对不要告诉任何人。", "icon": "⚠️" } }
+        ],
+        "completion": { "icon": "🎉", "text": "完成！您已拥有自己的钱包。", "style": "success-banner" }
+      }
+    },
+    {
+      "id": "recommended-wallets",
+      "type": "wallet-cards",
+      "background": { "type": "gradient", "colors": ["#fff", "#f8f9ff"] },
+      "content": {
+        "badge": { "text": "🌈 热门之选", "color": "gradient" },
+        "title": { "text": "推荐钱包", "size": "3xl" },
+        "subtitle": { "text": "Confidance 兼容以下所有钱包", "size": "lg" },
+        "wallets": [
+          { "id": "metamask", "name": "MetaMask", "tagline": "最流行、最通用", "description": "MetaMask 是全球使用最广的钱包之一。提供浏览器扩展与手机应用。", "icon": "🦊", "iconUrl": "https://images.ctfassets.net/clixtyxoaeas/4rnpEzy1ATWRKVBOLxZ1Fm/a74dc1eed36d23d7ea6030383a4d5163/MetaMask-icon-fox.svg", "iconImage": "/wallets/metamask.svg", "color": "orange", "platforms": ["Web", "Mobile"], "url": "https://metamask.io", "features": ["浏览器扩展", "手机应用", "界面直观", "多链支持"], "difficulty": "入门", "recommended": true },
+          { "id": "rainbow", "name": "Rainbow", "tagline": "移动端最易用", "description": "Rainbow 主打简洁与美观，适合习惯用手机管理加密资产的人。", "icon": "🌈", "iconUrl": "https://framerusercontent.com/images/Hml6PtJwt03gwFtTRYmbpo7EarY.png", "color": "gradient", "platforms": ["Mobile"], "url": "https://rainbow.me", "features": ["设计简洁", "操作简单", "移动优先", "适合新手"], "difficulty": "入门" },
+          { "id": "trust-wallet", "name": "Trust Wallet", "tagline": "移动端全能之选", "description": "Trust Wallet 支持大量代币与区块链，功能全面。", "icon": "🛡️", "iconImage": "/wallets/trust-wallet.svg", "color": "blue", "platforms": ["Mobile"], "url": "https://trustwallet.com", "features": ["海量代币", "多链", "内置质押", "功能完整"], "difficulty": "进阶" },
+          { "id": "coinbase-wallet", "name": "Coinbase Wallet", "tagline": "熟悉 Coinbase 用户的首选", "description": "若您已在用 Coinbase，其钱包是自然延伸，简单可靠。", "icon": "🔵", "iconImage": "/wallets/coinbase.svg", "color": "blue", "platforms": ["Web", "Mobile"], "url": "https://www.coinbase.com/wallet", "features": ["与 Coinbase 集成", "界面熟悉", "客服支持", "安全增强"], "difficulty": "入门" }
+        ],
+        "warning": { "type": "security-alert", "icon": "⚠️", "title": "重要", "text": "请始终从上述官方渠道下载。警惕社交媒体或邮件中的链接。", "style": "warning" }
+      }
+    },
+    {
+      "id": "golden-rules",
+      "type": "security-rules",
+      "background": { "type": "gradient", "colors": ["#fef3c7", "#fef3c7", "#fff"] },
+      "content": {
+        "badge": { "text": "🛡️ 安全", "color": "yellow" },
+        "title": { "text": "必知黄金法则", "size": "3xl" },
+        "subtitle": { "text": "钱包很强大，但安全取决于您自己", "size": "lg" },
+        "rules": [
+          { "number": "1", "icon": "🔒", "title": "绝不透露助记词", "description": "任何人都不应知道。Confidance、客服、“顾问”都不会问。永远不要分享。", "severity": "critical", "color": "red" },
+          { "number": "2", "icon": "🚫", "title": "Confidance 绝不会向您索要", "description": "若有人自称 Confidance 向您要助记词，即为诈骗。", "severity": "critical", "color": "orange" },
+          { "number": "3", "icon": "📝", "title": "丢失助记词 = 丢失访问权", "description": "一旦丢失恢复短语，将无法再访问钱包，无人能帮您。请妥善抄写保管。", "severity": "high", "color": "yellow" },
+          { "number": "4", "icon": "🌐", "title": "始终核对访问的网址", "description": "与网站交互前请确认 URL 正确（钓鱼网站极为常见）。", "severity": "high", "color": "blue" }
+        ],
+        "bonus": { "type": "tip-card", "icon": "💡", "title": "额外建议", "text": "从小额开始：先用少量资金熟悉流程。信任来自经验。您也可以为工作、个人等创建多个钱包，完全免费。", "style": "gradient", "color": "green" }
+      }
+    },
+    {
+      "id": "wallet-gateway",
+      "type": "philosophy",
+      "background": { "type": "gradient", "colors": ["#667eea", "#764ba2"], "overlay": "dark" },
+      "content": {
+        "badge": { "text": "🌍 理念", "color": "white", "style": "glass" },
+        "title": { "text": "您的钱包：进入 DeFi 的第一步", "size": "3xl", "color": "white" },
+        "subtitle": { "text": "创建钱包不仅是安装一个应用，而是迈入新的金融体系。", "size": "lg", "color": "white-90" },
+        "features": [
+          { "icon": "💸", "title": "您支付", "description": "给谁、何时由您决定" },
+          { "icon": "📥", "title": "您收款", "description": "无需中介" },
+          { "icon": "⚡", "title": "您自动化", "description": "用 Confidance 管理流水" },
+          { "icon": "🏆", "title": "您拥有", "description": "您的资金" }
+        ],
+        "principles": {
+          "title": "DeFi 理念",
+          "items": [
+            { "icon": "🎯", "title": "自主", "description": "您决定、您签名、您掌控" },
+            { "icon": "🔍", "title": "透明", "description": "一切可见于链上" },
+            { "icon": "🤝", "title": "责任", "description": "能力越大责任越大" }
+          ]
+        },
+        "conclusion": { "text": "钱包是您与 DeFi 之间的桥梁。准备就绪后，一切皆有可能。", "style": "highlight", "color": "white" }
+      }
+    },
+    {
+      "id": "cta-final",
+      "type": "final-cta",
+      "background": "white",
+      "content": {
+        "icon": "✨",
+        "iconSize": "2xl",
+        "title": { "text": "钱包准备好了？", "size": "3xl" },
+        "subtitle": { "text": "欢迎使用 Confidance", "size": "2xl", "color": "gradient" },
+        "description": {
+          "text": "您已完成第一步，也是打开后续所有可能的一步。现在您可以自由管理加密支付了。",
+          "maxWidth": "2xl"
+        },
+        "cta": {
+          "primary": { "text": "连接我的钱包", "icon": "🚀", "url": "/dashboard", "style": "gradient", "size": "xl" },
+          "secondary": { "text": "查看演示", "icon": "▶️", "url": "/demo", "style": "outline" }
+        },
+        "helpLinks": {
+          "title": "需要帮助？",
+          "links": [
+            { "text": "查看常见问题", "icon": "❓", "url": "/aide/faq" },
+            { "text": "加入 Discord", "icon": "💬", "url": "/discord" },
+            { "text": "邮件支持", "icon": "📧", "url": "mailto:support@confidance.com" }
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -13,7 +13,7 @@
         "animation": "subtle-wave"
       },
       "content": {
-        "icon": "🔐",
+        "icon": "👛",
         "iconSize": "xl",
         "title": {
           "text": "Avant la DeFi, il y a le wallet",
@@ -135,10 +135,10 @@
         "title": { "text": "Wallets recommandés", "size": "3xl" },
         "subtitle": { "text": "Confidance est compatible avec tous ces wallets", "size": "lg" },
         "wallets": [
-          { "id": "metamask", "name": "MetaMask", "tagline": "Le plus populaire et polyvalent", "description": "MetaMask est le wallet le plus utilisé au monde. Disponible en extension navigateur et application mobile.", "icon": "🦊", "color": "orange", "platforms": ["Web", "Mobile"], "url": "https://metamask.io", "features": ["Extension navigateur", "Application mobile", "Interface intuitive", "Support multichain"], "difficulty": "Débutant", "recommended": true },
-          { "id": "rainbow", "name": "Rainbow", "tagline": "Le plus intuitif pour mobile", "description": "Rainbow mise tout sur la simplicité et l'esthétique. Idéal si vous préférez gérer vos crypto depuis votre smartphone.", "icon": "🌈", "color": "gradient", "platforms": ["Mobile"], "url": "https://rainbow.me", "features": ["Design épuré", "Ultra simple", "Mobile first", "Parfait pour débuter"], "difficulty": "Débutant" },
-          { "id": "trust-wallet", "name": "Trust Wallet", "tagline": "Le couteau suisse mobile", "description": "Trust Wallet supporte des milliers de tokens et blockchains. Très complet.", "icon": "🛡️", "color": "blue", "platforms": ["Mobile"], "url": "https://trustwallet.com", "features": ["Milliers de tokens", "Multi-blockchain", "Staking intégré", "Très complet"], "difficulty": "Intermédiaire" },
-          { "id": "coinbase-wallet", "name": "Coinbase Wallet", "tagline": "Pour ceux qui connaissent Coinbase", "description": "Si vous utilisez déjà Coinbase, leur wallet est une extension naturelle, simple et fiable.", "icon": "🔵", "color": "blue", "platforms": ["Web", "Mobile"], "url": "https://www.coinbase.com/wallet", "features": ["Intégration Coinbase", "Interface familière", "Support client", "Sécurité renforcée"], "difficulty": "Débutant" }
+          { "id": "metamask", "name": "MetaMask", "tagline": "Le plus populaire et polyvalent", "description": "MetaMask est le wallet le plus utilisé au monde. Disponible en extension navigateur et application mobile.", "icon": "🦊", "iconUrl": "https://images.ctfassets.net/clixtyxoaeas/4rnpEzy1ATWRKVBOLxZ1Fm/a74dc1eed36d23d7ea6030383a4d5163/MetaMask-icon-fox.svg", "iconImage": "/wallets/metamask.svg", "color": "orange", "platforms": ["Web", "Mobile"], "url": "https://metamask.io", "features": ["Extension navigateur", "Application mobile", "Interface intuitive", "Support multichain"], "difficulty": "Débutant", "recommended": true },
+          { "id": "rainbow", "name": "Rainbow", "tagline": "Le plus intuitif pour mobile", "description": "Rainbow mise tout sur la simplicité et l'esthétique. Idéal si vous préférez gérer vos crypto depuis votre smartphone.", "icon": "🌈", "iconUrl": "https://framerusercontent.com/images/Hml6PtJwt03gwFtTRYmbpo7EarY.png", "color": "gradient", "platforms": ["Mobile"], "url": "https://rainbow.me", "features": ["Design épuré", "Ultra simple", "Mobile first", "Parfait pour débuter"], "difficulty": "Débutant" },
+          { "id": "trust-wallet", "name": "Trust Wallet", "tagline": "Le couteau suisse mobile", "description": "Trust Wallet supporte des milliers de tokens et blockchains. Très complet.", "icon": "🛡️", "iconImage": "/wallets/trust-wallet.svg", "color": "blue", "platforms": ["Mobile"], "url": "https://trustwallet.com", "features": ["Milliers de tokens", "Multi-blockchain", "Staking intégré", "Très complet"], "difficulty": "Intermédiaire" },
+          { "id": "coinbase-wallet", "name": "Coinbase Wallet", "tagline": "Pour ceux qui connaissent Coinbase", "description": "Si vous utilisez déjà Coinbase, leur wallet est une extension naturelle, simple et fiable.", "icon": "🔵", "iconImage": "/wallets/coinbase.svg", "color": "blue", "platforms": ["Web", "Mobile"], "url": "https://www.coinbase.com/wallet", "features": ["Intégration Coinbase", "Interface familière", "Support client", "Sécurité renforcée"], "difficulty": "Débutant" }
         ],
         "warning": { "type": "security-alert", "icon": "⚠️", "title": "Important", "text": "Téléchargez toujours depuis les sites officiels listés ci-dessus. Méfiez-vous des liens sur les réseaux sociaux ou par email.", "style": "warning" }
       }

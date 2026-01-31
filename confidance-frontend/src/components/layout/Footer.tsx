@@ -22,9 +22,9 @@ export function Footer() {
       { label: isMounted && ready ? t('footer.documentation') : 'Documentation', href: '/docs' },
     ],
     resources: [
+      { label: isMounted && ready ? t('footer.secondStep') : 'Second step', href: '/second-step' },
       { label: 'Base Mainnet', href: 'https://base.org', external: true },
-      { label: 'Basescan', href: 'https://basescan.org', external: true },
-      { label: isMounted && ready ? t('footer.support') : 'Support', href: '/support' },
+      { label: 'Basescan', href: 'https://basescan.org', external: true, logo: '/basescan-logo.png' },
     ],
     legal: [
       { label: isMounted && ready ? t('footer.terms') : 'Conditions', href: '/legal' },

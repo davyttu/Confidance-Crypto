@@ -82,11 +82,18 @@ export interface Beneficiary {
   name?: string;
 }
 
+export type CustomTokenPayload = {
+  address: `0x${string}`;
+  decimals: number;
+  symbol: string;
+};
+
 interface CreateBatchPaymentParams {
   beneficiaries: Beneficiary[];
   releaseTime: number;
   cancellable?: boolean;
-  tokenSymbol?: TokenSymbol; // ✅ Ajouter support token
+  tokenSymbol?: TokenSymbol;
+  customToken?: CustomTokenPayload;
 }
 
 type PaymentStatus = 
@@ -153,8 +160,17 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
   const [guestEmail, setGuestEmail] = useState<string>('');
   const [needsGuestEmail, setNeedsGuestEmail] = useState(false);
   
-  // ✅ Hook d'approbation pour ERC20 batch
-  const token = currentParams ? getToken(currentParams.tokenSymbol || 'ETH') : null;
+  // ✅ Hook d'approbation pour ERC20 batch (built-in ou custom)
+  const token = currentParams
+    ? currentParams.customToken
+      ? {
+          address: currentParams.customToken.address,
+          decimals: currentParams.customToken.decimals,
+          symbol: currentParams.customToken.symbol,
+          isNative: false as const,
+        }
+      : getToken(currentParams.tokenSymbol || 'ETH')
+    : null;
   const isInstantFromParams = currentParams
     ? (currentParams.releaseTime - Math.floor(Date.now() / 1000)) < 60
     : false;
@@ -223,9 +239,16 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
         throw new Error('Le nombre de bÃ©nÃ©ficiaires doit Ãªtre entre 1 et 5');
       }
 
-      // ✅ Déterminer le token (par défaut ETH)
+      // ✅ Déterminer le token (built-in ou custom)
       const tokenSymbol = params.tokenSymbol || 'ETH';
-      const token = getToken(tokenSymbol);
+      const token = params.customToken
+        ? {
+            address: params.customToken.address,
+            decimals: params.customToken.decimals,
+            symbol: params.customToken.symbol,
+            isNative: false as const,
+          }
+        : getToken(tokenSymbol);
       const isERC20 = !token.isNative;
 
       const payees: `0x${string}`[] = [];
@@ -309,9 +332,9 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
       setStatus('creating');
       setProgressMessage(
         `Création du paiement pour ${payees.length} bénéficiaire(s)...\n` +
-        `Montant bénéficiaires: ${formattedTotalBenef.toFixed(4)} ${tokenSymbol}\n` +
-        `Fees protocole: ${formattedFee.toFixed(4)} ${tokenSymbol}\n` +
-        `Total Ã  envoyer: ${formattedTotal.toFixed(4)} ${tokenSymbol}`
+        `Montant bénéficiaires: ${formattedTotalBenef.toFixed(4)} ${token.symbol}\n` +
+        `Fees protocole: ${formattedFee.toFixed(4)} ${token.symbol}\n` +
+        `Total Ã  envoyer: ${formattedTotal.toFixed(4)} ${token.symbol}`
       );
 
       if (isInstantPayment) {
@@ -382,9 +405,9 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
                 // ✅ Vérifier que tous les paramètres sont valides avant d'appeler approve()
                 if (!token.address || token.address === 'NATIVE') {
                   console.error('❌ Adresse du token invalide:', token.address);
-                  setError(new Error(`Adresse du token invalide pour ${tokenSymbol}`));
+                  setError(new Error(`Adresse du token invalide pour ${token.symbol}`));
                   setStatus('error');
-                  setProgressMessage(`Erreur: adresse du token ${tokenSymbol} invalide`);
+                  setProgressMessage(`Erreur: adresse du token ${token.symbol} invalide`);
                   pendingPaymentParamsRef.current = null;
                   return;
                 }
@@ -564,9 +587,9 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
                 // ✅ Vérifier que tous les paramètres sont valides
                 if (!token.address || token.address === 'NATIVE') {
                   console.error('❌ Adresse du token invalide:', token.address);
-                  setError(new Error(`Adresse du token invalide pour ${tokenSymbol}`));
+                  setError(new Error(`Adresse du token invalide pour ${token.symbol}`));
                   setStatus('error');
-                  setProgressMessage(`Erreur: adresse du token ${tokenSymbol} invalide`);
+                  setProgressMessage(`Erreur: adresse du token ${token.symbol} invalide`);
                   pendingPaymentParamsRef.current = null;
                   return;
                 }
@@ -624,7 +647,7 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
                 // ✅ Allowance suffisante, créer le paiement directement
                 console.log('✅ Allowance suffisante, création du paiement batch ERC20 programmé directement...');
                 setStatus('creating');
-                setProgressMessage(`Création du paiement batch ${tokenSymbol}...`);
+                setProgressMessage(`Création du paiement batch ${token.symbol}...`);
                 
                 // Nettoyer les paramètres en attente puisqu'on n'a pas besoin d'approbation
                 pendingPaymentParamsRef.current = null;
@@ -1094,10 +1117,16 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
                   contract_address: foundAddress,
                   payer_address: address,
                   beneficiaries: beneficiariesData,
-                  token_symbol: currentParams.tokenSymbol || 'ETH',
-                  token_address: currentParams.tokenSymbol && !getToken(currentParams.tokenSymbol).isNative 
-                    ? (getToken(currentParams.tokenSymbol).address as string || null) 
-                    : null,
+                  token_symbol: currentParams.customToken
+                    ? currentParams.customToken.symbol
+                    : (currentParams.tokenSymbol || 'ETH'),
+                  token_address: currentParams.customToken
+                    ? currentParams.customToken.address
+                    : (() => {
+                        const sym = currentParams.tokenSymbol || 'ETH';
+                        const t = getToken(sym);
+                        return t.isNative ? null : (t.address as string);
+                      })(),
                   total_to_beneficiaries: totalToBeneficiaries?.toString(),
                   protocol_fee: protocolFee?.toString(),
                   total_sent: totalRequired?.toString(),

@@ -70,20 +70,20 @@
     "features": {
       "automatic": {
         "title": "自动化",
-        "description": "全天候守护者监控并精确执行您的支付"
+        "description": "一次设置，自动运行。"
       },
       "secure": {
         "title": "安全",
-        "description": "经过审计的智能合约。您的资金安全存放在链上"
+        "description": "无托管。无捷径。"
       },
       "flexible": {
         "title": "灵活",
-      "description": "ETH、USDT、USDC……多链支持，随时可用。"
+      "description": "您决定。始终如此。"
       }
     },
     "why": {
       "title": "为什么选择 Confidance？",
-      "description": "用于安排加密支付、掌控财务状况的最简单、最安全的平台。"
+      "description": "Confidance 旨在让加密支付可预测、可验证且独立于中介。"
     },
     "useCases": {
       "salaries": {
@@ -119,7 +119,7 @@
     "ctaSection": {
       "title": "准备开始？",
       "description": "连接您的钱包，探索仪表板中的所有财务管理功能。",
-      "button": "创建我的首次支付"
+      "button": "我的仪表板"
     }
   },
   "payment": {
@@ -487,6 +487,7 @@
   },
   "links": {
     "cta": "创建支付链接",
+    "ctaDescription": "一键创建链接，分享给客户或合作伙伴：他们用加密货币支付到您的钱包，无需账户或中介。简单、安全、通用。",
     "create": {
       "badge": "支付链接生成器",
       "title": "创建支付链接",
@@ -659,7 +660,36 @@
     "title": "创建即时、定期或循环支付",
     "subtitle": "发送加密货币，将在指定日期自动释放",
     "voiceCta": "语音创建支付",
+    "voiceStopCta": "停止语音指令",
+    "voiceNeedBeneficiary": "要使用语音指令，请至少保存一位收款人（将显示在收藏中）。",
     "voiceLang": "语音语言",
+    "currency": {
+      "select": "选择要发送的加密货币",
+      "available": "可用",
+      "native": "原生 ETH：仅需 1 笔交易",
+      "erc20": "ERC20 代币：需 2 笔交易（授权 + 创建）",
+      "nativeLabel": "原生",
+      "registerCrypto": "注册加密货币"
+    },
+    "customToken": {
+      "title": "注册加密货币",
+      "addressLabel": "ERC20 合约地址",
+      "verify": "验证",
+      "name": "名称",
+      "symbol": "符号",
+      "decimals": "小数位",
+      "cancel": "取消",
+      "add": "添加",
+      "testnetWarning": "未验证代币（测试网）",
+      "errors": {
+        "invalidAddress": "合约地址无效",
+        "invalidAddressFormat": "合约地址无效（须为 0x 后跟 40 个十六进制字符）",
+        "connectWallet": "请连接钱包并确保处于正确网络。",
+        "readContract": "无法读取合约。请检查地址和网络。",
+        "verifyFirst": "请点击「验证」以填写代币信息。",
+        "decimalsNotSupported": "该代币小数位超过 18，不支持。"
+      }
+    },
     "beneficiary": {
       "address": "收款地址",
       "addMultiple": "添加多个收款人",
@@ -784,6 +814,7 @@
     "resources": "资源",
     "legal": "法律",
     "firstStep": "第一步",
+    "secondStep": "第二步",
     "documentation": "文档",
     "support": "支持",
     "terms": "法律声明",

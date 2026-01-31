@@ -65,7 +65,7 @@ export default function Home() {
     {
       icon: Zap,
       title: 'Automatique',
-      description: 'Un keeper 24/7 surveille et exécute vos paiements à la seconde près',
+      description: 'Une fois réglé, ça fonctionne.',
       gradient: 'from-yellow-400 to-orange-500',
     },
     {
@@ -77,7 +77,7 @@ export default function Home() {
     {
       icon: Clock,
       title: 'Flexible',
-      description: 'ETH, USDC, USDT. Programmez de 5 minutes à plusieurs années',
+      description: 'Vous décidez. Toujours.',
       gradient: 'from-purple-400 to-pink-500',
     },
   ];
@@ -125,19 +125,19 @@ export default function Home() {
               {/* Badge */}
               <div className="inline-flex items-center gap-2 px-4 py-2 glass rounded-full">
                 <Sparkles className="h-4 w-4 text-primary-500" />
-                <span className="text-sm font-medium">{isMounted && ready ? t('home.badge') : 'Paiements programmés DeFi'}</span>
+                <span className="text-sm font-medium">{isMounted && ready ? t('home.badge', { defaultValue: 'Multi-chain DeFi protocol.' }) : 'Multi-chain DeFi protocol.'}</span>
               </div>
 
               {/* Title */}
               <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight">
-                <span className="block text-gray-900 dark:text-white">{isMounted && ready ? t('home.title') : 'Programmez vos paiements crypto en toute confiance'}</span>
+                <span className="block text-gray-900 dark:text-white">{isMounted && ready ? t('home.title', { defaultValue: 'Web3 payment protocol' }) : 'Web3 payment protocol'}</span>
               </h1>
 
               {/* Description */}
               <p className="max-w-2xl mx-auto text-lg sm:text-xl text-gray-600 dark:text-gray-400 text-balance">
-                {isMounted && ready ? t('home.subtitle') : 'Verrouillez vos cryptos et libérez-les automatiquement à une date précise.'}
+                {isMounted && ready ? t('home.subtitle', { defaultValue: 'Release them automatically at a specific date.' }) : 'Release them automatically at a specific date.'}
                 <br />
-                <strong className="text-gray-900 dark:text-white">{isMounted && ready ? t('home.tagline') : 'Sans intermédiaire. 100% on-chain.'}</strong>
+                <strong className="text-gray-900 dark:text-white">{isMounted && ready ? t('home.tagline', { defaultValue: 'No intermediaries. 100% on-chain.' }) : 'No intermediaries. 100% on-chain.'}</strong>
               </p>
 
               {/* Status Badges */}
@@ -226,7 +226,7 @@ export default function Home() {
                 {isMounted && ready ? t('home.why.title') : 'Pourquoi Confidance ?'}
               </h2>
               <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto animate-slide-in-left">
-                {isMounted && ready ? t('home.why.description') : 'La plateforme la plus simple et sécurisée pour programmer vos paiements crypto et garder le contrôle de vos finances.'}
+                {isMounted && ready ? t('home.why.description') : 'Confidance a été conçu pour rendre les paiements crypto prévisibles, vérifiables et indépendants des intermédiaires.'}
               </p>
             </div>
 
@@ -294,6 +294,9 @@ export default function Home() {
                 {isMounted && ready ? t('links.cta') : 'Créer un lien de paiement'}
                 <ArrowRight className="h-4 w-4" />
               </Link>
+              <p className="mt-8 text-sm sm:text-base text-gray-500 dark:text-gray-400 max-w-lg mx-auto leading-relaxed italic px-4 py-2 rounded-full border border-gray-200/60 dark:border-gray-700/60 bg-white/40 dark:bg-gray-800/40 backdrop-blur-sm">
+                {isMounted && ready ? t('links.ctaDescription') : 'Créez un lien en un clic, partagez-le à vos clients ou partenaires : ils règlent en crypto sur votre wallet, sans compte ni intermédiaire. Simple, sécurisé, universel.'}
+              </p>
             </div>
           </div>
         </section>
@@ -316,10 +319,10 @@ export default function Home() {
                 </p>
 
                 <Link
-                  href="/payment"
+                  href="/dashboard"
                   className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-primary-500 via-purple-500 to-pink-500 text-white rounded-xl font-semibold shadow-2xl shadow-primary-500/50 hover:shadow-primary-500/70 transition-all hover:scale-105"
                 >
-                  {isMounted && ready ? t('home.ctaSection.button') : 'Créer mon premier paiement'}
+                  {isMounted && ready ? t('home.ctaSection.button') : 'Mon dashboard'}
                   <ArrowRight className="h-5 w-5" />
                 </Link>
               </div>

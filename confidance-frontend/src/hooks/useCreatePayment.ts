@@ -154,8 +154,15 @@ const getNetworkFromChainId = (chainId: number): string => {
 };
 
 
+export type CustomTokenPayload = {
+  address: `0x${string}`;
+  decimals: number;
+  symbol: string;
+};
+
 interface CreatePaymentParams {
   tokenSymbol: TokenSymbol;
+  customToken?: CustomTokenPayload;
   beneficiary: `0x${string}`;
   amount: bigint;
   releaseTime: number; // Unix timestamp en secondes
@@ -295,7 +302,16 @@ export function useCreatePayment(): UseCreatePaymentReturn {
   // Hook d'approbation (pour ERC20)
   // ✅ FIX CRITIQUE : Ne pas créer le hook si currentParams n'est pas défini
   // Cela évite de créer le hook avec 'ETH' par défaut et de tenter d'approuver le mauvais token
-  const token = currentParams ? getToken(currentParams.tokenSymbol) : null;
+  const token = currentParams
+    ? currentParams.customToken
+      ? {
+          address: currentParams.customToken.address,
+          decimals: currentParams.customToken.decimals,
+          symbol: currentParams.customToken.symbol,
+          isNative: false as const,
+        }
+      : getToken(currentParams.tokenSymbol)
+    : null;
   
   // 🔧 FIX ERC20 ALLOWANCE : Calculer totalRequired
   // - Paiement programmé : amount + fees (taux selon statut)
@@ -372,7 +388,14 @@ export function useCreatePayment(): UseCreatePaymentReturn {
       setError(null);
       // ✅ FIX : Réinitialiser le hash d'approbation pour cette nouvelle tentative
       currentApproveTxHash.current = undefined;
-      const tokenData = getToken(params.tokenSymbol);
+      const tokenData = params.customToken
+        ? {
+            address: params.customToken.address,
+            decimals: params.customToken.decimals,
+            symbol: params.customToken.symbol,
+            isNative: false as const,
+          }
+        : getToken(params.tokenSymbol);
       
       console.log('🔍 [createPayment] Token data:', {
         symbol: tokenData.symbol,

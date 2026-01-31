@@ -10,20 +10,27 @@ interface UseErc20BalanceResult {
   isError: boolean;
 }
 
-export function useErc20Balance(tokenAddress: `0x${string}`): UseErc20BalanceResult {
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as const;
+
+export function useErc20Balance(
+  tokenAddress: `0x${string}` | undefined,
+  options?: { enabled?: boolean }
+): UseErc20BalanceResult {
   const { address } = useAccount();
+  const effectiveAddress = tokenAddress ?? ZERO_ADDRESS;
+  const enabled = (options?.enabled !== false) && !!address && !!tokenAddress;
 
   const {
     data: balance,
     isLoading,
     isError,
   } = useReadContract({
-    address: tokenAddress,
+    address: effectiveAddress,
     abi: erc20Abi,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
     query: {
-      enabled: !!address,
+      enabled,
     },
   });
 

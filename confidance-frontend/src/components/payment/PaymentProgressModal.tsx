@@ -15,7 +15,8 @@ interface PaymentProgressModalProps {
   createTxHash?: `0x${string}`;
   contractAddress?: `0x${string}`;
   contractAddresses?: `0x${string}`[];
-  tokenSymbol: TokenSymbol;
+  tokenSymbol: TokenSymbol | string;
+  tokenDecimals?: number;
   approvalTotalPerContract?: bigint | null;
   beneficiariesCount?: number;
   totalMonths?: number;
@@ -37,6 +38,7 @@ export default function PaymentProgressModal({
   contractAddress,
   contractAddresses,
   tokenSymbol,
+  tokenDecimals,
   onClose,
   onViewPayment,
   approvalTotalPerContract,
@@ -50,7 +52,7 @@ export default function PaymentProgressModal({
     totalSteps > 0 ? Math.min(Math.max(currentStep, 1), totalSteps) : 0;
   const formatTokenAmount = (amount: bigint | null | undefined) => {
     if (amount === null || amount === undefined) return null;
-    const decimals = tokenSymbol === 'ETH' ? 18 : 6;
+    const decimals = tokenDecimals ?? (tokenSymbol === 'ETH' ? 18 : 6);
     const divisor = BigInt(10 ** decimals);
     const integerPart = amount / divisor;
     const fractionalPart = amount % divisor;
