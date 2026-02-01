@@ -168,8 +168,19 @@
       "balanceSource": "Источник {{source}}",
       "balanceEstimated": "Оценка (ETH + stablecoins)",
       "totalPayments": "{{count}} платеж{{plural}} всего",
+      "totalPaymentsInPeriod": "{{count}} платеж{{plural}} · {{period}}",
       "scheduledPayments": "Запланирован{{plural}} платеж{{plural}}",
-      "releasedPayments": "Выполнен{{plural}} платеж{{plural}}"
+      "releasedPayments": "Выполнен{{plural}} платеж{{plural}}",
+      "periodLabel": "Период",
+      "periodTitle": "Выберите период для общего объёма отправленных",
+      "period": {
+        "all": "С начала",
+        "year": "В этом году",
+        "month": "В этом месяце",
+        "week": "На этой неделе"
+      },
+      "displayInDashboard": "Показать в панели",
+      "resetView": "Сбросить вид"
     },
     "table": {
       "search": "Поиск по имени или адресу...",
@@ -191,7 +202,10 @@
       "transactionHash": "Хеш транзакции",
       "viewOnBasescan": "Смотреть в Basescan",
       "sendByEmail": "Отправить по email",
-      "cancelPayment": "Отменить платёж"
+      "cancelPayment": "Отменить платёж",
+      "filterByBeneficiary": "Фильтр по получателю",
+      "allBeneficiaries": "Все получатели",
+      "noBeneficiaries": "Нет получателей в платежах"
     },
     "emailTransaction": {
       "amount": "Сумма",
@@ -233,12 +247,21 @@
       "byMonth": "По месяцам",
       "byYear": "По году",
       "byWallet": "По кошельку",
+      "byBeneficiary": "По получателю",
+      "beneficiary": "Получатель: {{beneficiary}}",
       "selectMonth": "Выберите месяц",
       "selectYear": "Выберите год",
       "allPayments": "Все платежи",
       "year": "Год {{year}}",
       "wallet": "Кошелек {{wallet}}",
       "walletGeneric": "Кошельки"
+    },
+    "beneficiariesFilter": {
+      "title": "Фильтр по получателю",
+      "subtitle": "Показывать только платежи, где этот получатель указан (в т.ч. в batch).",
+      "empty": "В ваших платежах пока нет получателей.",
+      "displayed": "Отображается",
+      "selectedCount": "{{count}} получателей"
     },
     "wallets": {
       "title": "Привязанные кошельки",
@@ -366,12 +389,21 @@
       "byMonth": "По месяцам",
       "byYear": "По году",
       "byWallet": "По кошельку",
+      "byBeneficiary": "По получателю",
+      "beneficiary": "Получатель: {{beneficiary}}",
       "selectMonth": "Выберите месяц",
       "selectYear": "Выберите год",
       "allPayments": "Все платежи",
       "year": "Год {{year}}",
       "wallet": "Кошелек {{wallet}}",
       "walletGeneric": "Кошельки"
+    },
+    "beneficiariesFilter": {
+      "title": "Фильтр по получателю",
+      "subtitle": "Показывать только платежи, где этот получатель указан (в т.ч. в batch).",
+      "empty": "В ваших платежах пока нет получателей.",
+      "displayed": "Отображается",
+      "selectedCount": "{{count}} получателей"
     },
     "wallets": {
       "title": "Привязанные кошельки",
@@ -594,7 +626,13 @@
         "subjectPlaceholder": "Тема запроса",
         "message": "Сообщение",
         "messagePlaceholder": "Ваше сообщение...",
-        "submit": "Отправить"
+        "submit": "Отправить",
+        "sending": "Отправка...",
+        "success": "Ваше сообщение успешно отправлено!",
+        "error": {
+          "required": "Пожалуйста, заполните все поля",
+          "generic": "Произошла ошибка. Попробуйте ещё раз."
+        }
       }
     },
     "chat": {

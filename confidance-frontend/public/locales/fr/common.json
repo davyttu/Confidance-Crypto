@@ -168,8 +168,19 @@
       "balanceSource": "Source {{source}}",
       "balanceEstimated": "Estimation (ETH + stablecoins)",
       "totalPayments": "{{count}} paiement{{plural}} au total",
+      "totalPaymentsInPeriod": "{{count}} paiement{{plural}} · {{period}}",
       "scheduledPayments": "Paiement{{plural}} programmé{{plural}}",
-      "releasedPayments": "Paiement{{plural}} libéré{{plural}}"
+      "releasedPayments": "Paiement{{plural}} libéré{{plural}}",
+      "periodLabel": "Période",
+      "periodTitle": "Choisir la période du total envoyé",
+      "period": {
+        "all": "Depuis le début",
+        "year": "Cette année",
+        "month": "Ce mois",
+        "week": "Cette semaine"
+      },
+      "displayInDashboard": "Afficher dans le dashboard",
+      "resetView": "Réinitialiser la vue"
     },
     "table": {
       "search": "Rechercher par nom ou adresse...",
@@ -191,7 +202,10 @@
       "transactionHash": "Hash de transaction",
       "viewOnBasescan": "Voir sur Basescan",
       "sendByEmail": "Envoyer par email",
-      "cancelPayment": "Annuler le paiement"
+      "cancelPayment": "Annuler le paiement",
+      "filterByBeneficiary": "Filtrer par bénéficiaire",
+      "allBeneficiaries": "Tous les bénéficiaires",
+      "noBeneficiaries": "Aucun bénéficiaire dans les paiements"
     },
     "emailTransaction": {
       "amount": "Montant",
@@ -266,12 +280,21 @@
       "byMonth": "Par mois",
       "byYear": "Par année",
       "byWallet": "Par wallet",
+      "byBeneficiary": "Par bénéficiaire",
+      "beneficiary": "Bénéficiaire : {{beneficiary}}",
       "selectMonth": "Sélectionner un mois",
       "selectYear": "Sélectionner une année",
       "allPayments": "Tous les paiements",
       "year": "Année {{year}}",
       "wallet": "Wallet {{wallet}}",
       "walletGeneric": "Wallets"
+    },
+    "beneficiariesFilter": {
+      "title": "Filtrer par bénéficiaire",
+      "subtitle": "Afficher uniquement les paiements où ce bénéficiaire reçoit (y compris en batch).",
+      "empty": "Aucun bénéficiaire dans vos paiements.",
+      "displayed": "Affiché",
+      "selectedCount": "{{count}} bénéficiaires"
     },
     "wallets": {
       "title": "Wallets liés",
@@ -732,7 +755,13 @@
         "subjectPlaceholder": "Sujet de votre demande",
         "message": "Message",
         "messagePlaceholder": "Votre message...",
-        "submit": "Envoyer"
+        "submit": "Envoyer",
+        "sending": "Envoi en cours...",
+        "success": "Votre message a été envoyé avec succès !",
+        "error": {
+          "required": "Veuillez remplir tous les champs",
+          "generic": "Une erreur est survenue. Veuillez réessayer."
+        }
       }
     },
     "chat": {

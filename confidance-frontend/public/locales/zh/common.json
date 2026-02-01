@@ -168,8 +168,19 @@
       "balanceSource": "来源 {{source}}",
       "balanceEstimated": "估算 (ETH + stablecoins)",
       "totalPayments": "共 {{count}} 笔支付",
+      "totalPaymentsInPeriod": "{{count}} 笔 · {{period}}",
       "scheduledPayments": "已计划支付",
-      "releasedPayments": "已释放支付"
+      "releasedPayments": "已释放支付",
+      "periodLabel": "周期",
+      "periodTitle": "选择总发送量的统计周期",
+      "period": {
+        "all": "自开始以来",
+        "year": "今年",
+        "month": "本月",
+        "week": "本周"
+      },
+      "displayInDashboard": "在仪表板中显示",
+      "resetView": "重置视图"
     },
     "table": {
       "search": "按名称或地址搜索...",
@@ -191,7 +202,10 @@
       "transactionHash": "交易哈希",
       "viewOnBasescan": "在 Basescan 查看",
       "sendByEmail": "通过邮件发送",
-      "cancelPayment": "取消支付"
+      "cancelPayment": "取消支付",
+      "filterByBeneficiary": "按收款人筛选",
+      "allBeneficiaries": "全部收款人",
+      "noBeneficiaries": "付款中无收款人"
     },
     "emailTransaction": {
       "amount": "金额",
@@ -233,12 +247,21 @@
       "byMonth": "按月",
       "byYear": "按年",
       "byWallet": "按钱包",
+      "byBeneficiary": "按收款人",
+      "beneficiary": "收款人：{{beneficiary}}",
       "selectMonth": "选择月份",
       "selectYear": "选择年份",
       "allPayments": "所有支付",
       "year": "{{year}} 年",
       "wallet": "钱包 {{wallet}}",
       "walletGeneric": "钱包"
+    },
+    "beneficiariesFilter": {
+      "title": "按收款人筛选",
+      "subtitle": "仅显示该收款人收到的付款（含批量）。",
+      "empty": "您的付款中尚无收款人。",
+      "displayed": "已显示",
+      "selectedCount": "{{count}} 个收款人"
     },
     "wallets": {
       "title": "已关联的钱包",
@@ -366,12 +389,21 @@
       "byMonth": "按月",
       "byYear": "按年",
       "byWallet": "按钱包",
+      "byBeneficiary": "按收款人",
+      "beneficiary": "收款人：{{beneficiary}}",
       "selectMonth": "选择月份",
       "selectYear": "选择年份",
       "allPayments": "所有支付",
       "year": "{{year}} 年",
       "wallet": "钱包 {{wallet}}",
       "walletGeneric": "钱包"
+    },
+    "beneficiariesFilter": {
+      "title": "按收款人筛选",
+      "subtitle": "仅显示该收款人收到的付款（含批量）。",
+      "empty": "您的付款中尚无收款人。",
+      "displayed": "已显示",
+      "selectedCount": "{{count}} 个收款人"
     },
     "wallets": {
       "title": "已关联的钱包",
@@ -593,7 +625,13 @@
         "subjectPlaceholder": "您的请求主题",
         "message": "消息",
         "messagePlaceholder": "您的消息...",
-        "submit": "发送"
+        "submit": "发送",
+        "sending": "发送中...",
+        "success": "您的消息已成功发送！",
+        "error": {
+          "required": "请填写所有字段",
+          "generic": "发生错误，请重试。"
+        }
       }
     },
     "chat": {

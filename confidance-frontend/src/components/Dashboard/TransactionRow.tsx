@@ -341,14 +341,18 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
     };
 
     const isRecurringParent = (payment.payment_type === 'recurring' || payment.is_recurring) && !isRecurringInstance;
+    const executedMonths = Number(payment.executed_months ?? 0);
+    const totalMonthsNum = Number(payment.total_months ?? 0);
     const hasAllMonths =
       isRecurringParent &&
-      typeof payment.executed_months === 'number' &&
-      typeof payment.total_months === 'number' &&
-      payment.executed_months >= payment.total_months;
+      totalMonthsNum > 0 &&
+      executedMonths >= totalMonthsNum;
+    const stillActiveRecurring = isRecurringParent && totalMonthsNum > 0 && executedMonths < totalMonthsNum;
     const derivedStatus = isRecurringInstance
       ? payment.status
-      : (hasAllMonths || payment.status === 'completed' ? 'completed' : payment.status);
+      : stillActiveRecurring
+        ? 'active'
+        : (hasAllMonths || payment.status === 'completed' ? 'completed' : payment.status);
     const hasWarning =
       derivedStatus === 'completed' &&
       typeof payment.last_execution_hash === 'string' &&

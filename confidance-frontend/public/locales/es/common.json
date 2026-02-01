@@ -168,8 +168,19 @@
       "balanceSource": "Fuente {{source}}",
       "balanceEstimated": "Estimación (ETH + stablecoins)",
       "totalPayments": "{{count}} pago{{plural}} en total",
+      "totalPaymentsInPeriod": "{{count}} pago{{plural}} · {{period}}",
       "scheduledPayments": "Pago{{plural}} programado{{plural}}",
-      "releasedPayments": "Pago{{plural}} liberado{{plural}}"
+      "releasedPayments": "Pago{{plural}} liberado{{plural}}",
+      "periodLabel": "Período",
+      "periodTitle": "Elegir el período del total enviado",
+      "period": {
+        "all": "Desde el inicio",
+        "year": "Este año",
+        "month": "Este mes",
+        "week": "Esta semana"
+      },
+      "displayInDashboard": "Mostrar en el dashboard",
+      "resetView": "Restablecer vista"
     },
     "table": {
       "search": "Buscar por nombre o dirección...",
@@ -191,7 +202,10 @@
       "transactionHash": "Hash de transacción",
       "viewOnBasescan": "Ver en Basescan",
       "sendByEmail": "Enviar por email",
-      "cancelPayment": "Cancelar pago"
+      "cancelPayment": "Cancelar pago",
+      "filterByBeneficiary": "Filtrar por beneficiario",
+      "allBeneficiaries": "Todos los beneficiarios",
+      "noBeneficiaries": "Ningún beneficiario en los pagos"
     },
     "emailTransaction": {
       "amount": "Importe",
@@ -247,12 +261,21 @@
       "byMonth": "Por mes",
       "byYear": "Por año",
       "byWallet": "Por billetera",
+      "byBeneficiary": "Por beneficiario",
+      "beneficiary": "Beneficiario: {{beneficiary}}",
       "selectMonth": "Selecciona un mes",
       "selectYear": "Selecciona un año",
       "allPayments": "Todos los pagos",
       "year": "Año {{year}}",
       "wallet": "Billetera {{wallet}}",
       "walletGeneric": "Billeteras"
+    },
+    "beneficiariesFilter": {
+      "title": "Filtrar por beneficiario",
+      "subtitle": "Mostrar solo los pagos donde este beneficiario recibe (incl. batch).",
+      "empty": "Ningún beneficiario en tus pagos aún.",
+      "displayed": "Mostrado",
+      "selectedCount": "{{count}} beneficiarios"
     },
     "wallets": {
       "title": "Billeteras vinculadas",
@@ -1002,7 +1025,13 @@
         "subjectPlaceholder": "Asunto de tu solicitud",
         "message": "Mensaje",
         "messagePlaceholder": "Tu mensaje...",
-        "submit": "Enviar"
+        "submit": "Enviar",
+        "sending": "Enviando...",
+        "success": "¡Tu mensaje se ha enviado correctamente!",
+        "error": {
+          "required": "Por favor rellena todos los campos",
+          "generic": "Ha ocurrido un error. Por favor, inténtalo de nuevo."
+        }
       }
     },
     "chat": {

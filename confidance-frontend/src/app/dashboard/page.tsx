@@ -77,8 +77,9 @@ export default function DashboardPage() {
   }, [payments, beneficiaries]);
 
   // États locaux
-  const [periodType, setPeriodType] = useState<'all' | 'month' | 'wallet'>('all');
+  const [periodType, setPeriodType] = useState<'all' | 'month' | 'wallet' | 'beneficiary'>('all');
   const [periodValue, setPeriodValue] = useState<string | number | string[]>();
+  const [statsCardFilter, setStatsCardFilter] = useState<null | 'recurring_active' | 'pending'>(null);
   const [selectedPaymentToCancel, setSelectedPaymentToCancel] = useState<Payment | null>(null);
   const [lastCancelWasRecurring, setLastCancelWasRecurring] = useState(false);
   const [beneficiaryToEdit, setBeneficiaryToEdit] = useState<Beneficiary | null>(null);
@@ -187,6 +188,41 @@ export default function DashboardPage() {
     fetchWallets();
   }, [API_URL, isAuthenticated]);
 
+  // Bénéficiaires uniques (payee + batch + liste sauvegardée) pour le filtre "Par bénéficiaire"
+  const uniqueBeneficiaries = useMemo(() => {
+    const seen = new Set<string>();
+    const list: { address: string; name: string }[] = [];
+    const getName = (addr: string) => {
+      const b = beneficiaries.find((x) => x.beneficiary_address.toLowerCase() === addr.toLowerCase());
+      return b?.display_name || `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+    };
+    const addAddress = (addr: string | null | undefined) => {
+      const raw = addr && String(addr).trim();
+      if (!raw) return;
+      const key = raw.toLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      list.push({ address: raw, name: getName(raw) });
+    };
+    // 1) Depuis les paiements (payee + batch_beneficiaries, champs possibles: address, beneficiary_address)
+    for (const payment of payments) {
+      addAddress(payment.payee_address);
+      if (payment.batch_beneficiaries?.length) {
+        for (const b of payment.batch_beneficiaries) {
+          const addr = (b as { address?: string; beneficiary_address?: string }).address
+            ?? (b as { address?: string; beneficiary_address?: string }).beneficiary_address;
+          addAddress(addr);
+        }
+      }
+    }
+    // 2) Toujours inclure les bénéficiaires sauvegardés ("Mes bénéficiaires") pour qu'ils apparaissent dans le filtre
+    for (const b of beneficiaries) {
+      addAddress(b.beneficiary_address);
+    }
+    list.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+    return list;
+  }, [payments, beneficiaries]);
+
   // Filtrer les paiements par période
   const filteredPayments = useMemo(() => {
     if (periodType === 'all') return payments;
@@ -210,11 +246,45 @@ export default function DashboardPage() {
       });
     }
 
+    // Filtre par bénéficiaire : afficher les paiements où ce bénéficiaire reçoit (payee ou en batch)
+    if (periodType === 'beneficiary' && Array.isArray(periodValue) && periodValue.length > 0) {
+      const targets = periodValue.map((v) => String(v).toLowerCase());
+      return payments.filter((payment) => {
+        const payee = payment.payee_address?.toLowerCase();
+        if (payee && targets.includes(payee)) return true;
+        const inBatch = payment.batch_beneficiaries?.some(
+          (b) => targets.includes((b.address || '').toLowerCase())
+        );
+        return Boolean(inBatch);
+      });
+    }
+
     return payments;
   }, [payments, periodType, periodValue]);
 
+  // Filtre optionnel depuis les cartes (Actif / En cours) : afficher uniquement ces paiements dans le tableau
+  const displayedPayments = useMemo(() => {
+    if (!statsCardFilter) return filteredPayments;
+    if (statsCardFilter === 'pending') {
+      return filteredPayments.filter((p) => p.status === 'pending');
+    }
+    if (statsCardFilter === 'recurring_active') {
+      return filteredPayments.filter((payment) => {
+        const isRecurring = payment.is_recurring || payment.payment_type === 'recurring';
+        if (!isRecurring) return false;
+        const statusLower = (payment.status || '').toLowerCase();
+        if (statusLower === 'cancelled' || statusLower === 'failed') return false;
+        const executed = Number(payment.executed_months ?? 0);
+        const total = Number(payment.total_months ?? 0);
+        if (!Number.isFinite(total) || total <= 0) return false;
+        return executed < total;
+      });
+    }
+    return filteredPayments;
+  }, [filteredPayments, statsCardFilter]);
+
   // Gestionnaire de changement de période
-  const handlePeriodChange = (type: 'all' | 'month' | 'wallet', value?: string | number | string[]) => {
+  const handlePeriodChange = (type: 'all' | 'month' | 'wallet' | 'beneficiary', value?: string | number | string[]) => {
     setPeriodType(type);
     setPeriodValue(value);
   };
@@ -425,6 +495,17 @@ export default function DashboardPage() {
       : 'Wallets';
   }, [periodType, periodValue, walletAliases, isMounted, translationsReady, t]);
 
+  const beneficiaryPeriodLabel = useMemo(() => {
+    if (periodType !== 'beneficiary' || !periodValue || !Array.isArray(periodValue) || periodValue.length === 0) return '';
+    if (periodValue.length === 1) {
+      const b = uniqueBeneficiaries.find((x) => x.address.toLowerCase() === String(periodValue[0]).toLowerCase());
+      return b?.name || formatWalletLabel(periodValue[0]);
+    }
+    return isMounted && translationsReady
+      ? t('dashboard.beneficiariesFilter.selectedCount', { count: periodValue.length, defaultValue: `${periodValue.length} beneficiaries` })
+      : `${periodValue.length} bénéficiaires`;
+  }, [periodType, periodValue, uniqueBeneficiaries, isMounted, translationsReady, t]);
+
   const periodLabel = useMemo(() => {
     if (periodType === 'month') return periodValue as string;
     if (periodType === 'wallet') {
@@ -434,8 +515,13 @@ export default function DashboardPage() {
           : `Wallet ${walletPeriodLabel}`)
         : (isMounted && translationsReady ? t('dashboard.period.walletGeneric', { defaultValue: walletPeriodLabel }) : walletPeriodLabel);
     }
+    if (periodType === 'beneficiary' && beneficiaryPeriodLabel) {
+      return isMounted && translationsReady
+        ? t('dashboard.period.beneficiary', { beneficiary: beneficiaryPeriodLabel, defaultValue: `Beneficiary: ${beneficiaryPeriodLabel}` })
+        : `Bénéficiaire: ${beneficiaryPeriodLabel}`;
+    }
     return isMounted && translationsReady ? t('dashboard.period.allPayments') : 'Tous les paiements';
-  }, [periodType, periodValue, walletPeriodLabel, isMounted, translationsReady, t]);
+  }, [periodType, periodValue, walletPeriodLabel, beneficiaryPeriodLabel, isMounted, translationsReady, t]);
 
   // Vérifier l'authentification (compte client)
   if (!authLoading && !isAuthenticated) {
@@ -570,7 +656,12 @@ export default function DashboardPage() {
           // Dashboard complet
           <>
             {/* Statistiques */}
-            <StatsCards payments={filteredPayments} selectedWallets={selectedWallets} />
+            <StatsCards
+              payments={filteredPayments}
+              selectedWallets={selectedWallets}
+              statsCardFilter={statsCardFilter}
+              onStatsCardFilterChange={setStatsCardFilter}
+            />
 
             {/* Barre d'actions */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
@@ -583,18 +674,21 @@ export default function DashboardPage() {
                 onRenameWallet={handleRenameWallet}
                 onDeleteWallet={handleDeleteWallet}
                 onSetPrimaryWallet={handleSetPrimaryWallet}
+                beneficiaries={uniqueBeneficiaries}
+                selectedBeneficiaryAddresses={periodType === 'beneficiary' && Array.isArray(periodValue) ? periodValue as string[] : []}
               />
             </div>
 
             {/* Tableau des transactions (export intégré dans la barre de recherche) */}
             <div className="mb-8">
               <TransactionTable
-                payments={filteredPayments}
+                payments={displayedPayments}
                 onRename={handleRenameBeneficiary}
                 onCancel={setSelectedPaymentToCancel}
                 onDelete={handleDeletePayment}
                 userAddress={address || ''}
                 period={periodLabel}
+                showRecurringParentsOnly={statsCardFilter === 'recurring_active'}
               />
             </div>
 

@@ -1,7 +1,7 @@
 // components/Dashboard/TransactionTable.tsx
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAccount, usePublicClient } from 'wagmi';
 import { Payment } from '@/hooks/useDashboard';
@@ -19,6 +19,7 @@ interface TransactionTableProps {
   /** Pour intégrer l’export à la barre de recherche */
   userAddress?: string;
   period?: string;
+  showRecurringParentsOnly?: boolean;
 }
 
 type SortField = 'beneficiary' | 'amount' | 'date' | 'status';
@@ -40,7 +41,7 @@ const MONTH_IN_SECONDS =
   process.env.NEXT_PUBLIC_CHAIN === 'base_sepolia' ? 300 : 2592000; // 5 min en testnet
 const DASHBOARD_SEEN_KEY = 'dashboardLastSeenAt';
 
-export function TransactionTable({ payments, onRename, onCancel, onDelete, userAddress, period }: TransactionTableProps) {
+export function TransactionTable({ payments, onRename, onCancel, onDelete, userAddress, period, showRecurringParentsOnly = false }: TransactionTableProps) {
   const { t, ready: translationsReady } = useTranslation();
   const [isMounted, setIsMounted] = useState(false);
   const [batchMainByTx, setBatchMainByTx] = useState<Record<string, string>>({});
@@ -51,6 +52,9 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete, userA
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [beneficiaryFilterAddress, setBeneficiaryFilterAddress] = useState<string | null>(null);
+  const [beneficiaryDropdownOpen, setBeneficiaryDropdownOpen] = useState(false);
+  const beneficiaryDropdownRef = useRef<HTMLDivElement | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
   const [sessionStartAt] = useState(() => Date.now());
@@ -104,6 +108,22 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete, userA
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!beneficiaryDropdownOpen) return;
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node | null;
+      if (beneficiaryDropdownRef.current && target && !beneficiaryDropdownRef.current.contains(target)) {
+        setBeneficiaryDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [beneficiaryDropdownOpen]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -719,7 +739,8 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete, userA
       const isOutgoingParent = isOutgoingForPayment(normalizedPayment);
       const isRecurring = normalizedPayment.is_recurring || normalizedPayment.payment_type === 'recurring';
 
-      if (!(isRecurring && isIncomingParent && !isOutgoingParent)) {
+      const showParentRow = !(isRecurring && isIncomingParent && !isOutgoingParent) || (showRecurringParentsOnly && isRecurring);
+      if (showParentRow) {
         const aggWithDetails = aggregated as typeof aggregated & { batchMonthDetails?: Array<Array<{ address: string; status: string }>> };
         expanded.push({
           ...normalizedPayment,
@@ -729,6 +750,8 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete, userA
           __batchMonthDetails: hasBatchChildren ? aggWithDetails.batchMonthDetails : undefined,
         });
       }
+
+      if (showRecurringParentsOnly && isRecurring) continue;
 
       if (!isRecurring || !normalizedPayment.first_payment_time) continue;
 
@@ -840,18 +863,55 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete, userA
     }
 
     return expanded;
-  }, [payments, lastSeenAt, onchainRecurring, sessionStartAt, batchMainByTx, normalizedWallet]);
+  }, [payments, lastSeenAt, onchainRecurring, sessionStartAt, batchMainByTx, normalizedWallet, showRecurringParentsOnly]);
+
+  // Liste des bénéficiaires uniques (payee + batch) pour le filtre colonne Bénéficiaire
+  const uniqueBeneficiariesFromPayments = useMemo(() => {
+    const seen = new Set<string>();
+    const list: { address: string; name: string }[] = [];
+    for (const payment of payments) {
+      const add = (addr: string | null | undefined) => {
+        const raw = addr && String(addr).trim();
+        if (!raw) return;
+        const key = raw.toLowerCase();
+        if (seen.has(key)) return;
+        seen.add(key);
+        const name = getBeneficiaryName(raw) || `${raw.slice(0, 6)}...${raw.slice(-4)}`;
+        list.push({ address: raw, name });
+      };
+      add(payment.payee_address);
+      if (payment.batch_beneficiaries?.length) {
+        for (const b of payment.batch_beneficiaries) {
+          add((b as { address?: string }).address);
+        }
+      }
+    }
+    list.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+    return list;
+  }, [payments, getBeneficiaryName]);
 
   // Filtrer et trier les paiements
   const processedPayments = useMemo(() => {
     let filtered = expandedPayments.filter((payment) => {
+      if (showRecurringParentsOnly && (payment.is_recurring || payment.payment_type === 'recurring')) return true;
       if (payment.__recurringInstance) return true;
       const isRecurringParent = payment.is_recurring || payment.payment_type === 'recurring';
       if (isRecurringParent && isIncomingForPayment(payment) && !isOutgoingForPayment(payment)) return false;
       return true;
     });
 
-    // Recherche
+    // Filtre par bénéficiaire (menu flèche colonne Bénéficiaire)
+    if (beneficiaryFilterAddress) {
+      const target = beneficiaryFilterAddress.toLowerCase();
+      filtered = filtered.filter((payment) => {
+        if (payment.payee_address?.toLowerCase() === target) return true;
+        return Array.isArray(payment.batch_beneficiaries) && payment.batch_beneficiaries.some(
+          (b) => (b as { address?: string }).address?.toLowerCase() === target
+        );
+      });
+    }
+
+    // Recherche (inclut payee_address et tous les batch_beneficiaries pour trouver "Ali" etc.)
     if (searchTerm) {
       filtered = filtered.filter(payment => {
         const beneficiaryName = getBeneficiaryName(payment.payee_address);
@@ -870,10 +930,20 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete, userA
             : typeof payment.category === 'string'
             ? payment.category
             : '';
-        
-        return (
+        const mainMatch =
           payment.payee_address.toLowerCase().includes(searchLower) ||
-          (beneficiaryName && beneficiaryName.toLowerCase().includes(searchLower)) ||
+          (beneficiaryName && beneficiaryName.toLowerCase().includes(searchLower));
+        const batchMatch = Array.isArray(payment.batch_beneficiaries) && payment.batch_beneficiaries.some(
+          (b) => {
+            const addr = (b as { address?: string }).address;
+            if (!addr) return false;
+            const name = getBeneficiaryName(addr);
+            return addr.toLowerCase().includes(searchLower) || (name && name.toLowerCase().includes(searchLower));
+          }
+        );
+        return (
+          mainMatch ||
+          batchMatch ||
           payment.contract_address.toLowerCase().includes(searchLower) ||
           paymentLabel.toLowerCase().includes(searchLower) ||
           paymentCategory.toLowerCase().includes(searchLower)
@@ -888,9 +958,9 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete, userA
       const bIsInstance = Boolean(b.__recurringInstance);
       switch (sortField) {
         case 'beneficiary':
-          const nameA = getBeneficiaryName(a.payee_address) || a.payee_address;
-          const nameB = getBeneficiaryName(b.payee_address) || b.payee_address;
-          comparison = nameA.localeCompare(nameB);
+          comparison = (getBeneficiaryName(a.payee_address) || a.payee_address).localeCompare(
+            getBeneficiaryName(b.payee_address) || b.payee_address
+          );
           break;
 
         case 'amount':
@@ -916,7 +986,7 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete, userA
     });
 
     return sorted;
-  }, [expandedPayments, searchTerm, sortField, sortDirection, getBeneficiaryName, normalizedWallet]);
+  }, [expandedPayments, searchTerm, sortField, sortDirection, getBeneficiaryName, normalizedWallet, showRecurringParentsOnly, beneficiaryFilterAddress]);
 
   // Pagination
   const totalPages = Math.ceil(processedPayments.length / itemsPerPage);
@@ -997,14 +1067,74 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete, userA
                   ? t('dashboard.table.label', { defaultValue: 'Libellé' })
                   : 'Libellé'}
               </th>
-              {/* Bénéficiaire */}
-              <th
-                onClick={() => handleSort('beneficiary')}
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-              >
-                <div className="flex items-center gap-2">
-                  {isMounted && translationsReady ? t('dashboard.table.beneficiary') : 'Bénéficiaire'}
-                  <SortIcon field="beneficiary" />
+              {/* Bénéficiaire : clic sur le libellé = tri ; une seule flèche = menu filtre */}
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <div ref={beneficiaryDropdownRef} className="relative flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => handleSort('beneficiary')}
+                    className="flex items-center gap-1 rounded hover:bg-gray-100 px-1 py-0.5 -mx-1 cursor-pointer"
+                  >
+                    {isMounted && translationsReady ? t('dashboard.table.beneficiary') : 'Bénéficiaire'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setBeneficiaryDropdownOpen((o) => !o);
+                    }}
+                    className={`p-1 rounded hover:bg-gray-100 ${beneficiaryFilterAddress ? 'text-blue-600' : 'text-gray-500'}`}
+                    title={isMounted && translationsReady ? t('dashboard.table.filterByBeneficiary', { defaultValue: 'Filter by beneficiary' }) : 'Filtrer par bénéficiaire'}
+                    aria-expanded={beneficiaryDropdownOpen}
+                    aria-haspopup="listbox"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  {beneficiaryDropdownOpen && (
+                    <div
+                      className="absolute left-0 top-full mt-1 z-50 min-w-[200px] max-h-72 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg py-1"
+                      role="listbox"
+                    >
+                      <button
+                        type="button"
+                        role="option"
+                        onClick={() => {
+                          setBeneficiaryFilterAddress(null);
+                          setBeneficiaryDropdownOpen(false);
+                          setCurrentPage(1);
+                        }}
+                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${!beneficiaryFilterAddress ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
+                      >
+                        {isMounted && translationsReady ? t('dashboard.table.allBeneficiaries', { defaultValue: 'All beneficiaries' }) : 'Tous les bénéficiaires'}
+                      </button>
+                      {uniqueBeneficiariesFromPayments.length === 0 ? (
+                        <div className="px-4 py-3 text-sm text-gray-500">
+                          {isMounted && translationsReady ? t('dashboard.table.noBeneficiaries', { defaultValue: 'No beneficiaries in payments' }) : 'Aucun bénéficiaire dans les paiements'}
+                        </div>
+                      ) : (
+                        uniqueBeneficiariesFromPayments.map((b) => {
+                          const isSelected = beneficiaryFilterAddress?.toLowerCase() === b.address.toLowerCase();
+                          return (
+                            <button
+                              key={b.address}
+                              type="button"
+                              role="option"
+                              onClick={() => {
+                                setBeneficiaryFilterAddress(b.address);
+                                setBeneficiaryDropdownOpen(false);
+                                setCurrentPage(1);
+                              }}
+                              className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 truncate ${isSelected ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
+                            >
+                              {b.name}
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
                 </div>
               </th>
               

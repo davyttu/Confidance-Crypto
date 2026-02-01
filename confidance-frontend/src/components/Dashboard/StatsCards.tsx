@@ -17,11 +17,35 @@ interface StatsCardsProps {
 }
 
 type BalanceToken = 'ETH' | 'USDC' | 'USDT' | 'ALL';
+type TotalSentPeriod = 'all' | 'year' | 'month' | 'week';
 
-export function StatsCards({ payments, selectedWallets = [] }: StatsCardsProps) {
+const MONTH_IN_SECONDS = 30 * 24 * 3600; // 30 days for recurring installment spacing
+
+function getPeriodBounds(period: TotalSentPeriod): { startSec: number; endSec: number } | null {
+  if (period === 'all') return null;
+  const now = new Date();
+  const endSec = Math.floor(now.getTime() / 1000);
+  let start: Date;
+  if (period === 'week') {
+    start = new Date(now);
+    const day = now.getDay();
+    const diff = day === 0 ? 6 : day - 1; // Monday = start of week
+    start.setDate(now.getDate() - diff);
+    start.setHours(0, 0, 0, 0);
+  } else if (period === 'month') {
+    start = new Date(now.getFullYear(), now.getMonth(), 1);
+  } else {
+    start = new Date(now.getFullYear(), 0, 1);
+  }
+  const startSec = Math.floor(start.getTime() / 1000);
+  return { startSec, endSec };
+}
+
+export function StatsCards({ payments, selectedWallets = [], statsCardFilter = null, onStatsCardFilterChange }: StatsCardsProps) {
   const { t, ready } = useTranslationReady();
   const [balanceToken, setBalanceToken] = useState<BalanceToken>('ETH');
   const [totalSentToken, setTotalSentToken] = useState<BalanceToken>('ETH');
+  const [totalSentPeriod, setTotalSentPeriod] = useState<TotalSentPeriod>('all');
   const { address } = useAccount();
   const publicClient = usePublicClient();
   const { priceUsd, isLoading: isPriceLoading } = useEthUsdPrice();
@@ -33,39 +57,62 @@ export function StatsCards({ payments, selectedWallets = [] }: StatsCardsProps) 
   const [balancesLoading, setBalancesLoading] = useState(false);
   const [balancesError, setBalancesError] = useState(false);
   
-  // Calculer les stats : uniquement paiements réellement envoyés (released/completed), pas failed/cancelled/pending
-  const totalSentByToken = useMemo(() => {
+  // Bornes de période pour "Total sent"
+  const periodBounds = useMemo(() => getPeriodBounds(totalSentPeriod), [totalSentPeriod]);
+
+  // Calculer les stats : uniquement paiements réellement envoyés (released/completed), filtrés par période
+  const { totalSentByToken, totalSentCount } = useMemo(() => {
     const totals = {
       ETH: BigInt(0),
       USDC: BigInt(0),
       USDT: BigInt(0),
     };
+    let count = 0;
 
     const completedStatuses = new Set<string>(['released', 'completed']);
+    const startSec = periodBounds?.startSec ?? 0;
+    const endSec = periodBounds?.endSec ?? Number.MAX_SAFE_INTEGER;
+
+    const inRange = (ts: number) => ts >= startSec && ts <= endSec;
+
     payments.forEach((payment) => {
       if (!completedStatuses.has(payment.status)) return;
       const symbol = (payment.token_symbol || 'ETH').toUpperCase();
       if (symbol !== 'USDC' && symbol !== 'USDT' && symbol !== 'ETH') return;
 
       const isRecurring = payment.is_recurring || payment.payment_type === 'recurring';
+      let added = BigInt(0);
+
       if (isRecurring) {
         const executed = Number(payment.executed_months ?? 0);
         if (executed <= 0) return;
+        const firstPaymentTime = Number(payment.first_payment_time ?? payment.release_time ?? 0);
         const monthlyAmount = BigInt(payment.monthly_amount ?? payment.amount ?? '0');
         const firstMonthCustom = payment.is_first_month_custom === true || payment.is_first_month_custom === 'true';
         const firstMonthAmount = firstMonthCustom && payment.first_month_amount
           ? BigInt(payment.first_month_amount)
           : monthlyAmount;
-        const restMonths = Math.max(0, executed - 1);
-        const total = firstMonthAmount + monthlyAmount * BigInt(restMonths);
-        totals[symbol] += total;
+
+        for (let k = 0; k < executed; k++) {
+          const releaseTimeK = firstPaymentTime + k * MONTH_IN_SECONDS;
+          if (!inRange(releaseTimeK)) continue;
+          const amountK = k === 0 ? firstMonthAmount : monthlyAmount;
+          totals[symbol] += amountK;
+          added += amountK;
+        }
       } else {
-        totals[symbol] += BigInt(payment.amount);
+        const releaseTime = Number(payment.release_time ?? 0);
+        if (!inRange(releaseTime)) return;
+        const amount = BigInt(payment.amount ?? '0');
+        totals[symbol] += amount;
+        added = amount;
       }
+
+      if (added > 0n) count += 1;
     });
 
-    return totals;
-  }, [payments]);
+    return { totalSentByToken: totals, totalSentCount: count };
+  }, [payments, periodBounds]);
 
   const pending = payments.filter(p => p.status === 'pending').length;
   const recurringActive = payments.filter((payment) => {
@@ -311,7 +358,7 @@ export function StatsCards({ payments, selectedWallets = [] }: StatsCardsProps) 
       </div>
 
       {/* En cours */}
-      <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg p-4 text-white border border-orange-400/30 shadow-md md:col-span-1">
+      <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg p-4 text-white border border-orange-400/30 shadow-md md:col-span-1 flex flex-col">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-xs font-semibold uppercase tracking-wide opacity-95">{ready ? t('dashboard.stats.pending') : 'En cours'}</h3>
           <div className="w-12 h-12 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
@@ -321,11 +368,24 @@ export function StatsCards({ payments, selectedWallets = [] }: StatsCardsProps) 
           </div>
         </div>
         <p className="text-3xl font-bold mb-1">{pending}</p>
-        <p className="text-xs opacity-85">{ready ? t('dashboard.stats.scheduledPayments', { plural: pending > 1 ? 's' : '' }) : `Paiement${pending > 1 ? 's' : ''} programmé${pending > 1 ? 's' : ''}`}</p>
+        <p className="text-xs opacity-85 mb-2">{ready ? t('dashboard.stats.scheduledPayments', { plural: pending > 1 ? 's' : '' }) : `Paiement${pending > 1 ? 's' : ''} programmé${pending > 1 ? 's' : ''}`}</p>
+        {onStatsCardFilterChange && (
+          <button
+            type="button"
+            onClick={() => onStatsCardFilterChange(statsCardFilter === 'pending' ? null : 'pending')}
+            className={`mt-auto w-full text-[10px] font-medium uppercase tracking-wide py-1.5 px-2 rounded-md transition-all ${
+              statsCardFilter === 'pending'
+                ? 'bg-white/30 text-white ring-1 ring-white/50'
+                : 'bg-white/20 hover:bg-white/30 text-white/95'
+            }`}
+          >
+            {statsCardFilter === 'pending' ? (ready ? t('dashboard.stats.resetView') : 'Réinitialiser') : (ready ? t('dashboard.stats.displayInDashboard') : 'Afficher dans le dashboard')}
+          </button>
+        )}
       </div>
 
       {/* Actifs (paiements récurrents en attente) */}
-      <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-4 text-white border border-green-400/30 shadow-md md:col-span-1">
+      <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-4 text-white border border-green-400/30 shadow-md md:col-span-1 flex flex-col">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-xs font-semibold uppercase tracking-wide opacity-95">
             {ready ? t('dashboard.stats.active', { defaultValue: 'Actif' }) : 'Actif'}
@@ -337,9 +397,22 @@ export function StatsCards({ payments, selectedWallets = [] }: StatsCardsProps) 
           </div>
         </div>
         <p className="text-3xl font-bold mb-1">{recurringActive}</p>
-        <p className="text-xs opacity-85">
+        <p className="text-xs opacity-85 mb-2">
           {ready ? t('dashboard.stats.recurringPayments', { defaultValue: 'Recurring payment' }) : 'Recurring payment'}
         </p>
+        {onStatsCardFilterChange && (
+          <button
+            type="button"
+            onClick={() => onStatsCardFilterChange(statsCardFilter === 'recurring_active' ? null : 'recurring_active')}
+            className={`mt-auto w-full text-[10px] font-medium uppercase tracking-wide py-1.5 px-2 rounded-md transition-all ${
+              statsCardFilter === 'recurring_active'
+                ? 'bg-white/30 text-white ring-1 ring-white/50'
+                : 'bg-white/20 hover:bg-white/30 text-white/95'
+            }`}
+          >
+            {statsCardFilter === 'recurring_active' ? (ready ? t('dashboard.stats.resetView') : 'Réinitialiser') : (ready ? t('dashboard.stats.displayInDashboard') : 'Afficher dans le dashboard')}
+          </button>
+        )}
       </div>
 
       {/* Total envoyé */}
@@ -358,20 +431,44 @@ export function StatsCards({ payments, selectedWallets = [] }: StatsCardsProps) 
             <span className="text-sm font-medium opacity-85"> / {totalSentDisplay.sub}</span>
           )}
         </p>
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-xs opacity-85">
-            {ready ? t('dashboard.stats.totalPayments', { count: payments.length, plural: payments.length > 1 ? 's' : '' }) : `${payments.length} paiement${payments.length > 1 ? 's' : ''} au total`}
-          </p>
-          <select
-            value={totalSentToken}
-            onChange={(event) => setTotalSentToken(event.target.value as BalanceToken)}
-            className="text-xs bg-white text-gray-900 border border-white/60 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-white/70"
-          >
-            <option value="ETH">ETH</option>
-            <option value="USDC">USDC</option>
-            <option value="USDT">USDT</option>
-            <option value="ALL">ALL</option>
-          </select>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs opacity-85">
+              {ready
+                ? (totalSentPeriod === 'all'
+                    ? t('dashboard.stats.totalPayments', { count: totalSentCount, plural: totalSentCount !== 1 ? 's' : '' })
+                    : t('dashboard.stats.totalPaymentsInPeriod', { count: totalSentCount, period: t(`dashboard.stats.period.${totalSentPeriod}`), plural: totalSentCount !== 1 ? 's' : '' }))
+                : (totalSentPeriod === 'all'
+                    ? `${totalSentCount} paiement${totalSentCount !== 1 ? 's' : ''} au total`
+                    : `${totalSentCount} paiement${totalSentCount !== 1 ? 's' : ''} ${totalSentPeriod === 'week' ? 'cette semaine' : totalSentPeriod === 'month' ? 'ce mois' : "cette année"}`)}
+            </p>
+            <select
+              value={totalSentToken}
+              onChange={(event) => setTotalSentToken(event.target.value as BalanceToken)}
+              className="text-xs bg-white text-gray-900 border border-white/60 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-white/70"
+            >
+              <option value="ETH">ETH</option>
+              <option value="USDC">USDC</option>
+              <option value="USDT">USDT</option>
+              <option value="ALL">ALL</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] uppercase tracking-wide opacity-75">
+              {ready ? t('dashboard.stats.periodLabel') : 'Période'}
+            </span>
+            <select
+              value={totalSentPeriod}
+              onChange={(event) => setTotalSentPeriod(event.target.value as TotalSentPeriod)}
+              className="text-[10px] bg-white/90 text-gray-900 border border-white/60 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-white/70 flex-1 min-w-0"
+              title={ready ? t('dashboard.stats.periodTitle') : 'Choisir la période'}
+            >
+              <option value="all">{ready ? t('dashboard.stats.period.all') : 'Depuis le début'}</option>
+              <option value="year">{ready ? t('dashboard.stats.period.year') : 'Cette année'}</option>
+              <option value="month">{ready ? t('dashboard.stats.period.month') : 'Ce mois'}</option>
+              <option value="week">{ready ? t('dashboard.stats.period.week') : 'Cette semaine'}</option>
+            </select>
+          </div>
         </div>
         {totalSentToken === 'ALL' && !priceUsd && !isPriceLoading && (
           <p className="text-xs mt-2 text-white/80">

@@ -168,8 +168,19 @@
       "balanceSource": "Source {{source}}",
       "balanceEstimated": "Estimate (ETH + stablecoins)",
       "totalPayments": "{{count}} payment{{plural}} in total",
+      "totalPaymentsInPeriod": "{{count}} payment{{plural}} · {{period}}",
       "scheduledPayments": "Scheduled payment{{plural}}",
-      "releasedPayments": "Released payment{{plural}}"
+      "releasedPayments": "Released payment{{plural}}",
+      "periodLabel": "Period",
+      "periodTitle": "Choose the period for total sent",
+      "period": {
+        "all": "Since the beginning",
+        "year": "This year",
+        "month": "This month",
+        "week": "This week"
+      },
+      "displayInDashboard": "Display in dashboard",
+      "resetView": "Reset view"
     },
     "table": {
       "search": "Search by name or address...",
@@ -191,7 +202,10 @@
       "transactionHash": "Transaction hash",
       "viewOnBasescan": "View on Basescan",
       "sendByEmail": "Send by email",
-      "cancelPayment": "Cancel payment"
+      "cancelPayment": "Cancel payment",
+      "filterByBeneficiary": "Filter by beneficiary",
+      "allBeneficiaries": "All beneficiaries",
+      "noBeneficiaries": "No beneficiaries in payments"
     },
     "emailTransaction": {
       "amount": "Amount",
@@ -266,12 +280,21 @@
       "byMonth": "By month",
       "byYear": "By year",
       "byWallet": "By wallet",
+      "byBeneficiary": "By beneficiary",
+      "beneficiary": "Beneficiary: {{beneficiary}}",
       "selectMonth": "Select a month",
       "selectYear": "Select a year",
       "allPayments": "All payments",
       "year": "Year {{year}}",
       "wallet": "Wallet {{wallet}}",
       "walletGeneric": "Wallets"
+    },
+    "beneficiariesFilter": {
+      "title": "Filter by beneficiary",
+      "subtitle": "Show only payments where this beneficiary receives (including batch).",
+      "empty": "No beneficiaries in your payments yet.",
+      "displayed": "Displayed",
+      "selectedCount": "{{count}} beneficiaries"
     },
     "wallets": {
       "title": "Linked wallets",
@@ -722,7 +745,13 @@
         "subjectPlaceholder": "Subject of your request",
         "message": "Message",
         "messagePlaceholder": "Your message...",
-        "submit": "Send"
+        "submit": "Send",
+        "sending": "Sending...",
+        "success": "Your message has been sent successfully!",
+        "error": {
+          "required": "Please fill in all fields",
+          "generic": "An error occurred. Please try again."
+        }
       }
     },
     "chat": {

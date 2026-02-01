@@ -23,8 +23,10 @@ type WalletTotal = {
   usdt: bigint;
 };
 
+export type BeneficiaryOption = { address: string; name: string };
+
 interface PeriodSelectorProps {
-  onChange: (periodType: 'all' | 'month' | 'wallet', periodValue?: string | number | string[]) => void;
+  onChange: (periodType: 'all' | 'month' | 'wallet' | 'beneficiary', periodValue?: string | number | string[]) => void;
   wallets?: WalletInfo[];
   walletsLoading?: boolean;
   connectedWallet?: string | null;
@@ -32,6 +34,8 @@ interface PeriodSelectorProps {
   onRenameWallet?: (address: string, name: string) => void;
   onDeleteWallet?: (address: string) => void;
   onSetPrimaryWallet?: (address: string) => void;
+  beneficiaries?: BeneficiaryOption[];
+  selectedBeneficiaryAddresses?: string[];
 }
 
 export function PeriodSelector({
@@ -43,15 +47,19 @@ export function PeriodSelector({
   onRenameWallet,
   onDeleteWallet,
   onSetPrimaryWallet,
+  beneficiaries = [],
+  selectedBeneficiaryAddresses = [],
 }: PeriodSelectorProps) {
   const { t, ready: translationsReady } = useTranslation();
   const [isMounted, setIsMounted] = useState(false);
-  const [periodType, setPeriodType] = useState<'all' | 'month' | 'wallet'>('all');
+  const [periodType, setPeriodType] = useState<'all' | 'month' | 'wallet' | 'beneficiary'>('all');
   const [selectedPeriod, setSelectedPeriod] = useState<string>('');
   const [editingWallet, setEditingWallet] = useState<string | null>(null);
   const [walletNameInput, setWalletNameInput] = useState('');
   const [walletMenuOpen, setWalletMenuOpen] = useState(false);
+  const [beneficiaryMenuOpen, setBeneficiaryMenuOpen] = useState(false);
   const walletMenuRef = useRef<HTMLDivElement | null>(null);
+  const beneficiaryMenuRef = useRef<HTMLDivElement | null>(null);
   const closeTimeoutRef = useRef<number | null>(null);
   const [selectedWallets, setSelectedWallets] = useState<string[]>([]);
   const publicClient = usePublicClient();
@@ -113,6 +121,24 @@ export function PeriodSelector({
       document.removeEventListener('touchstart', handleClickOutside);
     };
   }, [walletMenuOpen]);
+
+  useEffect(() => {
+    if (!beneficiaryMenuOpen) return;
+
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node | null;
+      if (beneficiaryMenuRef.current && target && !beneficiaryMenuRef.current.contains(target)) {
+        setBeneficiaryMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [beneficiaryMenuOpen]);
 
   const walletLabels = useMemo(() => {
     const entries = wallets.map((wallet) => {
@@ -231,18 +257,38 @@ export function PeriodSelector({
     };
   }, [publicClient, walletsToDisplay]);
 
-  const handlePeriodTypeChange = (type: 'all' | 'month' | 'wallet') => {
+  const handlePeriodTypeChange = (type: 'all' | 'month' | 'wallet' | 'beneficiary') => {
     setPeriodType(type);
     setSelectedPeriod('');
-    if (type !== 'wallet') {
-      setSelectedWallets([]);
-      onChange(type);
-      return;
-    }
-    
+    if (type !== 'wallet') setSelectedWallets([]);
     if (type === 'all') {
       onChange('all');
+      return;
     }
+    if (type === 'month') {
+      onChange('month');
+      return;
+    }
+    if (type === 'wallet') {
+      onChange('wallet', selectedWallets.length > 0 ? selectedWallets : undefined);
+      return;
+    }
+    if (type === 'beneficiary') {
+      onChange('beneficiary');
+      return;
+    }
+  };
+
+  const handleBeneficiarySelect = (address: string) => {
+    const normalized = address.toLowerCase();
+    const isSelected = selectedBeneficiaryAddresses.some((a) => a.toLowerCase() === normalized);
+    if (isSelected) {
+      onChange('all');
+      setBeneficiaryMenuOpen(false);
+      return;
+    }
+    onChange('beneficiary', [address]);
+    setBeneficiaryMenuOpen(false);
   };
 
   const handleMonthChange = (monthValue: string) => {
@@ -522,6 +568,77 @@ export function PeriodSelector({
                             </button>
                           </div>
                         </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div
+              className="relative z-40"
+              ref={beneficiaryMenuRef}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setPeriodType('beneficiary');
+                  setBeneficiaryMenuOpen((open) => !open);
+                }}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors inline-flex items-center gap-2 ${
+                  periodType === 'beneficiary' || selectedBeneficiaryAddresses.length > 0
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <span>{isMounted && translationsReady ? t('dashboard.period.byBeneficiary', { defaultValue: 'By beneficiary' }) : 'Par bénéficiaire'}</span>
+                {(periodType === 'beneficiary' || selectedBeneficiaryAddresses.length > 0) && selectedBeneficiaryAddresses.length === 1 && (
+                  <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full truncate max-w-[140px]">
+                    {beneficiaries.find((b) => b.address.toLowerCase() === selectedBeneficiaryAddresses[0]?.toLowerCase())?.name || selectedBeneficiaryAddresses[0]?.slice(0, 10) + '...'}
+                  </span>
+                )}
+              </button>
+
+              <div
+                className={`absolute left-0 top-full mt-2 w-80 rounded-xl border border-gray-200 bg-white shadow-xl z-50 ${
+                  beneficiaryMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+                } transition-all`}
+              >
+                <div className="p-4 border-b border-gray-100">
+                  <p className="text-sm font-semibold text-gray-900">
+                    {isMounted && translationsReady ? t('dashboard.beneficiariesFilter.title', { defaultValue: 'Filter by beneficiary' }) : 'Filtrer par bénéficiaire'}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {isMounted && translationsReady
+                      ? t('dashboard.beneficiariesFilter.subtitle', { defaultValue: 'Show only payments where this beneficiary receives (including batch).' })
+                      : 'Afficher uniquement les paiements où ce bénéficiaire reçoit (y compris en batch).'}
+                  </p>
+                </div>
+                <div className="max-h-72 overflow-y-auto p-2">
+                  {beneficiaries.length === 0 ? (
+                    <div className="px-3 py-4 text-sm text-gray-500">
+                      {isMounted && translationsReady ? t('dashboard.beneficiariesFilter.empty', { defaultValue: 'No beneficiaries in your payments yet.' }) : 'Aucun bénéficiaire dans vos paiements.'}
+                    </div>
+                  ) : (
+                    beneficiaries.map((b) => {
+                      const lower = b.address.toLowerCase();
+                      const isSelected = selectedBeneficiaryAddresses.some((a) => a.toLowerCase() === lower);
+                      return (
+                        <button
+                          key={b.address}
+                          type="button"
+                          onClick={() => handleBeneficiarySelect(b.address)}
+                          className={`w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-left transition ${
+                            isSelected ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50 border border-transparent'
+                          }`}
+                        >
+                          <span className="flex-1 text-sm font-medium text-gray-900 truncate">{b.name}</span>
+                          {isSelected && (
+                            <span className="text-xs text-blue-600">
+                              {isMounted && translationsReady ? t('dashboard.beneficiariesFilter.displayed', { defaultValue: 'Displayed' }) : 'Affiché'}
+                            </span>
+                          )}
+                        </button>
                       );
                     })
                   )}

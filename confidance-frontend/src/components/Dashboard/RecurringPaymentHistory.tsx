@@ -93,6 +93,12 @@ export function RecurringPaymentHistory({ payment }: RecurringPaymentHistoryProp
     const firstMonthAmount = payment.first_month_amount || '';
     const monthlyAmount = payment.monthly_amount || payment.amount || '';
 
+    // Nombre de destinataires : total du mois = montant par destinataire × nombre de destinataires
+    const beneficiaryCount = Math.max(
+      1,
+      payment.__batchChildren?.length ?? payment.batch_beneficiaries?.length ?? 1
+    );
+
     let firstMonthFailed = false;
     for (let monthIndex = 0; monthIndex < totalMonths; monthIndex++) {
       const paymentDateMs = useCalendarMonths
@@ -134,16 +140,22 @@ export function RecurringPaymentHistory({ payment }: RecurringPaymentHistoryProp
         status = 'pending';
       }
 
-      const amount =
+      const amountPerBeneficiary =
         monthIndex === 0 && isFirstMonthCustom && firstMonthAmount
           ? firstMonthAmount
           : monthlyAmount;
+      const batchDetails = payment.__batchMonthDetails?.[monthIndex];
+      const amountMultiplier =
+        batchDetails && batchDetails.length > 0
+          ? batchDetails.filter((d) => (d.status || '').toLowerCase() === 'executed').length
+          : beneficiaryCount;
+      const totalAmount = String(BigInt(amountPerBeneficiary || '0') * BigInt(amountMultiplier));
 
       payments.push({
         monthNumber: monthIndex + 1,
         date: paymentDateMs,
         status,
-        amount,
+        amount: totalAmount,
       });
     }
 
@@ -158,6 +170,8 @@ export function RecurringPaymentHistory({ payment }: RecurringPaymentHistoryProp
     payment.status,
     payment.__monthlyStatuses,
     payment.__batchMonthDetails,
+    payment.__batchChildren,
+    payment.batch_beneficiaries,
     payment.first_month_amount,
     payment.is_first_month_custom,
     payment.monthly_amount,
@@ -228,9 +242,10 @@ export function RecurringPaymentHistory({ payment }: RecurringPaymentHistoryProp
     );
   };
 
-  // Détail au centre : uniquement quand le mois est "mixed" (ex. Ali : Released, Redouane : Cancelled)
+  // Détail au centre : quand le mois est "mixed" (ex. Released + Cancelled) ou "failed" avec détail batch (ex. un reçu, l'autre en échec)
   const renderMonthDetail = (monthlyPayment: MonthlyPayment) => {
-    if (monthlyPayment.status !== 'mixed') return null;
+    const showDetail = monthlyPayment.status === 'mixed' || monthlyPayment.status === 'failed';
+    if (!showDetail) return null;
     const monthIndex = monthlyPayment.monthNumber - 1;
     const details = payment.__batchMonthDetails?.[monthIndex];
     if (!details || details.length === 0) return null;

@@ -27,7 +27,7 @@ export default function ContactPage() {
     if (!formData.email || !formData.subject || !formData.message) {
       setSubmitStatus({
         type: 'error',
-        message: isMounted && translationsReady ? t('help.contact.form.error.required') : 'Veuillez remplir tous les champs'
+        message: t('help.contact.form.error.required', { defaultValue: 'Please fill in all fields' })
       });
       return;
     }
@@ -50,10 +50,10 @@ export default function ContactPage() {
         throw new Error(data.error || 'Erreur lors de l\'envoi du message');
       }
 
-      // Succès
+      // Succès : toujours afficher le message traduit (langue courante), pas data.message (souvent FR)
       setSubmitStatus({
         type: 'success',
-        message: data.message || (isMounted && translationsReady ? t('help.contact.form.success') : 'Votre message a été envoyé avec succès !')
+        message: t('help.contact.form.success', { defaultValue: 'Your message has been sent successfully!' })
       });
 
       // Réinitialiser le formulaire
@@ -72,7 +72,7 @@ export default function ContactPage() {
       console.error('Erreur envoi formulaire:', error);
       setSubmitStatus({
         type: 'error',
-        message: error instanceof Error ? error.message : (isMounted && translationsReady ? t('help.contact.form.error.generic') : 'Une erreur est survenue. Veuillez réessayer.')
+        message: error instanceof Error ? error.message : t('help.contact.form.error.generic', { defaultValue: 'An error occurred. Please try again.' })
       });
     } finally {
       setIsSubmitting(false);
@@ -187,8 +187,8 @@ export default function ContactPage() {
               className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting 
-                ? (isMounted && translationsReady ? t('help.contact.form.sending') : 'Envoi en cours...') 
-                : (isMounted && translationsReady ? t('help.contact.form.submit') : 'Envoyer')
+                ? t('help.contact.form.sending', { defaultValue: 'Sending...' }) 
+                : t('help.contact.form.submit', { defaultValue: 'Send' })
               }
             </button>
           </form>
