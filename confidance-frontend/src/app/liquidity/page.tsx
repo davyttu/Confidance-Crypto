@@ -2,11 +2,13 @@
 
 import { useState } from 'react';
 import { useAccount } from 'wagmi';
+import { useTranslation } from 'react-i18next';
 import LiquidityForm from '@/components/Liquidity/LiquidityForm';
 import StatusCard from '@/components/Liquidity/StatusCard';
 import ProtectionExplainer from '@/components/Liquidity/ProtectionExplainer';
 
 export default function LiquidityPage() {
+  const { t } = useTranslation();
   const { address, isConnected } = useAccount();
   const [showExplanation, setShowExplanation] = useState(false);
 
@@ -20,10 +22,10 @@ export default function LiquidityPage() {
             </svg>
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-3">
-            Connectez votre wallet
+            {t('liquidity.connectWallet')}
           </h2>
           <p className="text-gray-600">
-            Pour accéder à la liquidité, veuillez d'abord connecter votre wallet
+            {t('liquidity.connectWalletDescription')}
           </p>
         </div>
       </div>
@@ -40,11 +42,11 @@ export default function LiquidityPage() {
           </div>
           
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Accédez à de la liquidité sans vendre votre ETH
+            {t('liquidity.title')}
           </h1>
           
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Utilisez votre ETH comme garantie et recevez de l'USDC ou de l'USDT en quelques secondes.
+            {t('liquidity.subtitle')}
           </p>
         </div>
 
@@ -69,9 +71,9 @@ export default function LiquidityPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
             </div>
-            <h3 className="font-semibold text-gray-900 mb-2">Sécurisé</h3>
+            <h3 className="font-semibold text-gray-900 mb-2">{t('liquidity.secure')}</h3>
             <p className="text-sm text-gray-600">
-              Vos fonds sont protégés par la blockchain et des smart contracts audités
+              {t('liquidity.secureDesc')}
             </p>
           </div>
 
@@ -81,9 +83,9 @@ export default function LiquidityPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             </div>
-            <h3 className="font-semibold text-gray-900 mb-2">Instantané</h3>
+            <h3 className="font-semibold text-gray-900 mb-2">{t('liquidity.instant')}</h3>
             <p className="text-sm text-gray-600">
-              Recevez votre liquidité immédiatement après validation de la transaction
+              {t('liquidity.instantDesc')}
             </p>
           </div>
 
@@ -93,9 +95,9 @@ export default function LiquidityPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <h3 className="font-semibold text-gray-900 mb-2">Flexible</h3>
+            <h3 className="font-semibold text-gray-900 mb-2">{t('liquidity.flexible')}</h3>
             <p className="text-sm text-gray-600">
-              Remboursez à tout moment et récupérez votre ETH sans pénalité
+              {t('liquidity.flexibleDesc')}
             </p>
           </div>
         </div>

@@ -142,7 +142,7 @@ export default function DashboardLinksPage() {
 
         <div className="bg-white rounded-2xl shadow-xl p-6">
           {isLoading ? (
-            <div className="text-gray-600">{ready ? t('dashboard.loading') : 'Chargement...'}</div>
+            <div className="text-gray-600">{t('common.loading')}</div>
           ) : links.length === 0 ? (
             <div className="text-gray-600">{ready ? t('links.dashboard.empty') : 'Aucun lien de paiement'}</div>
           ) : (

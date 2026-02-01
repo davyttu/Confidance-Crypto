@@ -33,7 +33,7 @@ export function StatsCards({ payments, selectedWallets = [] }: StatsCardsProps) 
   const [balancesLoading, setBalancesLoading] = useState(false);
   const [balancesError, setBalancesError] = useState(false);
   
-  // Calculer les stats
+  // Calculer les stats : uniquement paiements réellement envoyés (released/completed), pas failed/cancelled/pending
   const totalSentByToken = useMemo(() => {
     const totals = {
       ETH: BigInt(0),
@@ -41,9 +41,25 @@ export function StatsCards({ payments, selectedWallets = [] }: StatsCardsProps) 
       USDT: BigInt(0),
     };
 
+    const completedStatuses = new Set<string>(['released', 'completed']);
     payments.forEach((payment) => {
+      if (!completedStatuses.has(payment.status)) return;
       const symbol = (payment.token_symbol || 'ETH').toUpperCase();
-      if (symbol === 'USDC' || symbol === 'USDT' || symbol === 'ETH') {
+      if (symbol !== 'USDC' && symbol !== 'USDT' && symbol !== 'ETH') return;
+
+      const isRecurring = payment.is_recurring || payment.payment_type === 'recurring';
+      if (isRecurring) {
+        const executed = Number(payment.executed_months ?? 0);
+        if (executed <= 0) return;
+        const monthlyAmount = BigInt(payment.monthly_amount ?? payment.amount ?? '0');
+        const firstMonthCustom = payment.is_first_month_custom === true || payment.is_first_month_custom === 'true';
+        const firstMonthAmount = firstMonthCustom && payment.first_month_amount
+          ? BigInt(payment.first_month_amount)
+          : monthlyAmount;
+        const restMonths = Math.max(0, executed - 1);
+        const total = firstMonthAmount + monthlyAmount * BigInt(restMonths);
+        totals[symbol] += total;
+      } else {
         totals[symbol] += BigInt(payment.amount);
       }
     });

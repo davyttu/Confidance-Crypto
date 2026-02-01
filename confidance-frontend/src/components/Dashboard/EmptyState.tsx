@@ -72,9 +72,9 @@ export function EmptyState() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h3 className="font-semibold text-gray-900 mb-2">Automatique</h3>
+          <h3 className="font-semibold text-gray-900 mb-2">{t('dashboard.empty.features.automatic.title')}</h3>
           <p className="text-sm text-gray-600">
-            Exécution automatique à la date programmée
+            {t('dashboard.empty.features.automatic.description')}
           </p>
         </div>
 
@@ -86,7 +86,7 @@ export function EmptyState() {
           </div>
           <h3 className="font-semibold text-gray-900 mb-2">{isMounted && translationsReady ? t('dashboard.empty.features.transparent.title') : 'Transparent'}</h3>
           <p className="text-sm text-gray-600">
-            {isMounted && translationsReady ? t('dashboard.empty.features.transparent.description') : 'Suivez vos paiements en temps réel'}
+            {t('dashboard.empty.features.transparent.description')}
           </p>
         </div>
       </div>

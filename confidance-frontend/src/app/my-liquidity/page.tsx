@@ -11,8 +11,10 @@ import RepayModal from '@/components/MyLiquidity/RepayModal';
 import AddCollateralModal from '@/components/MyLiquidity/AddCollateralModal';
 import ClosePositionModal from '@/components/MyLiquidity/ClosePositionModal';
 import ProtectionInfoDrawer from '@/components/MyLiquidity/ProtectionInfoDrawer';
+import { useTranslation } from 'react-i18next';
 
 export default function MyLiquidityPage() {
+  const { t } = useTranslation();
   const { address, isConnected } = useAccount();
   const { position, isLoading, error } = useMyLiquidity();
 
@@ -47,7 +49,7 @@ export default function MyLiquidityPage() {
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Chargement de votre position...</p>
+          <p className="text-gray-600">{t('common.loading')}</p>
         </div>
       </div>
     );

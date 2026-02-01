@@ -251,7 +251,7 @@ export async function POST(request: NextRequest) {
             </div>
             
             <div class="footer">
-              <p>Ce message a été envoyé depuis le formulaire de contact de Confidance Crypto.</p>
+              <p>Ce message a été envoyé depuis le formulaire de contact de Confidance.</p>
               <p>Répondez directement à cet email pour contacter l'expéditeur.</p>
             </div>
           </div>
@@ -285,14 +285,14 @@ export async function POST(request: NextRequest) {
     
     // Envoyer l'email via SMTP
     const mailOptions = {
-      from: `Confidance Crypto <${fromEmail}>`,
+      from: `Confidance <${fromEmail}>`,
       to: CONTACT_EMAIL,
       replyTo: email, // Permettre de répondre directement à l'expéditeur
       subject: `[Contact Confidance] ${subject}`,
       html: emailHtml,
       // Options supplémentaires pour Brevo
       headers: {
-        'X-Mailer': 'Confidance Crypto Contact Form',
+        'X-Mailer': 'Confidance Contact Form',
       },
     };
 

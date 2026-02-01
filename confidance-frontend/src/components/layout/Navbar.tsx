@@ -50,11 +50,16 @@ export function Navbar() {
   const [showProModal, setShowProModal] = useState(false);
   const [showAccountSecurityModal, setShowAccountSecurityModal] = useState(false);
   const [showNotificationsPanel, setShowNotificationsPanel] = useState(false);
+  const [connectLabel, setConnectLabel] = useState('Connect Wallet');
 
   // ✅ FIX : Éviter le mismatch d'hydratation en attendant que les traductions soient chargées
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (isMounted && translationsReady) setConnectLabel(t('common.connect'));
+  }, [isMounted, translationsReady, t]);
 
   useEffect(() => {
     if (!isAuthenticated || !isMounted) return;
@@ -113,16 +118,15 @@ export function Navbar() {
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
   };
 
-  // ✅ FIX : Utiliser des valeurs par défaut pendant l'hydratation
-  const links = isMounted && translationsReady ? [
-    { href: '/payment', label: t('nav.create') },
-    { href: '/dashboard', label: t('nav.dashboard') },
-    { href: '/liquidity', label: t('nav.liquidity') || 'Liquidité' },
-  ] : [
-    { href: '/payment', label: 'Paiements' },
-    { href: '/dashboard', label: 'Dashboard' },
-    { href: '/liquidity', label: 'Liquidité' },
+  const linkDefs = [
+    { href: '/payment', labelKey: 'nav.create', fallback: 'Payments' },
+    { href: '/dashboard', labelKey: 'nav.dashboard', fallback: 'Dashboard' },
+    { href: '/liquidity', labelKey: 'nav.liquidity', fallback: 'Liquidity' },
   ];
+  const links = linkDefs.map((link) => ({
+    ...link,
+    label: isMounted && translationsReady ? t(link.labelKey) : link.fallback,
+  }));
 
   // MODIFIED — on récupère aussi accountType choisi à l’inscription
   const handleRegisterSuccess = (email: string, code: string, accountType: 'particular' | 'professional') => {
@@ -289,7 +293,7 @@ export function Navbar() {
                               {user?.email.split('@')[0]}
                             </p>
                             <p className="text-xs text-gray-500 dark:text-gray-400">
-                              {isMounted && translationsReady ? (isProVerified ? t('common.accountType.professional') : t('common.accountType.individual')) : (isProVerified ? 'Pro' : 'Particulier')}
+                              {isProVerified ? t('common.accountType.professional') : t('common.accountType.individual')}
                             </p>
                           </div>
                           <svg 
@@ -321,7 +325,7 @@ export function Navbar() {
                                     ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
                                     : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
                                 }`}>
-                                  {isProVerified ? '💼 Pro' : '👤 Perso'}
+                                  {isProVerified ? `💼 ${t('common.accountType.professional')}` : `👤 ${t('common.accountType.individual')}`}
                                 </span>
                                 {user?.kycVerified && (
                                   <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
@@ -342,7 +346,7 @@ export function Navbar() {
                                   className="flex items-center gap-2.5 w-full px-4 py-2 text-sm text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
                                 >
                                   <span>💼</span>
-                                  Passer en compte Pro
+                                  {t('common.upgradeToPro')}
                                 </button>
                               )}
                               {!isProVerified && (
@@ -354,9 +358,7 @@ export function Navbar() {
                                   className="flex items-center gap-2.5 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                                 >
                                   <span>🔐</span>
-                                  {isMounted && translationsReady
-                                    ? t('common.accountSettings.menuLabel', { defaultValue: 'Login details' })
-                                    : 'Login details'}
+                                  {t('common.accountSettings.menuLabel')}
                                 </button>
                               )}
                               {isProVerified && (
@@ -368,7 +370,7 @@ export function Navbar() {
                                   className="flex items-center gap-2.5 w-full px-4 py-2 text-sm text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
                                 >
                                   <span>📝</span>
-                                  Modifier mes infos Pro
+                                  {t('common.editProInfo')}
                                 </button>
                               )}
                               <Link
@@ -379,7 +381,7 @@ export function Navbar() {
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                                 </svg>
-                                {isMounted && translationsReady ? t('nav.dashboard') : 'Dashboard'}
+                                {t('nav.dashboard')}
                               </Link>
 
                               <Link
@@ -388,7 +390,7 @@ export function Navbar() {
                                 className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                               >
                                 <span aria-hidden="true">📊</span>
-                                {isMounted && translationsReady ? t('nav.analytics') : 'Analytics'}
+                                {t('nav.analytics')}
                               </Link>
 
                               <button
@@ -399,7 +401,7 @@ export function Navbar() {
                                 className="flex items-center gap-2.5 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left"
                               >
                                 <span aria-hidden="true">🔔</span>
-                                {isMounted && translationsReady ? t('nav.notifications') : 'Notifications'}
+                                {t('nav.notifications')}
                                 {unreadCount > 0 && (
                                   <span className="ml-auto inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full">
                                     {unreadCount > 9 ? '9+' : unreadCount}
@@ -416,7 +418,7 @@ export function Navbar() {
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                                 </svg>
-                                {isMounted && translationsReady ? t('common.disconnect') : 'Déconnexion'}
+                                {t('common.disconnect')}
                               </button>
                             </div>
                           </div>
@@ -427,7 +429,8 @@ export function Navbar() {
                 </>
               )}
 
-              {/* ConnectButton */}
+              {/* ConnectButton : rendu uniquement après montage client pour éviter hydratation / conflits extensions */}
+              {isMounted && (
               <div className="hidden sm:block">
                 <ConnectButton.Custom>
                   {({
@@ -451,11 +454,11 @@ export function Navbar() {
                           if (!connected) {
                             return (
                               <button
-                                onClick={openConnectModal}
+                                onClick={() => setTimeout(() => openConnectModal(), 0)}
                                 type="button"
                                 className="px-4 py-2 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-lg hover:shadow-lg hover:shadow-primary-500/30 transition-all font-medium"
                               >
-                                {isMounted && translationsReady ? t('common.connect') : 'Connecter le portefeuille'}
+                                {connectLabel}
                               </button>
                             );
                           }
@@ -463,7 +466,7 @@ export function Navbar() {
                           if (chain.unsupported) {
                             return (
                               <button onClick={openChainModal} type="button">
-                                Wrong network
+                                {t('wallet.wrongNetwork')}
                               </button>
                             );
                           }
@@ -474,7 +477,7 @@ export function Navbar() {
                                 onClick={openChainModal}
                                 style={{ display: 'flex', alignItems: 'center' }}
                                 type="button"
-                                title={isMounted && translationsReady ? t('common.connect') : 'Réseau'}
+                                title={t('common.connect')}
                               >
                                 {chain.hasIcon && (
                                   <div
@@ -528,8 +531,8 @@ export function Navbar() {
                                           onClick={(event) => handleCopyAddress(event, account.address)}
                                           className="p-1 rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50"
                                           title={copiedAddress === account.address
-                                            ? (isMounted && translationsReady ? t('beneficiary.copied') : 'Copied!')
-                                            : (isMounted && translationsReady ? t('beneficiary.copyAddress') : 'Copy address')}
+                                            ? t('beneficiary.copied')
+                                            : t('beneficiary.copyAddress')}
                                         >
                                           <Copy className="w-3.5 h-3.5" />
                                         </button>
@@ -540,7 +543,7 @@ export function Navbar() {
                                         onClick={handleDisconnectWallet}
                                         className="w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-red-50"
                                       >
-                                        {isMounted && translationsReady ? t('common.disconnect') : 'Déconnexion'}
+                                        {t('common.disconnect')}
                                       </button>
                                     </div>
                                 )}
@@ -553,6 +556,7 @@ export function Navbar() {
                   }}
                 </ConnectButton.Custom>
               </div>
+              )}
 
               {/* Mobile menu button */}
               <button
@@ -603,7 +607,7 @@ export function Navbar() {
                       }}
                       className="w-full px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-left"
                     >
-                      {isMounted && translationsReady ? t('common.connect') : 'Connexion'}
+                      {t('common.connect')}
                     </button>
                     <button
                       onClick={() => {
@@ -612,7 +616,7 @@ export function Navbar() {
                       }}
                       className="w-full px-4 py-2.5 text-sm font-medium bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-lg shadow-lg text-left"
                     >
-                      {isMounted && translationsReady ? t('common.register') : 'Créer un compte'}
+                      {t('common.register')}
                     </button>
                   </>
                 ) : (
@@ -620,7 +624,7 @@ export function Navbar() {
                     <div className="px-4 py-2.5 bg-gradient-to-r from-primary-50 to-purple-50 dark:from-primary-900/20 dark:to-purple-900/20 rounded-lg">
                       <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{user?.email}</p>
                       <span className="text-xs text-gray-600 dark:text-gray-400">
-                      {isMounted && translationsReady ? (isProVerified ? `💼 ${t('common.accountType.professional')}` : `👤 ${t('common.accountType.individual')}`) : (isProVerified ? '💼 Professionnel' : '👤 Particulier')}
+                      {isProVerified ? `💼 ${t('common.accountType.professional')}` : `👤 ${t('common.accountType.individual')}`}
                       </span>
                     </div>
                     {canUpgradeToPro && (
@@ -631,7 +635,7 @@ export function Navbar() {
                         }}
                         className="w-full px-4 py-2.5 text-sm font-medium text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors text-left"
                       >
-                        💼 Passer en compte Pro
+                        💼 {t('common.upgradeToPro')}
                       </button>
                     )}
                     {isProVerified && (
@@ -642,7 +646,7 @@ export function Navbar() {
                         }}
                         className="w-full px-4 py-2.5 text-sm font-medium text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors text-left"
                       >
-                        📝 Modifier mes infos Pro
+                        📝 {t('common.editProInfo')}
                       </button>
                     )}
                     {!isProVerified && (
@@ -653,9 +657,7 @@ export function Navbar() {
                         }}
                         className="w-full px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-left"
                       >
-                        🔐 {isMounted && translationsReady
-                          ? t('common.accountSettings.menuLabel', { defaultValue: 'Login details' })
-                          : 'Login details'}
+                        🔐 {t('common.accountSettings.menuLabel')}
                       </button>
                     )}
                     <button
@@ -665,10 +667,11 @@ export function Navbar() {
                       }}
                       className="w-full px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors text-left"
                     >
-                      {isMounted && translationsReady ? t('common.disconnect') : 'Déconnexion'}
+                      {t('common.disconnect')}
                     </button>
                   </div>
                 )}
+                {isMounted && (
                 <ConnectButton.Custom>
                   {({
                     account,
@@ -691,11 +694,11 @@ export function Navbar() {
                           if (!connected) {
                             return (
                               <button
-                                onClick={openConnectModal}
+                                onClick={() => setTimeout(() => openConnectModal(), 0)}
                                 type="button"
                                 className="w-full px-4 py-2.5 text-sm font-medium bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-lg shadow-lg text-left"
                               >
-                                {isMounted && translationsReady ? t('common.connect') : 'Connecter le portefeuille'}
+                                {connectLabel}
                               </button>
                             );
                           }
@@ -703,7 +706,7 @@ export function Navbar() {
                           if (chain.unsupported) {
                             return (
                               <button onClick={openChainModal} type="button" className="w-full px-4 py-2.5 text-sm font-medium text-red-600 rounded-lg text-left">
-                                Wrong network
+                                {t('wallet.wrongNetwork')}
                               </button>
                             );
                           }
@@ -745,7 +748,7 @@ export function Navbar() {
                                 type="button"
                                 className="w-full px-4 py-2.5 text-sm font-medium text-red-600 rounded-lg text-left hover:bg-red-50"
                               >
-                                {isMounted && translationsReady ? t('common.disconnect') : 'Déconnexion'}
+                                {t('common.disconnect')}
                               </button>
                             </div>
                           );
@@ -754,6 +757,7 @@ export function Navbar() {
                     );
                   }}
                 </ConnectButton.Custom>
+                )}
               </div>
             </div>
           )}

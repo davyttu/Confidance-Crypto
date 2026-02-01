@@ -10,6 +10,7 @@ import { config } from '@/lib/wagmi';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { I18nextProvider, useTranslation } from 'react-i18next';
 import i18n from '@/lib/i18n';
+import { WalletConnectErrorHandler } from '@/components/WalletConnectErrorHandler';
 
 // Singleton pour éviter les multiples initialisations de WalletConnect Core
 function makeQueryClient() {
@@ -71,6 +72,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <WagmiProvider config={config}>
         <QueryClientProvider client={queryClient}>
           <RainbowKitProviderWithLocale>
+            <WalletConnectErrorHandler />
             <ThemeProvider>
               {children}
             </ThemeProvider>

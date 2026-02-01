@@ -6,29 +6,65 @@ import { Github, Twitter, Send } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 
+const FOOTER_FALLBACKS = {
+  description: "Because payments shouldn't depend on trust. They should depend on code.",
+  product: 'Product',
+  resources: 'Resources',
+  legal: 'Legal',
+  firstStep: 'First step',
+  secondStep: 'Second step',
+  documentation: 'Documentation',
+  terms: 'Legal notice',
+  privacy: 'Privacy',
+  paymentCreate: 'Create payment',
+  copyright: '© {{year}} Confidance Crypto. All rights reserved.',
+  madeWith: 'Made with',
+  forDeFi: 'for DeFi',
+} as const;
+
 export function Footer() {
   const { t, ready } = useTranslation();
   const [isMounted, setIsMounted] = useState(false);
+  const [text, setText] = useState(FOOTER_FALLBACKS);
   const currentYear = new Date().getFullYear();
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
+  useEffect(() => {
+    if (!isMounted || !ready) return;
+    setText({
+      description: t('footer.description'),
+      product: t('footer.product'),
+      resources: t('footer.resources'),
+      legal: t('footer.legal'),
+      firstStep: t('footer.firstStep'),
+      secondStep: t('footer.secondStep'),
+      documentation: t('footer.documentation'),
+      terms: t('footer.terms'),
+      privacy: t('footer.privacy'),
+      paymentCreate: t('payment.create'),
+      copyright: t('footer.copyright', { year: currentYear }),
+      madeWith: t('footer.madeWith'),
+      forDeFi: t('footer.forDeFi'),
+    });
+  }, [isMounted, ready, t, currentYear]);
+
   const links = {
     product: [
-      { label: isMounted && ready ? t('footer.firstStep') : 'First step', href: '/premiere-etape' },
-      { label: isMounted && ready ? t('payment.create') : 'Créer un paiement', href: '/payment' },
-      { label: isMounted && ready ? t('footer.documentation') : 'Documentation', href: '/docs' },
+      { label: text.firstStep, href: '/premiere-etape' },
+      { label: text.paymentCreate, href: '/payment' },
+      { label: text.documentation, href: '/docs' },
     ],
     resources: [
-      { label: isMounted && ready ? t('footer.secondStep') : 'Second step', href: '/second-step' },
+      { label: text.secondStep, href: '/second-step' },
       { label: 'Base Mainnet', href: 'https://base.org', external: true },
       { label: 'Basescan', href: 'https://basescan.org', external: true, logo: '/basescan-logo.png' },
     ],
     legal: [
-      { label: isMounted && ready ? t('footer.terms') : 'Conditions', href: '/legal' },
-      { label: isMounted && ready ? t('footer.privacy') : 'Confidentialité', href: '/privacy' },
+      { label: text.terms, href: '/legal' },
+      { label: text.privacy, href: '/privacy' },
     ],
   };
 
@@ -51,7 +87,7 @@ export function Footer() {
               <span className="font-bold text-xl gradient-text">Confidance</span>
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-400 max-w-xs">
-              {isMounted && ready ? t('footer.description') : 'Paiements programmés décentralisés sur Base Mainnet. Simple, sécurisé, automatique.'}
+              {text.description}
             </p>
             <div className="flex items-center gap-3">
               {socials.map((social) => (
@@ -71,7 +107,7 @@ export function Footer() {
 
           {/* Product Links */}
           <div>
-            <h3 className="font-semibold mb-4 text-gray-900 dark:text-white">{isMounted && ready ? t('footer.product') : 'Produit'}</h3>
+            <h3 className="font-semibold mb-4 text-gray-900 dark:text-white">{text.product}</h3>
             <ul className="space-y-3">
               {links.product.map((link) => (
                 <li key={link.label}>
@@ -88,7 +124,7 @@ export function Footer() {
 
           {/* Resources Links */}
           <div>
-            <h3 className="font-semibold mb-4 text-gray-900 dark:text-white">{isMounted && ready ? t('footer.resources') : 'Ressources'}</h3>
+            <h3 className="font-semibold mb-4 text-gray-900 dark:text-white">{text.resources}</h3>
             <ul className="space-y-3">
               {links.resources.map((link) => (
                 <li key={link.label}>
@@ -116,7 +152,7 @@ export function Footer() {
 
           {/* Legal Links */}
           <div>
-            <h3 className="font-semibold mb-4 text-gray-900 dark:text-white">{isMounted && ready ? t('footer.legal') : 'Légal'}</h3>
+            <h3 className="font-semibold mb-4 text-gray-900 dark:text-white">{text.legal}</h3>
             <ul className="space-y-3">
               {links.legal.map((link) => (
                 <li key={link.label}>
@@ -135,12 +171,12 @@ export function Footer() {
         {/* Bottom */}
         <div className="pt-8 border-t border-gray-200 dark:border-gray-800 flex flex-col sm:flex-row justify-between items-center gap-4">
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            {isMounted && ready ? t('footer.copyright', { year: currentYear }) : `© ${currentYear} Confidance Crypto. Tous droits réservés.`}
+            {text.copyright.replace('{{year}}', String(currentYear))}
           </p>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500">Made with</span>
+            <span className="text-xs text-gray-500">{text.madeWith}</span>
             <span className="text-red-500 animate-pulse">❤️</span>
-            <span className="text-xs text-gray-500">for DeFi</span>
+            <span className="text-xs text-gray-500">{text.forDeFi}</span>
           </div>
         </div>
       </div>

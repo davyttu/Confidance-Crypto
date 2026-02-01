@@ -1,11 +1,14 @@
 'use client';
 
+import { useTranslation } from 'react-i18next';
+
 interface ProtectionExplainerProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
 export default function ProtectionExplainer({ isOpen, onClose }: ProtectionExplainerProps) {
+  const { t } = useTranslation();
   if (!isOpen) return null;
 
   return (
@@ -22,7 +25,7 @@ export default function ProtectionExplainer({ isOpen, onClose }: ProtectionExpla
           <div className="p-6">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold">Comment ça marche ?</h2>
+              <h2 className="text-2xl font-bold">{t('liquidity.protectionExplainer.howItWorks')}</h2>
               <button
                 onClick={onClose}
                 className="text-gray-400 hover:text-gray-600"
@@ -58,12 +61,12 @@ export default function ProtectionExplainer({ isOpen, onClose }: ProtectionExpla
                   <span className="text-2xl">💧</span>
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">2. Tu reçois de la liquidité</h3>
+                  <h3 className="font-semibold text-gray-900 mb-2">{t('liquidity.protectionExplainer.step2Title')}</h3>
                   <p className="text-gray-600">
-                    Immédiatement, tu reçois de l'USDC ou USDT que tu peux utiliser librement.
+                    {t('liquidity.protectionExplainer.step2Desc')}
                   </p>
                   <div className="mt-3 p-3 bg-gray-50 rounded-lg text-sm">
-                    <strong>Exemple :</strong> Tu reçois 1 200 USDC
+                    {t('liquidity.protectionExplainer.step2Example')}
                   </div>
                 </div>
               </div>
@@ -94,12 +97,12 @@ export default function ProtectionExplainer({ isOpen, onClose }: ProtectionExpla
                   <span className="text-2xl">⚡</span>
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">4. Alerte si le prix baisse trop</h3>
+                  <h3 className="font-semibold text-gray-900 mb-2">{t('liquidity.protectionExplainer.step4Title')}</h3>
                   <p className="text-gray-600">
-                    Si l'ETH perd de la valeur, tu reçois une notification pour ajouter de l'ETH ou rembourser une partie.
+                    {t('liquidity.protectionExplainer.step4Desc')}
                   </p>
                   <div className="mt-3 p-3 bg-gray-50 rounded-lg text-sm">
-                    <strong>Seuil :</strong> Tu es alerté si ton ETH ne couvre plus qu'à 70% ta liquidité
+                    {t('liquidity.protectionExplainer.step4Threshold')}
                   </div>
                 </div>
               </div>
@@ -127,7 +130,7 @@ export default function ProtectionExplainer({ isOpen, onClose }: ProtectionExpla
               onClick={onClose}
               className="w-full mt-6 py-3 bg-gray-900 text-white font-semibold rounded-xl hover:bg-gray-800 transition-colors"
             >
-              J'ai compris
+              {t('liquidity.protectionExplainer.understood')}
             </button>
           </div>
         </div>

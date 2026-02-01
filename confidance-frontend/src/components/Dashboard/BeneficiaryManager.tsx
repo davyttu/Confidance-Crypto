@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useBeneficiaries, type Beneficiary, type BeneficiaryCategory } from '@/hooks/useBeneficiaries';
 
 interface BeneficiaryManagerProps {
@@ -13,23 +14,33 @@ interface BeneficiaryManagerProps {
 
 const CATEGORIES: BeneficiaryCategory[] = ['Famille', 'Travail', 'Perso', 'Autre'];
 
-const CATEGORY_ICONS = {
-  'Famille': '👨‍👩‍👧‍👦',
-  'Travail': '💼',
-  'Perso': '⭐',
-  'Autre': '📌',
+const CATEGORY_I18N_KEYS: Record<BeneficiaryCategory, string> = {
+  Famille: 'family',
+  Travail: 'work',
+  Perso: 'personal',
+  Autre: 'other',
 };
 
-export function BeneficiaryManager({ 
-  beneficiary, 
-  beneficiaryAddress, 
-  onClose, 
-  onSuccess 
+const CATEGORY_ICONS: Record<BeneficiaryCategory, string> = {
+  Famille: '👨‍👩‍👧‍👦',
+  Travail: '💼',
+  Perso: '⭐',
+  Autre: '📌',
+};
+
+export function BeneficiaryManager({
+  beneficiary,
+  beneficiaryAddress,
+  onClose,
+  onSuccess
 }: BeneficiaryManagerProps) {
+  const { t } = useTranslation();
   const { createBeneficiary, updateBeneficiary } = useBeneficiaries();
   
   const [displayName, setDisplayName] = useState('');
   const [category, setCategory] = useState<BeneficiaryCategory>('Perso');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,6 +50,8 @@ export function BeneficiaryManager({
     if (beneficiary) {
       setDisplayName(beneficiary.display_name);
       setCategory(beneficiary.category || 'Perso');
+      setEmail(beneficiary.email ?? '');
+      setPhone(beneficiary.phone ?? '');
     }
   }, [beneficiary]);
 
@@ -46,7 +59,7 @@ export function BeneficiaryManager({
     e.preventDefault();
     
     if (displayName.trim().length < 2) {
-      setError('Le nom doit contenir au moins 2 caractères');
+      setError(t('dashboard.beneficiaries.errorNameMin'));
       return;
     }
 
@@ -55,15 +68,15 @@ export function BeneficiaryManager({
       setError(null);
 
       if (isEditing && beneficiary) {
-        await updateBeneficiary(beneficiary.id, displayName.trim(), category);
+        await updateBeneficiary(beneficiary.id, displayName.trim(), category, email.trim() || null, phone.trim() || null);
       } else if (beneficiaryAddress) {
-        await createBeneficiary(beneficiaryAddress, displayName.trim(), category);
+        await createBeneficiary(beneficiaryAddress, displayName.trim(), category, email.trim() || null, phone.trim() || null);
       }
 
       onSuccess();
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de l\'enregistrement');
+      setError(err instanceof Error ? err.message : t('dashboard.beneficiaries.errorSave'));
     } finally {
       setIsSubmitting(false);
     }
@@ -76,7 +89,7 @@ export function BeneficiaryManager({
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold text-gray-900">
-              {isEditing ? 'Modifier le bénéficiaire' : 'Nouveau bénéficiaire'}
+              {isEditing ? t('dashboard.beneficiaries.modalTitleEdit') : t('dashboard.beneficiaries.modalTitleNew')}
             </h2>
             <button
               onClick={onClose}
@@ -94,7 +107,7 @@ export function BeneficiaryManager({
           {/* Nom */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Nom du bénéficiaire
+              {t('dashboard.beneficiaries.nameLabel')}
             </label>
             <input
               type="text"
@@ -103,21 +116,52 @@ export function BeneficiaryManager({
                 setDisplayName(e.target.value);
                 setError(null);
               }}
-              placeholder="Ex: Jean Dupont, Entreprise XYZ..."
+              placeholder={t('dashboard.beneficiaries.namePlaceholder')}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
               minLength={2}
               autoFocus
             />
             <p className="text-xs text-gray-500 mt-1">
-              Minimum 2 caractères
+              {t('dashboard.beneficiaries.nameMinChars')}
             </p>
+          </div>
+
+          {/* Email et téléphone pour envoi sécurisé des liens */}
+          <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-3">
+            <p className="text-xs text-slate-600">
+              {t('dashboard.beneficiaries.contactForLinks')}
+            </p>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t('dashboard.beneficiaries.email')}
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder={t('dashboard.beneficiaries.emailPlaceholder')}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t('dashboard.beneficiaries.phone')}
+              </label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder={t('dashboard.beneficiaries.phonePlaceholder')}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              />
+            </div>
           </div>
 
           {/* Catégorie */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Catégorie
+              {t('dashboard.beneficiaries.categoryLabel')}
             </label>
             <div className="grid grid-cols-2 gap-3">
               {CATEGORIES.map((cat) => (
@@ -133,7 +177,7 @@ export function BeneficiaryManager({
                 >
                   <div className="flex items-center gap-2">
                     <span className="text-2xl">{CATEGORY_ICONS[cat]}</span>
-                    <span className="font-medium text-gray-900">{cat}</span>
+                    <span className="font-medium text-gray-900">{t(`dashboard.beneficiaries.categories.${CATEGORY_I18N_KEYS[cat]}`)}</span>
                   </div>
                 </button>
               ))}
@@ -144,7 +188,7 @@ export function BeneficiaryManager({
           {!isEditing && beneficiaryAddress && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
               <p className="text-xs text-blue-800">
-                <strong>Adresse :</strong> <code className="font-mono">{beneficiaryAddress}</code>
+                <strong>{t('dashboard.beneficiaries.addressLabel')} :</strong> <code className="font-mono">{beneficiaryAddress}</code>
               </p>
             </div>
           )}
@@ -164,7 +208,7 @@ export function BeneficiaryManager({
             disabled={isSubmitting}
             className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
           >
-            Annuler
+            {t('common.cancel')}
           </button>
           
           <button
@@ -177,10 +221,10 @@ export function BeneficiaryManager({
                 <svg className="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-                Enregistrement...
+                {t('dashboard.beneficiaries.saving')}
               </span>
             ) : (
-              isEditing ? 'Modifier' : 'Créer'
+              isEditing ? t('dashboard.beneficiaries.edit') : t('dashboard.beneficiaries.createButton')
             )}
           </button>
         </div>

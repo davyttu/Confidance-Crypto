@@ -252,14 +252,18 @@ router.get('/preferences', authenticateToken, async (req, res) => {
 router.put('/preferences', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.user;
-    const { analytics_year, analytics_month } = req.body;
+    const { analytics_year, analytics_month, locale } = req.body;
 
+    let { data: existing } = await fetchPreferences('user_ui_preferences', userId);
     const payload = {
       user_id: userId,
-      analytics_year,
-      analytics_month,
+      ...(existing || {}),
       updated_at: new Date().toISOString(),
     };
+    if (analytics_year !== undefined) payload.analytics_year = analytics_year;
+    if (analytics_month !== undefined) payload.analytics_month = analytics_month;
+    if (locale !== undefined) payload.locale = locale;
+    delete payload.id;
 
     let { data, error } = await upsertPreferences('user_ui_preferences', payload);
     if (error && error.code === 'PGRST205') {

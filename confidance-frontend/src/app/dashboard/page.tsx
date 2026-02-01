@@ -15,7 +15,6 @@ import { isInPeriod } from '@/lib/utils/dateFormatter';
 // Composants
 import { StatsCards } from '@/components/Dashboard/StatsCards';
 import { PeriodSelector } from '@/components/Dashboard/PeriodSelector';
-import { ExportButton } from '@/components/Dashboard/ExportButton';
 import { TransactionTable } from '@/components/Dashboard/TransactionTable';
 import { BeneficiaryList } from '@/components/Dashboard/BeneficiaryList';
 import { BeneficiaryManager } from '@/components/Dashboard/BeneficiaryManager';
@@ -426,6 +425,18 @@ export default function DashboardPage() {
       : 'Wallets';
   }, [periodType, periodValue, walletAliases, isMounted, translationsReady, t]);
 
+  const periodLabel = useMemo(() => {
+    if (periodType === 'month') return periodValue as string;
+    if (periodType === 'wallet') {
+      return Array.isArray(periodValue) && periodValue.length === 1
+        ? (isMounted && translationsReady
+          ? t('dashboard.period.wallet', { wallet: walletPeriodLabel, defaultValue: `Wallet ${walletPeriodLabel}` })
+          : `Wallet ${walletPeriodLabel}`)
+        : (isMounted && translationsReady ? t('dashboard.period.walletGeneric', { defaultValue: walletPeriodLabel }) : walletPeriodLabel);
+    }
+    return isMounted && translationsReady ? t('dashboard.period.allPayments') : 'Tous les paiements';
+  }, [periodType, periodValue, walletPeriodLabel, isMounted, translationsReady, t]);
+
   // Vérifier l'authentification (compte client)
   if (!authLoading && !isAuthenticated) {
     return (
@@ -550,7 +561,7 @@ export default function DashboardPage() {
           // État de chargement
           <div className="bg-white rounded-lg shadow p-12 text-center">
             <div className="animate-spin w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-gray-600">Chargement de votre dashboard...</p>
+            <p className="text-gray-600">{t('dashboard.loading')}</p>
           </div>
         ) : payments.length === 0 ? (
           // État vide
@@ -573,33 +584,17 @@ export default function DashboardPage() {
                 onDeleteWallet={handleDeleteWallet}
                 onSetPrimaryWallet={handleSetPrimaryWallet}
               />
-              
-              <ExportButton 
-                payments={filteredPayments}
-                userAddress={address || ''}
-                period={
-                  periodType === 'month'
-                    ? (periodValue as string)
-                    : periodType === 'wallet'
-                      ? (isMounted && translationsReady
-                        ? (Array.isArray(periodValue) && periodValue.length === 1
-                          ? t('dashboard.period.wallet', { wallet: walletPeriodLabel, defaultValue: `Wallet ${walletPeriodLabel}` })
-                          : t('dashboard.period.walletGeneric', { defaultValue: walletPeriodLabel }))
-                        : (Array.isArray(periodValue) && periodValue.length === 1
-                          ? `Wallet ${walletPeriodLabel}`
-                          : walletPeriodLabel))
-                      : (isMounted && translationsReady ? t('dashboard.period.allPayments') : 'Tous les paiements')
-                }
-              />
             </div>
 
-            {/* Tableau des transactions */}
+            {/* Tableau des transactions (export intégré dans la barre de recherche) */}
             <div className="mb-8">
               <TransactionTable
                 payments={filteredPayments}
                 onRename={handleRenameBeneficiary}
                 onCancel={setSelectedPaymentToCancel}
                 onDelete={handleDeletePayment}
+                userAddress={address || ''}
+                period={periodLabel}
               />
             </div>
 
@@ -640,8 +635,8 @@ export default function DashboardPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
           <div>
-            <p className="font-semibold">Paiement annulé !</p>
-            <p className="text-sm">Les fonds ont été remboursés</p>
+            <p className="font-semibold">{t('dashboard.cancel.success.title')}</p>
+            <p className="text-sm">{t('dashboard.cancel.success.message')}</p>
           </div>
         </div>
       )}

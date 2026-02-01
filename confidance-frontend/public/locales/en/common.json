@@ -13,6 +13,7 @@
     "connectWallet": "Connect your wallet",
     "disconnect": "Disconnect",
     "cancel": "Cancel",
+    "changeLanguage": "Change language",
     "confirm": "Confirm",
     "save": "Save",
     "loading": "Loading...",
@@ -22,6 +23,13 @@
     "accountType": {
       "professional": "Pro",
       "individual": "Individual"
+    },
+    "upgradeToPro": "Switch to Pro account",
+    "editProInfo": "Edit my Pro info",
+    "themeToggle": {
+      "ariaLabel": "Toggle theme",
+      "switchToLight": "Switch to light mode",
+      "switchToDark": "Switch to dark mode"
     },
     "accountSettings": {
       "menuLabel": "Login details",
@@ -167,6 +175,8 @@
       "search": "Search by name or address...",
       "beneficiary": "Beneficiary",
       "amount": "Amount",
+      "referenceAmountNote": "This amount is not debited",
+      "nextInstallmentNote": "Funds not locked",
       "releaseDate": "Release date",
       "status": "Status",
       "contract": "Contract",
@@ -177,8 +187,36 @@
       "releasedOn": "Released on {{date}}",
       "clickToRename": "Click to rename",
       "copyAddress": "Copy address",
+      "copyHash": "Copy hash",
+      "transactionHash": "Transaction hash",
       "viewOnBasescan": "View on Basescan",
+      "sendByEmail": "Send by email",
       "cancelPayment": "Cancel payment"
+    },
+    "emailTransaction": {
+      "amount": "Amount",
+      "date": "Date",
+      "paymentType": "Payment type",
+      "cancellation": "Cancellation",
+      "cancellable": "Cancellable",
+      "notCancellable": "Non-cancellable",
+      "emailRecipient": "Email recipient",
+      "myself": "Myself",
+      "otherPerson": "Other person",
+      "emailAddress": "Email address",
+      "emailPlaceholder": "example@email.com",
+      "emailRequired": "Please enter an email address",
+      "invalidEmailAddress": "Invalid email address",
+      "recipientNameOptional": "Recipient name (optional)",
+      "recipientNamePlaceholder": "e.g. John Doe",
+      "sendError": "Error sending",
+      "sendSuccess": "Email sent successfully!",
+      "emailSentVia": "Email will be sent via Brevo to the indicated address.",
+      "sendByEmail": "Send by email",
+      "recurringMonths": "Monthly ({{count}} installment{{plural}})",
+      "recurring": "Monthly",
+      "instant": "Instant",
+      "scheduled": "Scheduled"
     },
     "status": {
       "pending": "Pending",
@@ -196,9 +234,11 @@
       "month": "Month {{number}}",
       "status": {
         "executed": "Executed",
+        "released": "Released",
         "pending": "Pending",
         "failed": "Failed",
-        "cancelled": "Cancelled"
+        "cancelled": "Cancelled",
+        "mixed": "Executed & cancelled"
       }
     },
     "beneficiary": {
@@ -266,12 +306,31 @@
     },
     "beneficiaries": {
       "title": "My beneficiaries",
+      "count_one": "{{count}} beneficiary",
+      "count_other": "{{count}} beneficiaries",
       "empty": "No beneficiaries",
       "emptyDescription": "Create payments to add beneficiaries to your list.",
       "edit": "Edit",
+      "totalLabel": "Total:",
       "delete": "Delete",
       "deleteConfirm": "Delete \"{{name}}\" from your beneficiaries?",
       "deleteError": "Error deleting",
+      "modalTitleEdit": "Edit beneficiary",
+      "modalTitleNew": "New beneficiary",
+      "nameLabel": "Beneficiary name",
+      "namePlaceholder": "e.g. John Doe, Company XYZ...",
+      "nameMinChars": "Minimum 2 characters",
+      "categoryLabel": "Category",
+      "addressLabel": "Address",
+      "createButton": "Create",
+      "saving": "Saving...",
+      "errorNameMin": "Name must be at least 2 characters",
+      "errorSave": "Error saving",
+      "contactForLinks": "These details let you send payment links directly to the recipient (email or SMS), more securely than copy-pasting.",
+      "email": "Email",
+      "phone": "Phone",
+      "emailPlaceholder": "e.g. recipient@example.com",
+      "phonePlaceholder": "e.g. +1 234 567 8900",
       "categories": {
         "family": "Family",
         "work": "Work",
@@ -301,6 +360,7 @@
     "cancel": {
       "title": "Cancel payment",
       "warning": "⚠️ You are about to cancel this scheduled payment:",
+      "warningRecurring": "⚠️ You are about to cancel this recurring payment:",
       "beneficiary": "Beneficiary:",
       "beneficiaries": "Beneficiaries:",
       "amount": "Amount:",
@@ -313,6 +373,7 @@
       "irreversible": "This action is irreversible",
       "noFees": "Protocol fees are refunded on cancellation",
       "confirmText": "I understand that this action is irreversible and I wish to cancel this scheduled payment.",
+      "confirmTextRecurring": "I understand that this action is irreversible and I wish to cancel this recurring payment.",
       "close": "Close",
       "processing": "Cancelling...",
       "confirm": "Confirm cancellation",
@@ -837,6 +898,112 @@
     "currentNetwork": "Current network: ChainID {{chainId}}",
     "switchNetworkHint": "💡 Click on your wallet and switch network to Base Mainnet"
   },
+  "firstStep": {
+    "recommended": "Recommended",
+    "difficultyLabel": "Difficulty"
+  },
+  "languageSwitcher": {
+    "ariaLabel": "Change language",
+    "chooseLanguage": "Choose language",
+    "preferenceSaved": "Preference saved"
+  },
+  "analytics": {
+    "kpi": {
+      "transactions": "Transactions",
+      "totalVolume": "Total Volume",
+      "totalFees": "Total Fees",
+      "realCost": "Real Cost"
+    },
+    "feesBreakdown": {
+      "totalMonthlyFees": "TOTAL MONTHLY FEES"
+    },
+    "transactionTypeTable": {
+      "title": "Transaction type breakdown",
+      "typeHeader": "Transaction type",
+      "countHeader": "Count",
+      "volumeHeader": "Volume",
+      "avgFeesHeader": "Avg. fees",
+      "instant": "Instant payments",
+      "scheduled": "Scheduled payments",
+      "recurring": "Recurring payments",
+      "total": "TOTAL"
+    },
+    "monthlyComparison": {
+      "history": "Monthly History"
+    }
+  },
+  "liquidity": {
+    "connectWallet": "Connect your wallet",
+    "connectWalletDescription": "To access liquidity, please connect your wallet first.",
+    "title": "Access liquidity without selling your ETH",
+    "subtitle": "Use your ETH as collateral and receive USDC or USDT in seconds.",
+    "secure": "Secure",
+    "secureDesc": "Your funds are protected by the blockchain and audited smart contracts",
+    "instant": "Instant",
+    "instantDesc": "Receive your liquidity immediately after the transaction is confirmed",
+    "flexible": "Flexible",
+    "flexibleDesc": "Repay anytime and get your ETH back with no penalty",
+    "form": {
+      "ethAmountLabel": "Amount of ETH to deposit",
+      "approxEur": "≈ {{value}} €",
+      "max": "Max: {{amount}} ETH",
+      "availableInWallet": "Available in your wallet",
+      "liquidityYouWant": "Liquidity you want",
+      "sliderPrudent": "Prudent",
+      "sliderOptimal": "Optimal",
+      "sliderMaximum": "Maximum",
+      "youReceive": "You receive",
+      "estimatedCost6Months": "Estimated cost over 6 months: {{amount}} {{token}}",
+      "annualRate": "Annual rate: {{rate}}%",
+      "watchOut": "Watch out",
+      "watchOutDesc": "If ETH price drops, automatic protection may trigger to preserve your deposit.",
+      "seeHowItWorks": "→ See how it works",
+      "confirmAndReceive": "Confirm and receive my liquidity",
+      "repayAnytime": "You can repay anytime and get your ETH back"
+    },
+    "statusCard": {
+      "positionSummary": "Position summary",
+      "healthy": "Healthy position",
+      "healthyDesc": "Your ETH comfortably covers your liquidity.",
+      "warning": "Watch out",
+      "warningDesc": "Monitor ETH price or reduce your liquidity.",
+      "ethDeposited": "ETH deposited",
+      "liquidity": "Liquidity",
+      "annualRate": "Annual rate",
+      "safetyRatio": "Safety ratio",
+      "safe": "Safe",
+      "confirmAndReceive": "Confirm and receive my liquidity",
+      "repayAnytime": "You can repay anytime and get your ETH back"
+    },
+    "protectionExplainer": {
+      "howItWorks": "How does it work?",
+      "step1Title": "1. You deposit your ETH",
+      "step1Desc": "Your ETH stays safe and continues to exist. It simply serves as collateral.",
+      "step1Example": "Example: You deposit 1 ETH (≈ €2,000)",
+      "step2Title": "2. You receive liquidity",
+      "step2Desc": "Immediately, you receive USDC or USDT that you can use freely.",
+      "step2Example": "Example: You receive 1,200 USDC",
+      "step3Title": "3. All good if the market is stable",
+      "step3Desc": "As long as ETH holds its value, your position is healthy and you only pay interest.",
+      "step3Cost": "Cost: 6% per year, about 72 USDC per year",
+      "step4Title": "4. Alert if price drops too much",
+      "step4Desc": "If ETH loses value, you get a notification to add ETH or repay part of it.",
+      "step4Threshold": "Threshold: You are alerted when your ETH only covers 70% of your liquidity",
+      "step5Title": "5. Automatic protection",
+      "step5Desc": "If you don't act, the system sells just enough ETH to preserve the rest of your deposit.",
+      "step5Priority": "Priority: Partial sale only, we protect your capital",
+      "understood": "I understand"
+    },
+    "feePreview": {
+      "summary": "Summary",
+      "ethDeposited": "ETH deposited",
+      "liquidityReceived": "Liquidity received",
+      "annualRate": "Annual rate",
+      "annualCost": "Annual cost",
+      "cost6Months": "Cost over 6 months",
+      "note": "Interest accrues daily and is due at repayment."
+    }
+  },
   "footer": {
     "description": "Because payments shouldn't depend on trust. They should depend on code.",
     "product": "Product",
@@ -848,7 +1015,9 @@
     "support": "Support",
     "terms": "Legal notice",
     "privacy": "Privacy",
-    "copyright": "© {{year}} Confidance Crypto. All rights reserved."
+    "copyright": "© {{year}} Confidance Crypto. All rights reserved.",
+    "madeWith": "Made with",
+    "forDeFi": "for DeFi"
   },
   "beneficiary": {
     "unnamed": "Unnamed",
@@ -908,6 +1077,12 @@
         "label": "Give your link a clear title.",
         "startAtInformative": "The first monthly payment starts when the recipient opens the link and confirms the payment."
       },
+      "aria": {
+        "enableIdentity": "Enable payment identity",
+        "disableIdentity": "Disable payment identity",
+        "enablePaymentDescription": "Enable payment description",
+        "disablePaymentDescription": "Disable payment description"
+      },
       "errors": {
         "connectWallet": "Connect your wallet first",
         "amount": "Invalid amount",
@@ -924,7 +1099,13 @@
       "successDescription": "Share this link to receive payments",
       "shareInfo": "Share this link via email, social media, or messaging apps",
       "copied": "Copied!",
-      "copy": "Copy"
+      "copy": "Copy",
+      "sendLinkTitle": "Send link directly",
+      "sendByEmail": "Send by email",
+      "sendBySms": "Send by SMS",
+      "emailPlaceholder": "e.g. recipient@example.com",
+      "phonePlaceholder": "e.g. +1 234 567 8900",
+      "pickFromRecipients": "Choose from my recipients"
     },
     "types": {
       "instant": "Instant",
@@ -1024,6 +1205,7 @@
       },
       "errors": {
         "notFound": "Payment link not found",
+        "invalidOrExpired": "This payment link is invalid or has expired",
         "chainMismatch": "Please switch to {{network}}",
         "chainUnsupported": "This network is not supported yet.",
         "recurringToken": "Recurring requires USDC or USDT",

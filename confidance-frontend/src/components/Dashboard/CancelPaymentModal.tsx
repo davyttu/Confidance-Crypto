@@ -147,7 +147,9 @@ export function CancelPaymentModal({ payment, onClose, onConfirm }: CancelPaymen
           {/* Détails du paiement */}
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
             <p className="text-sm text-red-800 font-medium mb-3">
-              {isMounted && translationsReady ? t('dashboard.cancel.warning') : '⚠️ Vous êtes sur le point d\'annuler ce paiement programmé :'}
+              {isMounted && translationsReady
+                ? (isRecurring ? t('dashboard.cancel.warningRecurring') : t('dashboard.cancel.warning'))
+                : (isRecurring ? '⚠️ Vous êtes sur le point d\'annuler ce paiement récurrent :' : '⚠️ Vous êtes sur le point d\'annuler ce paiement programmé :')}
             </p>
             
             <div className="space-y-2 text-sm">
@@ -239,8 +241,8 @@ export function CancelPaymentModal({ payment, onClose, onConfirm }: CancelPaymen
             />
             <span className="text-sm text-gray-700">
               {isMounted && translationsReady
-                ? t('dashboard.cancel.confirmText')
-                : 'I understand that this action is irreversible and I wish to cancel this scheduled payment.'}
+                ? (isRecurring ? t('dashboard.cancel.confirmTextRecurring') : t('dashboard.cancel.confirmText'))
+                : (isRecurring ? 'I understand that this action is irreversible and I wish to cancel this recurring payment.' : 'I understand that this action is irreversible and I wish to cancel this scheduled payment.')}
             </span>
           </label>
 

@@ -10,9 +10,11 @@ interface ExportButtonProps {
   payments: Payment[];
   userAddress: string;
   period: string;
+  /** Intégré à la fin de la barre de recherche : même hauteur, style discret */
+  variant?: 'default' | 'inline';
 }
 
-export function ExportButton({ payments, userAddress, period }: ExportButtonProps) {
+export function ExportButton({ payments, userAddress, period, variant = 'default' }: ExportButtonProps) {
   const { t, ready: translationsReady } = useTranslation();
   const [isMounted, setIsMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -36,18 +38,26 @@ export function ExportButton({ payments, userAddress, period }: ExportButtonProp
     return null; // Ne pas afficher si aucun paiement
   }
 
+  const isInline = variant === 'inline';
+
   return (
-    <div className="relative">
+    <div className={isInline ? 'relative flex-shrink-0' : 'relative'}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         disabled={isExporting}
-        className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className={
+          isInline
+            ? 'flex items-center gap-1.5 h-full min-h-[42px] px-3 border-l border-gray-300 rounded-r-lg bg-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+            : 'flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+        }
       >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
         </svg>
-        <span>{isExporting ? (isMounted && translationsReady ? t('dashboard.export.exporting') : 'Export...') : (isMounted && translationsReady ? t('dashboard.export.button') : 'Exporter')}</span>
-        <svg className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        {!isInline && (
+          <span>{isExporting ? (isMounted && translationsReady ? t('dashboard.export.exporting') : 'Export...') : (isMounted && translationsReady ? t('dashboard.export.button') : 'Exporter')}</span>
+        )}
+        <svg className={`w-3.5 h-3.5 flex-shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>

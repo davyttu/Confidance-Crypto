@@ -320,6 +320,7 @@ function SectionStepByStep({ section }: { section: Section }) {
 }
 
 function SectionWalletCards({ section }: { section: Section }) {
+  const { t } = useTranslation();
   if (section.type !== 'wallet-cards' || !section.content) return null;
   const c = section.content as {
     badge?: { text: string };
@@ -398,7 +399,7 @@ function SectionWalletCards({ section }: { section: Section }) {
                 ))}
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Difficulté : {w.difficulty}
+                {t('firstStep.difficultyLabel')}: {w.difficulty}
               </p>
             </a>
           ))}

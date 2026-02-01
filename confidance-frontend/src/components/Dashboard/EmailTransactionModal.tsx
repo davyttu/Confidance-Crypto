@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { formatAmount, sumAmounts } from '@/lib/utils/amountFormatter';
 import { formatDate } from '@/lib/utils/dateFormatter';
 import { truncateAddress } from '@/lib/utils/addressFormatter';
+import { useTranslation } from 'react-i18next';
 
 interface EmailTransactionModalProps {
   payment: Payment | null;
@@ -19,6 +20,7 @@ export function EmailTransactionModal({
   payment, 
   onClose 
 }: EmailTransactionModalProps) {
+  const { t } = useTranslation();
   const { getBeneficiaryName } = useBeneficiaries();
   const { sendEmail, isSending, error, success } = useEmailTransaction();
   const { user } = useAuth();
@@ -101,12 +103,12 @@ export function EmailTransactionModal({
   const handleSend = async () => {
     // Validation
     if (!email.trim()) {
-      setEmailError('Veuillez entrer une adresse email');
+      setEmailError(t('dashboard.emailTransaction.emailRequired'));
       return;
     }
 
     if (!validateEmail(email)) {
-      setEmailError('Adresse email invalide');
+      setEmailError(t('dashboard.emailTransaction.invalidEmailAddress'));
       return;
     }
 
@@ -129,7 +131,7 @@ export function EmailTransactionModal({
                 </svg>
               </div>
               <h2 className="text-xl font-bold text-gray-900">
-                Envoyer par email
+                {t('dashboard.emailTransaction.sendByEmail')}
               </h2>
             </div>
             <button
@@ -148,7 +150,7 @@ export function EmailTransactionModal({
           {/* Résumé du paiement */}
           <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-600">Montant</span>
+              <span className="text-sm text-gray-600">{t('dashboard.emailTransaction.amount')}</span>
               <span className="text-lg font-bold text-gray-900">
                 {formatAmount(totalAmount, tokenDecimals)} {payment.token_symbol}
               </span>
@@ -160,29 +162,29 @@ export function EmailTransactionModal({
               <span className="text-sm font-medium text-gray-900">{displayBeneficiary}</span>
             </div>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-600">Date</span>
+              <span className="text-sm text-gray-600">{t('dashboard.emailTransaction.date')}</span>
               <span className="text-sm font-medium text-gray-900">{formatDate(payment.release_time)}</span>
             </div>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-600">Type de paiement</span>
+              <span className="text-sm text-gray-600">{t('dashboard.emailTransaction.paymentType')}</span>
               <span className="text-sm font-medium text-gray-900">
                 {(() => {
                   if (payment.payment_type === 'recurring' || payment.is_recurring) {
                     // Pour les paiements récurrents, afficher "Mensualisé (X échéances)"
                     const totalMonths = payment.total_months;
-                    return totalMonths ? `Mensualisé (${totalMonths} échéance${totalMonths > 1 ? 's' : ''})` : 'Mensualisé';
+                    return totalMonths ? t('dashboard.emailTransaction.recurringMonths', { count: totalMonths, plural: totalMonths > 1 ? 's' : '' }) : t('dashboard.emailTransaction.recurring');
                   } else if (payment.payment_type === 'instant' || payment.is_instant) {
-                    return 'Instantané';
+                    return t('dashboard.emailTransaction.instant');
                   } else {
-                    return 'Programmé';
+                    return t('dashboard.emailTransaction.scheduled');
                   }
                 })()}
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Annulation</span>
+              <span className="text-sm text-gray-600">{t('dashboard.emailTransaction.cancellation')}</span>
               <span className={`text-sm font-medium ${payment.cancellable ? 'text-green-600' : 'text-gray-600'}`}>
-                {payment.cancellable ? 'Annulable' : 'Non-annulable'}
+                {payment.cancellable ? t('dashboard.emailTransaction.cancellable') : t('dashboard.emailTransaction.notCancellable')}
               </span>
             </div>
           </div>
@@ -190,7 +192,7 @@ export function EmailTransactionModal({
           {/* Choix du destinataire */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-3">
-              Destinataire de l'email
+              {t('dashboard.emailTransaction.emailRecipient')}
             </label>
             
             <div className="flex gap-3 mb-4">
@@ -206,7 +208,7 @@ export function EmailTransactionModal({
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
-                  <span className="font-medium">Moi-même</span>
+                  <span className="font-medium">{t('dashboard.emailTransaction.myself')}</span>
                 </div>
               </button>
 
@@ -222,7 +224,7 @@ export function EmailTransactionModal({
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                   </svg>
-                  <span className="font-medium">Autre personne</span>
+                  <span className="font-medium">{t('dashboard.emailTransaction.otherPerson')}</span>
                 </div>
               </button>
             </div>
@@ -231,7 +233,7 @@ export function EmailTransactionModal({
           {/* Champ email */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Adresse email
+              {t('dashboard.emailTransaction.emailAddress')}
             </label>
             <input
               type="email"
@@ -240,7 +242,7 @@ export function EmailTransactionModal({
                 setEmail(e.target.value);
                 setEmailError(null);
               }}
-              placeholder="exemple@email.com"
+              placeholder={t('dashboard.emailTransaction.emailPlaceholder')}
               className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all ${
                 emailError
                   ? 'border-red-500'
@@ -251,7 +253,7 @@ export function EmailTransactionModal({
               <p className="text-sm text-red-600 mt-2">{emailError}</p>
             )}
             <p className="text-xs text-gray-500 mt-1">
-              💡 L'email sera envoyé via Brevo à l'adresse indiquée.
+              💡 {t('dashboard.emailTransaction.emailSentVia')}
             </p>
           </div>
 
@@ -259,13 +261,13 @@ export function EmailTransactionModal({
           {recipientType === 'other' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nom du destinataire <span className="text-gray-400">(optionnel)</span>
+                {t('dashboard.emailTransaction.recipientNameOptional')}
               </label>
               <input
                 type="text"
                 value={recipientName}
                 onChange={(e) => setRecipientName(e.target.value)}
-                placeholder="Ex: Jean Dupont"
+                placeholder={t('dashboard.emailTransaction.recipientNamePlaceholder')}
                 className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
               />
             </div>
@@ -292,7 +294,7 @@ export function EmailTransactionModal({
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
-              Email envoyé avec succès !
+              {t('dashboard.emailTransaction.sendSuccess')}
             </div>
           )}
         </div>

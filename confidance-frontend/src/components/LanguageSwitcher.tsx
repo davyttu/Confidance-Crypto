@@ -1,8 +1,9 @@
 // src/components/LanguageSwitcher.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '@/hooks/useAuth';
 
 const languages = [
   { code: 'fr', name: 'Français', flag: '🇫🇷' },
@@ -12,45 +13,73 @@ const languages = [
   { code: 'zh', name: '中文', flag: '🇨🇳' },
 ];
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
 export function LanguageSwitcher() {
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
+  const { isAuthenticated } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [currentLangCode, setCurrentLangCode] = useState<string>('fr');
   const [isMounted, setIsMounted] = useState(false);
-  
-  // ✅ FIX : Éviter le mismatch d'hydratation en utilisant un état local
+  const preferencesLoaded = useRef(false);
+
+  useEffect(() => {
+    if (!isAuthenticated) preferencesLoaded.current = false;
+  }, [isAuthenticated]);
+
+  // Charger la locale sauvegardée quand l'utilisateur est connecté (pour le relevé mensuel, etc.)
+  useEffect(() => {
+    if (!isAuthenticated || preferencesLoaded.current) return;
+    preferencesLoaded.current = true;
+    fetch(`${API_URL}/api/users/preferences`, { credentials: 'include' })
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        const locale = data?.preferences?.locale;
+        if (locale && languages.some((l) => l.code === locale) && locale !== i18n.language?.split('-')[0]) {
+          i18n.changeLanguage(locale);
+        }
+      })
+      .catch(() => {});
+  }, [isAuthenticated, i18n]);
+
+  // Éviter le mismatch d'hydratation
   useEffect(() => {
     setIsMounted(true);
     setCurrentLangCode(i18n.language || 'fr');
   }, [i18n.language]);
-  
-  // Écouter les changements de langue
+
   useEffect(() => {
     const handleLanguageChanged = (lng: string) => {
       setCurrentLangCode(lng);
     };
-    
     i18n.on('languageChanged', handleLanguageChanged);
-    
     return () => {
       i18n.off('languageChanged', handleLanguageChanged);
     };
   }, [i18n]);
-  
+
   const currentLanguage = languages.find(lang => lang.code === currentLangCode) || languages[0];
 
   const changeLanguage = (code: string) => {
     i18n.changeLanguage(code);
     setIsOpen(false);
+    if (isAuthenticated) {
+      fetch(`${API_URL}/api/users/preferences`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ locale: code }),
+      }).catch(() => {});
+    }
   };
 
-  // ✅ FIX : Utiliser la langue par défaut pendant l'hydratation pour éviter le mismatch
+  // ✅ FIX : Utiliser une chaîne fixe (pas t()) pendant l'hydratation pour éviter le mismatch serveur/client
   if (!isMounted) {
     return (
       <div className="relative">
         <button
           className="group flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
-          aria-label="Changer de langue"
+          aria-label="Change language"
           disabled
         >
           <span className="text-lg">🇫🇷</span>
@@ -76,7 +105,7 @@ export function LanguageSwitcher() {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="group flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600 transition-all shadow-sm hover:shadow-md"
-        aria-label="Changer de langue"
+        aria-label={t('languageSwitcher.ariaLabel')}
       >
         {/* Drapeau */}
         <span className="text-lg">{currentLanguage.flag}</span>
@@ -110,7 +139,7 @@ export function LanguageSwitcher() {
             {/* Header */}
             <div className="px-4 py-2.5 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 border-b border-gray-200 dark:border-gray-700">
               <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                🌍 Choisir la langue
+                🌍 {t('languageSwitcher.chooseLanguage')}
               </p>
             </div>
 
@@ -163,7 +192,7 @@ export function LanguageSwitcher() {
             {/* Footer subtil */}
             <div className="px-4 py-2 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700">
               <p className="text-xs text-gray-500 dark:text-gray-500 text-center">
-                Préférence enregistrée
+                {t('languageSwitcher.preferenceSaved')}
               </p>
             </div>
           </div>

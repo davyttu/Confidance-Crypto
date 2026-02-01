@@ -3,6 +3,7 @@ const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 const { addTimelineEvent } = require('../services/timeline/timelineService');
 const { sendRecurringFailureEmail } = require('../services/email/recurringFailureEmail');
+const { notifyPaymentFailed } = require('../services/notificationService');
 
 const router = express.Router();
 
@@ -563,6 +564,17 @@ router.post('/notify-failed', async (req, res) => {
       reason: typeof failure_reason === 'string' ? failure_reason : undefined,
       monthNumber
     });
+
+    if (payment?.user_id) {
+      const reasonText = monthNumber
+        ? `Mensualité ${monthNumber} échouée. ${typeof failure_reason === 'string' ? failure_reason : ''}`.trim()
+        : (typeof failure_reason === 'string' ? failure_reason : 'Mensualité échouée');
+      await notifyPaymentFailed(
+        payment.user_id,
+        payment.payment_label || 'Paiement récurrent',
+        reasonText
+      ).catch((err) => console.warn('⚠️ Notification in-app recurring failure:', err?.message || err));
+    }
 
     if (payment?.id && payment?.user_id) {
       addTimelineEvent({

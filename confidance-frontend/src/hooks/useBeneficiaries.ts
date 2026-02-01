@@ -15,6 +15,8 @@ export interface Beneficiary {
   beneficiary_address: string;
   display_name: string;
   category: BeneficiaryCategory | null;
+  email?: string | null;
+  phone?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -23,8 +25,8 @@ interface UseBeneficiariesReturn {
   beneficiaries: Beneficiary[];
   isLoading: boolean;
   error: Error | null;
-  createBeneficiary: (address: string, name: string, category?: BeneficiaryCategory) => Promise<void>;
-  updateBeneficiary: (id: string, name: string, category?: BeneficiaryCategory) => Promise<void>;
+  createBeneficiary: (address: string, name: string, category?: BeneficiaryCategory, email?: string | null, phone?: string | null) => Promise<void>;
+  updateBeneficiary: (id: string, name: string, category?: BeneficiaryCategory, email?: string | null, phone?: string | null) => Promise<void>;
   deleteBeneficiary: (id: string) => Promise<void>;
   getBeneficiaryName: (address: string) => string | null;
   refetch: () => Promise<void>;
@@ -71,7 +73,9 @@ export function useBeneficiaries(): UseBeneficiariesReturn {
   const createBeneficiary = async (
     beneficiaryAddress: string,
     displayName: string,
-    category?: BeneficiaryCategory
+    category?: BeneficiaryCategory,
+    email?: string | null,
+    phone?: string | null
   ) => {
     if (!address) throw new Error(t('dashboard.auth.walletNotConnected.title', { defaultValue: 'Wallet not connected' }));
 
@@ -83,6 +87,8 @@ export function useBeneficiaries(): UseBeneficiariesReturn {
         beneficiary_address: beneficiaryAddress,
         display_name: displayName,
         category: category || null,
+        email: email && String(email).trim() ? String(email).trim() : null,
+        phone: phone && String(phone).trim() ? String(phone).trim() : null,
       }),
     });
 
@@ -96,7 +102,9 @@ export function useBeneficiaries(): UseBeneficiariesReturn {
   const updateBeneficiary = async (
     id: string,
     displayName: string,
-    category?: BeneficiaryCategory
+    category?: BeneficiaryCategory,
+    email?: string | null,
+    phone?: string | null
   ) => {
     const response = await fetch(`${API_URL}/api/beneficiaries/${id}`, {
       method: 'PUT',
@@ -104,6 +112,8 @@ export function useBeneficiaries(): UseBeneficiariesReturn {
       body: JSON.stringify({
         display_name: displayName,
         category: category || null,
+        email: email !== undefined ? (email && String(email).trim() ? String(email).trim() : null) : undefined,
+        phone: phone !== undefined ? (phone && String(phone).trim() ? String(phone).trim() : null) : undefined,
       }),
     });
 

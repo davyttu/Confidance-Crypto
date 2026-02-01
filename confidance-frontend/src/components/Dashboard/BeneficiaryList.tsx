@@ -21,30 +21,39 @@ export function BeneficiaryList({ onEdit }: BeneficiaryListProps) {
     setIsMounted(true);
   }, []);
 
-  // Fonction pour obtenir le label traduit d'une catégorie
-  const getCategoryLabel = (category: BeneficiaryCategory | null) => {
-    if (!category) return isMounted && translationsReady ? t('dashboard.beneficiaries.categories.other') : 'Autre';
-    
-    const translations: Record<string, string> = {
-      'Famille': isMounted && translationsReady ? t('dashboard.beneficiaries.categories.family') : 'Famille',
-      'Travail': isMounted && translationsReady ? t('dashboard.beneficiaries.categories.work') : 'Travail',
-      'Perso': isMounted && translationsReady ? t('dashboard.beneficiaries.categories.personal') : 'Perso',
-      'Autre': isMounted && translationsReady ? t('dashboard.beneficiaries.categories.other') : 'Autre',
-    };
-    
-    return translations[category] || translations['Autre'];
+  // Valeurs possibles renvoyées par l'API (anglais/uppercase) ou frontend (français)
+  const CATEGORY_TO_I18N: Record<string, string> = {
+    FAMILY: 'dashboard.beneficiaries.categories.family',
+    Famille: 'dashboard.beneficiaries.categories.family',
+    WORK: 'dashboard.beneficiaries.categories.work',
+    Travail: 'dashboard.beneficiaries.categories.work',
+    PERSONAL: 'dashboard.beneficiaries.categories.personal',
+    Perso: 'dashboard.beneficiaries.categories.personal',
+    OTHER: 'dashboard.beneficiaries.categories.other',
+    Autre: 'dashboard.beneficiaries.categories.other',
   };
 
-  // Icône et couleur par catégorie
-  const getCategoryStyle = (category: BeneficiaryCategory | null) => {
-    const styles = {
-      'Famille': { icon: '👨‍👩‍👧‍👦', color: 'bg-blue-100 text-blue-800' },
-      'Travail': { icon: '💼', color: 'bg-purple-100 text-purple-800' },
-      'Perso': { icon: '⭐', color: 'bg-green-100 text-green-800' },
-      'Autre': { icon: '📌', color: 'bg-gray-100 text-gray-800' },
-    };
+  const getCategoryLabel = (category: BeneficiaryCategory | string | null) => {
+    if (!category) return isMounted && translationsReady ? t('dashboard.beneficiaries.categories.other') : 'Autre';
+    const key = CATEGORY_TO_I18N[category];
+    if (key && isMounted && translationsReady) return t(key);
+    const fallbacks: Record<string, string> = { FAMILY: 'Famille', Famille: 'Famille', WORK: 'Travail', Travail: 'Travail', PERSONAL: 'Perso', Perso: 'Perso', OTHER: 'Autre', Autre: 'Autre' };
+    return fallbacks[category] ?? 'Autre';
+  };
 
-    return category ? styles[category] : styles['Autre'];
+  // Icône et couleur par catégorie (accepte API PERSONAL / frontend Perso)
+  const getCategoryStyle = (category: BeneficiaryCategory | string | null) => {
+    const styles: Record<string, { icon: string; color: string }> = {
+      FAMILY: { icon: '👨‍👩‍👧‍👦', color: 'bg-blue-100 text-blue-800' },
+      Famille: { icon: '👨‍👩‍👧‍👦', color: 'bg-blue-100 text-blue-800' },
+      WORK: { icon: '💼', color: 'bg-purple-100 text-purple-800' },
+      Travail: { icon: '💼', color: 'bg-purple-100 text-purple-800' },
+      PERSONAL: { icon: '⭐', color: 'bg-green-100 text-green-800' },
+      Perso: { icon: '⭐', color: 'bg-green-100 text-green-800' },
+      OTHER: { icon: '📌', color: 'bg-gray-100 text-gray-800' },
+      Autre: { icon: '📌', color: 'bg-gray-100 text-gray-800' },
+    };
+    return (category && styles[category]) ? styles[category] : styles['Autre'];
   };
 
   // Helper pour convertir un montant en BigInt (gère les formats décimal et BigInt)
@@ -208,7 +217,7 @@ export function BeneficiaryList({ onEdit }: BeneficiaryListProps) {
               {isMounted && translationsReady ? t('dashboard.beneficiaries.title') : 'Mes bénéficiaires'}
             </h2>
             <p className="text-xs text-gray-600 dark:text-gray-400">
-              {beneficiaries.length} {isMounted && translationsReady ? t('dashboard.beneficiaries.count', { count: beneficiaries.length }) : beneficiaries.length === 1 ? 'bénéficiaire' : 'bénéficiaires'}
+              {isMounted && translationsReady ? t('dashboard.beneficiaries.count', { count: beneficiaries.length }) : `${beneficiaries.length} ${beneficiaries.length === 1 ? 'bénéficiaire' : 'bénéficiaires'}`}
             </p>
           </div>
         </div>
@@ -267,7 +276,7 @@ export function BeneficiaryList({ onEdit }: BeneficiaryListProps) {
                         {/* Statistiques - Montants totaux */}
                         {stats && stats.count > 0 && Object.keys(stats.totalAmount).length > 0 && (
                           <div className="flex items-center gap-1.5 text-xs">
-                            <span className="text-gray-500 dark:text-gray-400">Total:</span>
+                            <span className="text-gray-500 dark:text-gray-400">{t('dashboard.beneficiaries.totalLabel')}</span>
                             <div className="flex items-center gap-1.5">
                               {Object.keys(stats.totalAmount).map((symbol, idx) => (
                                 <span key={symbol} className="text-xs font-medium text-gray-900 dark:text-white">

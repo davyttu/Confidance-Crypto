@@ -2,17 +2,19 @@
   "nav": {
     "home": "Inicio",
     "create": "Pagos",
-    "dashboard": "Dashboard",
+    "dashboard": "Panel",
     "liquidity": "Liquidez",
     "help": "Ayuda",
-    "analytics": "Analytics",
+    "analytics": "Análisis",
     "notifications": "Notificaciones"
   },
   "common": {
     "connect": "Conectar cartera",
     "connectWallet": "Por favor, conecte su cartera",
+    "register": "Crear cuenta",
     "disconnect": "Desconectar",
     "cancel": "Cancelar",
+    "changeLanguage": "Cambiar idioma",
     "confirm": "Confirmar",
     "save": "Guardar",
     "loading": "Cargando...",
@@ -21,6 +23,13 @@
     "accountType": {
       "professional": "Pro",
       "individual": "Individual"
+    },
+    "upgradeToPro": "Cambiar a cuenta Pro",
+    "editProInfo": "Editar mis datos Pro",
+    "themeToggle": {
+      "ariaLabel": "Cambiar tema",
+      "switchToLight": "Modo claro",
+      "switchToDark": "Modo oscuro"
     },
     "accountSettings": {
       "menuLabel": "Detalles de acceso",
@@ -87,6 +96,8 @@
       "description": "Confidance fue creado para hacer los pagos cripto predecibles, verificables e independientes de intermediarios."
     },
     "useCases": {
+      "title": "Casos de uso",
+      "subtitle": "Soluciones para todos tus pagos programados",
       "salaries": {
         "title": "Salarios automáticos",
         "desc": "Paga a tus equipos en una fecha fija"
@@ -164,6 +175,8 @@
       "search": "Buscar por nombre o dirección...",
       "beneficiary": "Beneficiario",
       "amount": "Monto",
+      "referenceAmountNote": "Esta suma no está debitada",
+      "nextInstallmentNote": "Fondos no bloqueados",
       "releaseDate": "Fecha de liberación",
       "status": "Estado",
       "contract": "Contrato",
@@ -174,8 +187,36 @@
       "releasedOn": "Liberado el {{date}}",
       "clickToRename": "Haz clic para renombrar",
       "copyAddress": "Copiar dirección",
+      "copyHash": "Copiar hash",
+      "transactionHash": "Hash de transacción",
       "viewOnBasescan": "Ver en Basescan",
+      "sendByEmail": "Enviar por email",
       "cancelPayment": "Cancelar pago"
+    },
+    "emailTransaction": {
+      "amount": "Importe",
+      "date": "Fecha",
+      "paymentType": "Tipo de pago",
+      "cancellation": "Cancelación",
+      "cancellable": "Cancelable",
+      "notCancellable": "No cancelable",
+      "emailRecipient": "Destinatario del email",
+      "myself": "Yo mismo",
+      "otherPerson": "Otra persona",
+      "emailAddress": "Dirección de email",
+      "emailPlaceholder": "ejemplo@email.com",
+      "emailRequired": "Introduce una dirección de email",
+      "invalidEmailAddress": "Dirección de email inválida",
+      "recipientNameOptional": "Nombre del destinatario (opcional)",
+      "recipientNamePlaceholder": "Ej: Juan García",
+      "sendError": "Error al enviar",
+      "sendSuccess": "¡Email enviado correctamente!",
+      "emailSentVia": "El email se enviará por Brevo a la dirección indicada.",
+      "sendByEmail": "Enviar por email",
+      "recurringMonths": "Mensual ({{count}} plazo{{plural}})",
+      "recurring": "Mensual",
+      "instant": "Instantáneo",
+      "scheduled": "Programado"
     },
     "status": {
       "pending": "Pendiente",
@@ -184,6 +225,19 @@
       "cancelled": "Cancelado",
       "failed": "Fallido",
       "completed": "Completado"
+    },
+    "recurringHistory": {
+      "title": "Historial de pagos mensuales",
+      "executed": "{{executed}} / {{total}} meses ejecutados",
+      "month": "Mes {{number}}",
+      "status": {
+        "executed": "Ejecutado",
+        "released": "Liberado",
+        "pending": "Pendiente",
+        "failed": "Fallido",
+        "cancelled": "Cancelado",
+        "mixed": "Ejecutado y cancelado"
+      }
     },
     "badges": {
       "new": "Nuevo"
@@ -253,12 +307,31 @@
     },
     "beneficiaries": {
       "title": "Mis beneficiarios",
+      "count_one": "{{count}} beneficiario",
+      "count_other": "{{count}} beneficiarios",
       "empty": "Sin beneficiarios",
       "emptyDescription": "Crea pagos para añadir beneficiarios a tu lista.",
       "edit": "Editar",
+      "totalLabel": "Total:",
       "delete": "Eliminar",
       "deleteConfirm": "¿Eliminar \"{{name}}\" de tus beneficiarios?",
       "deleteError": "Error al eliminar",
+      "modalTitleEdit": "Editar beneficiario",
+      "modalTitleNew": "Nuevo beneficiario",
+      "nameLabel": "Nombre del beneficiario",
+      "namePlaceholder": "Ej: Juan García, Empresa XYZ...",
+      "nameMinChars": "Mínimo 2 caracteres",
+      "categoryLabel": "Categoría",
+      "addressLabel": "Dirección",
+      "createButton": "Crear",
+      "saving": "Guardando...",
+      "errorNameMin": "El nombre debe tener al menos 2 caracteres",
+      "errorSave": "Error al guardar",
+      "contactForLinks": "Estos datos permiten enviar los enlaces de pago directamente al destinatario (email o SMS), de forma más segura que copiando y pegando.",
+      "email": "Email",
+      "phone": "Teléfono",
+      "emailPlaceholder": "ej: destinatario@ejemplo.com",
+      "phonePlaceholder": "ej: +34 612 34 56 78",
       "categories": {
         "family": "Familia",
         "work": "Trabajo",
@@ -306,7 +379,8 @@
       "pending": "Pendiente",
       "released": "Liberado",
       "cancelled": "Cancelado",
-      "failed": "Fallido"
+      "failed": "Fallido",
+      "completed": "Completado"
     },
     "recurringHistory": {
       "title": "Historial de pagos mensuales",
@@ -314,14 +388,17 @@
       "month": "Mes {{number}}",
       "status": {
         "executed": "Ejecutado",
+        "released": "Liberado",
         "pending": "Pendiente",
         "failed": "Fallido",
-        "cancelled": "Cancelado"
+        "cancelled": "Cancelado",
+        "mixed": "Ejecutado y cancelado"
       }
     },
     "cancel": {
       "title": "Cancelar pago",
       "warning": "⚠️ Estás a punto de cancelar este pago programado:",
+      "warningRecurring": "⚠️ Estás a punto de cancelar este pago recurrente:",
       "beneficiary": "Beneficiario:",
       "beneficiaries": "Beneficiarios:",
       "amount": "Monto:",
@@ -334,6 +411,7 @@
       "irreversible": "Esta acción es irreversible",
       "noFees": "Las comisiones del protocolo se reembolsan al cancelar",
       "confirmText": "Entiendo que esta acción es irreversible y deseo cancelar este pago programado.",
+      "confirmTextRecurring": "Entiendo que esta acción es irreversible y deseo cancelar este pago recurrente.",
       "close": "Cerrar",
       "processing": "Cancelando...",
       "confirm": "Confirmar cancelación",
@@ -505,6 +583,12 @@
         "label": "Dale un título claro a tu enlace.",
         "startAtInformative": "El primer pago mensual comienza cuando el destinatario abre el enlace y confirma el pago."
       },
+      "aria": {
+        "enableIdentity": "Activar identidad de pago",
+        "disableIdentity": "Desactivar identidad de pago",
+        "enablePaymentDescription": "Activar descripción de pago",
+        "disablePaymentDescription": "Desactivar descripción de pago"
+      },
       "errors": {
         "connectWallet": "Conecta tu wallet",
         "amount": "Monto inválido",
@@ -521,7 +605,13 @@
       "successDescription": "Comparte este enlace para recibir pagos",
       "shareInfo": "Comparte este enlace por correo, redes sociales o apps de mensajería",
       "copied": "¡Copiado!",
-      "copy": "Copiar"
+      "copy": "Copiar",
+      "sendLinkTitle": "Enviar el enlace directamente",
+      "sendByEmail": "Enviar por e-mail",
+      "sendBySms": "Enviar por SMS",
+      "emailPlaceholder": "ej: destinatario@ejemplo.com",
+      "phonePlaceholder": "ej: +34 612 34 56 78",
+      "pickFromRecipients": "Elegir entre mis destinatarios"
     },
     "types": {
       "instant": "Instantáneo",
@@ -536,6 +626,7 @@
       "button": "Mis enlaces de pago",
       "title": "Mis enlaces de pago",
       "empty": "No hay enlaces de pago",
+      "hint": "Una vez validado un pago, lo encontrarás en tu panel.",
       "unnamed": "Pago sin nombre",
       "filter": {
         "label": "Filtrar por categoría",
@@ -620,6 +711,7 @@
       },
       "errors": {
         "notFound": "Enlace de pago no encontrado",
+        "invalidOrExpired": "Este enlace de pago no es válido o ha expirado",
         "chainMismatch": "Cambia a {{network}}",
         "chainUnsupported": "Esta red no está soportada aún.",
         "recurringToken": "Recurrente requiere USDC o USDT",
@@ -636,6 +728,9 @@
     "voiceStopCta": "Detener el comando de voz",
     "voiceNeedBeneficiary": "Para usar el comando de voz, guarde al menos un beneficiario (aparecerán en favoritos).",
     "voiceLang": "Idioma de voz",
+    "wallet": {
+      "connectFirst": "Para crear un pago programado, conecta primero tu cartera"
+    },
     "currency": {
       "select": "Elige la cripto a enviar",
       "available": "disponibles",
@@ -714,7 +809,13 @@
     },
     "summary": {
       "title": "💰 Resumen",
-      "protocolFees": "Comisiones del protocolo ({{percentage}}%)"
+      "balance": "Saldo disponible",
+      "beneficiaryWillReceive": "El beneficiario recibirá",
+      "protocolFees": "Comisiones del protocolo ({{percentage}}%)",
+      "totalToSend": "TOTAL a enviar",
+      "secureTitle": "🔒 Pago seguro y automático",
+      "secureDescription": "Tus fondos quedan en un contrato y se liberan en la fecha elegida. Sin acción manual.",
+      "feesTooltip": "Estas tasas mantienen la plataforma y el keeper 24/7"
     },
     "submit": "Crear pago programado",
     "modal": {
@@ -759,7 +860,36 @@
       "contractAddress": "Dirección del contrato",
       "contractAddresses": "Direcciones de contratos",
       "approvalSummaryTitle": "Resumen de aprobación",
-      "approvalSummaryLine": "Total a aprobar: {{amount}} {{token}} por {{months}} meses, por beneficiario"
+      "approvalSummaryLine": "Total a aprobar: {{amount}} {{token}} por {{months}} meses, por beneficiario",
+      "paymentCreated": "¡Pago creado!",
+      "transactionConfirmed": "¡Transacción confirmada!",
+      "paymentDeployedSuccess": "Tu pago programado se ha desplegado correctamente",
+      "viewOnBasescanDetails": "Consulta Basescan para ver los detalles",
+      "transactionHash": "Hash de transacción",
+      "viewOnBasescan": "Ver en Basescan",
+      "viewPayment": "Ver pago",
+      "close": "Cerrar",
+      "step": "Paso {{current}} de {{total}}",
+      "dontCloseWindow": "⚠️ No cierres esta ventana",
+      "approval": "1. Aprobación",
+      "creation": "2. Creación",
+      "creationSingle": "Creación",
+      "viewApproval": "Ver aprobación",
+      "viewCreation": "Ver creación",
+      "error": "Error",
+      "errorOccurred": "Ha ocurrido un error",
+      "loading": "Cargando...",
+      "creatingPaymentETH": "Creando pago ETH...",
+      "creatingPayment": "Creando pago...",
+      "paymentCreatedSuccess": "¡Pago creado con éxito!",
+      "paymentCreatedNotSaved": "¡Pago creado! (No guardado en DB)",
+      "creatingRecurringPayment": "Creando pago recurrente {{token}}...",
+      "savingToDatabase": "Guardando en la base de datos..."
+    },
+    "features": {
+      "secure": { "title": "100% Seguro", "description": "Tus fondos están en un contrato verificado" },
+      "automatic": { "title": "Automático", "description": "El pago se libera automáticamente en la fecha elegida" },
+      "transparent": { "title": "Transparente", "description": "Sigue tu pago en tiempo real en Basescan" }
     },
     "recurring": {
       "onlyUSDCUSDT": "Pagos recurrentes disponibles solo para USDC y USDT",
@@ -774,7 +904,20 @@
       "totalNotCalculated": "Total requerido no calculado"
     },
     "date": {
+      "label": "Fecha y hora de liberación",
       "paymentTypeLabel": "Tipo de pago",
+      "firstDue": "Fecha y hora de liberación (primera cuota)",
+      "instant": "⚡Instantáneo",
+      "6hours": "6 horas",
+      "1day": "1 día",
+      "1week": "1 semana",
+      "1month": "1 mes",
+      "recurring": "🔄 Mensual",
+      "recurringTooltip": "⚠️ Solo disponible para USDT/USDC",
+      "monthsInfo": "💡 El importe se debitará cada mes durante {{months}} meses. Tu tesorería sigue disponible.",
+      "nextPaymentsContinue": "Los <strong>próximos pagos mensuales seguirán con normalidad</strong> aunque falle un mes",
+      "firstDueDate": "Primer vencimiento:",
+      "lastDueDate": "Último vencimiento:",
       "treasuryRemainsAvailable": "Su tesorería permanece disponible",
       "onlyAmountDebitedMonthly": "Solo <strong>{{amount}} {{token}}</strong> se debitarán cada mes de su cartera.",
       "firstMonthOverride": "Excepto el primer pago mensual: <strong>{{amount}} {{token}}</strong> se debitarán el primer mes.",
@@ -814,6 +957,244 @@
       "info": "💡 Si introduces el mismo monto que el mensual, la opción se ignorará automáticamente."
     }
   },
+  "wallet": {
+    "connectionRequired": "Conexión requerida",
+    "connectToAccess": "Conecta tu cartera para acceder a esta página",
+    "wrongNetwork": "Red incorrecta",
+    "mustBeOnBase": "Debes estar en",
+    "toUseApp": "para usar esta aplicación",
+    "currentNetwork": "Red actual: ChainID {{chainId}}",
+    "switchNetworkHint": "💡 Haz clic en tu cartera y cambia a Base Mainnet"
+  },
+  "help": {
+    "title": "Centro de ayuda",
+    "subtitle": "Encuentra respuestas sobre Confidance Crypto",
+    "search": "Buscar en la ayuda...",
+    "sections": {
+      "getStarted": { "title": "Empezar", "description": "Primeros pasos con Confidance Crypto" },
+      "guides": { "title": "Guías", "description": "Tutoriales paso a paso" },
+      "faq": { "title": "FAQ", "description": "Preguntas frecuentes" },
+      "videos": { "title": "Vídeos", "description": "Tutoriales en vídeo" }
+    },
+    "widget": {
+      "title": "¿Necesitas ayuda?",
+      "subtitle": "Encuentra respuestas rápidas",
+      "getStarted": { "title": "Empezar con Confidance", "description": "Guía para nuevos usuarios" },
+      "practicalGuides": { "title": "Guías prácticas", "description": "Tutoriales paso a paso" },
+      "faq": { "title": "Preguntas frecuentes", "description": "FAQ completa" },
+      "videoTutorials": { "title": "Tutoriales en vídeo", "description": "Aprende en vídeo" },
+      "chatMarilyn": { "title": "Chat con Marilyn", "description": "Asistencia IA instantánea" },
+      "contactSupport": "Contactar soporte",
+      "openFullCenter": "Abrir el centro de ayuda completo"
+    },
+    "cta": { "title": "¿Ayuda personalizada?", "description": "Nuestro equipo te acompaña", "button": "Contactar soporte" },
+    "contact": {
+      "back": "Volver al centro de ayuda",
+      "title": "Contactar soporte",
+      "subtitle": "Nuestro equipo está para ayudarte",
+      "email": { "title": "Email", "description": "Respuesta en 24 h de media" },
+      "discord": { "title": "Discord", "description": "Únete a la comunidad", "comingSoon": "Próximamente" },
+      "form": {
+        "title": "Formulario de contacto",
+        "email": "Tu email",
+        "emailPlaceholder": "tu@email.com",
+        "subject": "Asunto",
+        "subjectPlaceholder": "Asunto de tu solicitud",
+        "message": "Mensaje",
+        "messagePlaceholder": "Tu mensaje...",
+        "submit": "Enviar"
+      }
+    },
+    "chat": {
+      "title": "Marilyn",
+      "subtitle": "Asistente de comunicación",
+      "connected": "Conectado:",
+      "placeholder": "Escribe tu mensaje...",
+      "footer": "💬 Tus mensajes se envían a Marilyn, que te responderá pronto.",
+      "initialMessage": "👋 ¡Hola! Soy Marilyn, la asistente de Confidance Crypto. ¿En qué puedo ayudarte?",
+      "error": "❌ {{message}}. Vuelve a intentarlo en unos momentos.",
+      "success": "✅ ¡Mensaje recibido! Te responderé muy pronto."
+    },
+    "getStarted": {
+      "back": "← Volver al centro de ayuda",
+      "title": "🚀 Empezar con Confidance Crypto",
+      "whatIs": { "title": "¿Qué es Confidance Crypto?", "description": "Confidance Crypto es una plataforma DeFi para programar pagos cripto automáticos. Envía ETH o tokens que se liberan en una fecha concreta." },
+      "requirements": {
+        "title": "✅ Lo que necesitas",
+        "wallet": { "title": "Una cartera cripto", "description": "MetaMask, Coinbase Wallet, Rainbow, etc." },
+        "eth": { "title": "ETH en Base Mainnet", "description": "Mínimo ~0.01 ETH para gas + importe a enviar" },
+        "address": { "title": "La dirección del destinatario", "description": "Dirección Ethereum (0x...)" }
+      },
+      "nextSteps": {
+        "title": "📚 Siguientes pasos",
+        "createPayment": { "title": "1. Crear tu primer pago", "description": "Tutorial paso a paso para tu primer pago programado" },
+        "faq": { "title": "2. Preguntas frecuentes", "description": "Seguridad, tasas, plazos... todas las respuestas" }
+      }
+    },
+    "guides": {
+      "back": "← Volver al centro de ayuda",
+      "title": "📚 Guías prácticas",
+      "subtitle": "Tutoriales detallados para dominar Confidance Crypto",
+      "items": {
+        "createPayment": { "title": "Crear tu primer pago", "description": "Guía completa para enviar tu primer pago programado", "duration": "5 min", "level": "Principiante" },
+        "fees": { "title": "Entender las tasas", "description": "Calcula el coste exacto de tus pagos", "duration": "3 min", "level": "Principiante" },
+        "cancel": { "title": "Cancelar un pago", "description": "Cómo cancelar un pago antes de su liberación", "duration": "2 min", "level": "Intermedio" }
+      },
+      "tip": { "title": "💡 Consejo", "description": "Crea un pago de prueba con un importe pequeño (0.001 ETH) para familiarizarte." }
+    },
+    "faq": {
+      "back": "← Volver al centro de ayuda",
+      "title": "❓ Preguntas frecuentes (FAQ)",
+      "subtitle": "Respuestas a las preguntas más comunes",
+      "categories": {
+        "security": {
+          "title": "🔐 Seguridad",
+          "questions": {
+            "fundsSafe": { "q": "¿Están mis fondos seguros?", "a": "Sí. Tus fondos están en un contrato auditable en Base. Nadie (ni nosotros) puede tocarlos antes de la fecha. Tienes el control al 100%." },
+            "ifConfidanceDisappears": { "q": "¿Qué pasa si Confidance desaparece?", "a": "¡Tus pagos siguen funcionando! Los contratos están en la blockchain y son autónomos. Aunque el sitio esté caído, los pagos se liberan automáticamente." }
+          }
+        },
+        "fees": {
+          "title": "💰 Tasas",
+          "questions": {
+            "whatFees": { "q": "¿Qué tasas hay?", "a": "Hay 2 tipos: 1) Gas blockchain: ~0.002 ETH al crear. 2) Tasas de protocolo: 1.79% del importe, descontadas al liberar." },
+            "feeExample": { "q": "Ejemplo de cálculo", "a": "Para enviar 0.1 ETH: Gas (creación) 0.002 ETH. Tasas protocolo (1.79%): 0.00179 ETH. El destinatario recibe: 0.09821 ETH." }
+          }
+        },
+        "dates": {
+          "title": "📅 Fechas y plazos",
+          "questions": {
+            "canCancel": { "q": "¿Puedo cancelar un pago?", "a": "Sí, si marcaste \"Permitir cancelación\" al crearlo. La cancelación debe ser ANTES de la fecha. Recuperas el 100% (sin tasas)." },
+            "minDate": { "q": "¿Cuál es la fecha mínima?", "a": "Puedes programar un pago en minutos o en años. No hay límite." }
+          }
+        },
+        "technical": {
+          "title": "⚙️ Técnico",
+          "questions": {
+            "blockchain": { "q": "¿Qué blockchain usáis?", "a": "Base Mainnet (Layer 2 de Ethereum). Rápida, segura y con tasas bajas." },
+            "tokens": { "q": "¿Puedo enviar tokens (USDC, DAI)?", "a": "¡Soporte ERC20 próximamente! Por ahora solo ETH nativo." }
+          }
+        }
+      },
+      "notFound": { "title": "¿No encuentras tu respuesta?", "description": "Nuestro equipo de soporte te ayuda", "button": "💬 Contactar soporte" }
+    },
+    "videos": {
+      "back": "← Volver al centro de ayuda",
+      "title": "📹 Tutoriales en vídeo",
+      "subtitle": "Aprende con tutoriales paso a paso",
+      "items": {
+        "createPayment": { "title": "Crear un pago de A a Z", "description": "Tutorial completo para tu primer pago programado", "duration": "5:30" },
+        "connectWallet": { "title": "Conectar tu cartera MetaMask", "description": "Cómo conectar y configurar tu cartera en Base", "duration": "3:15" },
+        "feesSecurity": { "title": "Entender tasas y seguridad", "description": "Explicación del sistema de tasas y seguridad", "duration": "4:45" }
+      },
+      "comingSoon": { "title": "🎬 ¡Vídeos próximamente!", "description": "Mientras tanto, consulta nuestras guías escritas" }
+    }
+  },
+  "firstStep": {
+    "recommended": "Recomendado",
+    "difficultyLabel": "Dificultad"
+  },
+  "languageSwitcher": {
+    "ariaLabel": "Cambiar idioma",
+    "chooseLanguage": "Elegir idioma",
+    "preferenceSaved": "Preferencia guardada"
+  },
+  "analytics": {
+    "kpi": {
+      "transactions": "Transacciones",
+      "totalVolume": "Volumen total",
+      "totalFees": "Comisiones totales"
+    },
+    "feesBreakdown": {
+      "totalMonthlyFees": "TOTAL COMISIONES MENSUALES"
+    },
+    "transactionTypeTable": {
+      "title": "Desglose por tipo de transacción",
+      "typeHeader": "Tipo de transacción",
+      "countHeader": "Cantidad",
+      "volumeHeader": "Volumen",
+      "avgFeesHeader": "Comisión media",
+      "instant": "Pagos instantáneos",
+      "scheduled": "Pagos programados",
+      "recurring": "Pagos recurrentes",
+      "total": "TOTAL"
+    },
+    "monthlyComparison": {
+      "history": "Historial mensual"
+    }
+  },
+  "liquidity": {
+    "connectWallet": "Conecta tu cartera",
+    "connectWalletDescription": "Para acceder a la liquidez, conecta primero tu cartera.",
+    "title": "Accede a liquidez sin vender tu ETH",
+    "subtitle": "Usa tu ETH como garantía y recibe USDC o USDT en segundos.",
+    "secure": "Seguro",
+    "secureDesc": "Tus fondos están protegidos por la blockchain y contratos auditados",
+    "instant": "Instantáneo",
+    "instantDesc": "Recibe tu liquidez inmediatamente después de confirmar la transacción",
+    "flexible": "Flexible",
+    "flexibleDesc": "Reembolsa cuando quieras y recupera tu ETH sin penalización",
+    "form": {
+      "ethAmountLabel": "Cantidad de ETH a depositar",
+      "approxEur": "≈ {{value}} €",
+      "max": "Máx: {{amount}} ETH",
+      "availableInWallet": "Disponible en tu cartera",
+      "liquidityYouWant": "Liquidez que deseas",
+      "sliderPrudent": "Prudente",
+      "sliderOptimal": "Óptimo",
+      "sliderMaximum": "Máximo",
+      "youReceive": "Recibes",
+      "estimatedCost6Months": "Coste estimado a 6 meses: {{amount}} {{token}}",
+      "annualRate": "Tasa anual: {{rate}}%",
+      "watchOut": "Atención",
+      "watchOutDesc": "Si baja el precio del ETH, puede activarse una protección automática para preservar tu depósito.",
+      "seeHowItWorks": "→ Ver cómo funciona",
+      "confirmAndReceive": "Confirmar y recibir mi liquidez",
+      "repayAnytime": "Podrás reembolsar cuando quieras y recuperar tu ETH"
+    },
+    "statusCard": {
+      "positionSummary": "Resumen de tu posición",
+      "healthy": "Posición sana",
+      "healthyDesc": "Tu ETH cubre holgadamente tu liquidez.",
+      "warning": "Atención",
+      "warningDesc": "Vigila el precio del ETH o reduce tu liquidez.",
+      "ethDeposited": "ETH depositado",
+      "liquidity": "Liquidez",
+      "annualRate": "Tasa anual",
+      "safetyRatio": "Ratio de seguridad",
+      "safe": "Seguro",
+      "confirmAndReceive": "Confirmar y recibir mi liquidez",
+      "repayAnytime": "Podrás reembolsar cuando quieras y recuperar tu ETH"
+    },
+    "protectionExplainer": {
+      "howItWorks": "¿Cómo funciona?",
+      "step1Title": "1. Depositas tu ETH",
+      "step1Desc": "Tu ETH sigue seguro y sigue existiendo. Solo sirve como garantía.",
+      "step1Example": "Ejemplo: Depositas 1 ETH (≈ 2.000 €)",
+      "step2Title": "2. Recibes liquidez",
+      "step2Desc": "Inmediatamente recibes USDC o USDT que puedes usar libremente.",
+      "step2Example": "Ejemplo: Recibes 1.200 USDC",
+      "step3Title": "3. Todo bien si el mercado está estable",
+      "step3Desc": "Mientras el ETH mantenga su valor, tu posición está sana y solo pagas intereses.",
+      "step3Cost": "Coste: 6% al año, unos 72 USDC al año",
+      "step4Title": "4. Alerta si el precio baja demasiado",
+      "step4Desc": "Si el ETH pierde valor, recibes una notificación para añadir ETH o reembolsar parte.",
+      "step4Threshold": "Umbral: Te avisamos cuando tu ETH solo cubre el 70% de tu liquidez",
+      "step5Title": "5. Protección automática",
+      "step5Desc": "Si no actúas, el sistema vende solo el ETH necesario para preservar el resto de tu depósito.",
+      "step5Priority": "Prioridad: Solo venta parcial, protegemos tu capital",
+      "understood": "Entendido"
+    },
+    "feePreview": {
+      "summary": "Resumen",
+      "ethDeposited": "ETH depositado",
+      "liquidityReceived": "Liquidez recibida",
+      "annualRate": "Tasa anual",
+      "annualCost": "Coste anual",
+      "cost6Months": "Coste a 6 meses",
+      "note": "Los intereses se acumulan diariamente y se pagan al reembolso."
+    }
+  },
   "footer": {
     "description": "Porque los pagos no deberían depender de la confianza. Deberían depender del código.",
     "product": "Producto",
@@ -825,6 +1206,8 @@
     "support": "Soporte",
     "terms": "Aviso legal",
     "privacy": "Privacidad",
-    "copyright": "© {{year}} Confidance Crypto. Todos los derechos reservados."
+    "copyright": "© {{year}} Confidance Crypto. Todos los derechos reservados.",
+    "madeWith": "Hecho con",
+    "forDeFi": "para DeFi"
   }
 }

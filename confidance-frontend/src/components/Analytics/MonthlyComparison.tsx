@@ -1,6 +1,7 @@
 // components/Analytics/MonthlyComparison.tsx
 'use client';
 
+import { useTranslation } from 'react-i18next';
 import { MonthlyStats } from '@/hooks/useMonthlyAnalytics';
 
 interface MonthlyComparisonProps {
@@ -8,6 +9,7 @@ interface MonthlyComparisonProps {
 }
 
 export function MonthlyComparison({ monthlyData }: MonthlyComparisonProps) {
+  const { t } = useTranslation();
   // Trouver le meilleur et le pire ratio
   const bestRatio = monthlyData.reduce((min, current) => 
     current.feeRatio < min.feeRatio ? current : min
@@ -19,7 +21,7 @@ export function MonthlyComparison({ monthlyData }: MonthlyComparisonProps) {
   return (
     <div className="bg-white rounded-xl shadow">
       <div className="px-6 py-4 border-b border-gray-200">
-        <h2 className="text-lg font-semibold text-gray-900">Historique Mensuel</h2>
+        <h2 className="text-lg font-semibold text-gray-900">{t('analytics.monthlyComparison.history')}</h2>
       </div>
 
       <div className="overflow-x-auto">

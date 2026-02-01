@@ -282,7 +282,7 @@ export default function PayLinkPage() {
             {ready ? t('links.pay.errors.notFound') : 'Payment link not found'}
           </h2>
           <p className="text-red-600 mb-6">
-            {error || 'This payment link is invalid or has expired'}
+            {error || (ready ? t('links.pay.errors.invalidOrExpired') : 'This payment link is invalid or has expired')}
           </p>
           <a
             href="/"
@@ -715,7 +715,7 @@ export default function PayLinkPage() {
 
           <div className="mt-8 pt-8 border-t border-gray-200 text-center">
             <p className="text-xs text-gray-500">
-              © 2025 Confidance Crypto. {ready ? t('links.pay.footer.rights') : 'All rights reserved'} |{' '}
+              © {typeof window !== 'undefined' ? new Date().getFullYear() : 2025} Confidance Crypto. {ready ? t('links.pay.footer.rights') : 'All rights reserved'} |{' '}
               <a href="#" className="text-blue-600 hover:underline">
                 {ready ? t('links.pay.footer.terms') : 'Terms'}
               </a>{' '}

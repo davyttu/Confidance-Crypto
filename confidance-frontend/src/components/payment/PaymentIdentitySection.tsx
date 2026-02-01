@@ -85,8 +85,8 @@ export default function PaymentIdentitySection({
             type="button"
             onClick={onToggleDisabled}
             className="ml-1 h-4 w-4 rounded-full border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600 transition-colors flex items-center justify-center"
-            aria-label={disabled ? 'Enable payment description' : 'Disable payment description'}
-            title={disabled ? 'Enable payment description' : 'Disable payment description'}
+            aria-label={disabled ? t('links.create.aria.enablePaymentDescription') : t('links.create.aria.disablePaymentDescription')}
+            title={disabled ? t('links.create.aria.enablePaymentDescription') : t('links.create.aria.disablePaymentDescription')}
           >
             <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

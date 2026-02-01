@@ -56,21 +56,19 @@ export function WalletGuard({ children }: WalletGuardProps) {
           
           <div className="space-y-2">
             <h2 className="text-2xl font-bold">
-              {isMounted && translationsReady ? t('wallet.wrongNetwork') : 'Mauvais réseau'}
+              {t('wallet.wrongNetwork')}
             </h2>
             <p className="text-muted-foreground">
-              {isMounted && translationsReady 
-                ? <>{t('wallet.mustBeOnBase')} <strong>Base Mainnet</strong> {t('wallet.toUseApp')}</>
-                : <>Vous devez être sur <strong>Base Mainnet</strong> pour utiliser cette application</>}
+              <>{t('wallet.mustBeOnBase')} <strong>Base Mainnet</strong> {t('wallet.toUseApp')}</>
             </p>
             <p className="text-sm text-muted-foreground">
-              {isMounted && translationsReady ? t('wallet.currentNetwork', { chainId }) : `Réseau actuel : ChainID ${chainId}`}
+              {t('wallet.currentNetwork', { chainId })}
             </p>
           </div>
 
           <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
             <p className="text-sm text-blue-400">
-              {isMounted && translationsReady ? t('wallet.switchNetworkHint') : '💡 Cliquez sur votre wallet et changez de réseau vers Base Mainnet'}
+              {t('wallet.switchNetworkHint')}
             </p>
           </div>
         </div>

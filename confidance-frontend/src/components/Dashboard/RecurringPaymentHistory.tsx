@@ -4,16 +4,19 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Payment } from '@/hooks/useDashboard';
+import { useBeneficiaries } from '@/hooks/useBeneficiaries';
+import { truncateAddress } from '@/lib/utils/addressFormatter';
 
 interface MonthlyPayment {
   monthNumber: number;
   date: number; // Timestamp (ms or seconds)
-  status: 'executed' | 'pending' | 'failed' | 'cancelled';
+  status: 'executed' | 'pending' | 'failed' | 'cancelled' | 'mixed';
   amount: string;
 }
 
 type RecurringPaymentWithStatus = Payment & {
-  __monthlyStatuses?: Array<'executed' | 'failed' | 'pending' | 'cancelled'>;
+  __monthlyStatuses?: Array<'executed' | 'failed' | 'pending' | 'cancelled' | 'mixed'>;
+  __batchMonthDetails?: Array<Array<{ address: string; status: string }>>;
 };
 
 interface RecurringPaymentHistoryProps {
@@ -32,6 +35,7 @@ const normalizeTimestampMs = (timestamp?: number | null) => {
 
 export function RecurringPaymentHistory({ payment }: RecurringPaymentHistoryProps) {
   const { t, i18n } = useTranslation();
+  const { getBeneficiaryName } = useBeneficiaries();
   
   const resolveExecutedMonths = () => {
     const totalMonths = Number(payment.total_months || 0);
@@ -104,11 +108,11 @@ export function RecurringPaymentHistory({ payment }: RecurringPaymentHistoryProp
           ).getTime()
         : startTimeMs + (monthIndex * MONTH_IN_SECONDS * 1000);
 
-      let status: 'executed' | 'pending' | 'failed' | 'cancelled';
+      let status: 'executed' | 'pending' | 'failed' | 'cancelled' | 'mixed';
 
       const monthlyStatusOverride = payment.__monthlyStatuses?.[monthIndex];
       if (monthlyStatusOverride) {
-        status = monthlyStatusOverride;
+        status = monthlyStatusOverride as MonthlyPayment['status'];
         if (monthIndex === 0 && monthlyStatusOverride === 'failed') {
           firstMonthFailed = true;
         }
@@ -153,6 +157,7 @@ export function RecurringPaymentHistory({ payment }: RecurringPaymentHistoryProp
     payment.last_execution_hash,
     payment.status,
     payment.__monthlyStatuses,
+    payment.__batchMonthDetails,
     payment.first_month_amount,
     payment.is_first_month_custom,
     payment.monthly_amount,
@@ -204,21 +209,55 @@ export function RecurringPaymentHistory({ payment }: RecurringPaymentHistoryProp
     });
   };
 
-  // Badge de statut
+  // Badge de statut global (exécuté → "Released" en bout de ligne)
   const getStatusBadge = (status: string) => {
-    const styles = {
+    const styles: Record<string, string> = {
       executed: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
       pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
       failed: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
       cancelled: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
+      mixed: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
     };
-
-    const label = t(`dashboard.recurringHistory.status.${status}`, status);
-
+    const statusKey = (status || '').toLowerCase();
+    const displayKey = statusKey === 'executed' ? 'released' : statusKey;
+    const label = t(`dashboard.recurringHistory.status.${displayKey}`, displayKey);
     return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${styles[status as keyof typeof styles] || styles.pending}`}>
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${styles[statusKey] || styles.pending}`}>
         {label}
       </span>
+    );
+  };
+
+  // Détail au centre : uniquement quand le mois est "mixed" (ex. Ali : Released, Redouane : Cancelled)
+  const renderMonthDetail = (monthlyPayment: MonthlyPayment) => {
+    if (monthlyPayment.status !== 'mixed') return null;
+    const monthIndex = monthlyPayment.monthNumber - 1;
+    const details = payment.__batchMonthDetails?.[monthIndex];
+    if (!details || details.length === 0) return null;
+    const statusStyles: Record<string, string> = {
+      executed: 'text-green-700 dark:text-green-300',
+      released: 'text-green-700 dark:text-green-300',
+      pending: 'text-yellow-700 dark:text-yellow-300',
+      failed: 'text-red-700 dark:text-red-300',
+      cancelled: 'text-gray-600 dark:text-gray-400',
+    };
+    return (
+      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs">
+        {details.map(({ address, status }) => {
+          const name = getBeneficiaryName(address) || truncateAddress(address);
+          const statusKey = (status || '').toLowerCase();
+          const displayStatusKey = statusKey === 'executed' ? 'released' : statusKey;
+          const label = t(`dashboard.recurringHistory.status.${displayStatusKey}`, displayStatusKey);
+          const style = statusStyles[statusKey] || 'text-gray-600 dark:text-gray-400';
+          return (
+            <span key={address} className="flex items-center gap-1.5">
+              <span className="font-medium text-gray-700 dark:text-gray-300">{name}</span>
+              <span className="text-gray-500 dark:text-gray-400">:</span>
+              <span className={style}>{label}</span>
+            </span>
+          );
+        })}
+      </div>
     );
   };
 
@@ -245,9 +284,9 @@ export function RecurringPaymentHistory({ payment }: RecurringPaymentHistoryProp
           {monthlyPayments.map((monthlyPayment) => (
             <div
               key={monthlyPayment.monthNumber}
-              className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-sm transition-shadow"
+              className="flex items-center justify-between gap-4 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-sm transition-shadow"
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-shrink-0">
                 <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-xs font-semibold">
                   {monthlyPayment.monthNumber}
                 </div>
@@ -260,7 +299,10 @@ export function RecurringPaymentHistory({ payment }: RecurringPaymentHistoryProp
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex-1 min-w-0 flex items-center justify-center px-4">
+                {renderMonthDetail(monthlyPayment)}
+              </div>
+              <div className="flex items-center gap-3 flex-shrink-0">
                 <div className="text-sm font-medium text-gray-900 dark:text-white">
                   {formatAmount(monthlyPayment.amount)} {payment.token_symbol || 'ETH'}
                 </div>

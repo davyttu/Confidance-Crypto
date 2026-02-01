@@ -13,8 +13,10 @@ import { FeesBreakdown } from '@/components/Analytics/FeesBreakdown';
 import { MonthlyComparison } from '@/components/Analytics/MonthlyComparison';
 import { ExportActions } from '@/components/Analytics/ExportActions';
 import { CategoryInsights, type CategoryInsight } from '@/components/Analytics/CategoryInsights';
+import { useTranslation } from 'react-i18next';
 
 export default function AnalyticsPage() {
+  const { t } = useTranslation();
   const { address, isConnected } = useAccount();
   const { priceUsd } = useEthUsdPrice();
   const { user, isAuthenticated } = useAuth();
@@ -507,7 +509,7 @@ export default function AnalyticsPage() {
           <div className="bg-white rounded-xl shadow px-6 py-4 space-y-3">
             {timelineLoading && (
               <p className="text-sm text-gray-500">
-                Chargement des événements...
+                {t('common.loading')}
               </p>
             )}
             {timelineError && (

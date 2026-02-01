@@ -159,11 +159,13 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
     if (payment.__recurringInstance) {
       return payment.amount;
     }
-    if (isFirstMonthCustom && payment.monthly_amount) {
-      return payment.monthly_amount;
-    }
+    // Parent row: always show the initial/reference amount (not the last executed installment).
+    // When first month is custom, show first_month_amount (e.g. 3 USDC); otherwise monthly amount.
     if (isFirstMonthCustom && payment.first_month_amount) {
       return payment.first_month_amount;
+    }
+    if (payment.monthly_amount) {
+      return payment.monthly_amount;
     }
     return payment.amount;
   };
@@ -466,28 +468,29 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
             (payment.status === 'active' && isInstantOrScheduled && hasReachedReleaseTime);
           const isIncomingAmount = isIncoming && (isRecurringInstance || isSettledStatus);
           const amountPrefix = isIncomingAmount && !isFailed ? '+' : '';
+          // Ligne parent récurrente : montant de référence toujours en couleur normale (pas grisé)
+          const isParentReferenceAmount = isRecurringParent && !nextInstallment;
+          const amountColor =
+            isFailed
+              ? 'text-gray-400 dark:text-gray-500'
+              : isIncomingAmount
+              ? 'text-green-600 dark:text-green-400'
+              : isParentReferenceAmount || !nextInstallment
+              ? 'text-gray-900 dark:text-white'
+              : 'text-gray-500 dark:text-gray-400';
+          const showReferenceNote = isRecurringParent;
           return (
             <div className="flex flex-col">
-              <div
-                className={`text-sm font-semibold ${
-                  isFailed
-                    ? 'text-gray-400 dark:text-gray-500'
-                    : isIncomingAmount
-                    ? 'text-green-600 dark:text-green-400'
-                    : nextInstallment
-                    ? 'text-gray-500 dark:text-gray-400'
-                    : 'text-gray-900 dark:text-white'
-                }`}
-              >
+              <div className={`text-sm font-semibold ${amountColor}`}>
                 {amountPrefix}{formatAmount(displayAmount, tokenSymbol)} {tokenSymbol}
               </div>
-              {nextInstallment && (
+              {showReferenceNote && (
                 <span
                   className="mt-1 inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                  title={t('dashboard.table.nextInstallmentNote', { defaultValue: 'Funds not locked' })}
+                  title={t('dashboard.table.referenceAmountNote', { defaultValue: 'This amount is not debited' })}
                 >
                   <Info className="h-3 w-3" />
-                  {t('dashboard.table.nextInstallmentNote', { defaultValue: 'Funds not locked' })}
+                  {t('dashboard.table.referenceAmountNote', { defaultValue: 'This amount is not debited' })}
                 </span>
               )}
             </div>
@@ -557,7 +560,7 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center"
-              title="Voir sur Basescan"
+              title={t('dashboard.table.viewOnBasescan')}
             >
               <img
                 src="/blockchains/base.svg"
@@ -608,7 +611,7 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
                             copyToClipboard(entry.address);
                           }}
                           className="text-gray-200 hover:text-white transition-colors"
-                          title="Copier l'adresse"
+                          title={t('dashboard.table.copyAddress')}
                         >
                           <Copy className={`w-4 h-4 ${copied ? 'text-green-400' : ''}`} />
                         </button>
@@ -619,7 +622,7 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
                 {transactionHash && (
                   <div className="mt-3 border-t border-white/10 pt-2">
                     <div className="text-[10px] uppercase tracking-wide text-gray-300">
-                      Transaction hash
+                      {t('dashboard.table.transactionHash')}
                     </div>
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-mono">
@@ -632,7 +635,7 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
                           copyToClipboard(transactionHash);
                         }}
                         className="text-gray-200 hover:text-white transition-colors"
-                        title="Copier le hash"
+                        title={t('dashboard.table.copyHash')}
                       >
                         <Copy className={`w-4 h-4 ${copied ? 'text-green-400' : ''}`} />
                       </button>
@@ -655,7 +658,7 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
             <button
               onClick={() => onEmailClick(payment)}
               className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-              title="Envoyer par email"
+              title={t('dashboard.table.sendByEmail')}
             >
               <Mail className="w-4 h-4" />
             </button>
@@ -664,7 +667,7 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
             <button
               onClick={() => onCancel(cancelTargetPayment)}
               className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
-              title="Annuler"
+              title={t('common.cancel')}
             >
               <X className="w-4 h-4" />
             </button>

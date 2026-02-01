@@ -1,0 +1,20 @@
+
+Reference: en — 724 keys total.
+
+--- FR missing (vs EN): 0 ---
+
+--- ES missing (vs EN): 0 ---
+
+--- RU missing (vs EN): 0 ---
+
+--- ZH missing (vs EN): 0 ---
+
+--- Keys in both EN and FR ---
+Count: 724
+
+ES missing (present in EN+FR): 0
+
+RU missing (present in EN+FR): 0
+
+ZH missing (present in EN+FR): 0
+

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { parseEther } from 'viem';
 import { useAccount } from 'wagmi';
 import FeePreview from './FeePreview';
@@ -11,6 +12,7 @@ interface LiquidityFormProps {
 }
 
 export default function LiquidityForm({ onShowExplanation }: LiquidityFormProps) {
+  const { t } = useTranslation();
   const { address } = useAccount();
   
   // État du formulaire
@@ -65,7 +67,7 @@ export default function LiquidityForm({ onShowExplanation }: LiquidityFormProps)
       {/* Section 1: Dépôt ETH */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
         <label className="block text-sm font-medium text-gray-700 mb-3">
-          Montant d'ETH à déposer
+          {t('liquidity.form.ethAmountLabel')}
         </label>
         
         <div className="relative">
@@ -95,7 +97,7 @@ export default function LiquidityForm({ onShowExplanation }: LiquidityFormProps)
         {/* Balance wallet */}
         <div className="mt-4 p-3 bg-gray-50 rounded-lg">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-600">Disponible dans votre wallet</span>
+            <span className="text-gray-600">{t('liquidity.form.availableInWallet')}</span>
             <span className="font-medium">0.00 ETH</span>
           </div>
         </div>
@@ -147,15 +149,15 @@ export default function LiquidityForm({ onShowExplanation }: LiquidityFormProps)
           />
           
           <div className="flex justify-between text-xs text-gray-500 mt-2">
-            <span>Prudent</span>
-            <span>Optimal</span>
-            <span>Maximum</span>
+            <span>{t('liquidity.form.sliderPrudent')}</span>
+            <span>{t('liquidity.form.sliderOptimal')}</span>
+            <span>{t('liquidity.form.sliderMaximum')}</span>
           </div>
         </div>
         
         {/* Montant reçu */}
         <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl mb-4">
-          <div className="text-sm text-gray-600 mb-1">Vous recevez</div>
+          <div className="text-sm text-gray-600 mb-1">{t('liquidity.form.youReceive')}</div>
           <div className="text-3xl font-bold text-gray-900">
             {receivedAmount} {selectedToken}
           </div>
@@ -163,9 +165,9 @@ export default function LiquidityForm({ onShowExplanation }: LiquidityFormProps)
         
         {/* Coût estimé */}
         <div className="text-sm text-gray-600">
-          Coût estimé sur 6 mois : <span className="font-semibold text-gray-900">{estimatedCost} {selectedToken}</span>
+          {t('liquidity.form.estimatedCost6Months', { amount: estimatedCost, token: selectedToken })}
           <br />
-          Taux annuel : <span className="font-semibold text-gray-900">6%</span>
+          {t('liquidity.form.annualRate', { rate: '6' })}
         </div>
       </div>
 
@@ -176,18 +178,17 @@ export default function LiquidityForm({ onShowExplanation }: LiquidityFormProps)
             <span className="text-2xl">⚡</span>
             <div>
               <h4 className="font-semibold text-gray-900 mb-1">
-                À surveiller
+                {t('liquidity.form.watchOut')}
               </h4>
               <p className="text-sm text-gray-700 mb-2">
-                Si le prix de l'ETH baisse, une protection automatique peut s'activer 
-                pour préserver votre dépôt.
+                {t('liquidity.form.watchOutDesc')}
               </p>
               <button 
                 type="button"
                 onClick={onShowExplanation}
                 className="text-sm text-blue-600 hover:text-blue-700 font-medium"
               >
-                → Voir comment ça marche
+                {t('liquidity.form.seeHowItWorks')}
               </button>
             </div>
           </div>
@@ -209,11 +210,11 @@ export default function LiquidityForm({ onShowExplanation }: LiquidityFormProps)
         disabled={!isFormValid}
         className="w-full py-4 px-6 rounded-xl font-bold text-lg bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-xl hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
       >
-        Confirmer et recevoir ma liquidité
+        {t('liquidity.form.confirmAndReceive')}
       </button>
 
       <p className="text-xs text-center text-gray-500">
-        Vous pourrez rembourser à tout moment et récupérer votre ETH
+        {t('liquidity.form.repayAnytime')}
       </p>
     </form>
   );

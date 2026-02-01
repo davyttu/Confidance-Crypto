@@ -8,7 +8,9 @@ const authRoutes = require('./routes/auth');
 const usersRoutes = require('./routes/users');
 const recurringPaymentsRoutes = require('./routes/recurringPayments'); // ✅ AJOUTÉ
 const paymentLinksRoutes = require('./routes/paymentLinks');
+const sendPaymentLinkRoutes = require('./routes/sendPaymentLink');
 const paymentTransactionsRoutes = require('./routes/paymentTransactions');
+const statementsRoutes = require('./routes/statements');
 const chatRoutes = require('./routes/chat'); // ✅ Chat Agent
 const aiAdvisorRoutes = require('./routes/aiAdvisor');
 const notificationsRoutes = require('./routes/notifications');
@@ -161,9 +163,11 @@ app.use('/api/users', usersRoutes);
 app.use('/api/chat', chatRoutes); // ✅ Chat Agent
 app.use('/api/ai/advisor', aiAdvisorRoutes);
 app.use('/api/payment-links', paymentLinksRoutes);
+app.use('/api/send-payment-link', sendPaymentLinkRoutes);
 app.use('/api/payment-transactions', paymentTransactionsRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/link-wallet', linkWalletRoutes);
+app.use('/api/statements', statementsRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
@@ -1318,6 +1322,10 @@ cron.schedule('*/5 * * * *', async () => {
 });
 
 console.log('✅ Liquidity keeper scheduled (every 5 minutes)');
+
+// Relevés mensuels : 1er de chaque mois à 9h00
+const { scheduleMonthlyStatements } = require('./jobs/monthlyStatementJob');
+scheduleMonthlyStatements();
 
 // Optionnel : Exécuter immédiatement au démarrage (après 30 secondes)
 setTimeout(async () => {

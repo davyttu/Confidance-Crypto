@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface StatusCardProps {
   depositedETH?: string;
@@ -15,33 +16,25 @@ export default function StatusCard({
   token = 'USDC',
   ltvPercentage = 0
 }: StatusCardProps) {
+  const { t } = useTranslation();
   const [status, setStatus] = useState<'healthy' | 'warning' | 'critical'>('healthy');
   const [statusColor, setStatusColor] = useState('bg-green-50 border-green-200');
   const [statusIcon, setStatusIcon] = useState('🟢');
-  const [statusText, setStatusText] = useState('Position saine');
-  const [statusDescription, setStatusDescription] = useState('');
 
   useEffect(() => {
-    if (ltvPercentage === 0) {
+    if (ltvPercentage === 0 || ltvPercentage <= 50) {
       setStatus('healthy');
       setStatusColor('bg-green-50 border-green-200');
       setStatusIcon('🟢');
-      setStatusText('Position saine');
-      setStatusDescription('Votre ETH couvre largement votre liquidité.');
-    } else if (ltvPercentage <= 50) {
-      setStatus('healthy');
-      setStatusColor('bg-green-50 border-green-200');
-      setStatusIcon('🟢');
-      setStatusText('Position saine');
-      setStatusDescription('Votre ETH couvre largement votre liquidité.');
     } else if (ltvPercentage <= 60) {
       setStatus('warning');
       setStatusColor('bg-yellow-50 border-yellow-200');
       setStatusIcon('🟡');
-      setStatusText('À surveiller');
-      setStatusDescription('Surveillez le prix de l\'ETH ou réduisez votre liquidité.');
     }
   }, [ltvPercentage]);
+
+  const statusText = status === 'healthy' ? t('liquidity.statusCard.healthy') : t('liquidity.statusCard.warning');
+  const statusDescription = status === 'healthy' ? t('liquidity.statusCard.healthyDesc') : t('liquidity.statusCard.warningDesc');
 
   // Calculer la couleur de la jauge
   const getGaugeColor = () => {
@@ -68,7 +61,7 @@ export default function StatusCard({
       {/* Détails */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <span className="text-gray-600">🔐 ETH déposé</span>
+          <span className="text-gray-600">🔐 {t('liquidity.statusCard.ethDeposited')}</span>
           <div className="text-right">
             <div className="font-semibold">{depositedETH} ETH</div>
             <div className="text-sm text-gray-500">≈ {(parseFloat(depositedETH) * 2000).toFixed(2)} €</div>
@@ -76,7 +69,7 @@ export default function StatusCard({
         </div>
         
         <div className="flex items-center justify-between">
-          <span className="text-gray-600">💧 Liquidité</span>
+          <span className="text-gray-600">💧 {t('liquidity.statusCard.liquidity')}</span>
           <div className="font-semibold">{receivedAmount} {token}</div>
         </div>
         
@@ -86,7 +79,7 @@ export default function StatusCard({
         </div>
         
         <div className="flex items-center justify-between">
-          <span className="text-gray-600">🛡️ Ratio de sécurité</span>
+          <span className="text-gray-600">🛡️ {t('liquidity.statusCard.safetyRatio')}</span>
           <div className="font-semibold">{100 - ltvPercentage}%</div>
         </div>
       </div>
@@ -94,8 +87,8 @@ export default function StatusCard({
       {/* Barre de jauge visuelle */}
       <div className="mt-6">
         <div className="flex justify-between text-xs text-gray-600 mb-2">
-          <span>Sûr</span>
-          <span>À surveiller</span>
+          <span>{t('liquidity.statusCard.safe')}</span>
+          <span>{t('liquidity.statusCard.warning')}</span>
         </div>
         <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
           <div 
@@ -110,11 +103,11 @@ export default function StatusCard({
         disabled={parseFloat(depositedETH) === 0}
         className="w-full mt-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        Confirmer et recevoir ma liquidité
+        {t('liquidity.statusCard.confirmAndReceive')}
       </button>
       
       <p className="text-xs text-center text-gray-500 mt-3">
-        Vous pourrez rembourser à tout moment et récupérer votre ETH
+        {t('liquidity.statusCard.repayAnytime')}
       </p>
     </div>
   );

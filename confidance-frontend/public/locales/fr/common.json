@@ -2,10 +2,10 @@
   "nav": {
     "home": "Accueil",
     "create": "Paiements",
-    "dashboard": "Dashboard",
+    "dashboard": "Tableau de bord",
     "liquidity": "Liquidité",
     "help": "Aide",
-    "analytics": "Analytics",
+    "analytics": "Analytique",
     "notifications": "Notifications"
   },
   "common": {
@@ -13,6 +13,7 @@
     "connectWallet": "Connectez votre wallet",
     "disconnect": "Déconnecter",
     "cancel": "Annuler",
+    "changeLanguage": "Changer de langue",
     "confirm": "Confirmer",
     "save": "Enregistrer",
     "loading": "Chargement...",
@@ -22,6 +23,13 @@
     "accountType": {
       "professional": "Pro",
       "individual": "Particulier"
+    },
+    "upgradeToPro": "Passer en compte Pro",
+    "editProInfo": "Modifier mes infos Pro",
+    "themeToggle": {
+      "ariaLabel": "Changer de thème",
+      "switchToLight": "Passer en mode clair",
+      "switchToDark": "Passer en mode sombre"
     },
     "accountSettings": {
       "menuLabel": "Infos de connexion",
@@ -88,6 +96,8 @@
       "description": "Confidance a été conçu pour rendre les paiements crypto prévisibles, vérifiables et indépendants des intermédiaires."
     },
     "useCases": {
+      "title": "Cas d'usage",
+      "subtitle": "Des solutions pour tous vos paiements programmés",
       "salaries": {
         "title": "Salaires automatiques",
         "desc": "Payez vos équipes à date fixe"
@@ -165,6 +175,8 @@
       "search": "Rechercher par nom ou adresse...",
       "beneficiary": "Bénéficiaire",
       "amount": "Montant",
+      "referenceAmountNote": "Cette somme n'est pas prélevée",
+      "nextInstallmentNote": "Fonds non bloqués",
       "releaseDate": "Date de libération",
       "status": "Statut",
       "contract": "Contrat",
@@ -175,8 +187,36 @@
       "releasedOn": "Libéré le {{date}}",
       "clickToRename": "Cliquer pour renommer",
       "copyAddress": "Copier l'adresse",
+      "copyHash": "Copier le hash",
+      "transactionHash": "Hash de transaction",
       "viewOnBasescan": "Voir sur Basescan",
+      "sendByEmail": "Envoyer par email",
       "cancelPayment": "Annuler le paiement"
+    },
+    "emailTransaction": {
+      "amount": "Montant",
+      "date": "Date",
+      "paymentType": "Type de paiement",
+      "cancellation": "Annulation",
+      "cancellable": "Annulable",
+      "notCancellable": "Non annulable",
+      "emailRecipient": "Destinataire de l'email",
+      "myself": "Moi-même",
+      "otherPerson": "Autre personne",
+      "emailAddress": "Adresse email",
+      "emailPlaceholder": "exemple@email.com",
+      "emailRequired": "Veuillez entrer une adresse email",
+      "invalidEmailAddress": "Adresse email invalide",
+      "recipientNameOptional": "Nom du destinataire (optionnel)",
+      "recipientNamePlaceholder": "Ex : Jean Dupont",
+      "sendError": "Erreur lors de l'envoi",
+      "sendSuccess": "Email envoyé avec succès !",
+      "emailSentVia": "L'email sera envoyé via Brevo à l'adresse indiquée.",
+      "sendByEmail": "Envoyer par email",
+      "recurringMonths": "Mensualisé ({{count}} échéance{{plural}})",
+      "recurring": "Mensualisé",
+      "instant": "Instantané",
+      "scheduled": "Programmé"
     },
     "status": {
       "pending": "En cours",
@@ -194,9 +234,11 @@
       "month": "Mois {{number}}",
       "status": {
         "executed": "Exécuté",
+        "released": "Libéré",
         "pending": "En attente",
         "failed": "Échoué",
-        "cancelled": "Annulé"
+        "cancelled": "Annulé",
+        "mixed": "Exécuté & annulé"
       }
     },
     "beneficiary": {
@@ -264,12 +306,31 @@
     },
     "beneficiaries": {
       "title": "Mes bénéficiaires",
+      "count_one": "{{count}} bénéficiaire",
+      "count_other": "{{count}} bénéficiaires",
       "empty": "Aucun bénéficiaire",
       "emptyDescription": "Créez des paiements pour ajouter des bénéficiaires à votre liste.",
       "edit": "Modifier",
+      "totalLabel": "Total :",
       "delete": "Supprimer",
       "deleteConfirm": "Supprimer \"{{name}}\" de vos bénéficiaires ?",
       "deleteError": "Erreur lors de la suppression",
+      "modalTitleEdit": "Modifier le bénéficiaire",
+      "modalTitleNew": "Nouveau bénéficiaire",
+      "nameLabel": "Nom du bénéficiaire",
+      "namePlaceholder": "Ex: Jean Dupont, Entreprise XYZ...",
+      "nameMinChars": "Minimum 2 caractères",
+      "categoryLabel": "Catégorie",
+      "addressLabel": "Adresse",
+      "createButton": "Créer",
+      "saving": "Enregistrement...",
+      "errorNameMin": "Le nom doit contenir au moins 2 caractères",
+      "errorSave": "Erreur lors de l'enregistrement",
+      "contactForLinks": "Ces informations permettent d'envoyer les liens de paiement directement au destinataire (email ou SMS), de façon plus sécurisée qu'en les copiant-collant.",
+      "email": "Email",
+      "phone": "Téléphone",
+      "emailPlaceholder": "ex: destinataire@exemple.com",
+      "phonePlaceholder": "ex: +33 6 12 34 56 78",
       "categories": {
         "family": "Famille",
         "work": "Travail",
@@ -299,6 +360,7 @@
     "cancel": {
       "title": "Annuler le paiement",
       "warning": "⚠️ Vous êtes sur le point d'annuler ce paiement programmé :",
+      "warningRecurring": "⚠️ Vous êtes sur le point d'annuler ce paiement récurrent :",
       "beneficiary": "Bénéficiaire :",
       "beneficiaries": "Bénéficiaires :",
       "amount": "Montant :",
@@ -311,6 +373,7 @@
       "irreversible": "Cette action est irréversible",
       "noFees": "Les fees protocole sont remboursés en cas d'annulation",
       "confirmText": "Je comprends que cette action est irréversible et je souhaite annuler ce paiement programmé.",
+      "confirmTextRecurring": "Je comprends que cette action est irréversible et je souhaite annuler ce paiement récurrent.",
       "close": "Fermer",
       "processing": "Annulation...",
       "confirm": "Confirmer l'annulation",
@@ -458,6 +521,8 @@
       "onlyAmountDebitedMonthly": "Seuls <strong>{{amount}} {{token}}</strong> seront prélevés chaque mois sur votre wallet.",
       "firstMonthOverride": "Sauf la première mensualité : <strong>{{amount}} {{token}}</strong> seront prélevés le premier mois.",
       "refundRemainingMonths": "En cas d'annulation avant exécution, les mensualités restantes et leurs fees sont remboursées.",
+      "firstDueDate": "Première échéance :",
+      "lastDueDate": "Dernière échéance :",
       "timeUntil": {
         "past": "Dans le passé",
         "pastError": "Cette date est dans le passé. Veuillez choisir une date future.",
@@ -890,6 +955,12 @@
         "label": "Donnez un titre clair à votre lien.",
         "startAtInformative": "La première mensualité démarre quand le destinataire ouvre le lien et valide le paiement."
       },
+      "aria": {
+        "enableIdentity": "Activer l'identité de paiement",
+        "disableIdentity": "Désactiver l'identité de paiement",
+        "enablePaymentDescription": "Activer la description de paiement",
+        "disablePaymentDescription": "Désactiver la description de paiement"
+      },
       "errors": {
         "connectWallet": "Connectez votre wallet",
         "amount": "Montant invalide",
@@ -906,7 +977,13 @@
       "successDescription": "Partagez ce lien pour recevoir des paiements",
       "shareInfo": "Partagez ce lien par e-mail, réseaux sociaux ou messageries",
       "copied": "Copié !",
-      "copy": "Copier"
+      "copy": "Copier",
+      "sendLinkTitle": "Envoyer le lien directement",
+      "sendByEmail": "Envoyer par e-mail",
+      "sendBySms": "Envoyer par SMS",
+      "emailPlaceholder": "ex: destinataire@exemple.com",
+      "phonePlaceholder": "ex: +33 6 12 34 56 78",
+      "pickFromRecipients": "Choisir parmi mes destinataires"
     },
     "types": {
       "instant": "Instantané",
@@ -995,6 +1072,7 @@
         "nextMonths": "Mois suivants"
       },
       "summary": {
+        "title": "Récapitulatif",
         "amount": "Montant",
         "type": "Type",
         "network": "Réseau",
@@ -1005,6 +1083,7 @@
       },
       "errors": {
         "notFound": "Lien de paiement introuvable",
+        "invalidOrExpired": "Ce lien de paiement est invalide ou a expiré",
         "chainMismatch": "Veuillez passer sur {{network}}",
         "chainUnsupported": "Ce réseau n'est pas encore supporté.",
         "recurringToken": "Le récurrent nécessite USDC ou USDT",
@@ -1012,6 +1091,108 @@
         "recurringMissing": "Infos récurrentes manquantes",
         "executeMissing": "Date d'exécution manquante"
       }
+    }
+  },
+  "tooltips": {
+    "showHistory": "Afficher l'historique",
+    "hideHistory": "Masquer l'historique"
+  },
+  "firstStep": {
+    "recommended": "Recommandé",
+    "difficultyLabel": "Difficulté"
+  },
+  "languageSwitcher": {
+    "ariaLabel": "Changer de langue",
+    "chooseLanguage": "Choisir la langue",
+    "preferenceSaved": "Préférence enregistrée"
+  },
+  "analytics": {
+    "kpi": {
+      "transactions": "Transactions",
+      "totalVolume": "Volume total",
+      "totalFees": "Frais totaux",
+      "realCost": "Coût réel"
+    },
+    "feesBreakdown": {
+      "totalMonthlyFees": "TOTAL FRAIS MENSUELS"
+    },
+    "transactionTypeTable": {
+      "total": "TOTAL"
+    },
+    "monthlyComparison": {
+      "history": "Historique mensuel"
+    }
+  },
+  "liquidity": {
+    "connectWallet": "Connectez votre wallet",
+    "connectWalletDescription": "Pour accéder à la liquidité, veuillez d'abord connecter votre wallet",
+    "title": "Accédez à de la liquidité sans vendre votre ETH",
+    "subtitle": "Utilisez votre ETH comme garantie et recevez de l'USDC ou de l'USDT en quelques secondes.",
+    "secure": "Sécurisé",
+    "secureDesc": "Vos fonds sont protégés par la blockchain et des smart contracts audités",
+    "instant": "Instantané",
+    "instantDesc": "Recevez votre liquidité immédiatement après validation de la transaction",
+    "flexible": "Flexible",
+    "flexibleDesc": "Remboursez à tout moment et récupérez votre ETH sans pénalité",
+    "form": {
+      "ethAmountLabel": "Montant d'ETH à déposer",
+      "approxEur": "≈ {{value}} €",
+      "max": "Max : {{amount}} ETH",
+      "availableInWallet": "Disponible dans votre wallet",
+      "liquidityYouWant": "Liquidité que vous souhaitez",
+      "sliderPrudent": "Prudent",
+      "sliderOptimal": "Optimal",
+      "sliderMaximum": "Maximum",
+      "youReceive": "Vous recevez",
+      "estimatedCost6Months": "Coût estimé sur 6 mois : {{amount}} {{token}}",
+      "annualRate": "Taux annuel : {{rate}}%",
+      "watchOut": "À surveiller",
+      "watchOutDesc": "Si le prix de l'ETH baisse, une protection automatique peut s'activer pour préserver votre dépôt.",
+      "seeHowItWorks": "→ Voir comment ça marche",
+      "confirmAndReceive": "Confirmer et recevoir ma liquidité",
+      "repayAnytime": "Vous pourrez rembourser à tout moment et récupérer votre ETH"
+    },
+    "statusCard": {
+      "positionSummary": "Résumé de votre position",
+      "healthy": "Position saine",
+      "healthyDesc": "Votre ETH couvre largement votre liquidité.",
+      "warning": "À surveiller",
+      "warningDesc": "Surveillez le prix de l'ETH ou réduisez votre liquidité.",
+      "ethDeposited": "ETH déposé",
+      "liquidity": "Liquidité",
+      "annualRate": "Taux annuel",
+      "safetyRatio": "Ratio de sécurité",
+      "safe": "Sûr",
+      "confirmAndReceive": "Confirmer et recevoir ma liquidité",
+      "repayAnytime": "Vous pourrez rembourser à tout moment et récupérer votre ETH"
+    },
+    "protectionExplainer": {
+      "howItWorks": "Comment ça marche ?",
+      "step1Title": "1. Tu déposes ton ETH",
+      "step1Desc": "Ton ETH reste en sécurité et continue d'exister. Il sert simplement de garantie.",
+      "step1Example": "Exemple : Tu déposes 1 ETH (≈ 2 000 €)",
+      "step2Title": "2. Tu reçois de la liquidité",
+      "step2Desc": "Immédiatement, tu reçois de l'USDC ou USDT que tu peux utiliser librement.",
+      "step2Example": "Exemple : Tu reçois 1 200 USDC",
+      "step3Title": "3. Tout va bien si le marché est stable",
+      "step3Desc": "Tant que l'ETH maintient sa valeur, ta position est saine et tu ne paies que les intérêts.",
+      "step3Cost": "Coût : 6% par an, soit environ 72 USDC sur 1 an",
+      "step4Title": "4. Alerte si le prix baisse trop",
+      "step4Desc": "Si l'ETH perd de la valeur, tu reçois une notification pour ajouter de l'ETH ou rembourser une partie.",
+      "step4Threshold": "Seuil : Tu es alerté si ton ETH ne couvre plus qu'à 70% ta liquidité",
+      "step5Title": "5. Protection automatique",
+      "step5Desc": "Si tu ne réagis pas, le système vend juste assez d'ETH pour préserver le reste de ton dépôt.",
+      "step5Priority": "Priorité : Vente partielle uniquement, on protège ton capital",
+      "understood": "J'ai compris"
+    },
+    "feePreview": {
+      "summary": "Récapitulatif",
+      "ethDeposited": "ETH déposé",
+      "liquidityReceived": "Liquidité reçue",
+      "annualRate": "Taux annuel",
+      "annualCost": "Coût annuel",
+      "cost6Months": "Coût sur 6 mois",
+      "note": "Les intérêts s'accumulent quotidiennement et sont dus au moment du remboursement."
     }
   },
   "footer": {
@@ -1025,6 +1206,8 @@
     "support": "Support",
     "terms": "Mentions légales",
     "privacy": "Confidentialité",
-    "copyright": "© {{year}} Confidance Crypto. Tous droits réservés."
+    "copyright": "© {{year}} Confidance Crypto. Tous droits réservés.",
+    "madeWith": "Fait avec",
+    "forDeFi": "pour la DeFi"
   }
 }

@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { useAccount, usePublicClient } from 'wagmi';
 import { Payment } from '@/hooks/useDashboard';
 import { TransactionRow } from './TransactionRow';
+import { ExportButton } from './ExportButton';
 import { useBeneficiaries } from '@/hooks/useBeneficiaries';
 import { EmailTransactionModal } from './EmailTransactionModal';
 import { recurringPaymentERC20Abi } from '@/lib/contracts/recurringPaymentERC20Abi';
@@ -15,6 +16,9 @@ interface TransactionTableProps {
   onRename: (address: string) => void;
   onCancel: (payment: Payment) => void;
   onDelete: (payment: Payment) => void;
+  /** Pour intégrer l’export à la barre de recherche */
+  userAddress?: string;
+  period?: string;
 }
 
 type SortField = 'beneficiary' | 'amount' | 'date' | 'status';
@@ -27,15 +31,16 @@ type DashboardPayment = Payment & {
   };
   __parentId?: string;
   __parentPayment?: Payment;
-  __monthlyStatuses?: Array<'executed' | 'failed' | 'pending' | 'cancelled'>;
+  __monthlyStatuses?: Array<'executed' | 'failed' | 'pending' | 'cancelled' | 'mixed'>;
   __batchChildren?: Payment[];
+  __batchMonthDetails?: Array<Array<{ address: string; status: string }>>;
 };
 
 const MONTH_IN_SECONDS =
   process.env.NEXT_PUBLIC_CHAIN === 'base_sepolia' ? 300 : 2592000; // 5 min en testnet
 const DASHBOARD_SEEN_KEY = 'dashboardLastSeenAt';
 
-export function TransactionTable({ payments, onRename, onCancel, onDelete }: TransactionTableProps) {
+export function TransactionTable({ payments, onRename, onCancel, onDelete, userAddress, period }: TransactionTableProps) {
   const { t, ready: translationsReady } = useTranslation();
   const [isMounted, setIsMounted] = useState(false);
   const [batchMainByTx, setBatchMainByTx] = useState<Record<string, string>>({});
@@ -634,39 +639,52 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete }: Tra
               0,
               ...perChild.map((entry) => entry.resolvedTotalMonths)
             );
-            const monthlyStatuses: Array<'executed' | 'failed' | 'pending' | 'cancelled'> = [];
+            type MonthStatus = 'executed' | 'failed' | 'pending' | 'cancelled' | 'mixed';
+            const monthlyStatuses: MonthStatus[] = [];
+            const batchMonthDetails: Array<Array<{ address: string; status: string }>> = [];
             if (totalMonths > 0) {
               for (let monthIndex = 0; monthIndex < totalMonths; monthIndex++) {
                 const statuses = perChild.map((entry) => entry.monthlyStatuses[monthIndex] || 'pending');
-                const hasFailed = statuses.some((status) => status === 'failed');
-                const hasCancelled = statuses.some((status) => status === 'cancelled');
-                const hasExecuted = statuses.some((status) => status === 'executed');
-                const allCancelled = statuses.every((status) => status === 'cancelled');
+                const details = batchChildren.map((child, i) => ({
+                  address: child.payee_address,
+                  status: statuses[i] || 'pending',
+                }));
+                batchMonthDetails.push(details);
+
+                const hasFailed = statuses.some((s) => s === 'failed');
+                const hasCancelled = statuses.some((s) => s === 'cancelled');
+                const hasExecuted = statuses.some((s) => s === 'executed');
+                const allCancelled = statuses.every((s) => s === 'cancelled');
                 if (hasFailed) {
                   monthlyStatuses.push('failed');
                   continue;
                 }
                 if (hasCancelled) {
-                  monthlyStatuses.push(allCancelled ? 'cancelled' : hasExecuted ? 'failed' : 'cancelled');
+                  if (allCancelled) {
+                    monthlyStatuses.push('cancelled');
+                  } else if (hasExecuted) {
+                    monthlyStatuses.push('mixed');
+                  } else {
+                    monthlyStatuses.push('cancelled');
+                  }
                   continue;
                 }
-                if (statuses.every((status) => status === 'executed')) {
+                if (statuses.every((s) => s === 'executed')) {
                   monthlyStatuses.push('executed');
                   continue;
                 }
                 monthlyStatuses.push('pending');
               }
             }
-            const resolvedExecutedMonths = monthlyStatuses.filter((status) => status === 'executed').length;
+            const resolvedExecutedMonths = monthlyStatuses.filter((s) => s === 'executed').length;
             const allCancelled = perChild.every((entry) => entry.resolvedStatus === 'cancelled');
             const hasCancelled = perChild.some((entry) => entry.resolvedStatus === 'cancelled');
             const hasPendingOrActive = perChild.some(
               (entry) => entry.resolvedStatus === 'pending' || entry.resolvedStatus === 'active'
             );
 
-            // 🔧 FIX SIMPLE: Compter les mois traités (executed ou failed)
             const processedMonthsCount = monthlyStatuses.filter(
-              (status) => status === 'executed' || status === 'failed'
+              (s) => s === 'executed' || s === 'failed' || s === 'mixed'
             ).length;
             const allTerminal = processedMonthsCount >= totalMonths && totalMonths > 0;
 
@@ -680,7 +698,7 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete }: Tra
               ? 'active'
               : payment.status;
 
-            return { resolvedExecutedMonths, resolvedTotalMonths: totalMonths, resolvedStatus, monthlyStatuses };
+            return { resolvedExecutedMonths, resolvedTotalMonths: totalMonths, resolvedStatus, monthlyStatuses, batchMonthDetails };
           })()
         : resolveMonthlyStatuses(paymentForDisplay, onchainRecurring[paymentForDisplay.id]);
 
@@ -702,11 +720,13 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete }: Tra
       const isRecurring = normalizedPayment.is_recurring || normalizedPayment.payment_type === 'recurring';
 
       if (!(isRecurring && isIncomingParent && !isOutgoingParent)) {
+        const aggWithDetails = aggregated as typeof aggregated & { batchMonthDetails?: Array<Array<{ address: string; status: string }>> };
         expanded.push({
           ...normalizedPayment,
           __isNew: baseIsNew,
           __monthlyStatuses: aggregated.monthlyStatuses.length > 0 ? aggregated.monthlyStatuses : undefined,
           __batchChildren: hasBatchChildren ? batchChildren : undefined,
+          __batchMonthDetails: hasBatchChildren ? aggWithDetails.batchMonthDetails : undefined,
         });
       }
 
@@ -937,22 +957,32 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete }: Tra
 
   return (
     <div className="bg-white rounded-lg shadow">
-      {/* Barre de recherche */}
+      {/* Barre de recherche + export intégré */}
       <div className="p-4 border-b border-gray-200">
-        <div className="relative">
-          <input
-            type="text"
-            placeholder={isMounted && translationsReady ? t('dashboard.table.search') : 'Rechercher par nom ou adresse...'}
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-          <svg className="absolute left-3 top-2.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
+        <div className="flex border border-gray-300 rounded-lg bg-white focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent">
+          <div className="relative flex-1 min-w-0">
+            <input
+              type="text"
+              placeholder={isMounted && translationsReady ? t('dashboard.table.search') : 'Rechercher par nom ou adresse...'}
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
+              className={`w-full pl-10 pr-4 py-2 border-0 focus:ring-0 focus:outline-none bg-transparent ${userAddress != null && period != null ? 'rounded-l-lg' : 'rounded-lg'}`}
+            />
+            <svg className="absolute left-3 top-2.5 w-5 h-5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          {userAddress != null && period != null && (
+            <ExportButton
+              variant="inline"
+              payments={payments}
+              userAddress={userAddress}
+              period={period}
+            />
+          )}
         </div>
       </div>
 

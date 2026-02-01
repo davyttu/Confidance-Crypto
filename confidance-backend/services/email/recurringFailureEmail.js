@@ -3,7 +3,7 @@ const axios = require('axios');
 const APP_URL = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 const BREVO_API_KEY = process.env.BREVO_API_KEY;
 const BREVO_FROM_EMAIL = process.env.BREVO_FROM_EMAIL;
-const BREVO_FROM_NAME = process.env.BREVO_FROM_NAME || 'Confidance Crypto';
+const BREVO_FROM_NAME = process.env.BREVO_FROM_NAME || 'Confidance';
 
 const NETWORK_LABELS = {
   base_mainnet: 'Base Mainnet',

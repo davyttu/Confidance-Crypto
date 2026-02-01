@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, ChevronLeft, ChevronRight, Filter, Download } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useDashboard, type Payment } from '@/hooks/useDashboard';
+import { useTranslation } from 'react-i18next';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -32,6 +33,7 @@ const displayAmount = (amount: number, tokenSymbol: string) => {
 };
 
 export default function StatementPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { address } = useAccount();
   const { isAuthenticated } = useAuth();
@@ -903,7 +905,7 @@ export default function StatementPage() {
         {isLoading ? (
           <div className="text-center py-12">
             <div className="animate-spin w-8 h-8 border-4 border-gray-900 border-t-transparent rounded-full mx-auto mb-3"></div>
-            <p className="text-gray-600">Chargement...</p>
+            <p className="text-gray-600">{t('common.loading')}</p>
           </div>
         ) : selectedWallets.length === 0 ? (
           <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">

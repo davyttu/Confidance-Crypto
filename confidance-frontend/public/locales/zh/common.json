@@ -2,16 +2,19 @@
   "nav": {
     "home": "首页",
     "create": "支付",
-    "dashboard": "Dashboard",
+    "dashboard": "仪表板",
     "liquidity": "流动性",
     "help": "帮助",
-    "analytics": "Analytics",
+    "analytics": "分析",
     "notifications": "通知"
   },
   "common": {
     "connect": "连接钱包",
+    "connectWallet": "请连接您的钱包",
+    "register": "创建账户",
     "disconnect": "断开连接",
     "cancel": "取消",
+    "changeLanguage": "切换语言",
     "confirm": "确认",
     "save": "保存",
     "loading": "加载中...",
@@ -20,6 +23,13 @@
     "accountType": {
       "professional": "专业",
       "individual": "个人"
+    },
+    "upgradeToPro": "升级为专业账户",
+    "editProInfo": "编辑专业版信息",
+    "themeToggle": {
+      "ariaLabel": "切换主题",
+      "switchToLight": "浅色模式",
+      "switchToDark": "深色模式"
     },
     "accountSettings": {
       "menuLabel": "登录信息",
@@ -86,6 +96,8 @@
       "description": "Confidance 旨在让加密支付可预测、可验证且独立于中介。"
     },
     "useCases": {
+      "title": "使用场景",
+      "subtitle": "满足您所有定期支付需求",
       "salaries": {
         "title": "自动工资",
         "desc": "在固定日期向您的团队支付"
@@ -163,6 +175,8 @@
       "search": "按名称或地址搜索...",
       "beneficiary": "受益人",
       "amount": "金额",
+      "referenceAmountNote": "此金额未扣款",
+      "nextInstallmentNote": "资金未锁定",
       "releaseDate": "释放日期",
       "status": "状态",
       "contract": "合约",
@@ -173,8 +187,35 @@
       "releasedOn": "{{date}} 已释放",
       "clickToRename": "点击重命名",
       "copyAddress": "复制地址",
+      "copyHash": "复制哈希",
+      "transactionHash": "交易哈希",
       "viewOnBasescan": "在 Basescan 查看",
+      "sendByEmail": "通过邮件发送",
       "cancelPayment": "取消支付"
+    },
+    "emailTransaction": {
+      "amount": "金额",
+      "date": "日期",
+      "paymentType": "支付类型",
+      "cancellation": "取消",
+      "cancellable": "可取消",
+      "notCancellable": "不可取消",
+      "emailRecipient": "邮件收件人",
+      "myself": "本人",
+      "otherPerson": "他人",
+      "emailAddress": "邮箱地址",
+      "emailPlaceholder": "example@email.com",
+      "emailRequired": "请输入邮箱地址",
+      "invalidEmailAddress": "邮箱地址无效",
+      "recipientNameOptional": "收件人姓名（选填）",
+      "recipientNamePlaceholder": "例如：张三",
+      "sendError": "发送失败",
+      "emailSentVia": "邮件将通过 Brevo 发送至指定地址。",
+      "sendByEmail": "通过邮件发送",
+      "recurringMonths": "按月（{{count}} 期{{plural}}）",
+      "recurring": "按月",
+      "instant": "即时",
+      "scheduled": "预约"
     },
     "status": {
       "pending": "待处理",
@@ -252,12 +293,31 @@
     },
     "beneficiaries": {
       "title": "我的受益人",
+      "count_one": "{{count}} 位受益人",
+      "count_other": "{{count}} 位受益人",
       "empty": "暂无受益人",
       "emptyDescription": "创建支付以将受益人加入列表。",
       "edit": "编辑",
+      "totalLabel": "总计：",
       "delete": "删除",
       "deleteConfirm": "删除“{{name}}”从受益人列表？",
       "deleteError": "删除出错",
+      "modalTitleEdit": "编辑受益人",
+      "modalTitleNew": "新建受益人",
+      "nameLabel": "受益人姓名",
+      "namePlaceholder": "例：张三，某某公司...",
+      "nameMinChars": "至少2个字符",
+      "categoryLabel": "分类",
+      "addressLabel": "地址",
+      "createButton": "创建",
+      "saving": "保存中...",
+      "errorNameMin": "姓名至少需要2个字符",
+      "errorSave": "保存时出错",
+      "contactForLinks": "填写邮箱或手机号后，可直接将支付链接发送给收款人，比复制粘贴更安全。",
+      "email": "邮箱",
+      "phone": "电话",
+      "emailPlaceholder": "例：recipient@example.com",
+      "phonePlaceholder": "例：+86 138 0000 0000",
       "categories": {
         "family": "家庭",
         "work": "工作",
@@ -322,6 +382,9 @@
       "saved": "已保存的钱包",
       "primary": "主钱包",
       "setPrimary": "设为主钱包",
+      "showWallet": "在仪表板中显示",
+      "displayed": "已显示",
+      "selectedCount": "{{count}} 个钱包",
       "renamePlaceholder": "钱包名称",
       "rename": "重命名",
       "delete": "删除",
@@ -333,7 +396,8 @@
       "pending": "待处理",
       "released": "已释放",
       "cancelled": "已取消",
-      "failed": "失败"
+      "failed": "失败",
+      "completed": "已完成"
     },
     "recurringHistory": {
       "title": "月度支付历史",
@@ -341,9 +405,11 @@
       "month": "第 {{number}} 个月",
       "status": {
         "executed": "已执行",
+        "released": "已释放",
         "pending": "待处理",
         "failed": "失败",
-        "cancelled": "已取消"
+        "cancelled": "已取消",
+        "mixed": "已执行与已取消"
       }
     },
     "cancel": {
@@ -361,6 +427,7 @@
       "irreversible": "此操作不可逆",
       "noFees": "取消时协议费用会退还",
       "confirmText": "我理解此操作不可逆，并希望取消此计划支付。",
+      "confirmTextRecurring": "我理解此操作不可逆，并希望取消此定期支付。",
       "close": "关闭",
       "processing": "取消中...",
       "confirm": "确认取消",
@@ -481,13 +548,146 @@
       }
     }
   },
+  "wallet": {
+    "connectionRequired": "需要连接",
+    "connectToAccess": "请连接钱包以访问此页面",
+    "wrongNetwork": "网络错误",
+    "mustBeOnBase": "您需要在",
+    "toUseApp": "才能使用此应用",
+    "currentNetwork": "当前网络：ChainID {{chainId}}",
+    "switchNetworkHint": "💡 点击钱包并切换到 Base Mainnet"
+  },
+  "help": {
+    "title": "帮助中心",
+    "subtitle": "快速找到 Confidance Crypto 相关答案",
+    "search": "在帮助中搜索...",
+    "sections": {
+      "getStarted": { "title": "入门", "description": "Confidance Crypto 第一步" },
+      "guides": { "title": "指南", "description": "分步教程" },
+      "faq": { "title": "FAQ", "description": "常见问题" },
+      "videos": { "title": "视频", "description": "视频教程" }
+    },
+    "widget": {
+      "title": "需要帮助？",
+      "subtitle": "快速找到答案",
+      "getStarted": { "title": "Confidance 入门", "description": "新用户指南" },
+      "practicalGuides": { "title": "实用指南", "description": "分步教程" },
+      "faq": { "title": "常见问题", "description": "完整 FAQ" },
+      "videoTutorials": { "title": "视频教程", "description": "通过视频学习" },
+      "chatMarilyn": { "title": "与 Marilyn 聊天", "description": "即时 AI 协助" },
+      "contactSupport": "联系支持",
+      "openFullCenter": "打开完整帮助中心"
+    },
+    "cta": { "title": "需要个性化帮助？", "description": "我们的团队随时为您服务", "button": "联系支持" },
+    "contact": {
+      "back": "返回帮助中心",
+      "title": "联系支持",
+      "subtitle": "我们的团队随时为您服务",
+      "email": { "title": "电子邮件", "description": "平均 24 小时内回复" },
+      "discord": { "title": "Discord", "description": "加入社区", "comingSoon": "即将推出" },
+      "form": {
+        "title": "联系表单",
+        "email": "您的邮箱",
+        "emailPlaceholder": "your@email.com",
+        "subject": "主题",
+        "subjectPlaceholder": "您的请求主题",
+        "message": "消息",
+        "messagePlaceholder": "您的消息...",
+        "submit": "发送"
+      }
+    },
+    "chat": {
+      "title": "Marilyn",
+      "subtitle": "沟通助手",
+      "connected": "已连接：",
+      "placeholder": "输入消息...",
+      "footer": "💬 您的消息将发送给 Marilyn，她会尽快回复。",
+      "initialMessage": "👋 您好！我是 Marilyn，Confidance Crypto 的助手。今天我能帮您什么？",
+      "error": "❌ {{message}}。请稍后再试。",
+      "success": "✅ 消息已收到！我会尽快回复。"
+    },
+    "getStarted": {
+      "back": "← 返回帮助中心",
+      "title": "🚀 Confidance Crypto 入门",
+      "whatIs": { "title": "什么是 Confidance Crypto？", "description": "Confidance Crypto 是用于安排自动加密支付的 DeFi 平台。发送的 ETH 或代币将在指定日期自动释放。" },
+      "requirements": {
+        "title": "✅ 您需要",
+        "wallet": { "title": "加密钱包", "description": "MetaMask、Coinbase Wallet、Rainbow 等" },
+        "eth": { "title": "Base Mainnet 上的 ETH", "description": "最少约 0.01 ETH 用于 gas + 发送金额" },
+        "address": { "title": "收款人地址", "description": "以太坊地址 (0x...)" }
+      },
+      "nextSteps": {
+        "title": "📚 下一步",
+        "createPayment": { "title": "1. 创建您的第一笔支付", "description": "发送第一笔计划支付的分步教程" },
+        "faq": { "title": "2. 常见问题", "description": "安全、费用、延迟… 所有答案" }
+      }
+    },
+    "guides": {
+      "back": "← 返回帮助中心",
+      "title": "📚 实用指南",
+      "subtitle": "掌握 Confidance Crypto 的详细教程",
+      "items": {
+        "createPayment": { "title": "创建您的第一笔支付", "description": "发送第一笔计划支付的完整指南", "duration": "5 分钟", "level": "初级" },
+        "fees": { "title": "了解费用", "description": "精确计算您的支付成本", "duration": "3 分钟", "level": "初级" },
+        "cancel": { "title": "取消支付", "description": "如何在释放前取消支付", "duration": "2 分钟", "level": "中级" }
+      },
+      "tip": { "title": "💡 提示", "description": "先用小额 (0.001 ETH) 创建测试支付熟悉流程！" }
+    },
+    "faq": {
+      "back": "← 返回帮助中心",
+      "title": "❓ 常见问题 (FAQ)",
+      "subtitle": "快速找到最常见问题的答案",
+      "categories": {
+        "security": {
+          "title": "🔐 安全",
+          "questions": {
+            "fundsSafe": { "q": "我的资金安全吗？", "a": "是的！您的资金存放在 Base 区块链上经过审计的智能合约中。任何人（包括我们）都无法在计划日期前动用。您保持 100% 控制权。" },
+            "ifConfidanceDisappears": { "q": "如果 Confidance 消失会怎样？", "a": "您的支付将继续运行！智能合约在区块链上自主运行。即使我们的网站离线，支付也会自动释放。" }
+          }
+        },
+        "fees": {
+          "title": "💰 费用",
+          "questions": {
+            "whatFees": { "q": "有哪些费用？", "a": "有两种：1) 区块链 gas：创建时约 0.002 ETH。2) 协议费用：释放时自动扣除金额的 1.79%。" },
+            "feeExample": { "q": "费用计算示例", "a": "发送 0.1 ETH：Gas（创建）0.002 ETH。协议费用 (1.79%)：0.00179 ETH。收款人收到：0.09821 ETH。" }
+          }
+        },
+        "dates": {
+          "title": "📅 日期与期限",
+          "questions": {
+            "canCancel": { "q": "我可以取消支付吗？", "a": "可以，如果您在创建时勾选了“允许取消”。取消必须在计划日期之前进行。您将收回 100% 金额（无费用）。" },
+            "minDate": { "q": "最早日期是什么？", "a": "您可以安排几分钟后或几年后的支付。没有限制。" }
+          }
+        },
+        "technical": {
+          "title": "⚙️ 技术",
+          "questions": {
+            "blockchain": { "q": "你们使用哪个区块链？", "a": "我们使用 Base Mainnet（以太坊 Layer 2）。快速、安全、费用低。" },
+            "tokens": { "q": "我可以发送代币 (USDC, DAI) 吗？", "a": "ERC20 支持即将推出！目前仅支持原生 ETH。" }
+          }
+        }
+      },
+      "notFound": { "title": "找不到答案？", "description": "我们的支持团队随时为您服务", "button": "💬 联系支持" }
+    },
+    "videos": {
+      "back": "← 返回帮助中心",
+      "title": "📹 视频教程",
+      "subtitle": "通过分步教程学习",
+      "items": {
+        "createPayment": { "title": "从零开始创建支付", "description": "创建第一笔计划支付的完整教程", "duration": "5:30" },
+        "connectWallet": { "title": "连接 MetaMask 钱包", "description": "如何在 Base 上连接和配置钱包", "duration": "3:15" },
+        "feesSecurity": { "title": "了解费用与安全", "description": "费用与安全系统详解", "duration": "4:45" }
+      },
+      "comingSoon": { "title": "🎬 视频即将推出！", "description": "请先查看我们的详细书面指南" }
+    }
+  },
   "tooltips": {
     "showHistory": "显示历史",
     "hideHistory": "隐藏历史"
   },
   "links": {
     "cta": "创建支付链接",
-    "ctaDescription": "一键创建链接，分享给客户或合作伙伴：他们用加密货币支付到您的钱包，无需账户或中介。简单、安全、通用。",
+    "ctaDescription": "一键创建链接，分享给客户或合作伙伴；对方以加密货币直接付款至您的钱包，无需注册账户或经过中介。简单、安全、通用。",
     "create": {
       "badge": "支付链接生成器",
       "title": "创建支付链接",
@@ -532,6 +732,12 @@
         "label": "给你的链接一个清晰的标题。",
         "startAtInformative": "首月付款将在收款人打开链接并确认支付后开始。"
       },
+      "aria": {
+        "enableIdentity": "启用支付标识",
+        "disableIdentity": "禁用支付标识",
+        "enablePaymentDescription": "启用支付描述",
+        "disablePaymentDescription": "禁用支付描述"
+      },
       "errors": {
         "connectWallet": "请先连接钱包",
         "amount": "金额无效",
@@ -548,7 +754,13 @@
       "successDescription": "分享此链接即可收款",
       "shareInfo": "可通过邮箱、社交媒体或聊天应用分享此链接",
       "copied": "已复制！",
-      "copy": "复制"
+      "copy": "复制",
+      "sendLinkTitle": "直接发送链接",
+      "sendByEmail": "通过邮件发送",
+      "sendBySms": "通过短信发送",
+      "emailPlaceholder": "例：recipient@example.com",
+      "phonePlaceholder": "例：+86 138 0000 0000",
+      "pickFromRecipients": "从我的收款人中选择"
     },
     "types": {
       "instant": "即时",
@@ -563,6 +775,7 @@
       "button": "我的支付链接",
       "title": "我的支付链接",
       "empty": "暂无支付链接",
+      "hint": "支付确认后，您可以在仪表板中找到。",
       "unnamed": "未命名付款",
       "filter": {
         "label": "按分类筛选",
@@ -647,6 +860,7 @@
       },
       "errors": {
         "notFound": "未找到支付链接",
+        "invalidOrExpired": "该支付链接无效或已过期",
         "chainMismatch": "请切换到 {{network}}",
         "chainUnsupported": "该网络暂不支持。",
         "recurringToken": "定期仅支持 USDC 或 USDT",
@@ -663,6 +877,17 @@
     "voiceStopCta": "停止语音指令",
     "voiceNeedBeneficiary": "要使用语音指令，请至少保存一位收款人（将显示在收藏中）。",
     "voiceLang": "语音语言",
+    "wallet": {
+      "connectFirst": "要创建计划支付，请先连接钱包"
+    },
+    "amount": {
+      "label": "金额",
+      "perBeneficiary": "（每位受益人）",
+      "monthly": "（每月）",
+      "total": "总计",
+      "forBeneficiaries": "共 {{count}} 位受益人",
+      "totalMonths": "共 {{months}} 个月"
+    },
     "currency": {
       "select": "选择要发送的加密货币",
       "available": "可用",
@@ -760,7 +985,59 @@
       "contractAddress": "合约地址",
       "contractAddresses": "合约地址列表",
       "approvalSummaryTitle": "批准摘要",
-      "approvalSummaryLine": "总授权额度：{{amount}} {{token}}，共 {{months}} 个月，每位受益人"
+      "approvalSummaryLine": "总授权额度：{{amount}} {{token}}，共 {{months}} 个月，每位受益人",
+      "paymentCreated": "支付已创建！",
+      "transactionConfirmed": "交易已确认！",
+      "paymentDeployedSuccess": "您的计划支付已成功部署",
+      "viewOnBasescanDetails": "请在 Basescan 查看详情",
+      "transactionHash": "交易哈希",
+      "viewOnBasescan": "在 Basescan 查看",
+      "viewPayment": "查看支付",
+      "close": "关闭",
+      "step": "步骤 {{current}}/{{total}}",
+      "dontCloseWindow": "⚠️ 请勿关闭此窗口",
+      "approval": "1. 批准",
+      "creation": "2. 创建",
+      "creationSingle": "创建",
+      "viewApproval": "查看批准",
+      "viewCreation": "查看创建",
+      "error": "错误",
+      "errorOccurred": "发生错误",
+      "loading": "加载中...",
+      "creatingPaymentETH": "正在创建 ETH 支付...",
+      "creatingPayment": "正在创建支付...",
+      "paymentCreatedSuccess": "支付创建成功！",
+      "paymentCreatedNotSaved": "支付已创建！（未保存到数据库）",
+      "creatingRecurringPayment": "正在创建定期 {{token}} 支付..."
+    },
+    "paymentType": {
+      "label": "🔒 支付类型",
+      "instantDetected": "检测到即时支付",
+      "instantDisabled": "支付将立即执行，取消选项已禁用。",
+      "cancellable": {
+        "title": "可取消（日期前）",
+        "description": "您可在释放日前取消并收回金额及协议费用"
+      },
+      "definitive": {
+        "title": "不可取消",
+        "description": "创建后无法取消。资金将在选定日期自动释放"
+      }
+    },
+    "summary": {
+      "title": "💰 摘要",
+      "balance": "可用余额",
+      "beneficiaryWillReceive": "受益人将收到",
+      "protocolFees": "协议费用 ({{percentage}}%)",
+      "totalToSend": "总发送额",
+      "secureTitle": "🔒 安全自动支付",
+      "secureDescription": "您的资金存放在智能合约中，将在选定日期自动释放。无需手动操作。",
+      "feesTooltip": "这些费用用于维护平台和 24/7 keeper"
+    },
+    "submit": "创建计划支付",
+    "features": {
+      "secure": { "title": "100% 安全", "description": "您的资金存放在经过验证的智能合约中" },
+      "automatic": { "title": "自动", "description": "支付将在选定日期自动释放" },
+      "transparent": { "title": "透明", "description": "在 Basescan 上实时跟踪您的支付" }
     },
     "recurring": {
       "onlyUSDCUSDT": "定期支付仅适用于 USDC 和 USDT",
@@ -775,8 +1052,29 @@
       "totalNotCalculated": "未计算所需总额"
     },
     "date": {
+      "label": "释放日期与时间",
       "paymentTypeLabel": "支付类型",
+      "firstDue": "释放日期与时间（首次应付）",
+      "instant": "⚡即时",
+      "6hours": "6 小时",
+      "1day": "1 天",
+      "1week": "1 周",
+      "1month": "1 个月",
+      "recurring": "🔄 每月",
+      "recurringTooltip": "⚠️ 仅适用于 USDT/USDC",
+      "monthsLabel": "月度支付次数",
+      "monthsInfo": "💡 每月将扣款 {{months}} 个月。您的资金仍可用。",
+      "dayOfMonth": "每月 {{day}} 日扣款",
+      "autoRelease": "💡 支付将在此日期自动释放",
+      "beneficiaryWillReceive": "受益人将收到（每月）",
       "numberOfBeneficiaries": "受益人数量",
+      "numberOfMonths": "月数",
+      "firstDueDate": "首次应付：",
+      "lastDueDate": "末次应付：",
+      "totalPerMonth": "每月总计",
+      "totalToApprove": "待批准总计",
+      "nextPaymentsContinue": "即使某月失败，<strong>后续月份仍将正常继续</strong>",
+      "cancellableStopsPayments": "仅支付类型中的「可取消」选项允许通过仪表板永久停止剩余月度支付",
       "treasuryRemainsAvailable": "您的资金仍然可用",
       "onlyAmountDebitedMonthly": "每月只会从您的钱包中扣除 <strong>{{amount}} {{token}}</strong>。",
       "firstMonthOverride": "首月除外：首月将扣除 <strong>{{amount}} {{token}}</strong>。",
@@ -805,8 +1103,111 @@
       "info": "💡 如果输入与每月相同的金额，该选项会被自动忽略。"
     }
   },
-  "common": {
-    "connectWallet": "请连接您的钱包"
+  "firstStep": {
+    "recommended": "推荐",
+    "difficultyLabel": "难度"
+  },
+  "languageSwitcher": {
+    "ariaLabel": "切换语言",
+    "chooseLanguage": "选择语言",
+    "preferenceSaved": "偏好已保存"
+  },
+  "analytics": {
+    "kpi": {
+      "transactions": "交易笔数",
+      "totalVolume": "总交易量",
+      "totalFees": "总手续费",
+      "realCost": "实际成本"
+    },
+    "feesBreakdown": {
+      "totalMonthlyFees": "月度手续费合计"
+    },
+    "transactionTypeTable": {
+      "title": "按交易类型细分",
+      "typeHeader": "交易类型",
+      "countHeader": "笔数",
+      "volumeHeader": "交易量",
+      "avgFeesHeader": "平均手续费",
+      "instant": "即时支付",
+      "scheduled": "预约支付",
+      "recurring": "定期支付",
+      "total": "合计"
+    },
+    "monthlyComparison": {
+      "history": "月度历史"
+    }
+  },
+  "liquidity": {
+    "connectWallet": "连接钱包",
+    "connectWalletDescription": "要使用流动性功能，请先连接您的钱包。",
+    "title": "无需出售 ETH 即可获得流动性",
+    "subtitle": "以 ETH 作为抵押，几秒钟内获得 USDC 或 USDT。",
+    "secure": "安全",
+    "secureDesc": "您的资金受区块链和经审计的智能合约保护",
+    "instant": "即时",
+    "instantDesc": "交易确认后立即获得流动性",
+    "flexible": "灵活",
+    "flexibleDesc": "随时还款并取回 ETH，无罚金",
+    "form": {
+      "ethAmountLabel": "存入 ETH 数量",
+      "approxEur": "≈ {{value}} €",
+      "max": "最大: {{amount}} ETH",
+      "availableInWallet": "钱包可用余额",
+      "liquidityYouWant": "所需流动性",
+      "sliderPrudent": "保守",
+      "sliderOptimal": "适中",
+      "sliderMaximum": "最大",
+      "youReceive": "您将获得",
+      "estimatedCost6Months": "6 个月预估成本：{{amount}} {{token}}",
+      "annualRate": "年利率：{{rate}}%",
+      "watchOut": "注意",
+      "watchOutDesc": "若 ETH 价格下跌，可能触发自动保护以保全您的抵押。",
+      "seeHowItWorks": "→ 了解运作方式",
+      "confirmAndReceive": "确认并获取流动性",
+      "repayAnytime": "您可随时还款并取回 ETH"
+    },
+    "statusCard": {
+      "positionSummary": "仓位摘要",
+      "healthy": "健康仓位",
+      "healthyDesc": "您的 ETH 足以覆盖流动性。",
+      "warning": "注意",
+      "warningDesc": "关注 ETH 价格或减少流动性。",
+      "ethDeposited": "已存 ETH",
+      "liquidity": "流动性",
+      "annualRate": "年利率",
+      "safetyRatio": "安全比率",
+      "safe": "安全",
+      "confirmAndReceive": "确认并获取流动性",
+      "repayAnytime": "您可随时还款并取回 ETH"
+    },
+    "protectionExplainer": {
+      "howItWorks": "如何运作？",
+      "step1Title": "1. 您存入 ETH",
+      "step1Desc": "您的 ETH 保持安全且继续存在，仅作为抵押品。",
+      "step1Example": "示例：存入 1 ETH（≈ 2,000 €）",
+      "step2Title": "2. 您获得流动性",
+      "step2Desc": "立即获得可自由使用的 USDC 或 USDT。",
+      "step2Example": "示例：获得 1,200 USDC",
+      "step3Title": "3. 市场稳定时一切正常",
+      "step3Desc": "只要 ETH 保持价值，仓位健康，您只需支付利息。",
+      "step3Cost": "成本：年化 6%，约每年 72 USDC",
+      "step4Title": "4. 价格下跌过多时提醒",
+      "step4Desc": "若 ETH 贬值，您会收到通知以追加 ETH 或部分还款。",
+      "step4Threshold": "阈值：当 ETH 仅覆盖 70% 流动性时会提醒",
+      "step5Title": "5. 自动保护",
+      "step5Desc": "若未操作，系统将仅出售必要数量的 ETH 以保全其余抵押。",
+      "step5Priority": "优先：仅部分出售，保护您的本金",
+      "understood": "明白了"
+    },
+    "feePreview": {
+      "summary": "摘要",
+      "ethDeposited": "已存 ETH",
+      "liquidityReceived": "获得流动性",
+      "annualRate": "年利率",
+      "annualCost": "年成本",
+      "cost6Months": "6 个月成本",
+      "note": "利息按日累计，于还款时支付。"
+    }
   },
   "footer": {
     "description": "支付不应依赖信任，而应依赖代码。",
@@ -819,6 +1220,8 @@
     "support": "支持",
     "terms": "法律声明",
     "privacy": "隐私",
-    "copyright": "© {{year}} Confidance Crypto. 版权所有."
+    "copyright": "© {{year}} Confidance Crypto. 版权所有.",
+    "madeWith": "用心打造",
+    "forDeFi": "为 DeFi"
   }
 }

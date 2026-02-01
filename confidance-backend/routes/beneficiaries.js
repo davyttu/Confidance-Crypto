@@ -46,12 +46,12 @@ router.get('/:walletAddress', async (req, res) => {
  */
 router.post('/', async (req, res) => {
   try {
-    const { user_address, beneficiary_address, display_name, category } = req.body;
+    const { user_address, beneficiary_address, display_name, category, email, phone } = req.body;
 
     // Validation
     if (!user_address || !beneficiary_address || !display_name) {
-      return res.status(400).json({ 
-        error: 'Champs requis manquants' 
+      return res.status(400).json({
+        error: 'Champs requis manquants'
       });
     }
 
@@ -77,6 +77,8 @@ router.post('/', async (req, res) => {
         beneficiary_address: beneficiary_address.toLowerCase(),
         display_name: display_name.trim(),
         category: category || null,
+        email: email && String(email).trim() ? String(email).trim() : null,
+        phone: phone && String(phone).trim() ? String(phone).trim() : null,
       }])
       .select()
       .single();
@@ -103,23 +105,27 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { display_name, category } = req.body;
+    const { display_name, category, email, phone } = req.body;
 
     // Validation
     if (!display_name || display_name.trim().length < 2) {
-      return res.status(400).json({ 
-        error: 'Le nom doit contenir au moins 2 caractères' 
+      return res.status(400).json({
+        error: 'Le nom doit contenir au moins 2 caractères'
       });
     }
 
     // Mettre à jour le bénéficiaire
+    const updatePayload = {
+      display_name: display_name.trim(),
+      category: category || null,
+      updated_at: new Date().toISOString(),
+    };
+    if (email !== undefined) updatePayload.email = email && String(email).trim() ? String(email).trim() : null;
+    if (phone !== undefined) updatePayload.phone = phone && String(phone).trim() ? String(phone).trim() : null;
+
     const { data, error } = await supabase
       .from('beneficiaries')
-      .update({
-        display_name: display_name.trim(),
-        category: category || null,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updatePayload)
       .eq('id', id)
       .select()
       .single();

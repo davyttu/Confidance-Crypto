@@ -54,7 +54,7 @@ export function FeesBreakdown({ stats }: FeesBreakdownProps) {
         {/* Total */}
         <div className="pt-4 border-t border-gray-200">
           <div className="flex items-center justify-between">
-            <span className="text-base font-bold text-gray-900">TOTAL FRAIS MENSUELS</span>
+            <span className="text-base font-bold text-gray-900">{t('analytics.feesBreakdown.totalMonthlyFees')}</span>
             <span className="text-lg font-mono font-bold text-gray-900">
               {stats.totalFeesFormatted} ETH
             </span>
