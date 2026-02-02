@@ -428,6 +428,7 @@
       "totalAmountRecurring": "Importe total (todos los meses):",
       "recurringNoRefund": "No hay fondos bloqueados; cancelar detiene las próximas cuotas.",
       "batchRecurringNotice": "Deberás confirmar {{count}} cancelaciones en tu wallet.",
+      "batchParentWarning": "Esta cancelación cancelará todas las cuotas futuras para cada beneficiario de este pago batch. Para detener solo un beneficiario, cancele solo la fila de ese beneficiario (fila hija) en el detalle de transacciones.",
       "releaseDate": "Liberación programada:",
       "important": "Importante:",
       "refund": "Los fondos y las comisiones del protocolo se reembolsarán a tu wallet (prorrata para pagos batch)",
@@ -749,8 +750,29 @@
     "subtitle": "Envía cripto que se liberará automáticamente en la fecha elegida",
     "voiceCta": "Crear un pago por voz",
     "voiceStopCta": "Detener el comando de voz",
+    "voiceStopCtaShort": "Stop",
     "voiceNeedBeneficiary": "Para usar el comando de voz, guarde al menos un beneficiario (aparecerán en favoritos).",
     "voiceLang": "Idioma de voz",
+    "voice": {
+      "statusListening": "Escuchando…",
+      "statusTranscribing": "Transcribiendo…"
+    },
+    "blockchain": {
+      "title": "Red de la transacción",
+      "stepLabel": "Elige tu blockchain",
+      "stepSubtitle": "Los fondos se enviarán en esta red",
+      "selected": "Red seleccionada",
+      "switchNetwork": "Cambiar red",
+      "message": "Tu destinatario recibirá los fondos en {{chain}}. Asegúrate de que su cartera soporta esta red.",
+      "checklistTitle": "Checklist para una transacción sin problemas",
+      "checklistToggle": "Checklist",
+      "switchHint": "¿Quieres cambiar de blockchain? Usa el selector de red arriba a la derecha — ¡un clic y listo!"
+    },
+    "blockchainChecklist": {
+      "address": "He verificado la dirección del destinatario",
+      "network": "Su cartera soporta esta red",
+      "receive": "Recibirá los fondos en esta red"
+    },
     "wallet": {
       "connectFirst": "Para crear un pago programado, conecta primero tu cartera"
     },

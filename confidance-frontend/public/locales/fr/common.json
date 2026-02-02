@@ -390,6 +390,7 @@
       "totalAmountRecurring": "Montant total (tous les mois) :",
       "recurringNoRefund": "Aucun fonds n’est bloqué ; l’annulation stoppe les prochaines mensualités.",
       "batchRecurringNotice": "Vous devrez confirmer {{count}} annulations dans votre wallet.",
+      "batchParentWarning": "Cette annulation annulera toutes les échéances futures pour chaque destinataire de ce paiement batch. Pour n'arrêter qu'un seul destinataire, annulez uniquement la ligne de ce destinataire (ligne enfant) dans le détail des transactions.",
       "releaseDate": "Libération prévue :",
       "important": "Important :",
       "refund": "Les fonds et les fees protocole seront remboursés sur votre wallet (au prorata pour les batchs)",
@@ -443,8 +444,29 @@
     "subtitle": "Envoyez de la crypto qui sera automatiquement libérée à la date choisie",
     "voiceCta": "Créer un paiement par la voix",
     "voiceStopCta": "Arrêter la commande vocale",
+    "voiceStopCtaShort": "Stop",
     "voiceNeedBeneficiary": "Pour activer la commande vocale, enregistrez au moins un bénéficiaire (ils apparaîtront dans les favoris).",
     "voiceLang": "Langue vocale",
+    "voice": {
+      "statusListening": "En train d'écouter…",
+      "statusTranscribing": "Transcription en cours…"
+    },
+    "blockchain": {
+      "title": "Réseau de la transaction",
+      "stepLabel": "Choisissez votre blockchain",
+      "stepSubtitle": "Les fonds seront envoyés sur ce réseau",
+      "selected": "Réseau sélectionné",
+      "switchNetwork": "Changer de réseau",
+      "message": "Votre destinataire recevra les fonds sur {{chain}}. Vérifiez que son portefeuille prend en charge ce réseau.",
+      "checklistTitle": "Checklist pour une transaction sereine",
+      "checklistToggle": "Checklist",
+      "switchHint": "Pour changer de blockchain, direction le sélecteur de réseau en haut à droite — un clic et c'est fait !"
+    },
+    "blockchainChecklist": {
+      "address": "J'ai vérifié l'adresse du destinataire",
+      "network": "Son portefeuille prend en charge ce réseau",
+      "receive": "Il recevra les fonds sur ce réseau"
+    },
     "wallet": {
       "connectFirst": "Pour créer un paiement programmé, connectez d'abord votre wallet"
     },

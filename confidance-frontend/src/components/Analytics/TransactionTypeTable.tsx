@@ -1,6 +1,7 @@
 // components/Analytics/TransactionTypeTable.tsx
 'use client';
 
+import { useTranslation } from 'react-i18next';
 import { MonthlyStats } from '@/hooks/useMonthlyAnalytics';
 
 interface TransactionTypeTableProps {
@@ -8,6 +9,7 @@ interface TransactionTypeTableProps {
 }
 
 export function TransactionTypeTable({ stats }: TransactionTypeTableProps) {
+  const { t } = useTranslation();
   const { breakdown } = stats;
 
   const rows = [

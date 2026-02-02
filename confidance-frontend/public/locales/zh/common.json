@@ -453,6 +453,7 @@
       "totalAmountRecurring": "总金额（所有月份）：",
       "recurringNoRefund": "不会锁定资金；取消将停止后续扣款。",
       "batchRecurringNotice": "你需要在钱包中确认 {{count}} 笔取消交易。",
+      "batchParentWarning": "此取消将取消此批量付款中每位收款人的所有未来分期付款。若仅停止一位收款人，请在交易详情中仅取消该收款人的行（子行）。",
       "releaseDate": "计划释放：",
       "important": "重要：",
       "refund": "资金与协议费用将退回到你的钱包（批量按比例）",
@@ -913,8 +914,29 @@
     "subtitle": "发送加密货币，将在指定日期自动释放",
     "voiceCta": "语音创建支付",
     "voiceStopCta": "停止语音指令",
+    "voiceStopCtaShort": "Stop",
     "voiceNeedBeneficiary": "要使用语音指令，请至少保存一位收款人（将显示在收藏中）。",
     "voiceLang": "语音语言",
+    "voice": {
+      "statusListening": "正在聆听…",
+      "statusTranscribing": "转录中…"
+    },
+    "blockchain": {
+      "title": "交易网络",
+      "stepLabel": "选择您的区块链",
+      "stepSubtitle": "资金将在此网络上发送",
+      "selected": "已选网络",
+      "switchNetwork": "切换网络",
+      "message": "您的收款人将在 {{chain}} 上收到资金。请确保其钱包支持此网络。",
+      "checklistTitle": "顺利交易的快速检查清单",
+      "checklistToggle": "检查清单",
+      "switchHint": "想换区块链？点击页面右上角的网络选择器即可 — 一键搞定！"
+    },
+    "blockchainChecklist": {
+      "address": "我已验证收款人地址",
+      "network": "其钱包支持此网络",
+      "receive": "他们将在此网络收到资金"
+    },
     "wallet": {
       "connectFirst": "要创建计划支付，请先连接钱包"
     },

@@ -390,6 +390,7 @@
       "totalAmountRecurring": "Total amount (all months):",
       "recurringNoRefund": "No funds are locked; cancelling stops future installments.",
       "batchRecurringNotice": "You will need to confirm {{count}} cancellation transactions in your wallet.",
+      "batchParentWarning": "This cancellation will cancel all future installments for each beneficiary of this batch payment. To stop only one beneficiary, cancel only that beneficiary's row (child row) in the transaction details.",
       "releaseDate": "Scheduled release:",
       "important": "Important:",
       "refund": "Funds and protocol fees will be refunded to your wallet (pro rata for batch)",
@@ -432,8 +433,29 @@
     "subtitle": "Define what it is for, when it executes, and who it is for.",
     "voiceCta": "Create a payment by voice",
     "voiceStopCta": "Stop the voice command",
+    "voiceStopCtaShort": "Stop",
     "voiceNeedBeneficiary": "To use the voice command, save at least one beneficiary (they will appear in favorites).",
     "voiceLang": "Voice language",
+    "voice": {
+      "statusListening": "Listening…",
+      "statusTranscribing": "Transcribing…"
+    },
+    "blockchain": {
+      "title": "Transaction network",
+      "stepLabel": "Choose your blockchain",
+      "stepSubtitle": "Funds will be sent on this network",
+      "selected": "Selected network",
+      "switchNetwork": "Switch network",
+      "message": "Your recipient will receive funds on {{chain}}. Make sure their wallet supports this network.",
+      "checklistTitle": "Quick checklist for a smooth transaction",
+      "checklistToggle": "Checklist",
+      "switchHint": "To switch blockchain, use the network selector at the top-right — one click and you're good to go!"
+    },
+    "blockchainChecklist": {
+      "address": "I've verified the recipient's address",
+      "network": "Their wallet supports this network",
+      "receive": "They will receive funds on this network"
+    },
     "wallet": {
       "connectFirst": "To create a scheduled payment, first connect your wallet"
     },

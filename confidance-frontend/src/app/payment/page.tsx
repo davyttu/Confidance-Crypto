@@ -42,89 +42,15 @@ export default function PaymentPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
       {/* Header */}
-      <div className="container mx-auto px-4 pt-32 pb-12">
+      <div className="container mx-auto px-4 pt-20 pb-12">
         {/* Bandeau invité */}
         <GuestBanner />
 
-        <div className="max-w-2xl mx-auto text-center mb-12">
-          <h1 className="text-xl md:text-2xl font-bold mb-8 bg-gradient-to-r from-primary-600 via-purple-500 to-red-500 bg-clip-text text-transparent dark:from-primary-400 dark:via-purple-400 dark:to-red-400 leading-relaxed pb-2">
-            {isMounted && ready ? t('create.subtitle') : 'Define what it is for, when it executes, and who it is for.'}
-          </h1>
-          {!hasBeneficiaries && (
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 max-w-md mx-auto">
-              {isMounted && ready ? t('create.voiceNeedBeneficiary', { defaultValue: 'To use the voice command, save at least one beneficiary (they will appear in favorites).' }) : 'To use the voice command, save at least one beneficiary (they will appear in favorites).'}
-            </p>
-          )}
-          <div className="mt-6 flex justify-center">
-            <div className="group inline-flex items-center gap-3 rounded-full border border-primary-200 bg-white/80 px-3 py-2 text-sm font-semibold text-primary-700 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary-300 hover:shadow-md dark:border-primary-800 dark:bg-gray-900/70 dark:text-primary-300">
-              {voiceSessionActive ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    document.getElementById('payment-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    window.dispatchEvent(new CustomEvent('voice-payment-stop'));
-                  }}
-                  className="inline-flex items-center gap-3 px-2 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                >
-                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-red-100 text-red-600 group-hover:bg-red-200 dark:bg-red-900/50 dark:text-red-400">
-                    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
-                      <rect x="6" y="6" width="12" height="12" rx="1" />
-                    </svg>
-                  </span>
-                  <span>
-                    {isMounted && ready ? t('create.voiceStopCta', { defaultValue: 'Stop the voice command' }) : 'Stop the voice command'}
-                  </span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!hasBeneficiaries) return;
-                    document.getElementById('payment-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    window.dispatchEvent(new CustomEvent('voice-payment-start'));
-                  }}
-                  disabled={!hasBeneficiaries}
-                  className={`inline-flex items-center gap-3 px-2 ${!hasBeneficiaries ? 'opacity-60 cursor-not-allowed' : ''}`}
-                >
-                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-100 text-primary-600 group-hover:bg-primary-200 dark:bg-primary-900 dark:text-primary-300">
-                    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 14a3 3 0 003-3V7a3 3 0 10-6 0v4a3 3 0 003 3z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-14 0" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v3" />
-                    </svg>
-                  </span>
-                  <span>
-                    {isMounted && ready ? t('create.voiceCta', { defaultValue: 'Create a payment by voice' }) : 'Create a payment by voice'}
-                  </span>
-                  <span className="text-primary-400 group-hover:text-primary-500">→</span>
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => {
-                  const currentIndex = voiceLangOptions.indexOf(voiceLang);
-                  const next = voiceLangOptions[(currentIndex + 1) % voiceLangOptions.length];
-                  setVoiceLang(next);
-                  try {
-                    const storageValue =
-                      next === 'FR' ? 'fr-FR' :
-                      next === 'EN' ? 'en-US' :
-                      next === 'ES' ? 'es-ES' :
-                      next === 'RU' ? 'ru-RU' : 'zh-CN';
-                    localStorage.setItem(voiceLangStorageKey, storageValue);
-                  } catch {
-                    // ignore storage failure
-                  }
-                }}
-                className="mr-2 inline-flex items-center rounded-full border border-primary-200 px-3 py-1 text-xs text-primary-700 hover:border-primary-300 hover:text-primary-800"
-                title={isMounted && ready ? t('create.voiceLang', { defaultValue: 'Voice language' }) : 'Voice language'}
-                aria-label={isMounted && ready ? t('create.voiceLang', { defaultValue: 'Voice language' }) : 'Voice language'}
-              >
-                {voiceLang}
-              </button>
-            </div>
-          </div>
-        </div>
+        {!hasBeneficiaries && (
+          <p className="max-w-md mx-auto text-center text-sm text-gray-600 dark:text-gray-400 mb-6">
+            {isMounted && ready ? t('create.voiceNeedBeneficiary', { defaultValue: 'To use the voice command, save at least one beneficiary (they will appear in favorites).' }) : 'To use the voice command, save at least one beneficiary (they will appear in favorites).'}
+          </p>
+        )}
 
         {/* Formulaire */}
         <div id="payment-form" className="max-w-3xl mx-auto">
@@ -213,6 +139,88 @@ export default function PaymentPage() {
               {isMounted && ready ? t('create.features.transparent.description') : 'Track your payment in real-time on Basescan'}
             </p>
           </div>
+        </div>
+      </div>
+
+      {/* Bouton vocal flottant — même taille que Help, badge langue rattaché en haut */}
+      <div className="fixed bottom-28 right-6 z-40 flex flex-col items-end">
+        <div className="relative">
+          <button
+            type="button"
+            title={
+              voiceSessionActive
+                ? (isMounted && ready ? t('create.voiceStopCta', { defaultValue: 'Stop the voice command' }) : 'Stop the voice command')
+                : `${isMounted && ready ? t('create.voiceCta', { defaultValue: 'Create a payment by voice' }) : 'Create a payment by voice'} (${voiceLang})`
+            }
+            onClick={() => {
+              if (voiceSessionActive) {
+                document.getElementById('payment-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                window.dispatchEvent(new CustomEvent('voice-payment-stop'));
+              } else if (hasBeneficiaries) {
+                document.getElementById('payment-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                window.dispatchEvent(new CustomEvent('voice-payment-start'));
+              }
+            }}
+            disabled={!voiceSessionActive && !hasBeneficiaries}
+            className={`
+              w-16 h-16 rounded-full
+              shadow-lg hover:shadow-xl
+              transform hover:scale-105 active:scale-95
+              transition-all duration-200
+              flex flex-col items-center justify-center gap-0.5
+              ${voiceSessionActive
+                ? 'bg-gradient-to-br from-red-500 to-red-600 text-white'
+                : 'bg-gradient-to-br from-blue-600 to-purple-600 text-white'}
+              ${(!voiceSessionActive && !hasBeneficiaries) ? 'opacity-60 cursor-not-allowed' : ''}
+            `}
+          >
+            {voiceSessionActive ? (
+              <>
+                <svg viewBox="0 0 24 24" className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+                <span className="text-[10px] font-semibold uppercase tracking-wider">
+                  {isMounted && ready ? t('create.voiceStopCtaShort', { defaultValue: 'Stop' }) : 'Stop'}
+                </span>
+              </>
+            ) : (
+              <>
+                <svg viewBox="0 0 24 24" className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 14a3 3 0 003-3V7a3 3 0 10-6 0v4a3 3 0 003 3z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-14 0" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v3" />
+                </svg>
+                <span className="text-xs font-medium">
+                  {isMounted && ready ? t('create.voiceCtaShort', { defaultValue: 'Voice' }) : 'Voice'}
+                </span>
+              </>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              const currentIndex = voiceLangOptions.indexOf(voiceLang);
+              const next = voiceLangOptions[(currentIndex + 1) % voiceLangOptions.length];
+              setVoiceLang(next);
+              try {
+                const storageValue =
+                  next === 'FR' ? 'fr-FR' :
+                  next === 'EN' ? 'en-US' :
+                  next === 'ES' ? 'es-ES' :
+                  next === 'RU' ? 'ru-RU' : 'zh-CN';
+                localStorage.setItem(voiceLangStorageKey, storageValue);
+              } catch {
+                // ignore storage failure
+              }
+            }}
+            className="absolute -top-1 -right-1 w-7 h-7 rounded-full border-2 border-white dark:border-gray-900 bg-white dark:bg-gray-800 text-[10px] font-bold text-primary-600 dark:text-primary-400 shadow-md flex items-center justify-center hover:bg-primary-50 dark:hover:bg-gray-700 transition-colors"
+            title={isMounted && ready ? t('create.voiceLang', { defaultValue: 'Voice language' }) : 'Voice language'}
+            aria-label={isMounted && ready ? t('create.voiceLang', { defaultValue: 'Voice language' }) : 'Voice language'}
+          >
+            {voiceLang}
+          </button>
         </div>
       </div>
     </div>

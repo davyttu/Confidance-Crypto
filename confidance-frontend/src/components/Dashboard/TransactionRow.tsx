@@ -68,10 +68,16 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
     totalMonths > 0 &&
     Boolean(payment.__recurringInstance) &&
     payment.__recurringInstance.monthNumber >= totalMonths;
+  // Quand toutes les mensualités sont réalisées (completed), ne pas afficher l'option d'annulation
+  const isRecurringFullyCompleted =
+    (isRecurringParent || isRecurringInstance) &&
+    totalMonths > 0 &&
+    (payment.status === 'completed' || executedMonthsRaw >= totalMonths);
   const canCancelRecurringProcess =
     payment.cancellable &&
     !isCompletedRecurring &&
     !isLastRecurringInstance &&
+    !isRecurringFullyCompleted &&
     payment.status !== 'cancelled' &&
     payment.status !== 'failed';
 

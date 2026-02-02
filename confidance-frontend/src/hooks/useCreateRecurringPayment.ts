@@ -489,7 +489,7 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
           console.log('✅ [RECURRING] Conditions remplies, extraction de l\'adresse...');
           setProgressMessage(t('create.modal.retrievingContractAddress', { defaultValue: 'Retrieving contract address...' }));
 
-          const receipt = await publicClient.getTransactionReceipt({
+          const receipt = await publicClient.waitForTransactionReceipt({
             hash: createTxHash,
           });
 

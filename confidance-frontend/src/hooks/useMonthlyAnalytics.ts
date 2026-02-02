@@ -95,6 +95,8 @@ const MONTH_NAMES = [
 
 const FEE_PERCENTAGE = 179; // 1.79%
 const FEE_DENOMINATOR = 10000;
+// Sur testnet (Base Sepolia), les échéances sont toutes les 5 minutes, pas 30 jours
+const MONTH_IN_SECONDS = process.env.NEXT_PUBLIC_CHAIN === 'base_sepolia' ? 300 : 2592000;
 
 const USD_FORMATTER = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -245,16 +247,57 @@ export function useMonthlyAnalytics(
 
   const computedMonthlyData = useMemo(() => {
     // Grouper les paiements par mois
+    // Pour les paiements récurrents, chaque échéance est attribuée à son mois d'exécution réel
     const byMonth: Record<string, Payment[]> = {};
+    // Pour les paiements récurrents, on stocke aussi l'index de l'échéance pour ce mois
+    const recurringInstallmentsByMonth: Record<string, Array<{ payment: Payment; installmentIndex: number }>> = {};
     
     payments.forEach(payment => {
-      const date = new Date(payment.release_time * 1000);
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const isRecurring = payment.is_recurring || payment.payment_type === 'recurring';
       
+      if (isRecurring) {
+        // Pour les paiements récurrents, distribuer chaque échéance exécutée dans son mois
+        const executed = Number(payment.executed_months ?? 0);
+        const firstPaymentTime = Number(payment.first_payment_time ?? payment.release_time ?? 0);
+        
+        for (let k = 0; k < executed; k++) {
+          const installmentTime = firstPaymentTime + k * MONTH_IN_SECONDS;
+          const date = new Date(installmentTime * 1000);
+          const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+          
+          if (!recurringInstallmentsByMonth[monthKey]) {
+            recurringInstallmentsByMonth[monthKey] = [];
+          }
+          recurringInstallmentsByMonth[monthKey].push({ payment, installmentIndex: k });
+        }
+        
+        // Ajouter aussi au byMonth pour avoir la référence du paiement récurrent
+        const date = new Date(firstPaymentTime * 1000);
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        if (!byMonth[monthKey]) {
+          byMonth[monthKey] = [];
+        }
+        // Ne pas dupliquer si déjà présent
+        if (!byMonth[monthKey].some(p => p.id === payment.id)) {
+          byMonth[monthKey].push(payment);
+        }
+      } else {
+        // Paiements non récurrents : grouper par release_time
+        const date = new Date(payment.release_time * 1000);
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        
+        if (!byMonth[monthKey]) {
+          byMonth[monthKey] = [];
+        }
+        byMonth[monthKey].push(payment);
+      }
+    });
+    
+    // S'assurer que tous les mois avec des échéances récurrentes ont une entrée dans byMonth
+    Object.keys(recurringInstallmentsByMonth).forEach(monthKey => {
       if (!byMonth[monthKey]) {
         byMonth[monthKey] = [];
       }
-      byMonth[monthKey].push(payment);
     });
 
     const gasFeesByMonth = transactions.reduce<Record<string, bigint>>((acc, tx) => {
@@ -269,25 +312,61 @@ export function useMonthlyAnalytics(
     const stats: MonthlyStats[] = Object.entries(byMonth)
       .map(([month, monthPayments]) => {
         const normalizedPrice = priceUsd && priceUsd > 0 ? priceUsd : null;
+        
+        // Récupérer les échéances récurrentes pour ce mois spécifique
+        const monthRecurringInstallments = recurringInstallmentsByMonth[month] || [];
 
-        // Volume total en équivalent ETH
-        const totalVolume = monthPayments.reduce((sum, payment) => {
+        // Calculer le volume des échéances récurrentes pour CE mois seulement
+        const recurringVolumeThisMonth = monthRecurringInstallments.reduce((sum, { payment, installmentIndex }) => {
+          const symbol = normalizeTokenSymbol(payment.token_symbol);
+          const monthlyAmount = BigInt(payment.monthly_amount ?? payment.amount ?? '0');
+          const firstMonthCustom = payment.is_first_month_custom === true || payment.is_first_month_custom === 'true';
+          const firstMonthAmount = firstMonthCustom && payment.first_month_amount
+            ? BigInt(payment.first_month_amount)
+            : monthlyAmount;
+          const amountK = installmentIndex === 0 ? firstMonthAmount : monthlyAmount;
+          return sum + toEthWei(amountK, symbol, normalizedPrice);
+        }, BigInt(0));
+
+        // Volume des paiements non récurrents
+        const nonRecurringVolume = monthPayments.reduce((sum, payment) => {
+          const isRecurring = payment.is_recurring || payment.payment_type === 'recurring';
+          if (isRecurring) return sum; // Ignorer les récurrents, déjà comptés ci-dessus
+          
           const symbol = normalizeTokenSymbol(payment.token_symbol);
           const amount = BigInt(payment.amount);
           return sum + toEthWei(amount, symbol, normalizedPrice);
         }, BigInt(0));
 
-        // Calculer les fees protocole (réels selon type et statut pro)
-        const protocolFees = monthPayments.reduce((sum, payment) => {
-          if (isInstantPayment(payment)) {
-            return sum;
-          }
+        const totalVolume = nonRecurringVolume + recurringVolumeThisMonth;
+
+        // Calculer les fees protocole des échéances récurrentes pour CE mois
+        const recurringFeesThisMonth = monthRecurringInstallments.reduce((sum, { payment, installmentIndex }) => {
+          const symbol = normalizeTokenSymbol(payment.token_symbol);
+          const monthlyAmount = BigInt(payment.monthly_amount ?? payment.amount ?? '0');
+          const firstMonthCustom = payment.is_first_month_custom === true || payment.is_first_month_custom === 'true';
+          const firstMonthAmount = firstMonthCustom && payment.first_month_amount
+            ? BigInt(payment.first_month_amount)
+            : monthlyAmount;
+          const amountK = installmentIndex === 0 ? firstMonthAmount : monthlyAmount;
+          const feeBps = getProtocolFeeBps({ isInstantPayment: false, isProVerified });
+          const feeAmount = (amountK * BigInt(feeBps)) / BigInt(FEE_DENOMINATOR);
+          return sum + toEthWei(feeAmount, symbol, normalizedPrice);
+        }, BigInt(0));
+
+        // Fees des paiements non récurrents
+        const nonRecurringFees = monthPayments.reduce((sum, payment) => {
+          const isRecurring = payment.is_recurring || payment.payment_type === 'recurring';
+          if (isRecurring || isInstantPayment(payment)) return sum;
+          
           const symbol = normalizeTokenSymbol(payment.token_symbol);
           const amount = BigInt(payment.amount);
           const feeBps = getProtocolFeeBps({ isInstantPayment: false, isProVerified });
           const feeAmount = (amount * BigInt(feeBps)) / BigInt(FEE_DENOMINATOR);
           return sum + toEthWei(feeAmount, symbol, normalizedPrice);
         }, BigInt(0));
+
+        const protocolFees = nonRecurringFees + recurringFeesThisMonth;
 
         // Gas fees réels depuis Supabase
         const gasFees = gasFeesByMonth[month] || BigInt(0);
@@ -300,10 +379,10 @@ export function useMonthlyAnalytics(
           : 0;
 
         // Breakdown par type de transaction
-        // Pour l'instant on simule, à adapter selon votre logique métier
-        const instantPayments = monthPayments.filter(p => !p.cancellable);
-        const scheduledPayments = monthPayments.filter(p => p.cancellable);
-        const recurringPayments: Payment[] = []; // À implémenter
+        const instantPayments = monthPayments.filter(p => isInstantPayment(p));
+        const scheduledPayments = monthPayments.filter(p => 
+          !isInstantPayment(p) && !p.is_recurring && p.payment_type !== 'recurring'
+        );
 
         const calculateTypeStats = (typePayments: Payment[]): TransactionTypeStats => {
           const volume = typePayments.reduce((sum, payment) => {
@@ -332,6 +411,23 @@ export function useMonthlyAnalytics(
           };
         };
 
+        // Stats des paiements récurrents pour CE mois seulement
+        // Utilise les échéances déjà calculées dans monthRecurringInstallments
+        const recurringStats: TransactionTypeStats = (() => {
+          const count = monthRecurringInstallments.length;
+          const volume = recurringVolumeThisMonth;
+          const totalFeesRecurring = recurringFeesThisMonth;
+          const avgFees = count > 0 ? totalFeesRecurring / BigInt(count) : BigInt(0);
+
+          return {
+            count,
+            volume,
+            volumeFormatted: formatAmount(volume.toString()),
+            avgFees,
+            avgFeesFormatted: formatAmount(avgFees.toString())
+          };
+        })();
+
         const totalVolumeEth = Number(formatUnits(totalVolume, 18));
         const totalFeesEth = Number(formatUnits(totalFees, 18));
         const totalVolumeUsd = normalizedPrice ? totalVolumeEth * normalizedPrice : null;
@@ -342,10 +438,17 @@ export function useMonthlyAnalytics(
         const monthIndex = parseInt(monthNum) - 1;
         const displayMonth = `${MONTH_NAMES[monthIndex]} ${year}`;
 
+        // Calculer les stats par type de transaction
+        const instantStats = calculateTypeStats(instantPayments);
+        const scheduledStats = calculateTypeStats(scheduledPayments);
+        
+        // Le nombre total de transactions inclut chaque échéance des paiements récurrents
+        const transactionCount = instantStats.count + scheduledStats.count + recurringStats.count;
+
         return {
           month,
           displayMonth,
-          transactionCount: monthPayments.length,
+          transactionCount,
           totalVolume,
           totalVolumeFormatted: formatAmount(totalVolume.toString()),
           totalVolumeUsd,
@@ -356,9 +459,9 @@ export function useMonthlyAnalytics(
           totalFeesUsdFormatted: totalFeesUsd !== null ? USD_FORMATTER.format(totalFeesUsd) : null,
           feeRatio,
           breakdown: {
-            instant: calculateTypeStats(instantPayments),
-            scheduled: calculateTypeStats(scheduledPayments),
-            recurring: calculateTypeStats(recurringPayments)
+            instant: instantStats,
+            scheduled: scheduledStats,
+            recurring: recurringStats
           },
           costs: {
             gasFees,
@@ -396,7 +499,26 @@ export function useMonthlyAnalytics(
     return stats;
   }, [payments, priceUsd, transactions, isProVerified]);
 
-  const monthlyData = apiMonthlyData ?? computedMonthlyData;
+  // Toujours utiliser les données calculées localement pour les statistiques
+  // car la vue SQL de l'API ne gère pas correctement :
+  // - La conversion USDC/USDT → ETH (devises mélangées)
+  // - Le comptage des échéances individuelles des paiements récurrents
+  // On préserve seulement les explications AI de l'API si disponibles
+  const monthlyData = useMemo(() => {
+    if (!apiMonthlyData || apiMonthlyData.length === 0) {
+      return computedMonthlyData;
+    }
+    
+    // Fusionner : utiliser les données calculées mais garder les explications AI de l'API
+    return computedMonthlyData.map((computed) => {
+      const apiMonth = apiMonthlyData.find((api) => api.month === computed.month);
+      return {
+        ...computed,
+        // Garder les explications de l'API si disponibles (générées par AI)
+        explanations: apiMonth?.explanations ?? computed.explanations
+      };
+    });
+  }, [apiMonthlyData, computedMonthlyData]);
 
   return {
     monthlyData,

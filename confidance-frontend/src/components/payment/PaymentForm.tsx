@@ -14,6 +14,7 @@ import {
 } from '@/lib/custom-tokens';
 import { useErc20Balance } from '@/hooks/useErc20Balance';
 import CurrencySelector from './CurrencySelector';
+import BlockchainAwarenessBanner from './BlockchainAwarenessBanner';
 import AddCustomTokenModal from './AddCustomTokenModal';
 import DateTimePicker from './DateTimePicker';
 import FeeDisplay from './FeeDisplay';
@@ -70,6 +71,7 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
   const [useWhisper, setUseWhisper] = useState(true);
   const [isWhisperSupported, setIsWhisperSupported] = useState(false);
   const [isWhisperRecording, setIsWhisperRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const [voiceHelpShown, setVoiceHelpShown] = useState(false);
   const amountInputRef = useRef<HTMLInputElement | null>(null);
   const recognitionRef = useRef<any>(null);
@@ -202,6 +204,7 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
     setVoiceCommandSummary('');
     setVoiceHelpShown(false);
     setIsListening(false);
+    setIsTranscribing(false);
     if (mediaRecorderRef.current?.state === 'recording') {
       mediaRecorderRef.current.stop();
     }
@@ -222,10 +225,47 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
           chunks.push(event.data);
         }
       };
+
+      const runSilenceDetection = () => {
+        try {
+          const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+          const source = ctx.createMediaStreamSource(stream);
+          const analyser = ctx.createAnalyser();
+          analyser.fftSize = 256;
+          source.connect(analyser);
+          const data = new Uint8Array(analyser.frequencyBinCount);
+          let silenceStart: number | null = null;
+          let hasSpoken = false;
+          const interval = setInterval(() => {
+            if (recorder.state === 'inactive') {
+              clearInterval(interval);
+              ctx.close();
+              return;
+            }
+            analyser.getByteFrequencyData(data);
+            const avg = data.reduce((a, b) => a + b, 0) / data.length / 255;
+            if (avg >= 0.015) hasSpoken = true;
+            if (avg < 0.015 && hasSpoken) {
+              silenceStart = silenceStart ?? Date.now();
+              if (Date.now() - silenceStart >= 5000) {
+                clearInterval(interval);
+                ctx.close();
+                if (recorder.state === 'recording') recorder.stop();
+              }
+            } else if (avg >= 0.015) {
+              silenceStart = null;
+            }
+          }, 200);
+        } catch {
+          /* silence detection non supporté, garder le timeout 20s */
+        }
+      };
+
       recorder.onstop = async () => {
         stream.getTracks().forEach((track) => track.stop());
         const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
         setIsWhisperRecording(false);
+        setIsTranscribing(true);
         try {
           const formData = new FormData();
           formData.append('file', blob, 'voice.webm');
@@ -248,11 +288,14 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
               'Impossible de transcrire l’audio. Vérifiez votre connexion.'
             )
           );
+        } finally {
+          setIsTranscribing(false);
         }
       };
 
       recorder.start();
       setIsWhisperRecording(true);
+      runSilenceDetection();
       whisperTimeoutRef.current = window.setTimeout(() => {
         if (recorder.state !== 'inactive') {
           recorder.stop();
@@ -718,10 +761,15 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
         speak(
           translate('create.voice.needDate', 'Je n\'ai pas compris la date. Dites par exemple "12 septembre".'),
           () => {
-            if (useWhisper && isWhisperSupported) {
-              startWhisperCapture();
-            } else {
-              recognitionRef.current?.start?.();
+            try {
+              if (recognitionRef.current) {
+                recognitionRef.current.start();
+                setIsListening(true);
+              } else if (useWhisper && isWhisperSupported) {
+                startWhisperCapture();
+              }
+            } catch {
+              setIsListening(false);
             }
           }
         );
@@ -753,7 +801,18 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
     if ((command.timing === 'scheduled' || command.timing === 'recurring') && !command.date) {
       pendingVoiceCommandRef.current = command;
       setVoiceAwaitingDate(true);
-      speak(translate('create.voice.askDate', 'Quelle date souhaitez-vous pour le premier paiement ?'));
+      speak(translate('create.voice.askDate', 'Quelle date souhaitez-vous pour le premier paiement ?'), () => {
+        try {
+          if (recognitionRef.current) {
+            recognitionRef.current.start();
+            setIsListening(true);
+          } else if (useWhisper && isWhisperSupported) {
+            startWhisperCapture();
+          }
+        } catch {
+          setIsListening(false);
+        }
+      });
       return;
     }
     if (!command.beneficiary?.address || !command.amount) {
@@ -947,11 +1006,12 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
             ),
             () => {
               try {
-                if (useWhisper && isWhisperSupported) {
-                  startWhisperCapture();
-                } else {
-                  recognitionRef.current?.start?.();
+                // Utiliser Web Speech API pour oui/non, Whisper pour paiement détaillé
+                if (recognitionRef.current) {
+                  recognitionRef.current.start();
                   setIsListening(true);
+                } else if (useWhisper && isWhisperSupported) {
+                  startWhisperCapture();
                 }
               } catch {
                 setIsListening(false);
@@ -991,6 +1051,7 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
           setVoiceCommandMode(false);
           setVoiceAwaitingDate(false);
           setIsListening(false);
+          setIsTranscribing(false);
           if (mediaRecorderRef.current?.state === 'recording') {
             mediaRecorderRef.current.stop();
           }
@@ -2139,8 +2200,28 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
     );
   }
 
+  const voiceStatusMessage =
+    isWhisperRecording || isListening
+      ? (isMounted && translationsReady ? t('create.voice.statusListening', { defaultValue: 'Listening…' }) : 'Listening…')
+      : isTranscribing
+        ? (isMounted && translationsReady ? t('create.voice.statusTranscribing', { defaultValue: 'Transcribing…' }) : 'Transcribing…')
+        : null;
+
   return (
     <form ref={formRef} onSubmit={handleSubmit} className="space-y-8">
+      {/* Feedback visuel commande vocale */}
+      {voiceCommandMode && voiceStatusMessage && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-950/30 border-2 border-primary-200 dark:border-primary-800">
+          <div className="flex-shrink-0 w-8 h-8 rounded-full border-2 border-primary-500 border-t-transparent animate-spin" />
+          <p className="text-sm font-medium text-primary-700 dark:text-primary-300">
+            {voiceStatusMessage}
+          </p>
+        </div>
+      )}
+
+      {/* Blockchain awareness — juste avant le choix de crypto */}
+      <BlockchainAwarenessBanner />
+
       {/* Section 1 : Choix de la crypto */}
       <div className="glass rounded-2xl p-6">
         <CurrencySelector

@@ -708,12 +708,14 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete, userA
             ).length;
             const allTerminal = processedMonthsCount >= totalMonths && totalMonths > 0;
 
+            // Quand l'utilisateur annule depuis le parent (batch), tous les enfants sont annulés :
+            // on affiche "completed" pour le parent (terminé). Sinon "cancelled" pour un seul enfant annulé.
             const resolvedStatus = allTerminal
               ? allCancelled
-                ? 'cancelled'
+                ? 'completed'
                 : 'completed'
               : allCancelled || (hasCancelled && !hasPendingOrActive)
-              ? 'cancelled'
+              ? 'completed'
               : processedMonthsCount > 0
               ? 'active'
               : payment.status;

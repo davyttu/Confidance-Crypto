@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, ChevronLeft, ChevronRight, Filter, Download } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useDashboard, type Payment } from '@/hooks/useDashboard';
+import { useBeneficiaries } from '@/hooks/useBeneficiaries';
 import { useTranslation } from 'react-i18next';
 
 const ITEMS_PER_PAGE = 20;
@@ -38,6 +39,7 @@ export default function StatementPage() {
   const { address } = useAccount();
   const { isAuthenticated } = useAuth();
   const { payments, isLoading } = useDashboard();
+  const { getBeneficiaryName } = useBeneficiaries();
 
   const currentDate = new Date();
   const [selectedMonth, setSelectedMonth] = useState<string>((currentDate.getMonth() + 1).toString());
@@ -446,11 +448,11 @@ export default function StatementPage() {
       return categoryLabels[category] || category;
     }
 
-    // Fallback to addresses
+    // Fallback : utiliser le nom du bénéficiaire si enregistré, sinon l'adresse tronquée
     const isDebit = payment.payer_address?.toLowerCase() === address?.toLowerCase();
-    return isDebit
-      ? `Versement à ${formatWallet(payment.payee_address)}`
-      : `Reçu de ${formatWallet(payment.payer_address)}`;
+    const beneficiaryName = isDebit ? getBeneficiaryName(payment.payee_address) : getBeneficiaryName(payment.payer_address);
+    const displayTarget = beneficiaryName || (isDebit ? formatWallet(payment.payee_address) : formatWallet(payment.payer_address));
+    return isDebit ? `Versement à ${displayTarget}` : `Reçu de ${displayTarget}`;
   };
 
   const isDebit = (payment: Payment) => {
@@ -635,273 +637,6 @@ export default function StatementPage() {
           </div>
         )}
 
-        {/* Monthly Summary Toggle Button */}
-        {monthlySummary && selectedYear !== 'all' && (
-          <div className="mb-6">
-            <div className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-4 rounded-lg shadow-md flex items-center justify-between group">
-              <div
-                className="flex items-center gap-3 flex-1 cursor-pointer"
-                onClick={() => setShowMonthlySummary(!showMonthlySummary)}
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-                <div className="text-left">
-                  <div className="font-bold text-lg">Récapitulatif Mensuel {selectedYear}</div>
-                  <div className="text-sm text-blue-100">Vue comptable détaillée par mois</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                {showMonthlySummary && monthlySummary && (
-                  <button
-                    onClick={downloadAnnualSummary}
-                    className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
-                    title="Télécharger le récapitulatif annuel"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <span className="text-sm font-medium">Export CSV</span>
-                  </button>
-                )}
-                <div
-                  className="cursor-pointer p-1"
-                  onClick={() => setShowMonthlySummary(!showMonthlySummary)}
-                >
-                  <svg
-                    className={`w-6 h-6 transition-transform ${showMonthlySummary ? 'rotate-180' : ''}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Monthly Summary Table */}
-        {monthlySummary && selectedYear !== 'all' && showMonthlySummary && (
-          <div className="mb-6 bg-white border-2 border-gray-900 rounded-lg overflow-hidden shadow-sm">
-            <div className="bg-gray-900 text-white px-4 py-3 flex items-center justify-between">
-              <h3 className="font-bold text-sm">Détail mensuel {selectedYear}</h3>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b-2 border-gray-900 bg-gray-50">
-                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-900">Mois</th>
-                    <th className="px-4 py-2 text-right text-xs font-bold text-gray-900">Transactions</th>
-                    <th className="px-4 py-2 text-right text-xs font-bold text-gray-900">Débit</th>
-                    <th className="px-4 py-2 text-right text-xs font-bold text-gray-900">Crédit</th>
-                    <th className="px-4 py-2 text-right text-xs font-bold text-gray-900">Solde</th>
-                    <th className="px-4 py-2 text-center text-xs font-bold text-gray-900">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {monthlySummary.map((item, index) => (
-                    <tr
-                      key={item.month}
-                      className={`border-b border-gray-200 hover:bg-gray-50 transition-colors ${
-                        selectedMonth === item.month.toString() ? 'bg-blue-50' : ''
-                      }`}
-                    >
-                      <td
-                        className="px-4 py-2 text-sm font-medium text-gray-900 cursor-pointer"
-                        onClick={() => setSelectedMonth(item.month.toString())}
-                      >
-                        {item.monthLabel}
-                      </td>
-                      <td
-                        className="px-4 py-2 text-sm text-right text-gray-600 cursor-pointer"
-                        onClick={() => setSelectedMonth(item.month.toString())}
-                      >
-                        {item.transactionCount > 0 ? (
-                          <span className="inline-flex items-center justify-center min-w-[24px] h-5 px-2 bg-gray-200 rounded-full text-xs font-semibold">
-                            {item.transactionCount}
-                          </span>
-                        ) : (
-                          <span className="text-gray-400">-</span>
-                        )}
-                      </td>
-                      <td
-                        className="px-4 py-2 text-sm text-right font-mono cursor-pointer"
-                        onClick={() => setSelectedMonth(item.month.toString())}
-                      >
-                        {Object.keys(item.cryptoTotals).length > 0 ? (
-                          <div className="space-y-0.5">
-                            {Object.entries(item.cryptoTotals).map(([crypto, totals]) => (
-                              totals.debit > 0 && (
-                                <div key={crypto} className="text-red-600 text-xs">
-                                  -{displayAmount(totals.debit, crypto)} {crypto}
-                                </div>
-                              )
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="text-gray-400">-</span>
-                        )}
-                      </td>
-                      <td
-                        className="px-4 py-2 text-sm text-right font-mono cursor-pointer"
-                        onClick={() => setSelectedMonth(item.month.toString())}
-                      >
-                        {Object.keys(item.cryptoTotals).length > 0 ? (
-                          <div className="space-y-0.5">
-                            {Object.entries(item.cryptoTotals).map(([crypto, totals]) => (
-                              totals.credit > 0 && (
-                                <div key={crypto} className="text-green-600 text-xs">
-                                  +{displayAmount(totals.credit, crypto)} {crypto}
-                                </div>
-                              )
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="text-gray-400">-</span>
-                        )}
-                      </td>
-                      <td
-                        className="px-4 py-2 text-sm text-right font-mono font-semibold cursor-pointer"
-                        onClick={() => setSelectedMonth(item.month.toString())}
-                      >
-                        {Object.keys(item.cryptoTotals).length > 0 ? (
-                          <div className="space-y-0.5">
-                            {Object.entries(item.cryptoTotals).map(([crypto, totals]) => (
-                              <div
-                                key={crypto}
-                                className={`text-xs ${totals.balance >= 0 ? 'text-green-700' : 'text-red-700'}`}
-                              >
-                                {totals.balance >= 0 ? '+' : ''}{displayAmount(totals.balance, crypto)} {crypto}
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="text-gray-400">-</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-2 text-center">
-                        {item.transactionCount > 0 ? (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              downloadMonthlyStatement(item.month);
-                            }}
-                            className="inline-flex items-center gap-1 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition-colors"
-                            title={`Télécharger le relevé de ${item.monthLabel}`}
-                          >
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            CSV
-                          </button>
-                        ) : (
-                          <span className="text-gray-400 text-xs">-</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot className="border-t-2 border-gray-900 bg-gray-100">
-                  <tr>
-                    <td className="px-4 py-3 text-sm font-bold text-gray-900">TOTAL ANNÉE</td>
-                    <td className="px-4 py-3 text-sm text-right font-bold text-gray-900">
-                      {monthlySummary.reduce((sum, item) => sum + item.transactionCount, 0)}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-right font-mono font-bold">
-                      {(() => {
-                        const yearCryptoTotals: Record<string, { debit: number; credit: number; balance: number }> = {};
-                        monthlySummary.forEach(item => {
-                          Object.entries(item.cryptoTotals).forEach(([crypto, totals]) => {
-                            if (!yearCryptoTotals[crypto]) {
-                              yearCryptoTotals[crypto] = { debit: 0, credit: 0, balance: 0 };
-                            }
-                            yearCryptoTotals[crypto].debit += totals.debit;
-                            yearCryptoTotals[crypto].credit += totals.credit;
-                            yearCryptoTotals[crypto].balance += totals.balance;
-                          });
-                        });
-                        return (
-                          <div className="space-y-0.5">
-                            {Object.entries(yearCryptoTotals).map(([crypto, totals]) => (
-                              totals.debit > 0 && (
-                                <div key={crypto} className="text-red-600 text-xs">
-                                  -{displayAmount(totals.debit, crypto)} {crypto}
-                                </div>
-                              )
-                            ))}
-                          </div>
-                        );
-                      })()}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-right font-mono font-bold">
-                      {(() => {
-                        const yearCryptoTotals: Record<string, { debit: number; credit: number; balance: number }> = {};
-                        monthlySummary.forEach(item => {
-                          Object.entries(item.cryptoTotals).forEach(([crypto, totals]) => {
-                            if (!yearCryptoTotals[crypto]) {
-                              yearCryptoTotals[crypto] = { debit: 0, credit: 0, balance: 0 };
-                            }
-                            yearCryptoTotals[crypto].debit += totals.debit;
-                            yearCryptoTotals[crypto].credit += totals.credit;
-                            yearCryptoTotals[crypto].balance += totals.balance;
-                          });
-                        });
-                        return (
-                          <div className="space-y-0.5">
-                            {Object.entries(yearCryptoTotals).map(([crypto, totals]) => (
-                              totals.credit > 0 && (
-                                <div key={crypto} className="text-green-600 text-xs">
-                                  +{displayAmount(totals.credit, crypto)} {crypto}
-                                </div>
-                              )
-                            ))}
-                          </div>
-                        );
-                      })()}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-right font-mono font-bold">
-                      {(() => {
-                        const yearCryptoTotals: Record<string, { debit: number; credit: number; balance: number }> = {};
-                        monthlySummary.forEach(item => {
-                          Object.entries(item.cryptoTotals).forEach(([crypto, totals]) => {
-                            if (!yearCryptoTotals[crypto]) {
-                              yearCryptoTotals[crypto] = { debit: 0, credit: 0, balance: 0 };
-                            }
-                            yearCryptoTotals[crypto].debit += totals.debit;
-                            yearCryptoTotals[crypto].credit += totals.credit;
-                            yearCryptoTotals[crypto].balance += totals.balance;
-                          });
-                        });
-                        return (
-                          <div className="space-y-0.5">
-                            {Object.entries(yearCryptoTotals).map(([crypto, totals]) => (
-                              <div
-                                key={crypto}
-                                className={`text-xs ${totals.balance >= 0 ? 'text-green-700' : 'text-red-700'}`}
-                              >
-                                {totals.balance >= 0 ? '+' : ''}{displayAmount(totals.balance, crypto)} {crypto}
-                              </div>
-                            ))}
-                          </div>
-                        );
-                      })()}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <span className="text-xs text-gray-600">-</span>
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-            <div className="bg-gray-50 px-4 py-2 text-xs text-gray-600 border-t border-gray-200 flex items-center justify-between">
-              <span>Cliquez sur un mois pour filtrer les transactions</span>
-              <span className="text-gray-500">• CSV : télécharger le relevé détaillé du mois</span>
-            </div>
-          </div>
-        )}
-
         {isLoading ? (
           <div className="text-center py-12">
             <div className="animate-spin w-8 h-8 border-4 border-gray-900 border-t-transparent rounded-full mx-auto mb-3"></div>
@@ -1064,6 +799,264 @@ export default function StatementPage() {
               </div>
             </div>
           </>
+        )}
+
+        {/* Récapitulatif Mensuel - en bas de page avant le footer */}
+        {monthlySummary && selectedYear !== 'all' && (
+          <div className="mt-8 mb-6">
+            <div
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-4 rounded-lg shadow-md flex items-center justify-between group cursor-pointer"
+              onClick={() => setShowMonthlySummary(!showMonthlySummary)}
+            >
+              <div className="flex items-center gap-3 flex-1">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                <div className="text-left">
+                  <div className="font-bold text-lg">Récapitulatif Mensuel {selectedYear}</div>
+                  <div className="text-sm text-blue-100">Vue comptable détaillée par mois</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {showMonthlySummary && monthlySummary && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); downloadAnnualSummary(); }}
+                    className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                    title="Télécharger le récapitulatif annuel"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span className="text-sm font-medium">Export CSV</span>
+                  </button>
+                )}
+                <svg
+                  className={`w-6 h-6 transition-transform ${showMonthlySummary ? 'rotate-180' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+
+            {showMonthlySummary && (
+              <div className="mt-4 bg-white border-2 border-gray-900 rounded-lg overflow-hidden shadow-sm">
+                <div className="bg-gray-900 text-white px-4 py-3">
+                  <h3 className="font-bold text-sm">Détail mensuel {selectedYear}</h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b-2 border-gray-900 bg-gray-50">
+                        <th className="px-4 py-2 text-left text-xs font-bold text-gray-900">Mois</th>
+                        <th className="px-4 py-2 text-right text-xs font-bold text-gray-900">Transactions</th>
+                        <th className="px-4 py-2 text-right text-xs font-bold text-gray-900">Débit</th>
+                        <th className="px-4 py-2 text-right text-xs font-bold text-gray-900">Crédit</th>
+                        <th className="px-4 py-2 text-right text-xs font-bold text-gray-900">Solde</th>
+                        <th className="px-4 py-2 text-center text-xs font-bold text-gray-900">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {monthlySummary.map((item) => (
+                        <tr
+                          key={item.month}
+                          className={`border-b border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer ${
+                            selectedMonth === item.month.toString() ? 'bg-blue-50' : ''
+                          }`}
+                          onClick={() => setSelectedMonth(item.month.toString())}
+                        >
+                          <td className="px-4 py-2 text-sm font-medium text-gray-900">{item.monthLabel}</td>
+                          <td className="px-4 py-2 text-sm text-right text-gray-600">
+                            {item.transactionCount > 0 ? (
+                              <span className="inline-flex items-center justify-center min-w-[24px] h-5 px-2 bg-gray-200 rounded-full text-xs font-semibold">
+                                {item.transactionCount}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-2 text-sm text-right font-mono">
+                            {Object.keys(item.cryptoTotals).length > 0 ? (
+                              <div className="space-y-0.5">
+                                {Object.entries(item.cryptoTotals).map(([crypto, totals]) =>
+                                  totals.debit > 0 ? (
+                                    <div key={crypto} className="text-red-600 text-xs">
+                                      -{displayAmount(totals.debit, crypto)} {crypto}
+                                    </div>
+                                  ) : null
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-2 text-sm text-right font-mono">
+                            {Object.keys(item.cryptoTotals).length > 0 ? (
+                              <div className="space-y-0.5">
+                                {Object.entries(item.cryptoTotals).map(([crypto, totals]) =>
+                                  totals.credit > 0 ? (
+                                    <div key={crypto} className="text-green-600 text-xs">
+                                      +{displayAmount(totals.credit, crypto)} {crypto}
+                                    </div>
+                                  ) : null
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-2 text-sm text-right font-mono font-semibold">
+                            {Object.keys(item.cryptoTotals).length > 0 ? (
+                              <div className="space-y-0.5">
+                                {Object.entries(item.cryptoTotals).map(([crypto, totals]) => (
+                                  <div
+                                    key={crypto}
+                                    className={`text-xs ${totals.balance >= 0 ? 'text-green-700' : 'text-red-700'}`}
+                                  >
+                                    {totals.balance >= 0 ? '+' : ''}{displayAmount(totals.balance, crypto)} {crypto}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-2 text-center">
+                            {item.transactionCount > 0 ? (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  downloadMonthlyStatement(item.month);
+                                }}
+                                className="inline-flex items-center gap-1 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition-colors"
+                                title={`Télécharger le relevé de ${item.monthLabel}`}
+                              >
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                CSV
+                              </button>
+                            ) : (
+                              <span className="text-gray-400 text-xs">-</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="border-t-2 border-gray-900 bg-gray-100">
+                      <tr>
+                        <td className="px-4 py-3 text-sm font-bold text-gray-900">TOTAL ANNÉE</td>
+                        <td className="px-4 py-3 text-sm text-right font-bold text-gray-900">
+                          {monthlySummary.reduce((sum, item) => sum + item.transactionCount, 0)}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-right font-mono font-bold">
+                          {Object.keys(
+                            monthlySummary.reduce((acc, item) => {
+                              Object.entries(item.cryptoTotals).forEach(([crypto, totals]) => {
+                                if (!acc[crypto]) acc[crypto] = { debit: 0, credit: 0, balance: 0 };
+                                acc[crypto].debit += totals.debit;
+                                acc[crypto].credit += totals.credit;
+                                acc[crypto].balance += totals.balance;
+                              });
+                              return acc;
+                            }, {} as Record<string, { debit: number; credit: number; balance: number }>)
+                          ).length > 0 ? (
+                            <div className="space-y-0.5">
+                              {Object.entries(
+                                monthlySummary.reduce((acc, item) => {
+                                  Object.entries(item.cryptoTotals).forEach(([crypto, totals]) => {
+                                    if (!acc[crypto]) acc[crypto] = { debit: 0, credit: 0, balance: 0 };
+                                    acc[crypto].debit += totals.debit;
+                                    acc[crypto].credit += totals.credit;
+                                    acc[crypto].balance += totals.balance;
+                                  });
+                                  return acc;
+                                }, {} as Record<string, { debit: number; credit: number; balance: number }>)
+                              ).map(([crypto, totals]) =>
+                                totals.debit > 0 ? (
+                                  <div key={crypto} className="text-red-600 text-xs">
+                                    -{displayAmount(totals.debit, crypto)} {crypto}
+                                  </div>
+                                ) : null
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-right font-mono font-bold">
+                          {Object.keys(
+                            monthlySummary.reduce((acc, item) => {
+                              Object.entries(item.cryptoTotals).forEach(([crypto, totals]) => {
+                                if (!acc[crypto]) acc[crypto] = { debit: 0, credit: 0, balance: 0 };
+                                acc[crypto].debit += totals.debit;
+                                acc[crypto].credit += totals.credit;
+                                acc[crypto].balance += totals.balance;
+                              });
+                              return acc;
+                            }, {} as Record<string, { debit: number; credit: number; balance: number }>)
+                          ).length > 0 ? (
+                            <div className="space-y-0.5">
+                              {Object.entries(
+                                monthlySummary.reduce((acc, item) => {
+                                  Object.entries(item.cryptoTotals).forEach(([crypto, totals]) => {
+                                    if (!acc[crypto]) acc[crypto] = { debit: 0, credit: 0, balance: 0 };
+                                    acc[crypto].debit += totals.debit;
+                                    acc[crypto].credit += totals.credit;
+                                    acc[crypto].balance += totals.balance;
+                                  });
+                                  return acc;
+                                }, {} as Record<string, { debit: number; credit: number; balance: number }>)
+                              ).map(([crypto, totals]) =>
+                                totals.credit > 0 ? (
+                                  <div key={crypto} className="text-green-600 text-xs">
+                                    +{displayAmount(totals.credit, crypto)} {crypto}
+                                  </div>
+                                ) : null
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-right font-mono font-bold">
+                          <div className="space-y-0.5">
+                            {Object.entries(
+                              monthlySummary.reduce((acc, item) => {
+                                Object.entries(item.cryptoTotals).forEach(([crypto, totals]) => {
+                                  if (!acc[crypto]) acc[crypto] = { debit: 0, credit: 0, balance: 0 };
+                                  acc[crypto].debit += totals.debit;
+                                  acc[crypto].credit += totals.credit;
+                                  acc[crypto].balance += totals.balance;
+                                });
+                                return acc;
+                              }, {} as Record<string, { debit: number; credit: number; balance: number }>)
+                            ).map(([crypto, totals]) => (
+                              <div
+                                key={crypto}
+                                className={`text-xs ${totals.balance >= 0 ? 'text-green-700' : 'text-red-700'}`}
+                              >
+                                {totals.balance >= 0 ? '+' : ''}{displayAmount(totals.balance, crypto)} {crypto}
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className="text-xs text-gray-600">-</span>
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+                <div className="bg-gray-50 px-4 py-2 text-xs text-gray-600 border-t border-gray-200 flex items-center justify-between">
+                  <span>Cliquez sur un mois pour filtrer les transactions</span>
+                  <span className="text-gray-500">• CSV : télécharger le relevé détaillé du mois</span>
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>

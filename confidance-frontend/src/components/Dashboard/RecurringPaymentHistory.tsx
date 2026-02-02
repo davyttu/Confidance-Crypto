@@ -88,10 +88,26 @@ export function RecurringPaymentHistory({ payment }: RecurringPaymentHistoryProp
     // - On ne peut pas savoir quels mois spécifiques ont échoué sans parser les events
     // - Donc on affiche : exécutés (premiers mois) et pending (le reste)
     // ✅ FIX : Si le paiement récurrent est annulé, tous les mois non exécutés sont "cancelled"
+    const firstChildForMeta = payment.__batchChildren?.[0];
     const isFirstMonthCustom =
-      payment.is_first_month_custom === true || payment.is_first_month_custom === 'true';
-    const firstMonthAmount = payment.first_month_amount || '';
-    const monthlyAmount = payment.monthly_amount || payment.amount || '';
+      payment.is_first_month_custom === true || payment.is_first_month_custom === 'true' ||
+      firstChildForMeta?.is_first_month_custom === true || firstChildForMeta?.is_first_month_custom === 'true';
+    const firstChild = firstChildForMeta;
+    const firstMonthAmount =
+      payment.first_month_amount ||
+      firstChild?.first_month_amount ||
+      '';
+    let monthlyAmount =
+      payment.monthly_amount ||
+      payment.amount ||
+      firstChild?.monthly_amount ||
+      firstChild?.amount ||
+      '';
+    // Fallback batch_beneficiaries : montant par bénéficiaire (premier = référence pour récurrent)
+    if (!monthlyAmount && payment.batch_beneficiaries?.length) {
+      monthlyAmount = payment.batch_beneficiaries[0]?.amount || '';
+    }
+    const firstMonthAmountResolved = firstMonthAmount || (isFirstMonthCustom ? monthlyAmount : '');
 
     // Nombre de destinataires : total du mois = montant par destinataire × nombre de destinataires
     const beneficiaryCount = Math.max(
@@ -141,14 +157,21 @@ export function RecurringPaymentHistory({ payment }: RecurringPaymentHistoryProp
       }
 
       const amountPerBeneficiary =
-        monthIndex === 0 && isFirstMonthCustom && firstMonthAmount
-          ? firstMonthAmount
+        monthIndex === 0 && isFirstMonthCustom && firstMonthAmountResolved
+          ? firstMonthAmountResolved
           : monthlyAmount;
       const batchDetails = payment.__batchMonthDetails?.[monthIndex];
-      const amountMultiplier =
-        batchDetails && batchDetails.length > 0
-          ? batchDetails.filter((d) => (d.status || '').toLowerCase() === 'executed').length
-          : beneficiaryCount;
+      // Annulés → 0. Pending → échéancier prévisionnel (beneficiaryCount). Exécutés/mixed → montant réel (nb exécutés)
+      let amountMultiplier: number;
+      if (status === 'cancelled') {
+        amountMultiplier = 0;
+      } else if (status === 'pending') {
+        amountMultiplier = beneficiaryCount;
+      } else if (batchDetails && batchDetails.length > 0) {
+        amountMultiplier = batchDetails.filter((d) => (d.status || '').toLowerCase() === 'executed').length;
+      } else {
+        amountMultiplier = beneficiaryCount;
+      }
       const totalAmount = String(BigInt(amountPerBeneficiary || '0') * BigInt(amountMultiplier));
 
       payments.push({

@@ -214,14 +214,23 @@ export function CancelPaymentModal({ payment, onClose, onConfirm }: CancelPaymen
                   )}
                   <li>{isMounted && translationsReady ? t('dashboard.cancel.irreversible') : 'This action is irreversible'}</li>
                   {requiresMultipleCancels && (
-                    <li>
-                      {isMounted && translationsReady
-                        ? t('dashboard.cancel.batchRecurringNotice', {
-                            count: resolvedBeneficiaries.length,
-                            defaultValue: `You will need to confirm ${resolvedBeneficiaries.length} cancellation transactions in your wallet.`,
-                          })
-                        : `You will need to confirm ${resolvedBeneficiaries.length} cancellation transactions in your wallet.`}
-                    </li>
+                    <>
+                      <li className="font-medium text-amber-800">
+                        {isMounted && translationsReady
+                          ? t('dashboard.cancel.batchParentWarning', {
+                              defaultValue: 'This cancellation will cancel all future installments for each beneficiary. To stop only one beneficiary, cancel only that beneficiary\'s row (child row) in the transaction details.',
+                            })
+                          : 'Cette annulation annulera toutes les échéances futures pour chaque destinataire. Pour n\'arrêter qu\'un seul destinataire, annulez uniquement la ligne de ce destinataire (ligne enfant) dans le détail des transactions.'}
+                      </li>
+                      <li>
+                        {isMounted && translationsReady
+                          ? t('dashboard.cancel.batchRecurringNotice', {
+                              count: resolvedBeneficiaries.length,
+                              defaultValue: `You will need to confirm ${resolvedBeneficiaries.length} cancellation transactions in your wallet.`,
+                            })
+                          : `Vous devrez confirmer ${resolvedBeneficiaries.length} annulations dans votre wallet.`}
+                      </li>
+                    </>
                   )}
                 </ul>
               </div>

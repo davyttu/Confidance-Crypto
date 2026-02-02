@@ -1,6 +1,7 @@
 // components/Analytics/FeesBreakdown.tsx
 'use client';
 
+import { useTranslation } from 'react-i18next';
 import { MonthlyStats } from '@/hooks/useMonthlyAnalytics';
 
 interface FeesBreakdownProps {
@@ -8,6 +9,7 @@ interface FeesBreakdownProps {
 }
 
 export function FeesBreakdown({ stats }: FeesBreakdownProps) {
+  const { t } = useTranslation();
   const { costs } = stats;
 
   return (
