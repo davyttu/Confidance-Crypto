@@ -205,7 +205,9 @@
       "cancelPayment": "取消支付",
       "filterByBeneficiary": "按收款人筛选",
       "allBeneficiaries": "全部收款人",
-      "noBeneficiaries": "付款中无收款人"
+      "noBeneficiaries": "付款中无收款人",
+      "searchBeneficiaryPlaceholder": "姓名或地址...",
+      "noMatchingBeneficiary": "无匹配的收款人"
     },
     "emailTransaction": {
       "amount": "金额",
@@ -702,7 +704,8 @@
           "title": "⚙️ 技术",
           "questions": {
             "blockchain": { "q": "你们使用哪个区块链？", "a": "我们使用 Base Mainnet（以太坊 Layer 2）。快速、安全、费用低。" },
-            "tokens": { "q": "我可以发送代币 (USDC, DAI) 吗？", "a": "ERC20 支持即将推出！目前仅支持原生 ETH。" }
+            "tokens": { "q": "我可以发送代币 (USDC, DAI) 吗？", "a": "ERC20 支持即将推出！目前仅支持原生 ETH。" },
+            "metamaskRecurring": { "q": "为什么定期付款需要多个 MetaMask 弹窗？", "a": "定期付款（如 1 USDC × 3 个月）会经历 3 步：\n\n1) 第一次授权 — 您允许平台使用代币以创建合约。\n\n2) 创建 — 记录您计划（金额、期限、收款人）的交易。\n\n3) 第二次授权 — 您允许已创建的合约扣款全部期数总额（如 3 个月共 3 USDC）。\n\n这是代币的正常机制：每个「支出方」都需单独授权。\n\n多位收款人：可能会出现更多 MetaMask 弹窗（每位收款人每个合约需一次授权）。" }
           }
         }
       },

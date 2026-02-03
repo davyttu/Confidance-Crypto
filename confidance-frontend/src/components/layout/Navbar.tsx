@@ -231,7 +231,7 @@ export function Navbar() {
                   key={link.href}
                   href={link.href}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                    pathname === link.href
+                    isMounted && pathname === link.href
                       ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/50'
                       : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
                   }`}
@@ -587,7 +587,7 @@ export function Navbar() {
                     href={link.href}
                     onClick={() => setMobileMenuOpen(false)}
                     className={`block px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                      pathname === link.href
+                      isMounted && pathname === link.href
                         ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/50'
                         : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
                     }`}

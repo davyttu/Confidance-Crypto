@@ -354,11 +354,14 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
       totalMonthsNum > 0 &&
       executedMonths >= totalMonthsNum;
     const stillActiveRecurring = isRecurringParent && totalMonthsNum > 0 && executedMonths < totalMonthsNum;
+    // Ne pas forcer "active" si le paiement est annulé ou en échec (priorité au statut résolu par la table)
     const derivedStatus = isRecurringInstance
       ? payment.status
-      : stillActiveRecurring
-        ? 'active'
-        : (hasAllMonths || payment.status === 'completed' ? 'completed' : payment.status);
+      : payment.status === 'cancelled' || payment.status === 'failed'
+        ? payment.status
+        : stillActiveRecurring
+          ? 'active'
+          : (hasAllMonths || payment.status === 'completed' ? 'completed' : payment.status);
     const hasWarning =
       derivedStatus === 'completed' &&
       typeof payment.last_execution_hash === 'string' &&

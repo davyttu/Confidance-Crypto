@@ -205,7 +205,9 @@
       "cancelPayment": "Annuler le paiement",
       "filterByBeneficiary": "Filtrer par bénéficiaire",
       "allBeneficiaries": "Tous les bénéficiaires",
-      "noBeneficiaries": "Aucun bénéficiaire dans les paiements"
+      "noBeneficiaries": "Aucun bénéficiaire dans les paiements",
+      "searchBeneficiaryPlaceholder": "Nom ou adresse...",
+      "noMatchingBeneficiary": "Aucun bénéficiaire correspondant"
     },
     "emailTransaction": {
       "amount": "Montant",
@@ -913,6 +915,10 @@
             "tokens": {
               "q": "Puis-je envoyer des tokens (USDC, DAI) ?",
               "a": "Support ERC20 à venir prochainement ! Pour l'instant, seul l'ETH natif est disponible."
+            },
+            "metamaskRecurring": {
+              "q": "Pourquoi plusieurs fenêtres MetaMask pour un paiement récurrent ?",
+              "a": "Pour un paiement récurrent (ex. 1 USDC × 3 mois), vous voyez 3 étapes :\n\n1) Première approbation — Vous autorisez la plateforme à utiliser vos tokens pour créer le contrat.\n\n2) Création — La transaction qui enregistre votre planning (montant, durée, bénéficiaire).\n\n3) Deuxième approbation — Vous autorisez le contrat créé à prélever le total des mensualités (ex. 3 USDC pour 3 mois).\n\nC'est le fonctionnement normal des tokens : chaque « dépenseur » doit être autorisé séparément.\n\nPlusieurs destinataires : il peut y avoir des fenêtres MetaMask supplémentaires (une approbation par contrat par bénéficiaire)."
             }
           }
         }

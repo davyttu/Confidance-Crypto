@@ -205,7 +205,9 @@
       "cancelPayment": "Cancelar pago",
       "filterByBeneficiary": "Filtrar por beneficiario",
       "allBeneficiaries": "Todos los beneficiarios",
-      "noBeneficiaries": "Ningún beneficiario en los pagos"
+      "noBeneficiaries": "Ningún beneficiario en los pagos",
+      "searchBeneficiaryPlaceholder": "Nombre o dirección...",
+      "noMatchingBeneficiary": "Ningún beneficiario coincide"
     },
     "emailTransaction": {
       "amount": "Importe",
@@ -1123,7 +1125,8 @@
           "title": "⚙️ Técnico",
           "questions": {
             "blockchain": { "q": "¿Qué blockchain usáis?", "a": "Base Mainnet (Layer 2 de Ethereum). Rápida, segura y con tasas bajas." },
-            "tokens": { "q": "¿Puedo enviar tokens (USDC, DAI)?", "a": "¡Soporte ERC20 próximamente! Por ahora solo ETH nativo." }
+            "tokens": { "q": "¿Puedo enviar tokens (USDC, DAI)?", "a": "¡Soporte ERC20 próximamente! Por ahora solo ETH nativo." },
+            "metamaskRecurring": { "q": "¿Por qué varias ventanas de MetaMask para un pago recurrente?", "a": "En un pago recurrente (ej. 1 USDC × 3 meses) hay 3 pasos:\n\n1) Primera aprobación — Autorizas a la plataforma a usar tus tokens para crear el contrato.\n\n2) Creación — La transacción que registra tu plan (importe, duración, beneficiario).\n\n3) Segunda aprobación — Autorizas al contrato creado a debitar el total de las mensualidades (ej. 3 USDC por 3 meses).\n\nEs el funcionamiento normal de los tokens: cada «gastador» debe autorizarse por separado.\n\nVarios destinatarios: puede haber ventanas MetaMask adicionales (una aprobación por contrato por beneficiario)." }
           }
         }
       },

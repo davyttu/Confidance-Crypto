@@ -300,8 +300,8 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
       console.log('💳 [RECURRING] Étape 1/3: Approbation de la Factory...', {
         token: tokenData.address,
         spender: factoryAddress,
-        amount: BigInt(1).toString(),
-        note: 'Approbation minimale pour que la Factory puisse créer le contrat',
+        amount: perMonth.toString(),
+        note: 'Approbation pour que la Factory puisse créer le contrat',
       });
 
       // Vérifier que le hook est bien initialisé
@@ -314,7 +314,7 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
       console.log('📤 [RECURRING] Appel approvalFactoryHook.approve()...');
 
       try {
-        approvalFactoryHook.approve(BigInt(1), params.tokenSymbol, tokenData.address as `0x${string}`);
+        approvalFactoryHook.approve(perMonth, params.tokenSymbol, tokenData.address as `0x${string}`);
         console.log('✅ [RECURRING] approvalFactoryHook.approve() appelé avec succès');
       } catch (approveErr) {
         console.error('❌ [RECURRING] Erreur lors de l\'appel approvalFactoryHook.approve():', approveErr);

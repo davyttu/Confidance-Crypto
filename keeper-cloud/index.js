@@ -19,6 +19,8 @@ const { createClient } = require("@supabase/supabase-js");
 const NETWORK = process.env.NETWORK || "base";
 const RPC_URL = process.env.RPC_URL || "https://mainnet.base.org";
 const CHECK_INTERVAL = parseInt(process.env.CHECK_INTERVAL) || 60000; // 60 secondes
+// Délai (ms) entre chaque exécution de paiement pour limiter le rate limit RPC. 0 = désactivé (comportement actuel).
+const DELAY_BETWEEN_PAYMENTS_MS = parseInt(process.env.DELAY_BETWEEN_PAYMENTS_MS, 10) || 0;
 const BACKEND_API_URL = process.env.BACKEND_API_URL || "http://localhost:3001";
 const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
 
@@ -626,6 +628,7 @@ async function updateRecurringAfterExecution(paymentId, txHash, executedMonths, 
     let updateData = {
       executed_months: executedMonths,
       next_execution_time: nextExecutionTime,
+      last_execution_time: now,
       last_execution_hash: txHash,
       status: newStatus,
       updated_at: new Date().toISOString(),
@@ -1270,15 +1273,16 @@ async function executeRecurringPayment(payment) {
   } catch (error) {
     const errorMsg = error.message || error.toString();
 
-    // ✅ FIX : Distinguer les vraies erreurs RPC des erreurs de contrat
-    // Erreur RPC réelle : code -32016 (over rate limit) avec "missing revert data"
+    // ✅ FIX : Distinguer les vraies erreurs RPC/infra des erreurs de contrat (ne pas marquer failed)
+    const rpcErrorCode = error.info?.error?.code;
     const isRealRpcError = (
-      (error.info && error.info.error && error.info.error.code === -32016) ||
+      rpcErrorCode === -32016 || // over rate limit
+      rpcErrorCode === -32011 || // no backend is currently healthy to serve traffic
       (errorMsg.includes("rate limit") && errorMsg.includes("missing revert data"))
     );
-    
+
     if (isRealRpcError) {
-      console.log(`   ⚠️ Erreur RPC temporaire (rate limit): ${errorMsg.substring(0, 150)}`);
+      console.log(`   ⚠️ Erreur RPC temporaire (code=${rpcErrorCode}): ${errorMsg.substring(0, 150)}`);
       if (error.info && error.info.error) {
         console.log(`   📋 Détails RPC: code=${error.info.error.code}, message=${error.info.error.message}`);
       }
@@ -1401,6 +1405,8 @@ async function executeRecurringPayment(payment) {
       errorMsg.includes('replacement') ||
       errorMsg.includes('REPLACEMENT_UNDERPRICED') ||
       errorMsg.includes('rate limit') ||
+      errorMsg.includes('no backend') ||
+      errorMsg.includes('healthy to serve traffic') ||
       errorMsg.includes('network') ||
       errorMsg.includes('timeout') ||
       errorMsg.includes('connection') ||
@@ -1448,12 +1454,14 @@ async function checkAndExecuteAll() {
   for (const payment of scheduledPayments) {
     console.log(`\n${payment.name}`);
     await executeScheduledPayment(payment);
+    if (DELAY_BETWEEN_PAYMENTS_MS > 0) await new Promise((r) => setTimeout(r, DELAY_BETWEEN_PAYMENTS_MS));
   }
 
   // EXÉCUTER RECURRING
   for (const payment of recurringPayments) {
     console.log(`\n${payment.name}`);
     await executeRecurringPayment(payment);
+    if (DELAY_BETWEEN_PAYMENTS_MS > 0) await new Promise((r) => setTimeout(r, DELAY_BETWEEN_PAYMENTS_MS));
   }
 }
 
@@ -1529,6 +1537,9 @@ async function selfPing() {
 
 async function start() {
   console.log("🚀 Starting Keeper V3.2 (USDC Fix + N8N)...\n");
+  if (DELAY_BETWEEN_PAYMENTS_MS > 0) {
+    console.log(`⏱️ Délai entre paiements: ${DELAY_BETWEEN_PAYMENTS_MS} ms (évite le rate limit RPC)\n`);
+  }
 
   // 🟣 Notify start (Albert)
   await emitEvent({

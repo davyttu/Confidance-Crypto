@@ -379,7 +379,7 @@ router.patch('/:id', async (req, res) => {
 
     const { data: existingPayment, error: existingError } = await supabase
       .from('recurring_payments')
-      .select('last_execution_hash')
+      .select('last_execution_hash, total_months, executed_months, monthly_statuses')
       .eq('id', id)
       .maybeSingle();
 
@@ -394,6 +394,24 @@ router.patch('/:id', async (req, res) => {
     if (last_execution_time !== undefined) updates.last_execution_time = last_execution_time;
     if (status !== undefined) updates.status = status;
     if (last_execution_hash !== undefined) updates.last_execution_hash = last_execution_hash;
+
+    // Quand on passe en annulé : mettre à jour monthly_statuses pour que tous les mois non exécutés soient "cancelled"
+    if (status === 'cancelled' && existingPayment) {
+      const totalMonths = Number(existingPayment.total_months ?? 0) || 0;
+      const executedMonths = Number(existingPayment.executed_months ?? 0) || 0;
+      const currentStatuses = existingPayment.monthly_statuses || {};
+      const newMonthlyStatuses = {};
+      for (let i = 0; i < totalMonths; i++) {
+        const key = String(i);
+        if (i < executedMonths && (currentStatuses[key] === 'executed' || currentStatuses[key] === 'released')) {
+          newMonthlyStatuses[key] = currentStatuses[key];
+        } else {
+          newMonthlyStatuses[key] = 'cancelled';
+        }
+      }
+      updates.monthly_statuses = newMonthlyStatuses;
+      console.log('✅ Annulation récurrent: status=cancelled, monthly_statuses mis à jour', { id, totalMonths, executedMonths });
+    }
 
     // Ajouter updated_at
     updates.updated_at = new Date().toISOString();
@@ -410,7 +428,7 @@ router.patch('/:id', async (req, res) => {
       return res.status(500).json({ error: 'Erreur lors de la mise à jour' });
     }
 
-    console.log('✅ Paiement récurrent mis à jour:', id);
+    console.log('✅ Paiement récurrent mis à jour:', id, status !== undefined ? { status } : '');
 
     if (payment?.id && payment?.user_id && status === 'active') {
       addTimelineEvent({

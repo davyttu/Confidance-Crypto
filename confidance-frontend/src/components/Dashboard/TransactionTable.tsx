@@ -54,7 +54,9 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete, userA
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [beneficiaryFilterAddress, setBeneficiaryFilterAddress] = useState<string | null>(null);
   const [beneficiaryDropdownOpen, setBeneficiaryDropdownOpen] = useState(false);
+  const [beneficiaryDropdownSearch, setBeneficiaryDropdownSearch] = useState('');
   const beneficiaryDropdownRef = useRef<HTMLDivElement | null>(null);
+  const beneficiarySearchInputRef = useRef<HTMLInputElement | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
   const [sessionStartAt] = useState(() => Date.now());
@@ -545,15 +547,8 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete, userA
             continue;
           }
 
-          // Contract cancelled
+          // Contract cancelled: tous les mois non exécutés doivent être "cancelled"
           if (isCancelled) {
-            if (hasStartTime) {
-              const paymentDate = startTime + (monthIndex * MONTH_IN_SECONDS);
-              if (paymentDate > now) {
-                monthlyStatuses.push('pending');
-                continue;
-              }
-            }
             monthlyStatuses.push('cancelled');
             continue;
           }
@@ -577,8 +572,9 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete, userA
 
       // Distinguer pending (aucun mois traité) vs active (au moins 1 mois traité)
       const hasAnyStatus = monthlyStatuses.length > 0;
+      const allCancelled = hasAnyStatus && monthlyStatuses.every((status) => status === 'cancelled');
       const resolvedStatus =
-        isCancelled
+        isCancelled || allCancelled
           ? 'cancelled'
           : allTerminal
           ? 'completed'
@@ -892,6 +888,24 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete, userA
     return list;
   }, [payments, getBeneficiaryName]);
 
+  // Jusqu'à 6 bénéficiaires principaux (pour l'affichage par défaut du menu)
+  const principalBeneficiaries = useMemo(
+    () => uniqueBeneficiariesFromPayments.slice(0, 6),
+    [uniqueBeneficiariesFromPayments]
+  );
+
+  // Liste affichée dans le menu : recherche vide → 6 principaux ; avec recherche → filtre par nom ou début d'adresse
+  const displayedBeneficiariesInDropdown = useMemo(() => {
+    const q = beneficiaryDropdownSearch.trim().toLowerCase();
+    if (!q) return principalBeneficiaries;
+    return uniqueBeneficiariesFromPayments.filter(
+      (b) =>
+        b.name.toLowerCase().includes(q) ||
+        b.address.toLowerCase().startsWith(q) ||
+        b.address.toLowerCase().includes(q)
+    );
+  }, [beneficiaryDropdownSearch, principalBeneficiaries, uniqueBeneficiariesFromPayments]);
+
   // Filtrer et trier les paiements
   const processedPayments = useMemo(() => {
     let filtered = expandedPayments.filter((payment) => {
@@ -1029,34 +1043,17 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete, userA
 
   return (
     <div className="bg-white rounded-lg shadow">
-      {/* Barre de recherche + export intégré */}
-      <div className="p-4 border-b border-gray-200">
-        <div className="flex border border-gray-300 rounded-lg bg-white focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent">
-          <div className="relative flex-1 min-w-0">
-            <input
-              type="text"
-              placeholder={isMounted && translationsReady ? t('dashboard.table.search') : 'Rechercher par nom ou adresse...'}
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setCurrentPage(1);
-              }}
-              className={`w-full pl-10 pr-4 py-2 border-0 focus:ring-0 focus:outline-none bg-transparent ${userAddress != null && period != null ? 'rounded-l-lg' : 'rounded-lg'}`}
-            />
-            <svg className="absolute left-3 top-2.5 w-5 h-5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </div>
-          {userAddress != null && period != null && (
-            <ExportButton
-              variant="inline"
-              payments={payments}
-              userAddress={userAddress}
-              period={period}
-            />
-          )}
+      {/* Export */}
+      {userAddress != null && period != null && (
+        <div className="p-4 border-b border-gray-200 flex items-center justify-end">
+          <ExportButton
+            variant="inline"
+            payments={payments}
+            userAddress={userAddress}
+            period={period}
+          />
         </div>
-      </div>
+      )}
 
       {/* Tableau */}
       <div className="overflow-x-auto">
@@ -1083,7 +1080,13 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete, userA
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setBeneficiaryDropdownOpen((o) => !o);
+                      setBeneficiaryDropdownOpen((o) => {
+                        if (!o) {
+                          setBeneficiaryDropdownSearch('');
+                          setTimeout(() => beneficiarySearchInputRef.current?.focus(), 0);
+                        }
+                        return !o;
+                      });
                     }}
                     className={`p-1 rounded hover:bg-gray-100 ${beneficiaryFilterAddress ? 'text-blue-600' : 'text-gray-500'}`}
                     title={isMounted && translationsReady ? t('dashboard.table.filterByBeneficiary', { defaultValue: 'Filter by beneficiary' }) : 'Filtrer par bénéficiaire'}
@@ -1096,7 +1099,7 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete, userA
                   </button>
                   {beneficiaryDropdownOpen && (
                     <div
-                      className="absolute left-0 top-full mt-1 z-50 min-w-[200px] max-h-72 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg py-1"
+                      className="absolute left-0 top-full mt-1 z-50 min-w-[220px] max-h-80 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg flex flex-col"
                       role="listbox"
                     >
                       <button
@@ -1107,34 +1110,52 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete, userA
                           setBeneficiaryDropdownOpen(false);
                           setCurrentPage(1);
                         }}
-                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${!beneficiaryFilterAddress ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
+                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex-shrink-0 ${!beneficiaryFilterAddress ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
                       >
                         {isMounted && translationsReady ? t('dashboard.table.allBeneficiaries', { defaultValue: 'All beneficiaries' }) : 'Tous les bénéficiaires'}
                       </button>
-                      {uniqueBeneficiariesFromPayments.length === 0 ? (
-                        <div className="px-4 py-3 text-sm text-gray-500">
-                          {isMounted && translationsReady ? t('dashboard.table.noBeneficiaries', { defaultValue: 'No beneficiaries in payments' }) : 'Aucun bénéficiaire dans les paiements'}
-                        </div>
-                      ) : (
-                        uniqueBeneficiariesFromPayments.map((b) => {
-                          const isSelected = beneficiaryFilterAddress?.toLowerCase() === b.address.toLowerCase();
-                          return (
-                            <button
-                              key={b.address}
-                              type="button"
-                              role="option"
-                              onClick={() => {
-                                setBeneficiaryFilterAddress(b.address);
-                                setBeneficiaryDropdownOpen(false);
-                                setCurrentPage(1);
-                              }}
-                              className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 truncate ${isSelected ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
-                            >
-                              {b.name}
-                            </button>
-                          );
-                        })
-                      )}
+                      <div className="overflow-y-auto max-h-52 py-1">
+                        {uniqueBeneficiariesFromPayments.length === 0 ? (
+                          <div className="px-4 py-3 text-sm text-gray-500">
+                            {isMounted && translationsReady ? t('dashboard.table.noBeneficiaries', { defaultValue: 'No beneficiaries in payments' }) : 'Aucun bénéficiaire dans les paiements'}
+                          </div>
+                        ) : displayedBeneficiariesInDropdown.length === 0 ? (
+                          <div className="px-4 py-3 text-sm text-gray-500">
+                            {isMounted && translationsReady ? t('dashboard.table.noMatchingBeneficiary', { defaultValue: 'No matching beneficiary' }) : 'Aucun bénéficiaire correspondant'}
+                          </div>
+                        ) : (
+                          displayedBeneficiariesInDropdown.map((b) => {
+                            const isSelected = beneficiaryFilterAddress?.toLowerCase() === b.address.toLowerCase();
+                            return (
+                              <button
+                                key={b.address}
+                                type="button"
+                                role="option"
+                                onClick={() => {
+                                  setBeneficiaryFilterAddress(b.address);
+                                  setBeneficiaryDropdownOpen(false);
+                                  setCurrentPage(1);
+                                }}
+                                className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 truncate ${isSelected ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
+                              >
+                                {b.name}
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+                      <div className="px-2 pt-2 pb-2 flex-shrink-0 border-t border-gray-100">
+                        <input
+                          ref={beneficiarySearchInputRef}
+                          type="text"
+                          value={beneficiaryDropdownSearch}
+                          onChange={(e) => setBeneficiaryDropdownSearch(e.target.value)}
+                          onKeyDown={(e) => e.stopPropagation()}
+                          placeholder={isMounted && translationsReady ? t('dashboard.table.searchBeneficiaryPlaceholder', { defaultValue: 'Name or address...' }) : 'Nom ou adresse...'}
+                          className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          aria-label={isMounted && translationsReady ? t('dashboard.table.searchBeneficiaryPlaceholder', { defaultValue: 'Name or address...' }) : 'Rechercher par nom ou adresse'}
+                        />
+                      </div>
                     </div>
                   )}
                 </div>

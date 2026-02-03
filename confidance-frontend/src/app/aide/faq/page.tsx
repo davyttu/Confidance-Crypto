@@ -86,6 +86,12 @@ export default function FAQPage() {
           aKey: 'help.faq.categories.technical.questions.tokens.a',
           aFallback: 'Support ERC20 à venir prochainement ! Pour l\'instant, seul l\'ETH natif est disponible.',
         },
+        {
+          qKey: 'help.faq.categories.technical.questions.metamaskRecurring.q',
+          qFallback: 'Pourquoi plusieurs fenêtres MetaMask pour un paiement récurrent ?',
+          aKey: 'help.faq.categories.technical.questions.metamaskRecurring.a',
+          aFallback: 'Pour un paiement récurrent (ex. 1 USDC × 3 mois), vous voyez 3 étapes :\n\n1) Première approbation — Vous autorisez la plateforme à utiliser vos tokens pour créer le contrat.\n\n2) Création — La transaction qui enregistre votre planning (montant, durée, bénéficiaire).\n\n3) Deuxième approbation — Vous autorisez le contrat créé à prélever le total des mensualités (ex. 3 USDC pour 3 mois).\n\nC’est le fonctionnement normal des tokens : chaque “dépenseur” doit être autorisé séparément.\n\nPlusieurs destinataires : il peut y avoir des fenêtres MetaMask supplémentaires (une approbation par contrat par bénéficiaire).',
+        },
       ],
     },
   ];
@@ -131,7 +137,7 @@ export default function FAQPage() {
                         />
                       </button>
                       {isOpen && (
-                        <div className="px-6 pb-4 text-gray-700 border-t border-gray-100 pt-4">
+                        <div className="px-6 pb-4 text-gray-700 border-t border-gray-100 pt-4 whitespace-pre-line">
                           {isMounted && translationsReady ? t(faq.aKey) : faq.aFallback}
                         </div>
                       )}

@@ -285,6 +285,8 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
       );
       const isProVerified = user?.accountType === 'professional' && user?.proStatus === 'verified';
       const feeBps = getProtocolFeeBps({ isInstantPayment: false, isProVerified });
+      const monthlyFee = (perBeneficiaryAmount * BigInt(feeBps)) / BigInt(BASIS_POINTS_DENOMINATOR);
+      const totalPerMonth = perBeneficiaryAmount + monthlyFee;
       const totalPerContract = calculateRecurringTotal(
         perBeneficiaryAmount,
         params.totalMonths,
@@ -303,10 +305,11 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
       );
 
       console.log('💳 [BATCH RECURRING] Étape 1: Approbation Factory...', {
+        totalPerMonth: totalPerMonth.toString(),
         totalPerContract: totalPerContract.toString(),
       });
 
-      approvalFactoryHook.approve(BigInt(1), params.tokenSymbol, tokenData.address as `0x${string}`);
+      approvalFactoryHook.approve(totalPerMonth, params.tokenSymbol, tokenData.address as `0x${string}`);
 
     } catch (err) {
       console.error('Erreur createBatchRecurringPayment:', err);

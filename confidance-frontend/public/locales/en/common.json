@@ -205,7 +205,9 @@
       "cancelPayment": "Cancel payment",
       "filterByBeneficiary": "Filter by beneficiary",
       "allBeneficiaries": "All beneficiaries",
-      "noBeneficiaries": "No beneficiaries in payments"
+      "noBeneficiaries": "No beneficiaries in payments",
+      "searchBeneficiaryPlaceholder": "Name or address...",
+      "noMatchingBeneficiary": "No matching beneficiary"
     },
     "emailTransaction": {
       "amount": "Amount",
@@ -903,6 +905,10 @@
             "tokens": {
               "q": "Can I send tokens (USDC, DAI)?",
               "a": "ERC20 support coming soon! For now, only native ETH is available."
+            },
+            "metamaskRecurring": {
+              "q": "Why several MetaMask windows for a recurring payment?",
+              "a": "For a recurring payment (e.g. 1 USDC × 3 months), you see 3 steps:\n\n1) First approval — You allow the platform to use your tokens to create the contract.\n\n2) Creation — The transaction that records your schedule (amount, duration, beneficiary).\n\n3) Second approval — You allow the created contract to deduct the total of all installments (e.g. 3 USDC for 3 months).\n\nThis is how tokens work: each \"spender\" must be approved separately.\n\nMultiple recipients: there may be additional MetaMask windows (one approval per contract per beneficiary)."
             }
           }
         }
