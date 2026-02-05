@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next';
 import { useAccount, usePublicClient } from 'wagmi';
 import { Payment } from '@/hooks/useDashboard';
 import { TransactionRow } from './TransactionRow';
-import { ExportButton } from './ExportButton';
 import { useBeneficiaries } from '@/hooks/useBeneficiaries';
 import { EmailTransactionModal } from './EmailTransactionModal';
 import { recurringPaymentERC20Abi } from '@/lib/contracts/recurringPaymentERC20Abi';
@@ -1043,19 +1042,7 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete, userA
 
   return (
     <div className="bg-white rounded-lg shadow">
-      {/* Export */}
-      {userAddress != null && period != null && (
-        <div className="p-4 border-b border-gray-200 flex items-center justify-end">
-          <ExportButton
-            variant="inline"
-            payments={payments}
-            userAddress={userAddress}
-            period={period}
-          />
-        </div>
-      )}
-
-      {/* Tableau */}
+      {/* Tableau (export déplacé dans la barre d'actions du dashboard, aligné avec les filtres) */}
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead className="bg-gray-50 border-b border-gray-200">

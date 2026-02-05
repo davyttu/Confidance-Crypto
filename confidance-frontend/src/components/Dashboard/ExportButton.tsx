@@ -10,8 +10,8 @@ interface ExportButtonProps {
   payments: Payment[];
   userAddress: string;
   period: string;
-  /** Intégré à la fin de la barre de recherche : même hauteur, style discret */
-  variant?: 'default' | 'inline';
+  /** default = bouton violet ; inline = barre de recherche ; toolbar = même ligne que les filtres (All, By beneficiary, etc.) */
+  variant?: 'default' | 'inline' | 'toolbar';
 }
 
 export function ExportButton({ payments, userAddress, period, variant = 'default' }: ExportButtonProps) {
@@ -39,14 +39,17 @@ export function ExportButton({ payments, userAddress, period, variant = 'default
   }
 
   const isInline = variant === 'inline';
+  const isToolbar = variant === 'toolbar';
 
   return (
-    <div className={isInline ? 'relative flex-shrink-0' : 'relative'}>
+    <div className={isInline || isToolbar ? 'relative flex-shrink-0' : 'relative'}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         disabled={isExporting}
         className={
-          isInline
+          isToolbar
+            ? 'flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+            : isInline
             ? 'flex items-center gap-1.5 h-full min-h-[42px] px-3 border-l border-gray-300 rounded-r-lg bg-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
             : 'flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
         }
@@ -54,7 +57,7 @@ export function ExportButton({ payments, userAddress, period, variant = 'default
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
         </svg>
-        {!isInline && (
+        {(!isInline || isToolbar) && (
           <span>{isExporting ? (isMounted && translationsReady ? t('dashboard.export.exporting') : 'Export...') : (isMounted && translationsReady ? t('dashboard.export.button') : 'Exporter')}</span>
         )}
         <svg className={`w-3.5 h-3.5 flex-shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">

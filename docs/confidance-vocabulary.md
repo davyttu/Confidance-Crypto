@@ -102,14 +102,14 @@ Tout changement d’état ou d’exécution d’un Payment doit créer un évén
 ### liste officielle des event_type
 - payment_created
 - payment_scheduled
-- payment_executed
+- payment_released
 - payment_cancelled
 - payment_failed
 - payment_completed
 
 ### règles d’échec récurrent (skip)
-Un `last_execution_hash` qui commence par `skipped_` signifie une Execution échouée.
-Cet échec doit produire un event `payment_failed` (et ne doit jamais être compté comme `payment_executed`).
+Un `last_execution_hash` qui commence par `skipped_` signifie une release échouée.
+Cet échec doit produire un event `payment_failed` (et ne doit jamais être compté comme `payment_released`).
 
 ## 9. Catégories de paiement
 ### Liste officielle Confidance v1

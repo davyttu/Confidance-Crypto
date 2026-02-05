@@ -117,8 +117,8 @@ export function HelpWidget() {
 
       <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
         {isOpen && (
-          <div className="w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden animate-slideUp">
-            <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-4 text-white">
+          <div className="w-80 max-h-[calc(100vh-7rem)] flex flex-col bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden animate-slideUp">
+            <div className="flex-shrink-0 bg-gradient-to-r from-blue-600 to-purple-600 p-4 text-white">
               <h3 className="font-semibold text-lg">💬 {isMounted && translationsReady ? t('help.widget.title') : 'Besoin d\'aide ?'}</h3>
               <p className="text-sm text-white/80 mt-1">
                 {isMounted && translationsReady ? t('help.widget.subtitle') : 'Trouvez rapidement les réponses à vos questions'}
@@ -190,7 +190,7 @@ export function HelpWidget() {
               </div>
             </div>
 
-            <div className="bg-gray-50 p-3 text-center border-t border-gray-200">
+            <div className="flex-shrink-0 bg-gray-50 p-3 text-center border-t border-gray-200">
               <Link
                 href="/aide"
                 onClick={() => setIsOpen(false)}

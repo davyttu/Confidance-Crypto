@@ -186,7 +186,7 @@
       "search": "Search by name or address...",
       "beneficiary": "Beneficiary",
       "amount": "Amount",
-      "referenceAmountNote": "This amount is not debited",
+      "referenceAmountNote": "Not debited",
       "nextInstallmentNote": "Funds not locked",
       "releaseDate": "Release date",
       "status": "Status",

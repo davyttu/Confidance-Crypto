@@ -186,7 +186,7 @@
       "search": "Buscar por nombre o dirección...",
       "beneficiary": "Beneficiario",
       "amount": "Monto",
-      "referenceAmountNote": "Esta suma no está debitada",
+      "referenceAmountNote": "No debitado",
       "nextInstallmentNote": "Fondos no bloqueados",
       "releaseDate": "Fecha de liberación",
       "status": "Estado",

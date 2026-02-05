@@ -3220,11 +3220,7 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
                         )}
                       </p>
                     )}
-                    <p className="mt-2">
-                      {isMounted && translationsReady
-                        ? t('create.date.refundRemainingMonths', { defaultValue: 'If you cancel before execution, remaining months and their protocol fees are refunded.' })
-                        : 'If you cancel before execution, remaining months and their protocol fees are refunded.'}
-                    </p>
+                    {/* Pas de mention de remboursement pour le récurrent : les fonds ne sont pas prélevés à l'avance, donc pas de "refund". Cette phrase reste affichée uniquement pour les paiements programmés (voir FeeDisplay / flow one-time). */}
                   </div>
                 </div>
               </div>

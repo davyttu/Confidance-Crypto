@@ -106,7 +106,7 @@ export default function DocumentationPage() {
 
             <div className="bg-indigo-50 border-l-4 border-indigo-500 p-4 rounded-r-lg">
               <p className="text-indigo-900">
-                <strong>Persistent Intent:</strong> A Payment exists independently of its execution. It can generate zero, one, or multiple Executions depending on its type.
+                <strong>Persistent Intent:</strong> A Payment exists independently of its release. It can generate zero, one, or multiple Releases depending on its type.
               </p>
             </div>
           </Section>
@@ -126,7 +126,7 @@ export default function DocumentationPage() {
                   </div>
                   <h4 className="font-semibold text-gray-900">instant</h4>
                 </div>
-                <p className="text-gray-700">Payment executed immediately after creation.</p>
+                <p className="text-gray-700">Payment released immediately after creation.</p>
               </div>
 
               <div className="bg-white border border-gray-200 rounded-lg p-5">
@@ -136,7 +136,7 @@ export default function DocumentationPage() {
                   </div>
                   <h4 className="font-semibold text-gray-900">scheduled</h4>
                 </div>
-                <p className="text-gray-700">Single payment executed at a planned date.</p>
+                <p className="text-gray-700">Single payment released at a planned date.</p>
               </div>
 
               <div className="bg-white border border-gray-200 rounded-lg p-5">
@@ -146,7 +146,7 @@ export default function DocumentationPage() {
                   </div>
                   <h4 className="font-semibold text-gray-900">recurring</h4>
                 </div>
-                <p className="text-gray-700 mb-3">Payment executed monthly over a limited duration.</p>
+                <p className="text-gray-700 mb-3">Payment released monthly over a limited duration.</p>
                 <ul className="space-y-2 text-gray-700 text-sm">
                   <li className="flex items-start gap-2">
                     <span className="text-purple-500 mt-1">→</span>
@@ -158,7 +158,7 @@ export default function DocumentationPage() {
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-purple-500 mt-1">→</span>
-                    <span><strong>Cancelable anytime:</strong> Payment can be canceled before future execution</span>
+                    <span><strong>Cancelable anytime:</strong> Payment can be canceled before future release</span>
                   </li>
                 </ul>
               </div>
@@ -229,31 +229,31 @@ export default function DocumentationPage() {
             icon={<CheckCircle2 className="w-5 h-5" />}
           >
             <p className="text-gray-700 leading-relaxed mb-4">
-              An <strong>Execution</strong> is an attempt to apply the rules of a Payment at a given date. An Execution is always linked to a single Payment.
+              A <strong>Release</strong> is the application of a Payment at a given date (in the dashboard this is always shown as &quot;Released&quot;). A Release is always linked to a single Payment.
             </p>
 
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-5">
-              <p className="font-semibold text-gray-900 mb-3">Execution Status:</p>
+              <p className="font-semibold text-gray-900 mb-3">Release Status:</p>
               <div className="space-y-3">
                 <div className="flex items-start gap-3">
                   <CheckCircle2 className="w-5 h-5 text-green-500 mt-0.5" />
                   <div>
                     <strong className="text-gray-900">success:</strong>
-                    <span className="text-gray-700 ml-2">execution succeeded</span>
+                    <span className="text-gray-700 ml-2">release succeeded (shown as &quot;Released&quot; in the dashboard)</span>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
                   <AlertCircle className="w-5 h-5 text-red-500 mt-0.5" />
                   <div>
                     <strong className="text-gray-900">failed:</strong>
-                    <span className="text-gray-700 ml-2">execution failed</span>
+                    <span className="text-gray-700 ml-2">release failed</span>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
                   <Clock className="w-5 h-5 text-yellow-500 mt-0.5" />
                   <div>
                     <strong className="text-gray-900">pending:</strong>
-                    <span className="text-gray-700 ml-2">execution awaiting finalization</span>
+                    <span className="text-gray-700 ml-2">release awaiting finalization</span>
                   </div>
                 </div>
               </div>
@@ -273,7 +273,7 @@ export default function DocumentationPage() {
 
             <div className="bg-indigo-50 border-l-4 border-indigo-500 p-5 rounded-r-lg mb-6">
               <p className="font-semibold text-indigo-900 mb-2">Core Rule:</p>
-              <p className="text-indigo-800">Every status change or execution of a Payment must create an event in the Timeline.</p>
+              <p className="text-indigo-800">Every status change or release of a Payment must create an event in the Timeline.</p>
             </div>
 
             <div className="bg-white border border-gray-200 rounded-lg p-5">
@@ -282,7 +282,7 @@ export default function DocumentationPage() {
                 {[
                   'payment_created',
                   'payment_scheduled',
-                  'payment_executed',
+                  'payment_released',
                   'payment_cancelled',
                   'payment_failed',
                   'payment_completed',
@@ -296,7 +296,7 @@ export default function DocumentationPage() {
 
             <div className="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-4">
               <p className="text-amber-900 text-sm">
-                <strong>Skip Rule:</strong> A <code className="bg-amber-100 px-1 rounded">last_execution_hash</code> starting with <code className="bg-amber-100 px-1 rounded">skipped_</code> indicates a failed Execution. This must generate a <code className="bg-amber-100 px-1 rounded">payment_failed</code> event (never <code className="bg-amber-100 px-1 rounded">payment_executed</code>).
+                <strong>Skip Rule:</strong> A <code className="bg-amber-100 px-1 rounded">last_execution_hash</code> starting with <code className="bg-amber-100 px-1 rounded">skipped_</code> indicates a failed release. This must generate a <code className="bg-amber-100 px-1 rounded">payment_failed</code> event (never <code className="bg-amber-100 px-1 rounded">payment_released</code>).
               </p>
             </div>
           </Section>
@@ -357,13 +357,13 @@ export default function DocumentationPage() {
 
             <h3 className="text-lg font-semibold text-gray-900 mb-3">Monthly Analytics</h3>
             <p className="text-gray-700 leading-relaxed mb-4">
-              Monthly view of payments and executions. The <strong>Timeline is the single source of truth</strong> for analytics. All analytics must be justifiable from Timeline events.
+              Monthly view of payments and releases. The <strong>Timeline is the single source of truth</strong> for analytics. All analytics must be justifiable from Timeline events.
             </p>
 
             <h3 className="text-lg font-semibold text-gray-900 mb-3">Insights</h3>
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-5">
               <p className="text-blue-900 mb-3">
-                An <strong>Insight</strong> is a non-blocking explanatory observation. It does not modify a Payment or its execution.
+                An <strong>Insight</strong> is a non-blocking explanatory observation. It does not modify a Payment or its release.
               </p>
               <p className="font-semibold text-blue-900 mb-2">Examples:</p>
               <ul className="space-y-2 text-blue-800 text-sm">
@@ -382,7 +382,7 @@ export default function DocumentationPage() {
             <div className="grid md:grid-cols-2 gap-4">
               <div className="bg-white border border-gray-200 rounded-lg p-4">
                 <h4 className="font-semibold text-gray-900 mb-2">Gas Fee</h4>
-                <p className="text-gray-700 text-sm">Technical fees required for execution.</p>
+                <p className="text-gray-700 text-sm">Technical fees required for release.</p>
               </div>
               <div className="bg-white border border-gray-200 rounded-lg p-4">
                 <h4 className="font-semibold text-gray-900 mb-2">Protocol Fee</h4>
@@ -403,10 +403,10 @@ export default function DocumentationPage() {
             <ul className="space-y-3">
               {[
                 'A payment is not a transaction',
-                'AI never executes alone',
-                'Every execution is explainable',
+                'AI never triggers a release alone',
+                'Every release is explainable',
                 'Every number is justifiable',
-                'Every payment is cancelable before execution',
+                'Every payment is cancelable before release',
               ].map((rule, idx) => (
                 <li key={idx} className="flex items-start gap-3">
                   <CheckCircle2 className="w-5 h-5 mt-0.5 flex-shrink-0" />

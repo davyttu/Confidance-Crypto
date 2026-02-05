@@ -186,7 +186,7 @@
       "search": "Rechercher par nom ou adresse...",
       "beneficiary": "Bénéficiaire",
       "amount": "Montant",
-      "referenceAmountNote": "Cette somme n'est pas prélevée",
+      "referenceAmountNote": "Non prélevé",
       "nextInstallmentNote": "Fonds non bloqués",
       "releaseDate": "Date de libération",
       "status": "Statut",

@@ -16,6 +16,7 @@ import { isInPeriod } from '@/lib/utils/dateFormatter';
 import { StatsCards } from '@/components/Dashboard/StatsCards';
 import { PeriodSelector } from '@/components/Dashboard/PeriodSelector';
 import { TransactionTable } from '@/components/Dashboard/TransactionTable';
+import { ExportButton } from '@/components/Dashboard/ExportButton';
 import { BeneficiaryList } from '@/components/Dashboard/BeneficiaryList';
 import { BeneficiaryManager } from '@/components/Dashboard/BeneficiaryManager';
 import { CancelPaymentModal } from '@/components/Dashboard/CancelPaymentModal';
@@ -663,8 +664,8 @@ export default function DashboardPage() {
               onStatsCardFilterChange={setStatsCardFilter}
             />
 
-            {/* Barre d'actions */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            {/* Barre d'actions : filtres + export alignés */}
+            <div className="flex flex-wrap items-center justify-between gap-3 mt-16 mb-5">
               <PeriodSelector 
                 onChange={handlePeriodChange}
                 wallets={wallets}
@@ -677,10 +678,18 @@ export default function DashboardPage() {
                 beneficiaries={uniqueBeneficiaries}
                 selectedBeneficiaryAddresses={periodType === 'beneficiary' && Array.isArray(periodValue) ? periodValue as string[] : []}
               />
+              {address && periodLabel && (
+                <ExportButton
+                  variant="toolbar"
+                  payments={displayedPayments}
+                  userAddress={address}
+                  period={periodLabel}
+                />
+              )}
             </div>
 
-            {/* Tableau des transactions (export intégré dans la barre de recherche) */}
-            <div className="mb-8">
+            {/* Tableau des transactions */}
+            <div className="mb-6">
               <TransactionTable
                 payments={displayedPayments}
                 onRename={handleRenameBeneficiary}

@@ -308,13 +308,13 @@ export default function PaymentProgressModal({
               </span>
             </div>
 
-            {/* Progress bar */}
+            {/* Progress bar — remplie selon les étapes *complétées*, pas l’étape en cours (MetaMask peut encore être en attente) */}
             <div className="space-y-3">
               {/* Barre de progression */}
               <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                 {(() => {
-                  const progressStep = status === 'success' ? totalSteps : clampedStep;
-                  const progressPercent = totalSteps > 0 ? (progressStep / totalSteps) * 100 : 0;
+                  const completedSteps = status === 'success' ? totalSteps : Math.max(0, clampedStep - 1);
+                  const progressPercent = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
                   return (
                 <div
                   className="h-full bg-gradient-to-r from-primary-500 to-purple-500 transition-all duration-500"

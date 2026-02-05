@@ -21,6 +21,8 @@ const RPC_URL = process.env.RPC_URL || "https://mainnet.base.org";
 const CHECK_INTERVAL = parseInt(process.env.CHECK_INTERVAL) || 60000; // 60 secondes
 // Délai (ms) entre chaque exécution de paiement pour limiter le rate limit RPC. 0 = désactivé (comportement actuel).
 const DELAY_BETWEEN_PAYMENTS_MS = parseInt(process.env.DELAY_BETWEEN_PAYMENTS_MS, 10) || 0;
+// Après confirmation on-chain d'un recurring : pause (ms) pour que le RPC mette à jour le nonce avant le prochain envoi (évite "nonce already used").
+const RECURRING_POST_CONFIRM_DELAY_MS = parseInt(process.env.RECURRING_POST_CONFIRM_DELAY_MS, 10) || 2000;
 const BACKEND_API_URL = process.env.BACKEND_API_URL || "http://localhost:3001";
 const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
 
@@ -1081,6 +1083,11 @@ async function executeRecurringPayment(payment) {
     console.log(`   ✅ TX SUCCESS! Block: ${receipt.blockNumber}`);
     console.log(`   🔗 ${EXPLORER_BASE}/tx/${tx.hash}`);
 
+    // Pause après confirmation pour que le RPC mette à jour le nonce avant le prochain recurring (évite "nonce already used")
+    if (RECURRING_POST_CONFIRM_DELAY_MS > 0) {
+      await new Promise((r) => setTimeout(r, RECURRING_POST_CONFIRM_DELAY_MS));
+    }
+
     // ✅ FIX CRITIQUE : VÉRIFIER LES EVENTS pour savoir si le paiement a vraiment réussi
     // Le contrat peut retourner SUCCESS même si le transfert a échoué (strict skip)
     console.log(`   🔍 Checking events to verify if payment succeeded or failed...`);
@@ -1433,35 +1440,46 @@ async function executeRecurringPayment(payment) {
 // FONCTION PRINCIPALE UNIFIÉE
 // ============================================================
 
+let cycleInProgress = false;
+
 async function checkAndExecuteAll() {
-  lastCheckTime = new Date().toISOString();
-  console.log(`\n⏰ [${new Date().toLocaleTimeString()}] Checking all payments...`);
-
-  // Charger les 2 types de paiements
-  scheduledPayments = await loadScheduledPayments();
-  recurringPayments = await loadRecurringPayments();
-
-  const totalPayments = scheduledPayments.length + recurringPayments.length;
-
-  if (totalPayments === 0) {
-    console.log("😴 No payments to execute");
+  if (cycleInProgress) {
+    console.log(`\n⏰ [${new Date().toLocaleTimeString()}] Cycle précédent encore en cours, skip ce tick (évite nonce collision)`);
     return;
   }
+  cycleInProgress = true;
+  try {
+    lastCheckTime = new Date().toISOString();
+    console.log(`\n⏰ [${new Date().toLocaleTimeString()}] Checking all payments...`);
 
-  console.log(`📋 Found: ${scheduledPayments.length} scheduled, ${recurringPayments.length} recurring`);
+    // Charger les 2 types de paiements
+    scheduledPayments = await loadScheduledPayments();
+    recurringPayments = await loadRecurringPayments();
 
-  // EXÉCUTER SCHEDULED (single + batch)
-  for (const payment of scheduledPayments) {
-    console.log(`\n${payment.name}`);
-    await executeScheduledPayment(payment);
-    if (DELAY_BETWEEN_PAYMENTS_MS > 0) await new Promise((r) => setTimeout(r, DELAY_BETWEEN_PAYMENTS_MS));
-  }
+    const totalPayments = scheduledPayments.length + recurringPayments.length;
 
-  // EXÉCUTER RECURRING
-  for (const payment of recurringPayments) {
-    console.log(`\n${payment.name}`);
-    await executeRecurringPayment(payment);
-    if (DELAY_BETWEEN_PAYMENTS_MS > 0) await new Promise((r) => setTimeout(r, DELAY_BETWEEN_PAYMENTS_MS));
+    if (totalPayments === 0) {
+      console.log("😴 No payments to execute");
+      return;
+    }
+
+    console.log(`📋 Found: ${scheduledPayments.length} scheduled, ${recurringPayments.length} recurring`);
+
+    // EXÉCUTER SCHEDULED (single + batch) — inchangé
+    for (const payment of scheduledPayments) {
+      console.log(`\n${payment.name}`);
+      await executeScheduledPayment(payment);
+      if (DELAY_BETWEEN_PAYMENTS_MS > 0) await new Promise((r) => setTimeout(r, DELAY_BETWEEN_PAYMENTS_MS));
+    }
+
+    // EXÉCUTER RECURRING : un par un, on attend déjà tx.wait() dans executeRecurringPayment + pause post-confirmation
+    for (const payment of recurringPayments) {
+      console.log(`\n${payment.name}`);
+      await executeRecurringPayment(payment);
+      if (DELAY_BETWEEN_PAYMENTS_MS > 0) await new Promise((r) => setTimeout(r, DELAY_BETWEEN_PAYMENTS_MS));
+    }
+  } finally {
+    cycleInProgress = false;
   }
 }
 
@@ -1539,6 +1557,9 @@ async function start() {
   console.log("🚀 Starting Keeper V3.2 (USDC Fix + N8N)...\n");
   if (DELAY_BETWEEN_PAYMENTS_MS > 0) {
     console.log(`⏱️ Délai entre paiements: ${DELAY_BETWEEN_PAYMENTS_MS} ms (évite le rate limit RPC)\n`);
+  }
+  if (RECURRING_POST_CONFIRM_DELAY_MS > 0) {
+    console.log(`⏱️ Pause après confirmation recurring: ${RECURRING_POST_CONFIRM_DELAY_MS} ms (évite nonce collision)\n`);
   }
 
   // 🟣 Notify start (Albert)

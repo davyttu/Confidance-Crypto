@@ -1,7 +1,7 @@
 // components/Dashboard/TransactionRow.tsx
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useAccount } from 'wagmi';
@@ -44,11 +44,14 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
   const { t, i18n, ready: translationsReady } = useTranslation();
   const { address } = useAccount();
   const { getBeneficiaryName } = useBeneficiaries();
-  const [copied, setCopied] = useState(false);
+  const [copiedValue, setCopiedValue] = useState<string | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [showContractTooltip, setShowContractTooltip] = useState(false);
+  const [contractTooltipRect, setContractTooltipRect] = useState<DOMRect | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number; above: boolean } | null>(null);
   const tooltipHideTimeoutRef = useRef<number | null>(null);
+  const contractTooltipContentRef = useRef<HTMLDivElement | null>(null);
   const isRecurringInstance = Boolean(payment.__recurringInstance);
   const cancelTargetPayment = isRecurringInstance ? payment : (payment.__parentPayment ?? payment);
 
@@ -232,12 +235,28 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
     return { date: dateFormatted, time: timeFormatted };
   };
 
-  // Copier dans le presse-papier
+  // Copier dans le presse-papier (on garde quelle valeur a été copiée pour colorer uniquement la bonne icône)
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setCopiedValue(text);
+    setTimeout(() => setCopiedValue(null), 2000);
   };
+
+  // Calculer la position du tooltip en pixels (centré sur le logo) après mesure des dimensions
+  useLayoutEffect(() => {
+    if (!showContractTooltip || !contractTooltipRect || !contractTooltipContentRef.current) return;
+    const el = contractTooltipContentRef.current;
+    const w = el.offsetWidth;
+    const h = el.offsetHeight;
+    const above = contractTooltipRect.top >= 180;
+    const centerX = contractTooltipRect.left + contractTooltipRect.width / 2;
+    const x = centerX - w / 2;
+    const gap = 8;
+    const y = above
+      ? contractTooltipRect.top - h - gap
+      : contractTooltipRect.bottom + gap;
+    setTooltipPosition({ x, y, above });
+  }, [showContractTooltip, contractTooltipRect]);
 
   useEffect(() => {
     if (!contextMenu) return;
@@ -481,16 +500,19 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
             (payment.status === 'active' && isInstantOrScheduled && hasReachedReleaseTime);
           const isIncomingAmount = isIncoming && (isRecurringInstance || isSettledStatus);
           const amountPrefix = isIncomingAmount && !isFailed ? '+' : '';
-          // Ligne parent récurrente : montant de référence toujours en couleur normale (pas grisé)
-          const isParentReferenceAmount = isRecurringParent && !nextInstallment;
+          // Parent = référence (pas débité) → gris très atténué. Enfant (mensualité 1/2, 2/2) = montant réellement débité → noir (ou vert si entrant)
           const amountColor =
             isFailed
               ? 'text-gray-400 dark:text-gray-500'
+              : isRecurringParent
+              ? 'text-gray-400 dark:text-gray-500'
               : isIncomingAmount
               ? 'text-green-600 dark:text-green-400'
-              : isParentReferenceAmount || !nextInstallment
+              : isRecurringInstance
               ? 'text-gray-900 dark:text-white'
-              : 'text-gray-500 dark:text-gray-400';
+              : !nextInstallment
+              ? 'text-gray-400 dark:text-gray-500'
+              : 'text-gray-900 dark:text-white';
           const showReferenceNote = isRecurringParent;
           return (
             <div className="flex flex-col">
@@ -499,11 +521,11 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
               </div>
               {showReferenceNote && (
                 <span
-                  className="mt-1 inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                  title={t('dashboard.table.referenceAmountNote', { defaultValue: 'This amount is not debited' })}
+                  className="mt-1 inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-500"
+                  title={t('dashboard.table.referenceAmountNote', { defaultValue: 'Not debited' })}
                 >
                   <Info className="h-3 w-3" />
-                  {t('dashboard.table.referenceAmountNote', { defaultValue: 'This amount is not debited' })}
+                  {t('dashboard.table.referenceAmountNote', { defaultValue: 'Not debited' })}
                 </span>
               )}
             </div>
@@ -552,28 +574,31 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
       {/* Contrat */}
       <td className="px-6 py-4 whitespace-nowrap text-center">
         {contractEntries.length > 0 ? (
-          <div
-            className="relative inline-flex items-center justify-center"
-            onMouseEnter={() => {
-              if (tooltipHideTimeoutRef.current) {
-                window.clearTimeout(tooltipHideTimeoutRef.current);
-                tooltipHideTimeoutRef.current = null;
-              }
-              setShowContractTooltip(true);
-            }}
-            onMouseLeave={() => {
-              tooltipHideTimeoutRef.current = window.setTimeout(() => {
-                setShowContractTooltip(false);
-                tooltipHideTimeoutRef.current = null;
-              }, 250);
-            }}
-          >
+          <div className="relative inline-flex items-center justify-center">
             <a
               href={`https://basescan.org/address/${contractEntries[0].address}`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center"
               title={t('dashboard.table.viewOnBasescan')}
+              onMouseEnter={(e) => {
+                if (tooltipHideTimeoutRef.current) {
+                  window.clearTimeout(tooltipHideTimeoutRef.current);
+                  tooltipHideTimeoutRef.current = null;
+                }
+                const target = e.currentTarget;
+                setContractTooltipRect(target.getBoundingClientRect());
+                setTooltipPosition(null);
+                setShowContractTooltip(true);
+              }}
+              onMouseLeave={() => {
+                tooltipHideTimeoutRef.current = window.setTimeout(() => {
+                  setShowContractTooltip(false);
+                  setContractTooltipRect(null);
+                  setTooltipPosition(null);
+                  tooltipHideTimeoutRef.current = null;
+                }, 250);
+              }}
             >
               <img
                 src="/blockchains/base.svg"
@@ -589,75 +614,90 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
                 }}
               />
             </a>
-            {/* Tooltip */}
-            {showContractTooltip && (
-              <div
-                className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 min-w-[220px] px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg shadow-lg z-10"
-                onMouseEnter={() => {
-                  if (tooltipHideTimeoutRef.current) {
-                    window.clearTimeout(tooltipHideTimeoutRef.current);
-                    tooltipHideTimeoutRef.current = null;
-                  }
-                  setShowContractTooltip(true);
-                }}
-                onMouseLeave={() => {
-                  tooltipHideTimeoutRef.current = window.setTimeout(() => {
-                    setShowContractTooltip(false);
-                    tooltipHideTimeoutRef.current = null;
-                  }, 250);
-                }}
-              >
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {contractEntries.map((entry) => (
-                    <div key={entry.address} className="space-y-1">
+            {/* Tooltip rendu en portal pour éviter d'être coupé par overflow du tableau */}
+            {showContractTooltip &&
+              contractTooltipRect &&
+              typeof document !== 'undefined' &&
+              createPortal(
+                <div
+                  ref={contractTooltipContentRef}
+                  className="fixed min-w-[220px] px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg shadow-lg z-[100]"
+                  style={{
+                    left: tooltipPosition ? tooltipPosition.x : -9999,
+                    top: tooltipPosition ? tooltipPosition.y : 0,
+                    visibility: tooltipPosition ? 'visible' : 'hidden',
+                  }}
+                  onMouseEnter={() => {
+                    if (tooltipHideTimeoutRef.current) {
+                      window.clearTimeout(tooltipHideTimeoutRef.current);
+                      tooltipHideTimeoutRef.current = null;
+                    }
+                    setShowContractTooltip(true);
+                  }}
+                  onMouseLeave={() => {
+                    tooltipHideTimeoutRef.current = window.setTimeout(() => {
+                      setShowContractTooltip(false);
+                      setContractTooltipRect(null);
+                      tooltipHideTimeoutRef.current = null;
+                    }, 250);
+                  }}
+                >
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {contractEntries.map((entry) => (
+                      <div key={entry.address} className="space-y-1">
+                        <div className="text-[10px] uppercase tracking-wide text-gray-300">
+                          {entry.label}
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-mono">
+                            {entry.address.slice(0, 10)}...{entry.address.slice(-8)}
+                          </span>
+                          <button
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              copyToClipboard(entry.address);
+                            }}
+                            className="text-gray-200 hover:text-white transition-colors"
+                            title={t('dashboard.table.copyAddress')}
+                          >
+                            <Copy className={`w-4 h-4 ${copiedValue === entry.address ? 'text-green-400' : ''}`} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {transactionHash && (
+                    <div className="mt-3 border-t border-white/10 pt-2">
                       <div className="text-[10px] uppercase tracking-wide text-gray-300">
-                        {entry.label}
+                        {t('dashboard.table.transactionHash')}
                       </div>
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-mono">
-                          {entry.address.slice(0, 10)}...{entry.address.slice(-8)}
+                          {transactionHash.slice(0, 10)}...{transactionHash.slice(-8)}
                         </span>
                         <button
                           onClick={(event) => {
                             event.preventDefault();
                             event.stopPropagation();
-                            copyToClipboard(entry.address);
+                            copyToClipboard(transactionHash);
                           }}
                           className="text-gray-200 hover:text-white transition-colors"
-                          title={t('dashboard.table.copyAddress')}
+                          title={t('dashboard.table.copyHash')}
                         >
-                          <Copy className={`w-4 h-4 ${copied ? 'text-green-400' : ''}`} />
+                          <Copy className={`w-4 h-4 ${copiedValue === transactionHash ? 'text-green-400' : ''}`} />
                         </button>
                       </div>
                     </div>
-                  ))}
-                </div>
-                {transactionHash && (
-                  <div className="mt-3 border-t border-white/10 pt-2">
-                    <div className="text-[10px] uppercase tracking-wide text-gray-300">
-                      {t('dashboard.table.transactionHash')}
-                    </div>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-mono">
-                        {transactionHash.slice(0, 10)}...{transactionHash.slice(-8)}
-                      </span>
-                      <button
-                        onClick={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          copyToClipboard(transactionHash);
-                        }}
-                        className="text-gray-200 hover:text-white transition-colors"
-                        title={t('dashboard.table.copyHash')}
-                      >
-                        <Copy className={`w-4 h-4 ${copied ? 'text-green-400' : ''}`} />
-                      </button>
-                    </div>
-                  </div>
-                )}
-                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900 dark:border-t-gray-700"></div>
-              </div>
-            )}
+                  )}
+                  {(tooltipPosition?.above ?? contractTooltipRect.top >= 180) ? (
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900 dark:border-t-gray-700" />
+                  ) : (
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 -mb-1 border-4 border-transparent border-b-gray-900 dark:border-b-gray-700" />
+                  )}
+                </div>,
+                document.body
+              )}
           </div>
         ) : (
           <span className="text-xs text-gray-400">—</span>

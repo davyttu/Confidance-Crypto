@@ -186,7 +186,7 @@
       "search": "Поиск по имени или адресу...",
       "beneficiary": "Получатель",
       "amount": "Сумма",
-      "referenceAmountNote": "Эта сумма не списывается",
+      "referenceAmountNote": "Не списано",
       "nextInstallmentNote": "Средства не заблокированы",
       "releaseDate": "Дата выплаты",
       "status": "Статус",

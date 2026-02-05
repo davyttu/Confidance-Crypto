@@ -186,7 +186,7 @@
       "search": "按名称或地址搜索...",
       "beneficiary": "受益人",
       "amount": "金额",
-      "referenceAmountNote": "此金额未扣款",
+      "referenceAmountNote": "未扣款",
       "nextInstallmentNote": "资金未锁定",
       "releaseDate": "释放日期",
       "status": "状态",
