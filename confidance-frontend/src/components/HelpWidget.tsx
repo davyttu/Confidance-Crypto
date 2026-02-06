@@ -8,10 +8,8 @@ import {
   XMarkIcon,
   RocketLaunchIcon,
   BookOpenIcon,
-  VideoCameraIcon,
   ChatBubbleLeftIcon,
-  DocumentTextIcon,
-  SparklesIcon, // ✅ AJOUTÉ
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import ChatModal from '@/components/Chat/ChatModal'; // ✅ AJOUTÉ
 
@@ -70,14 +68,6 @@ export function HelpWidget() {
       href: '/aide/faq',
       descriptionKey: 'help.widget.faq.description',
       fallbackDescription: 'FAQ complète'
-    },
-    {
-      icon: VideoCameraIcon,
-      labelKey: 'help.widget.videoTutorials.title',
-      fallbackLabel: 'Tutoriels vidéo',
-      href: '/aide/videos',
-      descriptionKey: 'help.widget.videoTutorials.description',
-      fallbackDescription: 'Apprenez en vidéo'
     },
   ];
 

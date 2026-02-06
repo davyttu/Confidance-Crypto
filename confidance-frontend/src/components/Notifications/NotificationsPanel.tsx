@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useTranslation } from 'react-i18next';
@@ -11,8 +11,10 @@ interface NotificationsPanelProps {
 }
 
 export function NotificationsPanel({ isOpen, onClose }: NotificationsPanelProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { notifications, unreadCount, isLoading, markAsRead, markAllAsRead } = useNotifications();
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => setIsMounted(true), []);
 
   // Empêcher le scroll du body quand le panneau est ouvert
   useEffect(() => {
@@ -39,29 +41,34 @@ export function NotificationsPanel({ isOpen, onClose }: NotificationsPanelProps)
     }
   };
 
+  const localeMap: Record<string, string> = {
+    fr: 'fr-FR',
+    en: 'en-US',
+    es: 'es-ES',
+    ru: 'ru-RU',
+    zh: 'zh-CN',
+  };
+  const lang = i18n?.language || 'fr';
+  const baseLang = lang.split('-')[0];
+  const dateLocale = localeMap[baseLang] || 'fr-FR';
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
     const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 
-    if (diffInSeconds < 60) {
-      return 'À l\'instant';
-    } else if (diffInSeconds < 3600) {
-      const minutes = Math.floor(diffInSeconds / 60);
-      return `Il y a ${minutes} min`;
-    } else if (diffInSeconds < 86400) {
-      const hours = Math.floor(diffInSeconds / 3600);
-      return `Il y a ${hours}h`;
-    } else if (diffInSeconds < 604800) {
-      const days = Math.floor(diffInSeconds / 86400);
-      return `Il y a ${days}j`;
-    } else {
-      return date.toLocaleDateString('fr-FR', {
-        day: 'numeric',
-        month: 'short',
-        year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
-      });
+    if (!isMounted) {
+      return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
     }
+    if (diffInSeconds < 60) return t('notificationsPanel.timeAgo.justNow');
+    if (diffInSeconds < 3600) return t('notificationsPanel.timeAgo.minutesAgo', { count: Math.floor(diffInSeconds / 60) });
+    if (diffInSeconds < 86400) return t('notificationsPanel.timeAgo.hoursAgo', { count: Math.floor(diffInSeconds / 3600) });
+    if (diffInSeconds < 604800) return t('notificationsPanel.timeAgo.daysAgo', { count: Math.floor(diffInSeconds / 86400) });
+    return date.toLocaleDateString(dateLocale, {
+      day: 'numeric',
+      month: 'short',
+      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+    });
   };
 
   return (
@@ -84,7 +91,7 @@ export function NotificationsPanel({ isOpen, onClose }: NotificationsPanelProps)
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800">
           <div>
             <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              🔔 Notifications
+              🔔 {isMounted ? t('notificationsPanel.title') : 'Notifications'}
               {unreadCount > 0 && (
                 <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 bg-red-500 text-white text-xs font-bold rounded-full">
                   {unreadCount > 9 ? '9+' : unreadCount}
@@ -92,7 +99,7 @@ export function NotificationsPanel({ isOpen, onClose }: NotificationsPanelProps)
               )}
             </h2>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Consultez vos notifications et messages privés
+              {isMounted ? t('notificationsPanel.subtitle') : 'View your notifications and private messages'}
             </p>
           </div>
           <button
@@ -112,7 +119,7 @@ export function NotificationsPanel({ isOpen, onClose }: NotificationsPanelProps)
               }}
               className="text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
             >
-              Tout marquer comme lu
+              {isMounted ? t('notificationsPanel.markAllRead') : 'Mark all as read'}
             </button>
           </div>
         )}
@@ -129,10 +136,10 @@ export function NotificationsPanel({ isOpen, onClose }: NotificationsPanelProps)
                 <span className="text-4xl">🔔</span>
               </div>
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                Pas de notifications
+                {isMounted ? t('notificationsPanel.emptyTitle') : 'No notifications'}
               </h3>
               <p className="text-sm text-gray-600 dark:text-gray-400 max-w-xs">
-                Vous êtes à jour ! Les notifications sur vos paiements et messages apparaîtront ici. 💜
+                {isMounted ? t('notificationsPanel.emptyMessage') : "You're all caught up! Notifications about your payments and messages will appear here. 💜"}
               </p>
             </div>
           ) : (

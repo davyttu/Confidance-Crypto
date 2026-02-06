@@ -213,7 +213,7 @@ export function Navbar() {
                     <span className="text-white font-bold text-xl">C</span>
                   </div>
                 </div>
-                <span className="font-bold text-xl hidden sm:block bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 bg-clip-text text-transparent">
+                <span className="font-bold text-xl hidden sm:block gradient-text">
                   Confidance
                 </span>
               </Link>

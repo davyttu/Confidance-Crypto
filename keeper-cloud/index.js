@@ -461,20 +461,42 @@ async function loadRecurringPayments() {
       return [];
     }
 
-    const payments = data.map((row) => ({
-      type: "recurring",
-      id: row.id,
-      contractAddress: row.contract_address,
-      tokenSymbol: row.token_symbol,
-      monthlyAmount: row.monthly_amount,
-      totalMonths: row.total_months,
-      executedMonths: row.executed_months,
-      nextExecutionTime: row.next_execution_time,
-      status: row.status,
-      userId: row.user_id,
-      category: row.payment_category || null,
-      name: `🔄 Recurring #${row.id.substring(0, 8)} (${row.token_symbol}, ${row.executed_months}/${row.total_months} mois)`,
-    }));
+    const payments = data
+      .map((row) => ({
+        type: "recurring",
+        id: row.id,
+        contractAddress: row.contract_address,
+        tokenSymbol: row.token_symbol,
+        monthlyAmount: row.monthly_amount,
+        totalMonths: row.total_months,
+        executedMonths: row.executed_months,
+        nextExecutionTime: row.next_execution_time,
+        status: row.status,
+        userId: row.user_id,
+        category: row.payment_category || null,
+        monthly_statuses: row.monthly_statuses || {},
+        name: `🔄 Recurring #${row.id.substring(0, 8)} (${row.token_symbol}, ${row.executed_months}/${row.total_months} mois)`,
+      }))
+      .filter((p) => {
+        // Ne pas appeler le contrat si le prochain mois à traiter est déjà 'failed' (strict skip : pas de retry).
+        // Le "prochain mois" = nombre de mois déjà traités (executed + failed), pas seulement executed_months :
+        // après un échec le contrat a avancé (nextMonthToProcess++), donc on doit continuer avec le mois suivant.
+        const statuses = p.monthly_statuses || {};
+        const totalMonths = Number(p.total_months ?? 0);
+        let nextMonthIndex = 0;
+        for (let i = 0; i < totalMonths; i++) {
+          const s = statuses[String(i)];
+          if (s === "executed" || s === "failed") nextMonthIndex = i + 1;
+          else break;
+        }
+        if (nextMonthIndex >= totalMonths) return true; // tout traité, le contrat revertera "All payment periods completed"
+        const nextStatus = statuses[String(nextMonthIndex)];
+        if (nextStatus === "failed") {
+          console.log(`   ⏭️ Recurring #${p.id.substring(0, 8)}: next month ${nextMonthIndex + 1} already failed, skipping (no retry)`);
+          return false;
+        }
+        return true;
+      });
 
     return payments;
   } catch (error) {
@@ -607,7 +629,7 @@ async function markRecurringAsCancelled(paymentId) {
   }
 }
 
-async function updateRecurringAfterExecution(paymentId, txHash, executedMonths, totalMonths, nextMonthToProcess = null, startDate = null, monthlyStatusUpdate = null) {
+async function updateRecurringAfterExecution(paymentId, txHash, executedMonths, totalMonths, nextMonthToProcess = null, startDate = null, monthlyStatusUpdate = null, forceStatus = null) {
   try {
     const now = Math.floor(Date.now() / 1000);
     // ✅ FIX: Utiliser nextMonthToProcess pour déterminer si terminé
@@ -624,7 +646,8 @@ async function updateRecurringAfterExecution(paymentId, txHash, executedMonths, 
       nextExecutionTime = isCompleted ? now : now + MONTH_IN_SECONDS;
     }
 
-    const newStatus = isCompleted ? "completed" : "active";
+    // ✅ Mois 1 échoué → contrat annulé : forcer status = cancelled
+    const newStatus = forceStatus === 'cancelled' ? 'cancelled' : (isCompleted ? "completed" : "active");
 
     // 🆕 Gérer monthly_statuses
     let updateData = {
@@ -634,6 +657,7 @@ async function updateRecurringAfterExecution(paymentId, txHash, executedMonths, 
       last_execution_hash: txHash,
       status: newStatus,
       updated_at: new Date().toISOString(),
+      ...(newStatus === 'cancelled' ? { cancelled_at: new Date().toISOString() } : {}),
     };
 
     // Si on a un update de statut mensuel, lire les statuts existants et merger
@@ -1092,7 +1116,7 @@ async function executeRecurringPayment(payment) {
     // Le contrat peut retourner SUCCESS même si le transfert a échoué (strict skip)
     console.log(`   🔍 Checking events to verify if payment succeeded or failed...`);
 
-    // Event signatures
+    // Event signatures (contract has monthNumber indexed → in topics, data = 3 uints only)
     const MONTHLY_PAYMENT_EXECUTED_TOPIC = ethers.id("MonthlyPaymentExecuted(uint256,address,uint256,uint256,uint256)");
     const MONTHLY_PAYMENT_FAILED_TOPIC = ethers.id("MonthlyPaymentFailed(uint256,address,string)");
 
@@ -1100,17 +1124,16 @@ async function executeRecurringPayment(payment) {
     let paymentFailed = false;
     let failureReason = null;
     let failedMonthNumber = null;
-    let executedMonthNumber = null; // 🆕 Capturer le numéro du mois depuis l'event
+    let executedMonthNumber = null;
 
     for (const log of receipt.logs) {
       if (log.topics[0] === MONTHLY_PAYMENT_EXECUTED_TOPIC) {
         console.log(`   ✅ Event MonthlyPaymentExecuted detected - Payment succeeded!`);
         paymentSucceeded = true;
-        // 🆕 Décoder l'event pour obtenir le monthNumber
         try {
-          // ✅ Vraie signature du contrat : seul payee est indexed
+          // ✅ Contrat : monthNumber et payee sont indexed → monthNumber dans topics[1]
           const iface = new ethers.Interface([
-            "event MonthlyPaymentExecuted(uint256 monthNumber, address indexed payee, uint256 amount, uint256 protocolFee, uint256 nextPaymentDate)"
+            "event MonthlyPaymentExecuted(uint256 indexed monthNumber, address indexed payee, uint256 amount, uint256 protocolFee, uint256 nextPaymentDate)"
           ]);
           const decoded = iface.parseLog({ topics: log.topics, data: log.data });
           executedMonthNumber = Number(decoded.args.monthNumber || 0);
@@ -1165,29 +1188,21 @@ async function executeRecurringPayment(payment) {
 
       // ✅ FIX CRITIQUE : Mettre à jour la DB selon le résultat réel du paiement
       if (paymentSucceeded) {
-        // Paiement réussi : mettre à jour normalement
-        // 🆕 FIX: Utiliser le monthNumber de l'event (1-based) et le convertir en index 0-based
-        let executedMonthIndex;
+        // Paiement réussi : déterminer l'index du mois exécuté (0-based).
+        // Après un skip, executedMonths ne correspond pas à l'index du dernier mois exécuté → ne pas l'utiliser.
+        let executedMonthIndex = null;
         if (executedMonthNumber !== null && executedMonthNumber > 0) {
-          // L'event contient monthNumber 1-based, on le convertit en 0-based
           executedMonthIndex = executedMonthNumber - 1;
           console.log(`   📊 Using month from event: ${executedMonthNumber} → index ${executedMonthIndex}`);
         } else if (nextMonthToProcessOnChain > 0n) {
-          // Fallback: utiliser nextMonthToProcess - 1
           executedMonthIndex = Number(nextMonthToProcessOnChain) - 1;
           console.log(`   📊 Using nextMonthToProcess: ${Number(nextMonthToProcessOnChain)} → index ${executedMonthIndex}`);
-        } else if (Number(newExecutedMonths) > 0) {
-          // Fallback: utiliser executedMonths - 1
-          executedMonthIndex = Number(newExecutedMonths) - 1;
-          console.log(`   📊 Using executedMonths: ${Number(newExecutedMonths)} → index ${executedMonthIndex}`);
         } else {
-          // Dernier fallback: 0
-          console.warn(`   ⚠️ Cannot determine executed month index, using 0 as fallback`);
-          executedMonthIndex = 0;
+          console.warn(`   ⚠️ Cannot determine executed month index (event decode failed, nextMonthToProcess=0). Not updating monthly_statuses to avoid overwriting a failed month.`);
         }
 
         console.log(`   📊 Executed month index: ${executedMonthIndex} (from event=${executedMonthNumber}, nextMonthToProcess=${Number(nextMonthToProcessOnChain)}, executedMonths=${Number(newExecutedMonths)})`);
-        const monthlyStatusUpdate = { [executedMonthIndex]: 'executed' };
+        const monthlyStatusUpdate = executedMonthIndex !== null ? { [executedMonthIndex]: 'executed' } : null;
 
         await updateRecurringAfterExecution(
           payment.id,
@@ -1224,17 +1239,27 @@ async function executeRecurringPayment(payment) {
         console.log(`   ⚠️ Payment failed - synchronizing DB with contract state (month skipped)`);
         // failedMonthNumber est 1-based dans l'événement, convertir en 0-based pour la DB
         const failedMonthIndex = failedMonthNumber > 0 ? failedMonthNumber - 1 : Number(newExecutedMonths) - 1;
-        const monthlyStatusUpdate = { [failedMonthIndex]: 'failed' };
+        const totalMonthsNum = Number(totalMonthsOnChain);
+
+        // ✅ Mois 1 (index 0) échoué = contrat annulé : status cancelled + toutes les autres échéances cancelled
+        const isFirstMonthFailed = failedMonthIndex === 0;
+        let monthlyStatusUpdate = { [failedMonthIndex]: 'failed' };
+        if (isFirstMonthFailed && totalMonthsNum > 1) {
+          for (let i = 1; i < totalMonthsNum; i++) monthlyStatusUpdate[i] = 'cancelled';
+          console.log(`   📋 Month 1 failed → recurring cancelled, all future months marked cancelled`);
+        }
+
         const existingStatus = await getMonthlyStatus(payment.id, failedMonthIndex);
 
         await updateRecurringAfterExecution(
           payment.id,
           "skipped_" + tx.hash, // Préfixe "skipped_" pour indiquer que c'est un skip
           Number(newExecutedMonths),
-          Number(totalMonthsOnChain),
+          totalMonthsNum,
           nextMonthToProcessOnChain > 0n ? Number(nextMonthToProcessOnChain) : null,
           startDateOnChain > 0n ? Number(startDateOnChain) : null,
-          monthlyStatusUpdate
+          monthlyStatusUpdate,
+          isFirstMonthFailed ? 'cancelled' : null
         );
 
         // Émettre un event pour notifier l'échec

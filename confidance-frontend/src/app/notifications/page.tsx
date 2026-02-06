@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 import Link from 'next/link';
 
 export default function NotificationsPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const router = useRouter();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { notifications, unreadCount, isLoading, markAsRead, markAllAsRead } = useNotifications();
@@ -49,29 +49,23 @@ export default function NotificationsPage() {
     }
   };
 
+  const localeMap: Record<string, string> = { fr: 'fr-FR', en: 'en-US', es: 'es-ES', ru: 'ru-RU', zh: 'zh-CN' };
+  const dateLocale = localeMap[(i18n?.language || 'fr').split('-')[0]] || 'fr-FR';
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
     const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 
-    if (diffInSeconds < 60) {
-      return 'À l\'instant';
-    } else if (diffInSeconds < 3600) {
-      const minutes = Math.floor(diffInSeconds / 60);
-      return `Il y a ${minutes} min`;
-    } else if (diffInSeconds < 86400) {
-      const hours = Math.floor(diffInSeconds / 3600);
-      return `Il y a ${hours}h`;
-    } else if (diffInSeconds < 604800) {
-      const days = Math.floor(diffInSeconds / 86400);
-      return `Il y a ${days}j`;
-    } else {
-      return date.toLocaleDateString('fr-FR', {
-        day: 'numeric',
-        month: 'short',
-        year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
-      });
-    }
+    if (diffInSeconds < 60) return t('notificationsPanel.timeAgo.justNow');
+    if (diffInSeconds < 3600) return t('notificationsPanel.timeAgo.minutesAgo', { count: Math.floor(diffInSeconds / 60) });
+    if (diffInSeconds < 86400) return t('notificationsPanel.timeAgo.hoursAgo', { count: Math.floor(diffInSeconds / 3600) });
+    if (diffInSeconds < 604800) return t('notificationsPanel.timeAgo.daysAgo', { count: Math.floor(diffInSeconds / 86400) });
+    return date.toLocaleDateString(dateLocale, {
+      day: 'numeric',
+      month: 'short',
+      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+    });
   };
 
   return (
@@ -82,12 +76,12 @@ export default function NotificationsPage() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                🔔 Notifications
+                🔔 {t('notificationsPanel.title')}
               </h1>
               <p className="mt-2 text-gray-600 dark:text-gray-400">
                 {unreadCount > 0
-                  ? `Vous avez ${unreadCount} notification${unreadCount > 1 ? 's' : ''} non lue${unreadCount > 1 ? 's' : ''}`
-                  : 'Toutes vos notifications sont lues'}
+                  ? t('notificationsPanel.unreadCount', { count: unreadCount })
+                  : t('notificationsPanel.allRead')}
               </p>
             </div>
             {unreadCount > 0 && (
@@ -95,7 +89,7 @@ export default function NotificationsPage() {
                 onClick={markAllAsRead}
                 className="px-4 py-2 text-sm font-medium text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
               >
-                Tout marquer comme lu
+                {t('notificationsPanel.markAllRead')}
               </button>
             )}
           </div>
@@ -107,16 +101,16 @@ export default function NotificationsPage() {
             <div className="glass rounded-xl p-12 text-center">
               <div className="text-6xl mb-4">🔔</div>
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                Aucune notification
+                {t('notificationsPanel.emptyTitle')}
               </h3>
               <p className="text-gray-600 dark:text-gray-400 mb-6">
-                Vous n'avez pas encore de notifications.
+                {t('notificationsPanel.emptyPageMessage')}
               </p>
               <Link
                 href="/dashboard"
                 className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-lg hover:shadow-lg hover:shadow-primary-500/30 transition-all font-medium"
               >
-                Retour au Dashboard
+                {t('notificationsPanel.backToDashboard')}
               </Link>
             </div>
           ) : (

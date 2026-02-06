@@ -471,6 +471,35 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete, userA
         cancelled?: boolean;
       }
     ) => {
+      const baseStatus = sourcePayment.status;
+      // ✅ Fallback API : tant que les données on-chain ne sont pas chargées, utiliser le statut de l'API (mis à jour par le keeper)
+      if (!onchainState) {
+        const dbExecutedMonths = Number(sourcePayment.executed_months || 0);
+        const dbTotalMonths = Number(sourcePayment.total_months || 0);
+        const dbMonthlyStatuses = sourcePayment.monthly_statuses || {};
+        const monthlyStatuses: Array<'executed' | 'failed' | 'pending' | 'cancelled'> = [];
+        const dbUsesZeroBased = Object.keys(dbMonthlyStatuses).includes('0');
+        const normalizeDbStatus = (value: string | undefined) => {
+          if (!value) return null;
+          const n = value.toLowerCase();
+          if (n === 'released' || n === 'executed') return 'executed';
+          if (n === 'failed') return 'failed';
+          if (n === 'pending') return 'pending';
+          if (n === 'cancelled') return 'cancelled';
+          return null;
+        };
+        for (let i = 0; i < dbTotalMonths; i++) {
+          const k = dbUsesZeroBased ? String(i) : String(i + 1);
+          const s = normalizeDbStatus(dbMonthlyStatuses[k]);
+          monthlyStatuses.push(s || (i < dbExecutedMonths ? 'executed' : 'pending'));
+        }
+        return {
+          resolvedExecutedMonths: dbExecutedMonths,
+          resolvedTotalMonths: dbTotalMonths,
+          resolvedStatus: baseStatus as 'pending' | 'active' | 'released' | 'cancelled' | 'failed' | 'completed',
+          monthlyStatuses,
+        };
+      }
       // 🔧 FIX: Prefer on-chain data but fallback to DB data
       const dbExecutedMonths = Number(sourcePayment.executed_months || 0);
       const chainExecutedMonths =
@@ -493,7 +522,6 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete, userA
           : Math.max(dbTotalMonths, chainTotalMonths);
 
       const monthExecuted = onchainState?.monthExecuted || [];
-      const baseStatus = sourcePayment.status;
       const isCancelled = typeof onchainState?.cancelled === 'boolean'
         ? onchainState.cancelled
         : baseStatus === 'cancelled';
@@ -523,6 +551,12 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete, userA
 
       if (resolvedTotalMonths > 0) {
         for (let monthIndex = 0; monthIndex < resolvedTotalMonths; monthIndex++) {
+          // ✅ Priorité : si contrat annulé et DB dit 0 mois exécutés, mois 0 = failed, autres = cancelled (ne pas faire confiance au chain/DB executed_months)
+          if (isCancelled && dbExecutedMonths === 0) {
+            monthlyStatuses.push(monthIndex === 0 ? 'failed' : 'cancelled');
+            continue;
+          }
+
           // DB monthly_statuses (mis à jour par le keeper)
           const dbKey = dbUsesZeroBased ? String(monthIndex) : String(monthIndex + 1);
           const dbStatusRaw = dbMonthlyStatuses[dbKey];
@@ -546,9 +580,9 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete, userA
             continue;
           }
 
-          // Contract cancelled: tous les mois non exécutés doivent être "cancelled"
+          // Contract cancelled (DB executed_months > 0) : mois 1 non exécuté = "failed", les autres = "cancelled"
           if (isCancelled) {
-            monthlyStatuses.push('cancelled');
+            monthlyStatuses.push(monthIndex === 0 && resolvedExecutedMonths === 0 ? 'failed' : 'cancelled');
             continue;
           }
 
@@ -563,23 +597,44 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete, userA
         }
       }
 
+      // ✅ Post-loop: si DB dit 0 mois exécutés, aucun mois ne peut être "executed"
+      if (dbExecutedMonths === 0 && resolvedTotalMonths > 0 && monthlyStatuses.length > 0 && monthlyStatuses[0] === 'executed') {
+        monthlyStatuses[0] = isCancelled ? 'failed' : 'pending';
+        for (let i = 1; i < monthlyStatuses.length; i++) monthlyStatuses[i] = isCancelled ? 'cancelled' : 'pending';
+      }
+      // ✅ Contrat annulé mais API/chain dit executed_months > 0 : si mois 0 est "executed" sans preuve DB (monthly_statuses), forcer failed (échec 1ère échéance puis annulation)
+      const dbMonth0Key = dbUsesZeroBased ? '0' : '1';
+      const hasExplicitExecutedMonth0 = normalizeDbStatus(dbMonthlyStatuses[dbMonth0Key]) === 'executed';
+      if (isCancelled && monthlyStatuses.length > 0 && monthlyStatuses[0] === 'executed' && !hasExplicitExecutedMonth0) {
+        monthlyStatuses[0] = 'failed';
+        for (let i = 1; i < monthlyStatuses.length; i++) monthlyStatuses[i] = 'cancelled';
+      }
+
+      // ✅ Mois 1 (index 0) échoué = processus annulé : parent cancelled + toutes les autres échéances cancelled
+      if (monthlyStatuses.length > 0 && monthlyStatuses[0] === 'failed') {
+        for (let i = 1; i < monthlyStatuses.length; i++) {
+          if (monthlyStatuses[i] === 'pending') monthlyStatuses[i] = 'cancelled';
+        }
+      }
+
       // 🔧 FIX SIMPLE: Un paiement est "completed" si tous les mois ont été traités (executed ou failed)
       const processedMonthsCount = monthlyStatuses.filter(
         (status) => status === 'executed' || status === 'failed'
       ).length;
       const allTerminal = processedMonthsCount >= resolvedTotalMonths && resolvedTotalMonths > 0;
 
-      // Distinguer pending (aucun mois traité) vs active (au moins 1 mois traité)
+      // Distinguer pending (aucun mois traité) vs active (au moins 1 mois traité) vs cancelled (ex: mois 1 failed)
       const hasAnyStatus = monthlyStatuses.length > 0;
       const allCancelled = hasAnyStatus && monthlyStatuses.every((status) => status === 'cancelled');
+      const firstMonthFailed = hasAnyStatus && monthlyStatuses[0] === 'failed';
       const resolvedStatus =
-        isCancelled || allCancelled
+        isCancelled || allCancelled || firstMonthFailed
           ? 'cancelled'
           : allTerminal
           ? 'completed'
           : processedMonthsCount > 0
           ? 'active'
-          : baseStatus;
+          : 'pending';
 
       return { resolvedExecutedMonths, resolvedTotalMonths, resolvedStatus, monthlyStatuses };
     };
@@ -691,21 +746,36 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete, userA
                 monthlyStatuses.push('pending');
               }
             }
+            // ✅ Mois 1 (index 0) échoué = processus annulé : parent cancelled + autres échéances cancelled (même logique que single-recipient)
+            const allChildrenCancelledWithZeroExecuted =
+              perChild.every((entry) => entry.resolvedStatus === 'cancelled' && entry.resolvedExecutedMonths === 0);
+            if (monthlyStatuses.length > 0 && allChildrenCancelledWithZeroExecuted && monthlyStatuses[0] !== 'executed') {
+              monthlyStatuses[0] = 'failed';
+            }
+            if (monthlyStatuses.length > 0 && monthlyStatuses[0] === 'failed') {
+              for (let i = 1; i < monthlyStatuses.length; i++) {
+                if (monthlyStatuses[i] === 'pending') monthlyStatuses[i] = 'cancelled';
+              }
+            }
+
             const resolvedExecutedMonths = monthlyStatuses.filter((s) => s === 'executed').length;
             const allCancelled = perChild.every((entry) => entry.resolvedStatus === 'cancelled');
             const hasCancelled = perChild.some((entry) => entry.resolvedStatus === 'cancelled');
             const hasPendingOrActive = perChild.some(
               (entry) => entry.resolvedStatus === 'pending' || entry.resolvedStatus === 'active'
             );
+            const firstMonthFailed = monthlyStatuses.length > 0 && monthlyStatuses[0] === 'failed';
 
             const processedMonthsCount = monthlyStatuses.filter(
               (s) => s === 'executed' || s === 'failed' || s === 'mixed'
             ).length;
             const allTerminal = processedMonthsCount >= totalMonths && totalMonths > 0;
 
-            // Quand l'utilisateur annule depuis le parent (batch), tous les enfants sont annulés :
-            // on affiche "completed" pour le parent (terminé). Sinon "cancelled" pour un seul enfant annulé.
-            const resolvedStatus = allTerminal
+            // Quand l'utilisateur annule depuis le parent (batch), tous les enfants sont annulés.
+            // Mois 1 failed → parent cancelled (contrat annulé).
+            const resolvedStatus = firstMonthFailed
+              ? 'cancelled'
+              : allTerminal
               ? allCancelled
                 ? 'completed'
                 : 'completed'
@@ -713,7 +783,7 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete, userA
               ? 'completed'
               : processedMonthsCount > 0
               ? 'active'
-              : payment.status;
+              : 'pending';
 
             return { resolvedExecutedMonths, resolvedTotalMonths: totalMonths, resolvedStatus, monthlyStatuses, batchMonthDetails };
           })()
@@ -780,6 +850,7 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete, userA
               childMonthStatus === 'pending' && batchMonthStatus && batchMonthStatus !== 'pending'
                 ? batchMonthStatus
                 : childMonthStatus;
+            // Tableau principal : n'afficher que les échéances déjà traitées (released ou failed). Les mois pending/cancelled restent dans le "Monthly payment history" du parent.
             if (resolvedChildStatus === 'pending' || resolvedChildStatus === 'cancelled') {
               continue;
             }
@@ -828,6 +899,7 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete, userA
 
       for (let monthIndex = 0; monthIndex < totalMonths; monthIndex++) {
         const monthStatus = aggregated.monthlyStatuses?.[monthIndex] || 'pending';
+        // Tableau principal : n'afficher que les échéances déjà traitées (released ou failed). Les mois pending/cancelled restent dans le "Monthly payment history" du parent.
         if (monthStatus === 'pending' || monthStatus === 'cancelled') continue;
 
         const executionTime = startTime + (monthIndex * MONTH_IN_SECONDS);
@@ -836,7 +908,7 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete, userA
           : monthlyAmount || normalizedPayment.amount;
         const isNew = shouldShowNewBadge(executionTime * 1000);
 
-        const derivedStatus =
+        const derivedStatus: 'released' | 'failed' =
           monthStatus === 'failed'
             ? 'failed'
             : 'released';

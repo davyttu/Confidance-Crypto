@@ -101,13 +101,13 @@ export default function Home() {
   ];
 
   const stats = isMounted && ready ? [
-    { label: t('home.stats.executed'), value: '15+', icon: TrendingUp },
+    { label: t('home.stats.executed'), value: '1500+', icon: TrendingUp },
     { label: t('home.stats.success'), value: '100%', icon: CheckCircle2 },
-    { label: t('home.stats.users'), value: '50+', icon: Users },
+    { label: t('home.stats.users'), value: '500+', icon: Users },
   ] : [
-    { label: 'Paiements exécutés', value: '15+', icon: TrendingUp },
+    { label: 'Paiements exécutés', value: '1500+', icon: TrendingUp },
     { label: 'Taux de succès', value: '100%', icon: CheckCircle2 },
-    { label: 'Utilisateurs actifs', value: '50+', icon: Users },
+    { label: 'Utilisateurs actifs', value: '500+', icon: Users },
   ];
 
   return (
@@ -166,19 +166,10 @@ export default function Home() {
                   className="group relative px-8 py-4 bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-2xl transition-all hover:scale-105"
                 >
                   <span className="flex items-center gap-2">
-                    {isMounted && ready ? t('home.cta') : 'Créer un paiement'}
+                    {isMounted && ready ? t('home.cta') : 'Nos services de paiement'}
                     <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
                   </span>
                 </Link>
-                
-                {walletConnected && (
-                  <Link
-                    href="/dashboard"
-                    className="px-8 py-4 glass rounded-xl font-semibold hover:scale-105 transition-all"
-                  >
-                    {isMounted && ready ? t('dashboard.title') : 'Mon Dashboard'}
-                  </Link>
-                )}
               </div>
 
               {!walletConnected && (
@@ -218,8 +209,17 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Features Section */}
-        <section className="py-16 sm:py-24">
+        {/* Features Section - Why Confidance */}
+        <section className="relative py-16 sm:py-24 overflow-hidden">
+          {/* Fond globe bleu-violet - dégradé visible mais fin */}
+          <div className="absolute inset-0 -z-10">
+            <div
+              className="absolute inset-0"
+              style={{
+                background: 'radial-gradient(ellipse 90% 80% at 50% 50%, rgba(99, 102, 241, 0.18) 0%, rgba(139, 92, 246, 0.12) 35%, rgba(59, 130, 246, 0.06) 60%, transparent 75%)',
+              }}
+            />
+          </div>
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12 space-y-4">
               <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white animate-slide-in-right">

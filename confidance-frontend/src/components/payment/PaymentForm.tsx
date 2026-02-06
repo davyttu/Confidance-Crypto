@@ -3347,6 +3347,7 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
         currentStep={activePayment.currentStep || 1}
         totalSteps={activePayment.totalSteps || 1}
         progressMessage={activePayment.progressMessage}
+        currentStepTxSubmitted={isRecurringMode && !isBatchMode ? recurringPayment.isContractApprovalAwaitingBlockchain : undefined}
         error={activePayment.error}
         approveTxHash={(isRecurringMode && isBatchMode)
           ? undefined // Batch recurring n'expose pas l'approveTxHash

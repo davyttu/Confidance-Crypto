@@ -10,6 +10,8 @@ interface PaymentProgressModalProps {
   currentStep: number;
   totalSteps: number;
   progressMessage: string;
+  /** Utilisateur a confirmé MetaMask pour l'étape courante, en attente blockchain → barre à 100% */
+  currentStepTxSubmitted?: boolean;
   error: Error | null;
   approveTxHash?: `0x${string}`;
   createTxHash?: `0x${string}`;
@@ -32,6 +34,7 @@ export default function PaymentProgressModal({
   currentStep,
   totalSteps,
   progressMessage,
+  currentStepTxSubmitted = false,
   error,
   approveTxHash,
   createTxHash,
@@ -313,7 +316,12 @@ export default function PaymentProgressModal({
               {/* Barre de progression */}
               <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                 {(() => {
-                  const completedSteps = status === 'success' ? totalSteps : Math.max(0, clampedStep - 1);
+                  const completedSteps =
+                    status === 'success'
+                      ? totalSteps
+                      : currentStepTxSubmitted
+                        ? clampedStep
+                        : Math.max(0, clampedStep - 1);
                   const progressPercent = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
                   return (
                 <div

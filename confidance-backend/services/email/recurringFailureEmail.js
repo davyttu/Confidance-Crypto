@@ -65,6 +65,7 @@ async function sendRecurringFailureEmail({ supabase, payment, reason, monthNumbe
       return;
     }
 
+    const logoUrl = `${APP_URL}/logo-confidance.png`;
     const label = payment.payment_label || 'Paiement récurrent';
     const category = payment.payment_category ? ` (${payment.payment_category})` : '';
     const tokenSymbol = payment.token_symbol || 'USDC';
@@ -74,6 +75,9 @@ async function sendRecurringFailureEmail({ supabase, payment, reason, monthNumbe
         ? payment.first_month_amount
         : payment.monthly_amount || payment.amount || '0';
     const displayAmount = `${formatTokenAmount(rawAmount, tokenSymbol)} ${tokenSymbol}`;
+    const ORDINALS_FR = ['première', 'deuxième', 'troisième', 'quatrième', 'cinquième', 'sixième', 'septième', 'huitième', 'neuvième', 'dixième', 'onzième', 'douzième'];
+    const ordinalFr = monthNumber && monthNumber >= 1 && monthNumber <= 12 ? ORDINALS_FR[monthNumber - 1] : null;
+    const displayMonthLabel = ordinalFr ? `la ${ordinalFr} mensualité` : 'une mensualité';
     const displayMonth = monthNumber ? `Mensualité ${monthNumber}` : 'Une mensualité';
     const failureReason = reason || 'Fonds insuffisants ou autorisation insuffisante.';
     const networkLabel = NETWORK_LABELS[payment.network] || payment.network || 'Réseau inconnu';
@@ -88,18 +92,18 @@ async function sendRecurringFailureEmail({ supabase, payment, reason, monthNumbe
 
     const html = `
       <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
-        <h2 style="margin: 0 0 12px;">Paiement récurrent échoué</h2>
+        <p style="margin: 0 0 16px;">Bonjour,</p>
         <p style="margin: 0 0 12px;">
-          ${displayMonth} n'a pas pu être exécutée.
+          Nous vous informons que ${displayMonthLabel} de votre paiement mensuel n'a pas pu être débitée, à notre grand regret.
         </p>
-        <div style="margin: 12px 0; padding: 12px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;">
+        <div style="margin: 16px 0; padding: 12px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;">
           <strong>${label}${category}</strong><br/>
-          Montant: ${displayAmount}<br/>
-          Réseau: ${networkLabel}<br/>
-          Raison: ${failureReason}
+          Montant : ${displayAmount}<br/>
+          Réseau : ${networkLabel}<br/>
+          Raison : ${failureReason}
         </div>
         <p style="margin: 12px 0;">
-          Vous pouvez recharger votre wallet et vérifier l'état dans votre dashboard.
+          Vous pouvez recharger votre wallet et vérifier l'état dans votre tableau de bord.
         </p>
         <a href="${dashboardUrl}" style="display: inline-block; padding: 10px 16px; background: #2563eb; color: #fff; text-decoration: none; border-radius: 6px;">
           Voir le paiement
@@ -110,9 +114,15 @@ async function sendRecurringFailureEmail({ supabase, payment, reason, monthNumbe
             Voir le contrat sur l'explorer
           </a>
         </div>` : ''}
-        <p style="margin: 16px 0 0; font-size: 12px; color: #6b7280;">
-          Si vous pensez que c'est une erreur, contactez le support Confidance.
+        <p style="margin: 24px 0 0; font-size: 12px; color: #6b7280;">
+          Si vous pensez qu'il s'agit d'une erreur, n'hésitez pas à contacter le support Confidance.
         </p>
+        <div style="margin-top: 32px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+          <p style="margin: 0 0 4px; font-size: 14px;">Albert.E,</p>
+          <p style="margin: 0 0 16px; font-size: 14px; color: #6b7280;">Votre assistant technique.</p>
+          <img src="${logoUrl}" alt="Confidance" style="height: 36px; display: block; margin-bottom: 6px;" />
+          <p style="margin: 0; font-size: 12px; color: #9ca3af;">Defi protocol</p>
+        </div>
       </div>
     `;
 

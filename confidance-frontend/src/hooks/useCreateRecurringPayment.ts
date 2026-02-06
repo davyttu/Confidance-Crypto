@@ -88,6 +88,8 @@ interface UseCreateRecurringPaymentReturn {
   currentStep: number; // 1 (create) ou 2 (approve)
   totalSteps: number; // Toujours 2
   progressMessage: string;
+  /** Utilisateur a confirmé MetaMask, en attente confirmation blockchain → barre à 100% */
+  isContractApprovalAwaitingBlockchain: boolean;
   
   // Infos calculs
   monthlyFee: bigint | null;
@@ -850,6 +852,11 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
   if (status === 'approving_contract' || approvalContractHook.isApproving) currentStep = 3; // Étape 3: Approbation Contrat
   if (status === 'success') currentStep = 3;
 
+  // Barre à 100% dès que l'utilisateur a confirmé MetaMask (hash reçu) jusqu'à l'écran success
+  const isContractApprovalAwaitingBlockchain =
+    status === 'approving_contract' &&
+    (!!approvalContractHook.approveTxHash || approvalContractHook.isApproveSuccess);
+
   return {
     status,
     error,
@@ -861,6 +868,7 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
     currentStep,
     totalSteps,
     progressMessage,
+    isContractApprovalAwaitingBlockchain,
     monthlyFee,
     totalPerMonth,
     totalRequired,

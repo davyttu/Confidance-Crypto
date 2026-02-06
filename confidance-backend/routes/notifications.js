@@ -1,32 +1,39 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
+const { createClient } = require('@supabase/supabase-js');
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+);
 
 // GET /api/notifications - Récupérer les notifications de l'utilisateur
 router.get('/', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
-    const db = req.app.get('db');
 
-    // Récupérer les notifications de l'utilisateur
-    const notifications = await db.all(
-      `SELECT id, type, title, message, read, created_at as createdAt
-       FROM notifications
-       WHERE user_id = ?
-       ORDER BY created_at DESC
-       LIMIT 50`,
-      [userId]
-    );
+    const { data: notifications, error } = await supabase
+      .from('notifications')
+      .select('id, type, title, message, read, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (error) {
+      console.error('❌ Error fetching notifications:', error);
+      return res.status(500).json({ error: 'Failed to fetch notifications' });
+    }
 
     res.json({
       success: true,
-      notifications: notifications.map(n => ({
+      notifications: (notifications || []).map((n) => ({
         id: n.id,
         type: n.type,
         title: n.title,
         message: n.message,
-        read: n.read === 1,
-        createdAt: n.createdAt
+        read: Boolean(n.read),
+        createdAt: n.created_at
       }))
     });
   } catch (error) {
@@ -40,23 +47,28 @@ router.patch('/:id/read', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
     const notificationId = req.params.id;
-    const db = req.app.get('db');
 
-    // Vérifier que la notification appartient à l'utilisateur
-    const notification = await db.get(
-      'SELECT id FROM notifications WHERE id = ? AND user_id = ?',
-      [notificationId, userId]
-    );
+    const { data: notification, error: fetchError } = await supabase
+      .from('notifications')
+      .select('id')
+      .eq('id', notificationId)
+      .eq('user_id', userId)
+      .single();
 
-    if (!notification) {
+    if (fetchError || !notification) {
       return res.status(404).json({ error: 'Notification not found' });
     }
 
-    // Marquer comme lue
-    await db.run(
-      'UPDATE notifications SET read = 1 WHERE id = ? AND user_id = ?',
-      [notificationId, userId]
-    );
+    const { error: updateError } = await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('id', notificationId)
+      .eq('user_id', userId);
+
+    if (updateError) {
+      console.error('❌ Error marking notification as read:', updateError);
+      return res.status(500).json({ error: 'Failed to update notification' });
+    }
 
     res.json({ success: true });
   } catch (error) {
@@ -69,12 +81,17 @@ router.patch('/:id/read', authenticateToken, async (req, res) => {
 router.patch('/read-all', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
-    const db = req.app.get('db');
 
-    await db.run(
-      'UPDATE notifications SET read = 1 WHERE user_id = ? AND read = 0',
-      [userId]
-    );
+    const { error } = await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('user_id', userId)
+      .eq('read', false);
+
+    if (error) {
+      console.error('❌ Error marking all notifications as read:', error);
+      return res.status(500).json({ error: 'Failed to update notifications' });
+    }
 
     res.json({ success: true });
   } catch (error) {
@@ -87,21 +104,33 @@ router.patch('/read-all', authenticateToken, async (req, res) => {
 router.post('/', authenticateToken, async (req, res) => {
   try {
     const { userId, type, title, message } = req.body;
-    const db = req.app.get('db');
 
     if (!userId || !type || !title || !message) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    const result = await db.run(
-      `INSERT INTO notifications (user_id, type, title, message, read, created_at)
-       VALUES (?, ?, ?, ?, 0, datetime('now'))`,
-      [userId, type, title, message]
-    );
+    const { data: inserted, error } = await supabase
+      .from('notifications')
+      .insert([
+        {
+          user_id: userId,
+          type,
+          title,
+          message,
+          read: false
+        }
+      ])
+      .select('id')
+      .single();
+
+    if (error) {
+      console.error('❌ Error creating notification:', error);
+      return res.status(500).json({ error: 'Failed to create notification' });
+    }
 
     res.json({
       success: true,
-      notificationId: result.lastID
+      notificationId: inserted?.id
     });
   } catch (error) {
     console.error('❌ Error creating notification:', error);

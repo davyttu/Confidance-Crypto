@@ -17,7 +17,7 @@ const supabase = createClient(
  */
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, confirmPassword, accountType = 'particular' } = req.body;
+    const { email, password, confirmPassword, accountType = 'particular', locale } = req.body;
     const isProfessionalSignup = accountType === 'professional';
 
     // Validations
@@ -51,18 +51,19 @@ router.post('/register', async (req, res) => {
     const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
+    const validLocale = locale && ['fr', 'en', 'es', 'ru', 'zh'].includes(locale) ? locale : 'fr';
     // Créer l'utilisateur
     const { data: newUser, error } = await supabase
       .from('users')
       .insert({
         email: email.toLowerCase(),
         password_hash: passwordHash,
-        // Ne pas activer "pro" avant validation du formulaire
         account_type: isProfessionalSignup ? 'particular' : accountType,
         pro_status: isProfessionalSignup ? 'pending' : null,
         verification_code: verificationCode,
         verification_code_expires_at: expiresAt.toISOString(),
-        email_verified: false
+        email_verified: false,
+        locale: validLocale
       })
       .select()
       .single();

@@ -372,15 +372,16 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
       isRecurringParent &&
       totalMonthsNum > 0 &&
       executedMonths >= totalMonthsNum;
-    const stillActiveRecurring = isRecurringParent && totalMonthsNum > 0 && executedMonths < totalMonthsNum;
-    // Ne pas forcer "active" si le paiement est annulé ou en échec (priorité au statut résolu par la table)
+    // Active = au moins 1 mensualité exécutée mais pas toutes. 0 exécutée → garder "pending" (pas "active")
+    const stillActiveRecurring = isRecurringParent && totalMonthsNum > 0 && executedMonths > 0 && executedMonths < totalMonthsNum;
+    // Priorité : completed/cancelled/failed venant de la table ou API, puis active si en cours
     const derivedStatus = isRecurringInstance
       ? payment.status
-      : payment.status === 'cancelled' || payment.status === 'failed'
+      : payment.status === 'completed' || payment.status === 'cancelled' || payment.status === 'failed'
         ? payment.status
         : stillActiveRecurring
           ? 'active'
-          : (hasAllMonths || payment.status === 'completed' ? 'completed' : payment.status);
+          : (hasAllMonths ? 'completed' : payment.status);
     const hasWarning =
       derivedStatus === 'completed' &&
       typeof payment.last_execution_hash === 'string' &&
@@ -716,7 +717,7 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
               <Mail className="w-4 h-4" />
             </button>
           )}
-          {(payment.status === 'pending' || isRecurringParent || isRecurringInstance) && canCancelRecurringProcess && (
+          {(payment.status === 'pending' || isRecurringParent || isRecurringInstance) && canCancelRecurringProcess && !(isRecurringInstance && payment.__parentPayment?.status === 'cancelled') && (
             <button
               onClick={() => onCancel(cancelTargetPayment)}
               className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"

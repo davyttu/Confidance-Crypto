@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 
 interface RegisterModalProps {
@@ -12,6 +13,7 @@ interface RegisterModalProps {
 
 export function RegisterModal({ isOpen, onClose, onSwitchToLogin, onSuccess }: RegisterModalProps) {
   const { register } = useAuth();
+  const { t, i18n } = useTranslation();
   
   const [formData, setFormData] = useState({
     email: '',
@@ -31,28 +33,30 @@ export function RegisterModal({ isOpen, onClose, onSwitchToLogin, onSuccess }: R
 
     // Validations
     if (formData.password.length < 8) {
-      setError('Le mot de passe doit contenir au moins 8 caractères');
+      setError(t('registerModal.errors.passwordTooShort'));
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      setError('Les mots de passe ne correspondent pas');
+      setError(t('registerModal.errors.passwordsMismatch'));
       return;
     }
 
     try {
       setIsSubmitting(true);
+      const locale = (i18n.language || 'fr').split('-')[0];
       const { verificationCode } = await register(
         formData.email,
         formData.password,
         formData.confirmPassword,
-        formData.accountType
+        formData.accountType,
+        locale
       );
 
       // Passer au modal de vérification
       onSuccess(formData.email, verificationCode, formData.accountType); // MODIFIED
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de l\'inscription');
+      setError(err instanceof Error ? err.message : t('registerModal.errors.registerFailed'));
     } finally {
       setIsSubmitting(false);
     }
@@ -76,7 +80,7 @@ export function RegisterModal({ isOpen, onClose, onSwitchToLogin, onSuccess }: R
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Créer un compte
+              {t('registerModal.title')}
             </h2>
             <button
               onClick={handleClose}
@@ -94,13 +98,13 @@ export function RegisterModal({ isOpen, onClose, onSwitchToLogin, onSuccess }: R
           {/* Email */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Email
+              {t('registerModal.emailLabel')}
             </label>
             <input
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              placeholder="vous@exemple.com"
+              placeholder={t('registerModal.emailPlaceholder')}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
             />
@@ -109,7 +113,7 @@ export function RegisterModal({ isOpen, onClose, onSwitchToLogin, onSuccess }: R
           {/* Type de compte */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Type de compte
+              {t('registerModal.accountTypeLabel')}
             </label>
             <div className="grid grid-cols-2 gap-3">
               <button
@@ -123,8 +127,8 @@ export function RegisterModal({ isOpen, onClose, onSwitchToLogin, onSuccess }: R
               >
                 <div className="text-center">
                   <div className="text-2xl mb-1">👤</div>
-                  <div className="font-semibold text-gray-900">Particulier</div>
-                  <div className="text-xs text-gray-500 mt-1">Fees 1,79%</div>
+                  <div className="font-semibold text-gray-900">{t('registerModal.particular')}</div>
+                  <div className="text-xs text-gray-500 mt-1">{t('registerModal.feesParticular')}</div>
                 </div>
               </button>
 
@@ -139,14 +143,14 @@ export function RegisterModal({ isOpen, onClose, onSwitchToLogin, onSuccess }: R
               >
                 <div className="text-center">
                   <div className="text-2xl mb-1">💼</div>
-                  <div className="font-semibold text-gray-900">Professionnel</div>
-                  <div className="text-xs text-gray-500 mt-1">Fees 1,44%*</div>
+                  <div className="font-semibold text-gray-900">{t('registerModal.professional')}</div>
+                  <div className="text-xs text-gray-500 mt-1">{t('registerModal.feesProfessional')}</div>
                 </div>
               </button>
             </div>
             {formData.accountType === 'professional' && (
               <p className="text-xs text-gray-500 mt-2">
-                * Informations entreprise requises pour bénéficier des fees réduits
+                {t('registerModal.proInfoRequired')}
               </p>
             )}
           </div>
@@ -154,7 +158,7 @@ export function RegisterModal({ isOpen, onClose, onSwitchToLogin, onSuccess }: R
           {/* Mot de passe */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Mot de passe
+              {t('registerModal.passwordLabel')}
             </label>
             <input
               type="password"
@@ -165,13 +169,13 @@ export function RegisterModal({ isOpen, onClose, onSwitchToLogin, onSuccess }: R
               required
               minLength={8}
             />
-            <p className="text-xs text-gray-500 mt-1">Minimum 8 caractères</p>
+            <p className="text-xs text-gray-500 mt-1">{t('registerModal.passwordMinHint')}</p>
           </div>
 
           {/* Confirmation mot de passe */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Confirmer le mot de passe
+              {t('registerModal.confirmPasswordLabel')}
             </label>
             <input
               type="password"
@@ -196,19 +200,19 @@ export function RegisterModal({ isOpen, onClose, onSwitchToLogin, onSuccess }: R
             disabled={isSubmitting}
             className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
-            {isSubmitting ? 'Création en cours...' : 'Créer mon compte'}
+            {isSubmitting ? t('registerModal.submitting') : t('registerModal.submitButton')}
           </button>
         </form>
 
         {/* Footer */}
         <div className="px-6 py-4 border-t border-gray-200 text-center">
           <p className="text-sm text-gray-600">
-            Déjà un compte ?{' '}
+            {t('registerModal.alreadyHaveAccount')}{' '}
             <button
               onClick={onSwitchToLogin}
               className="text-blue-600 hover:text-blue-700 font-medium"
             >
-              Se connecter
+              {t('registerModal.signIn')}
             </button>
           </p>
         </div>

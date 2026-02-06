@@ -57,6 +57,7 @@ export default function PayLinkPage() {
     approveTxHash: recurringApproveTxHash,
     createTxHash: recurringCreateTxHash,
     contractAddress: recurringContractAddress,
+    isContractApprovalAwaitingBlockchain: recurringContractApprovalAwaitingBlockchain,
   } = useCreateRecurringPayment();
 
   const [link, setLink] = useState<any | null>(null);
@@ -254,6 +255,7 @@ export default function PayLinkPage() {
   const activeApproveTxHash = isRecurringLink ? recurringApproveTxHash : createApproveTxHash;
   const activeCreateTxHash = isRecurringLink ? recurringCreateTxHash : createCreateTxHash;
   const activeContractAddress = isRecurringLink ? recurringContractAddress : createContractAddress;
+  const activeCurrentStepTxSubmitted = isRecurringLink ? recurringContractApprovalAwaitingBlockchain : undefined;
   const tokenSymbol = (link?.token_symbol || 'USDC') as TokenSymbol;
 
   if (isLoading) {
@@ -734,6 +736,7 @@ export default function PayLinkPage() {
         currentStep={activeCurrentStep || 1}
         totalSteps={activeTotalSteps || 1}
         progressMessage={activeProgressMessage || ''}
+        currentStepTxSubmitted={activeCurrentStepTxSubmitted}
         error={activeError}
         approveTxHash={activeApproveTxHash}
         createTxHash={activeCreateTxHash}

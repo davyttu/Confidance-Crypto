@@ -428,7 +428,11 @@ export function PeriodSelector({
                       const alias = walletAliases[lower];
                       const displayName = alias || formatAddress(address);
                       const isEditing = editingWallet === lower;
-                      const isSelected = selectedWallets.includes(lower) || (isConnected && periodType === 'wallet');
+                      // Green dot = wallet currently displayed in dashboard: when "By wallet", selected ones; otherwise the connected wallet
+                      const isSelected =
+                        periodType === 'wallet'
+                          ? selectedWallets.includes(lower) || (isConnected && !selectedWallets.length)
+                          : isConnected;
                       const totals = walletTotals[lower];
                       const isTotalsLoading = walletTotalsLoading[lower];
                       const totalUsd = totals ? formatWalletUsdTotal(totals, priceUsd) : null;
@@ -475,7 +479,7 @@ export function PeriodSelector({
                               {isTotalsLoading
                                 ? '...'
                                 : totalUsd !== null
-                                  ? `${formatNumber(totalUsd, 2)} USD`
+                                  ? `$${formatNumber(totalUsd, 2)}`
                                   : '—'}
                             </span>
                             <button
@@ -485,12 +489,12 @@ export function PeriodSelector({
                                 event.stopPropagation();
                                 handleWalletSelect(address);
                               }}
-                              className={`h-3 w-3 rounded-full transition ${isSelected ? 'bg-emerald-500 shadow-emerald-300 shadow-sm' : 'bg-gray-300 hover:bg-emerald-200'}`}
+                              className={`h-3.5 w-3.5 shrink-0 rounded-full ring-2 ring-white transition ${isSelected ? 'bg-emerald-500 shadow-sm shadow-emerald-400/50' : 'bg-gray-300 hover:bg-emerald-200'}`}
                               title={isMounted && translationsReady
                                 ? (isSelected
-                                  ? t('dashboard.wallets.displayed', { defaultValue: 'Displayed' })
+                                  ? t('dashboard.wallets.displayed', { defaultValue: 'Displayed in dashboard' })
                                   : t('dashboard.wallets.showWallet', { defaultValue: 'Show in dashboard' }))
-                                : (isSelected ? 'Displayed' : 'Show in dashboard')}
+                                : (isSelected ? 'Displayed in dashboard' : 'Show in dashboard')}
                             />
 
                             {isEditing ? (

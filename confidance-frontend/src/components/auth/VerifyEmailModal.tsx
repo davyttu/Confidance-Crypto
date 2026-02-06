@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 
 interface VerifyEmailModalProps {
@@ -12,6 +13,7 @@ interface VerifyEmailModalProps {
 }
 
 export function VerifyEmailModal({ isOpen, onClose, email, verificationCode }: VerifyEmailModalProps) {
+  const { t } = useTranslation();
   const { verify } = useAuth();
   
   const [code, setCode] = useState('');
@@ -32,7 +34,7 @@ export function VerifyEmailModal({ isOpen, onClose, email, verificationCode }: V
     setError(null);
 
     if (code.length !== 6) {
-      setError('Le code doit contenir 6 chiffres');
+      setError(t('verifyEmailModal.errors.codeLength'));
       return;
     }
 
@@ -43,7 +45,7 @@ export function VerifyEmailModal({ isOpen, onClose, email, verificationCode }: V
       // Succès - fermer le modal
       handleClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Code incorrect');
+      setError(err instanceof Error ? err.message : t('verifyEmailModal.errors.wrongCode'));
     } finally {
       setIsSubmitting(false);
     }
@@ -62,7 +64,7 @@ export function VerifyEmailModal({ isOpen, onClose, email, verificationCode }: V
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold text-gray-900">
-              Vérifier votre email
+              {t('verifyEmailModal.title')}
             </h2>
             <button
               onClick={handleClose}
@@ -89,11 +91,11 @@ export function VerifyEmailModal({ isOpen, onClose, email, verificationCode }: V
           {/* Message */}
           <div className="text-center mb-6">
             <p className="text-gray-700 mb-2">
-              Un code de vérification a été envoyé à :
+              {t('verifyEmailModal.codeSentTo')}
             </p>
             <p className="font-semibold text-gray-900 mb-4">{email}</p>
             <p className="text-sm text-gray-600">
-              Entrez le code à 6 chiffres pour activer votre compte
+              {t('verifyEmailModal.enterCode')}
             </p>
           </div>
 
@@ -125,7 +127,7 @@ export function VerifyEmailModal({ isOpen, onClose, email, verificationCode }: V
             {/* Info développement */}
             {verificationCode && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs text-yellow-800">
-                <strong>Mode développement :</strong> Code pré-rempli automatiquement
+                <strong>{t('verifyEmailModal.devMode')}</strong> {t('verifyEmailModal.devModeCode')}
               </div>
             )}
 
@@ -135,16 +137,15 @@ export function VerifyEmailModal({ isOpen, onClose, email, verificationCode }: V
               disabled={isSubmitting || code.length !== 6}
               className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
-              {isSubmitting ? 'Vérification...' : 'Vérifier'}
+              {isSubmitting ? t('verifyEmailModal.verifying') : t('verifyEmailModal.verify')}
             </button>
           </form>
 
-          {/* Renvoyer le code (à implémenter plus tard) */}
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
-              Vous n'avez pas reçu le code ?{' '}
+              {t('verifyEmailModal.resendCode')}{' '}
               <button className="text-blue-600 hover:text-blue-700 font-medium">
-                Renvoyer
+                {t('verifyEmailModal.resend')}
               </button>
             </p>
           </div>

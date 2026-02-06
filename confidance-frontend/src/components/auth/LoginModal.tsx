@@ -2,6 +2,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 
 interface LoginModalProps {
@@ -12,6 +13,7 @@ interface LoginModalProps {
 }
 
 export function LoginModal({ isOpen, onClose, onSwitchToRegister, onNeedsVerification }: LoginModalProps) {
+  const { t } = useTranslation();
   const { login } = useAuth();
   
   const [email, setEmail] = useState('');
@@ -32,7 +34,7 @@ export function LoginModal({ isOpen, onClose, onSwitchToRegister, onNeedsVerific
       // Succès - fermer le modal
       handleClose();
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Erreur de connexion';
+      const errorMessage = err instanceof Error ? err.message : t('loginModal.errors.default');
       
       if (errorMessage === 'EMAIL_NOT_VERIFIED') {
         // Email non vérifié - ouvrir modal de vérification
@@ -59,7 +61,7 @@ export function LoginModal({ isOpen, onClose, onSwitchToRegister, onNeedsVerific
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Connexion
+              {t('loginModal.title')}
             </h2>
             <button
               onClick={handleClose}
@@ -77,7 +79,7 @@ export function LoginModal({ isOpen, onClose, onSwitchToRegister, onNeedsVerific
           {/* Email */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Email
+              {t('loginModal.emailLabel')}
             </label>
             <input
               type="email"
@@ -86,7 +88,7 @@ export function LoginModal({ isOpen, onClose, onSwitchToRegister, onNeedsVerific
                 setEmail(e.target.value);
                 setError(null);
               }}
-              placeholder="vous@exemple.com"
+              placeholder={t('loginModal.emailPlaceholder')}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
               autoFocus
@@ -96,7 +98,7 @@ export function LoginModal({ isOpen, onClose, onSwitchToRegister, onNeedsVerific
           {/* Mot de passe */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Mot de passe
+              {t('loginModal.passwordLabel')}
             </label>
             <input
               type="password"
@@ -124,19 +126,19 @@ export function LoginModal({ isOpen, onClose, onSwitchToRegister, onNeedsVerific
             disabled={isSubmitting}
             className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
-            {isSubmitting ? 'Connexion...' : 'Se connecter'}
+            {isSubmitting ? t('loginModal.submitting') : t('loginModal.submitButton')}
           </button>
         </form>
 
         {/* Footer */}
         <div className="px-6 py-4 border-t border-gray-200">
           <p className="text-sm text-gray-600 text-center">
-            Pas encore de compte ?{' '}
+            {t('loginModal.noAccount')}{' '}
             <button
               onClick={onSwitchToRegister}
               className="text-blue-600 hover:text-blue-700 font-medium"
             >
-              S'inscrire
+              {t('loginModal.createAccount')}
             </button>
           </p>
         </div>

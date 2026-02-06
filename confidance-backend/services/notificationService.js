@@ -1,9 +1,20 @@
 const { createClient } = require('@supabase/supabase-js');
+const { t } = require('../locales/notificationTranslations');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_KEY
 );
+
+async function getUserLocale(userId) {
+  try {
+    const { data } = await supabase.from('users').select('locale').eq('id', userId).single();
+    const locale = data?.locale && ['fr', 'en', 'es', 'ru', 'zh'].includes(data.locale) ? data.locale : 'fr';
+    return locale;
+  } catch {
+    return 'fr';
+  }
+}
 
 /**
  * Crée une notification pour un utilisateur
@@ -49,48 +60,40 @@ async function createNotification(userId, type, title, message) {
  * @param {string} amount - Montant du paiement
  * @param {string} token - Token du paiement
  */
-async function notifyPaymentExecuted(userId, paymentLabel, amount, token) {
-  const title = '💰 Paiement exécuté';
-  const message = `Votre paiement "${paymentLabel}" de ${amount} ${token} a été exécuté avec succès.`;
+async function notifyPaymentExecuted(userId, paymentLabel, amount, token, locale) {
+  const loc = locale || await getUserLocale(userId);
+  const title = t(loc, 'payment_executed_title');
+  const message = t(loc, 'payment_executed_message', { label: paymentLabel, amount, token });
   return createNotification(userId, 'payment', title, message);
 }
 
 /**
  * Crée une notification de paiement programmé
- * @param {number} userId - ID de l'utilisateur
- * @param {string} paymentLabel - Label du paiement
- * @param {string} amount - Montant du paiement
- * @param {string} token - Token du paiement
- * @param {string} date - Date d'exécution
  */
-async function notifyPaymentScheduled(userId, paymentLabel, amount, token, date) {
-  const title = '⏰ Paiement programmé';
-  const message = `Votre paiement "${paymentLabel}" de ${amount} ${token} sera exécuté le ${date}.`;
+async function notifyPaymentScheduled(userId, paymentLabel, amount, token, date, locale) {
+  const loc = locale || await getUserLocale(userId);
+  const title = t(loc, 'payment_scheduled_title');
+  const message = t(loc, 'payment_scheduled_message', { label: paymentLabel, amount, token, date });
   return createNotification(userId, 'payment', title, message);
 }
 
 /**
  * Crée une notification de paiement annulé
- * @param {number} userId - ID de l'utilisateur
- * @param {string} paymentLabel - Label du paiement
- * @param {string} amount - Montant du paiement
- * @param {string} token - Token du paiement
  */
-async function notifyPaymentCancelled(userId, paymentLabel, amount, token) {
-  const title = '🚫 Paiement annulé';
-  const message = `Votre paiement "${paymentLabel}" de ${amount} ${token} a été annulé. Les fonds ont été remboursés.`;
+async function notifyPaymentCancelled(userId, paymentLabel, amount, token, locale) {
+  const loc = locale || await getUserLocale(userId);
+  const title = t(loc, 'payment_cancelled_title');
+  const message = t(loc, 'payment_cancelled_message', { label: paymentLabel, amount, token });
   return createNotification(userId, 'payment', title, message);
 }
 
 /**
  * Crée une notification de paiement échoué
- * @param {number} userId - ID de l'utilisateur
- * @param {string} paymentLabel - Label du paiement
- * @param {string} reason - Raison de l'échec
  */
-async function notifyPaymentFailed(userId, paymentLabel, reason) {
-  const title = '❌ Paiement échoué';
-  const message = `Votre paiement "${paymentLabel}" a échoué. Raison: ${reason}`;
+async function notifyPaymentFailed(userId, paymentLabel, reason, locale) {
+  const loc = locale || await getUserLocale(userId);
+  const title = t(loc, 'payment_failed_title');
+  const message = t(loc, 'payment_failed_message', { label: paymentLabel, reason });
   return createNotification(userId, 'payment', title, message);
 }
 

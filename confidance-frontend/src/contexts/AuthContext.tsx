@@ -20,7 +20,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, confirmPassword: string, accountType: 'particular' | 'professional') => Promise<{ verificationCode: string }>;
+  register: (email: string, password: string, confirmPassword: string, accountType: 'particular' | 'professional', locale?: string) => Promise<{ verificationCode: string }>;
   verify: (email: string, code: string) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
@@ -69,12 +69,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     email: string, 
     password: string, 
     confirmPassword: string,
-    accountType: 'particular' | 'professional'
+    accountType: 'particular' | 'professional',
+    locale?: string
   ) => {
+    const body: Record<string, unknown> = { email, password, confirmPassword, accountType };
+    if (locale && ['fr', 'en', 'es', 'ru', 'zh'].includes(locale)) body.locale = locale;
     const response = await fetch(`${API_URL}/api/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, confirmPassword, accountType }),
+      body: JSON.stringify(body),
     });
 
     const data = await response.json();

@@ -55,6 +55,7 @@ export default function AidePage() {
       descriptionFallback: 'Tutoriels vidéo',
       href: '/aide/videos',
       color: 'from-orange-500 to-orange-600',
+      comingSoon: true,
     },
   ];
 
@@ -81,23 +82,47 @@ export default function AidePage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
-          {sections.map((section) => (
-            <Link
-              key={section.href}
-              href={section.href}
-              className="group bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-200 border-2 border-transparent hover:border-blue-200"
-            >
-              <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${section.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                <section.icon className="w-8 h-8 text-white" />
-              </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
-                {isMounted && translationsReady ? t(section.titleKey) : section.titleFallback}
-              </h2>
-              <p className="text-gray-600">
-                {isMounted && translationsReady ? t(section.descriptionKey) : section.descriptionFallback}
-              </p>
-            </Link>
-          ))}
+          {sections.map((section) => {
+            const isComingSoon = 'comingSoon' in section && (section as { comingSoon?: boolean }).comingSoon;
+            if (isComingSoon) {
+              return (
+                <div
+                  key={section.href}
+                  className="group bg-white rounded-2xl p-8 shadow-lg border-2 border-gray-100 opacity-90 cursor-not-allowed"
+                >
+                  <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${section.color} flex items-center justify-center mb-4 opacity-90`}>
+                    <section.icon className="w-8 h-8 text-white" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                    {isMounted && translationsReady ? t(section.titleKey) : section.titleFallback}
+                  </h2>
+                  <p className="text-gray-600 mb-3">
+                    {isMounted && translationsReady ? t(section.descriptionKey) : section.descriptionFallback}
+                  </p>
+                  <p className="text-sm font-semibold text-orange-500">
+                    {isMounted && translationsReady ? t('help.sections.comingSoon', { defaultValue: 'Coming soon' }) : 'Coming soon'}
+                  </p>
+                </div>
+              );
+            }
+            return (
+              <Link
+                key={section.href}
+                href={section.href}
+                className="group bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-200 border-2 border-transparent hover:border-blue-200"
+              >
+                <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${section.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+                  <section.icon className="w-8 h-8 text-white" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
+                  {isMounted && translationsReady ? t(section.titleKey) : section.titleFallback}
+                </h2>
+                <p className="text-gray-600">
+                  {isMounted && translationsReady ? t(section.descriptionKey) : section.descriptionFallback}
+                </p>
+              </Link>
+            );
+          })}
         </div>
 
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white text-center">

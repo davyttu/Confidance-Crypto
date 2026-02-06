@@ -238,7 +238,12 @@ router.get('/preferences', authenticateToken, async (req, res) => {
       return res.status(500).json({ error: 'Erreur lors de la récupération des préférences' });
     }
 
-    res.json({ preferences: data || null });
+    const prefs = data || {};
+    if (!prefs.locale) {
+      const { data: userRow } = await supabase.from('users').select('locale').eq('id', userId).single();
+      if (userRow?.locale) prefs.locale = userRow.locale;
+    }
+    res.json({ preferences: prefs });
   } catch (error) {
     console.error('Get preferences error:', error);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -253,6 +258,10 @@ router.put('/preferences', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.user;
     const { analytics_year, analytics_month, locale } = req.body;
+
+    if (locale !== undefined && ['fr', 'en', 'es', 'ru', 'zh'].includes(locale)) {
+      await supabase.from('users').update({ locale, updated_at: new Date().toISOString() }).eq('id', userId);
+    }
 
     let { data: existing } = await fetchPreferences('user_ui_preferences', userId);
     const payload = {

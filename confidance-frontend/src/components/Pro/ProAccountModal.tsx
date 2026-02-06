@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { toast } from 'sonner';
 
@@ -21,6 +22,7 @@ export function ProAccountModal({
   onVerified,
   mode = 'create'
 }: ProAccountModalProps) {
+  const { t } = useTranslation();
   const { openConnectModal } = useConnectModal();
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
   const [formData, setFormData] = useState({
@@ -90,7 +92,7 @@ export function ProAccountModal({
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) {
-          throw new Error(data?.error || 'Erreur lors du chargement');
+          throw new Error(data?.error || t('proAccountModal.errors.loadError'));
         }
         return data?.profile;
       })
@@ -110,7 +112,7 @@ export function ProAccountModal({
         }));
       })
       .catch((err) => {
-        setError(err instanceof Error ? err.message : 'Erreur de chargement');
+        setError(err instanceof Error ? err.message : t('proAccountModal.errors.loadFailed'));
       })
       .finally(() => setIsLoadingProfile(false));
   }, [isOpen, userId]);
@@ -133,11 +135,11 @@ export function ProAccountModal({
     // Basic client-side validation for clearer UX
     const walletValue = (formData.mainBusinessWallet || primaryWallet || '').trim();
     if (!formData.companyLegalName || formData.companyLegalName.length < 2) {
-      setError('Renseigne la raison sociale (au moins 2 caractères).');
+      setError(t('proAccountModal.errors.companyName'));
       return;
     }
     if (!formData.countryCode) {
-      setError('Renseigne le pays (ex: FR).');
+      setError(t('proAccountModal.errors.country'));
       return;
     }
     if (!formData.registrationNumber) {
@@ -145,23 +147,23 @@ export function ProAccountModal({
       return;
     }
     if (!formData.registeredAddress || formData.registeredAddress.length < 5) {
-      setError('Renseigne l’adresse de l’entreprise.');
+      setError(t('proAccountModal.errors.address'));
       return;
     }
     if (!formData.businessEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.businessEmail)) {
-      setError('Adresse email professionnelle invalide.');
+      setError(t('proAccountModal.errors.businessEmail'));
       return;
     }
     if (!/^0x[a-fA-F0-9]{40}$/.test(walletValue)) {
-      setError('Adresse wallet invalide (format 0x... sur 42 caractères).');
+      setError(t('proAccountModal.errors.walletInvalid'));
       return;
     }
     if (!formData.businessActivity) {
-      setError('Sélectionne une activité.');
+      setError(t('proAccountModal.errors.businessActivity'));
       return;
     }
     if (!formData.websiteUrl || !/^https?:\/\//.test(formData.websiteUrl)) {
-      setError('Le site doit commencer par https:// (ou http://).');
+      setError(t('proAccountModal.errors.websiteUrl'));
       return;
     }
     if (!formData.companySize) {
@@ -202,23 +204,23 @@ export function ProAccountModal({
         const text = await res.text();
         throw new Error(
           text?.includes('<!DOCTYPE')
-            ? 'Erreur serveur. Réessaie dans quelques instants.'
-            : text || 'Erreur serveur.'
+            ? t('proAccountModal.errors.serverRetry')
+            : text || t('proAccountModal.errors.serverError')
         );
       }
 
       if (!res.ok) {
         const serverError = data?.error;
         if (serverError === 'TIMEOUT') {
-          throw new Error('La validation prend trop de temps. Réessaie dans quelques instants.');
+          throw new Error(t('proAccountModal.errors.validationTimeout'));
         }
         if (serverError) {
-          const readable = getReadableServerError(serverError);
+          const readable = getReadableServerError(serverError, t);
           const details = data?.details ? ` (${data.details})` : '';
           throw new Error(`${readable}${details}`);
         }
         throw new Error(
-          data?.errors?.join(', ') || 'Erreur lors de la validation'
+          data?.errors?.join(', ') || t('proAccountModal.errors.validationFailed')
         );
       }
 
@@ -226,15 +228,15 @@ export function ProAccountModal({
       setError(null);
       toast.success(
         mode === 'update'
-          ? 'Infos Pro mises à jour ✅'
-          : 'Compte Pro validé ✅'
+          ? t('proAccountModal.toastProUpdate')
+          : t('proAccountModal.toastProValidated')
       );
       onVerified?.();
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
-        setError('La validation prend trop de temps. Réessaie dans quelques instants.');
+        setError(t('proAccountModal.errors.validationTimeout'));
       } else {
-        setError(err instanceof Error ? err.message : 'Erreur inconnue');
+        setError(err instanceof Error ? err.message : t('proAccountModal.errors.unknown'));
       }
     } finally {
       setIsSubmitting(false);
@@ -255,17 +257,17 @@ export function ProAccountModal({
     setAuthError(null);
     setAuthSuccess(null);
     if (!authData.currentPassword) {
-      setAuthError('Renseigne ton mot de passe actuel.');
+      setAuthError(t('proAccountModal.errors.enterCurrentPassword'));
       return;
     }
     if (!authData.newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(authData.newEmail)) {
-      setAuthError('Nouvel email invalide.');
+      setAuthError(t('proAccountModal.errors.invalidNewEmail'));
       return;
     }
 
     const token = getAuthToken();
     if (!token) {
-      setAuthError('Connecte-toi pour modifier ton email.');
+      setAuthError(t('proAccountModal.errors.loginToChangeEmail'));
       return;
     }
 
@@ -284,12 +286,12 @@ export function ProAccountModal({
       });
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data?.error || 'Erreur lors de la demande de changement d’email');
+        throw new Error(data?.error || t('proAccountModal.errors.changeEmailError'));
       }
-      setAuthSuccess('Code envoyé sur votre email. Vérifiez votre boîte.');
-      toast.success('Code de confirmation envoyé ✅');
+      setAuthSuccess(t('proAccountModal.authSuccessCodeSent'));
+      toast.success(t('proAccountModal.toastConfirmationSent'));
     } catch (err) {
-      setAuthError(err instanceof Error ? err.message : 'Erreur inconnue');
+      setAuthError(err instanceof Error ? err.message : t('proAccountModal.errors.unknown'));
     } finally {
       setAuthSubmitting((prev) => ({ ...prev, email: false }));
     }
@@ -299,12 +301,12 @@ export function ProAccountModal({
     setAuthError(null);
     setAuthSuccess(null);
     if (!authData.emailCode) {
-      setAuthError('Renseigne le code reçu par email.');
+      setAuthError(t('proAccountModal.errors.enterCode'));
       return;
     }
     const token = getAuthToken();
     if (!token) {
-      setAuthError('Connecte-toi pour confirmer ton email.');
+      setAuthError(t('proAccountModal.errors.loginToConfirmEmail'));
       return;
     }
 
@@ -320,15 +322,15 @@ export function ProAccountModal({
       });
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data?.error || 'Erreur lors de la confirmation email');
+        throw new Error(data?.error || t('proAccountModal.errors.confirmEmailError'));
       }
       if (data?.token) {
         localStorage.setItem('token', data.token);
       }
-      setAuthSuccess('Email mis à jour ✅');
-      toast.success('Email mis à jour ✅');
+      setAuthSuccess(t('proAccountModal.authSuccessEmailUpdated'));
+      toast.success(t('proAccountModal.toastEmailUpdated'));
     } catch (err) {
-      setAuthError(err instanceof Error ? err.message : 'Erreur inconnue');
+      setAuthError(err instanceof Error ? err.message : t('proAccountModal.errors.unknown'));
     } finally {
       setAuthSubmitting((prev) => ({ ...prev, confirmEmail: false }));
     }
@@ -338,21 +340,21 @@ export function ProAccountModal({
     setAuthError(null);
     setAuthSuccess(null);
     if (!authData.currentPassword) {
-      setAuthError('Renseigne ton mot de passe actuel.');
+      setAuthError(t('proAccountModal.errors.enterCurrentPassword'));
       return;
     }
     if (!authData.newPassword || authData.newPassword.length < 8) {
-      setAuthError('Le nouveau mot de passe doit contenir au moins 8 caractères.');
+      setAuthError(t('proAccountModal.errors.passwordMinLength'));
       return;
     }
     if (authData.newPassword !== authData.confirmNewPassword) {
-      setAuthError('Les mots de passe ne correspondent pas.');
+      setAuthError(t('proAccountModal.errors.passwordsMismatch'));
       return;
     }
 
     const token = getAuthToken();
     if (!token) {
-      setAuthError('Connecte-toi pour modifier ton mot de passe.');
+      setAuthError(t('proAccountModal.errors.loginToChangePassword'));
       return;
     }
 
@@ -372,13 +374,13 @@ export function ProAccountModal({
       });
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data?.error || 'Erreur lors de la modification du mot de passe');
+        throw new Error(data?.error || t('proAccountModal.errors.changePasswordError'));
       }
-      setAuthSuccess('Mot de passe mis à jour ✅');
-      toast.success('Mot de passe mis à jour ✅');
+      setAuthSuccess(t('proAccountModal.authSuccessPasswordUpdated'));
+      toast.success(t('proAccountModal.toastPasswordUpdated'));
       setAuthData((prev) => ({ ...prev, newPassword: '', confirmNewPassword: '' }));
     } catch (err) {
-      setAuthError(err instanceof Error ? err.message : 'Erreur inconnue');
+      setAuthError(err instanceof Error ? err.message : t('proAccountModal.errors.unknown'));
     } finally {
       setAuthSubmitting((prev) => ({ ...prev, password: false }));
     }
@@ -393,7 +395,7 @@ export function ProAccountModal({
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 flex justify-between">
           <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-            {mode === 'update' ? 'Modifier mon compte Pro' : 'Passer en compte Pro'}
+            {mode === 'update' ? t('proAccountModal.titleUpdate') : t('proAccountModal.title')}
           </h2>
           <button onClick={handleClose} className="text-gray-400 hover:text-gray-600">
             ✕
@@ -404,13 +406,13 @@ export function ProAccountModal({
         <form onSubmit={handleSubmit} className="px-6 py-6 space-y-4">
           {success ? (
             <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-green-800 text-sm">
-              {mode === 'update' ? '✅ Infos Pro mises à jour.' : '✅ Compte Pro vérifié.'}
+              {mode === 'update' ? `✅ ${t('proAccountModal.successUpdate')}` : `✅ ${t('proAccountModal.successCreate')}`}
             </div>
           ) : (
             <>
               {isLoadingProfile && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
-                  Chargement des informations…
+                  {t('proAccountModal.loadingInfo')}
                 </div>
               )}
               <Input label="Company legal name" value={formData.companyLegalName}
@@ -437,13 +439,13 @@ export function ProAccountModal({
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 11V3m0 0l-3 3m3-3l3 3M4 11h16a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4a2 2 0 012-2z" />
                     </svg>
                   </span>
-                  <span>Connecte ton wallet pour pre-remplir</span>
+                  <span>{t('proAccountModal.connectWalletHint')}</span>
                   <button
                     type="button"
                     onClick={() => openConnectModal?.()}
                     className="text-purple-600 hover:text-purple-700 font-medium"
                   >
-                    Connecter le wallet
+                    {t('proAccountModal.connectWallet')}
                   </button>
                 </div>
               )}
@@ -481,14 +483,14 @@ export function ProAccountModal({
               )}
 
               <div className="pt-2 border-t border-gray-200">
-                <h3 className="text-sm font-semibold text-gray-900">Connexion</h3>
+                <h3 className="text-sm font-semibold text-gray-900">{t('proAccountModal.authSectionTitle')}</h3>
                 <p className="text-xs text-gray-500 mt-1">
-                  Pour modifier votre email ou mot de passe, saisissez votre mot de passe actuel.
+                  {t('proAccountModal.authSectionHint')}
                 </p>
               </div>
 
               <Input
-                label="Mot de passe actuel"
+                label={t('proAccountModal.currentPassword')}
                 type="password"
                 value={authData.currentPassword}
                 onChange={(v) => setAuthData({ ...authData, currentPassword: v })}
@@ -497,7 +499,7 @@ export function ProAccountModal({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Input
-                  label="Nouvel email"
+                  label={t('proAccountModal.newEmail')}
                   type="email"
                   value={authData.newEmail}
                   onChange={(v) => setAuthData({ ...authData, newEmail: v })}
@@ -510,14 +512,14 @@ export function ProAccountModal({
                     disabled={authSubmitting.email}
                     className="w-full py-2.5 px-4 text-sm bg-gray-900 text-white rounded-lg disabled:opacity-50"
                   >
-                    {authSubmitting.email ? 'Envoi...' : 'Envoyer le code'}
+                    {authSubmitting.email ? t('proAccountModal.sending') : t('proAccountModal.sendCode')}
                   </button>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Input
-                  label="Code de confirmation"
+                  label={t('proAccountModal.confirmCode')}
                   value={authData.emailCode}
                   onChange={(v) => setAuthData({ ...authData, emailCode: v })}
                   required={false}
@@ -529,21 +531,21 @@ export function ProAccountModal({
                     disabled={authSubmitting.confirmEmail}
                     className="w-full py-2.5 px-4 text-sm bg-purple-600 text-white rounded-lg disabled:opacity-50"
                   >
-                    {authSubmitting.confirmEmail ? 'Confirmation...' : 'Confirmer le nouvel email'}
+                    {authSubmitting.confirmEmail ? t('proAccountModal.confirming') : t('proAccountModal.confirmNewEmail')}
                   </button>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Input
-                  label="Nouveau mot de passe"
+                  label={t('proAccountModal.newPassword')}
                   type="password"
                   value={authData.newPassword}
                   onChange={(v) => setAuthData({ ...authData, newPassword: v })}
                   required={false}
                 />
                 <Input
-                  label="Confirmer le mot de passe"
+                  label={t('proAccountModal.confirmPassword')}
                   type="password"
                   value={authData.confirmNewPassword}
                   onChange={(v) => setAuthData({ ...authData, confirmNewPassword: v })}
@@ -557,7 +559,7 @@ export function ProAccountModal({
                 disabled={authSubmitting.password}
                 className="w-full py-2.5 text-sm bg-gray-100 text-gray-900 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50"
               >
-                {authSubmitting.password ? 'Mise à jour...' : 'Mettre à jour le mot de passe'}
+                {authSubmitting.password ? t('proAccountModal.updating') : t('proAccountModal.updatePassword')}
               </button>
 
               {authError && (
@@ -577,10 +579,10 @@ export function ProAccountModal({
                 className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold rounded-lg disabled:opacity-50"
               >
                 {isSubmitting
-                  ? 'Validation...'
+                  ? t('proAccountModal.submitValidating')
                   : mode === 'update'
-                    ? 'Mettre à jour mes infos Pro'
-                    : 'Valider mon compte Pro'}
+                    ? t('proAccountModal.submitUpdate')
+                    : t('proAccountModal.submitValidate')}
               </button>
             </>
           )}
@@ -621,20 +623,21 @@ function Textarea({ label, value, onChange, required = true }: any) {
   );
 }
 
-function getReadableServerError(code: string) {
+function getReadableServerError(code: string, t: (key: string) => string) {
+  const k = 'proAccountModal.errors.';
   switch (code) {
     case 'SUPABASE_UPSERT_FAILED':
-      return "Impossible d'enregistrer les informations Pro. Réessaie dans quelques instants.";
+      return t(k + 'supabaseUpsertFailed');
     case 'SUPABASE_VERIFY_UPDATE_FAILED':
-      return "Impossible de finaliser la validation Pro. Réessaie plus tard.";
+      return t(k + 'supabaseVerifyUpdateFailed');
     case 'SUPABASE_WALLET_CHECK_FAILED':
-      return "Impossible de vérifier le wallet. Réessaie plus tard.";
+      return t(k + 'supabaseWalletCheckFailed');
     case 'SUPABASE_REJECT_UPDATE_FAILED':
-      return "Erreur lors de la mise à jour du compte. Réessaie plus tard.";
+      return t(k + 'supabaseRejectUpdateFailed');
     case 'SUPABASE_PROFILE_FETCH_FAILED':
-      return "Impossible de charger le profil Pro. Réessaie plus tard.";
+      return t(k + 'supabaseProfileFetchFailed');
     default:
-      return 'Erreur serveur. Réessaie dans quelques instants.';
+      return t(k + 'serverRetry');
   }
 }
 
