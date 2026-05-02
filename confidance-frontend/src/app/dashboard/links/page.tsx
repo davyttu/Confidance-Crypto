@@ -96,6 +96,9 @@ export default function DashboardLinksPage() {
       return baseStatus;
     }
     if (link.payment_type === 'recurring') {
+      if (baseStatus === 'completed' || baseStatus === 'paid') {
+        return baseStatus === 'paid' ? 'paid' : 'completed';
+      }
       if (typeof link.start_at === 'number' && link.periods) {
         const endAt = link.start_at + (Number(link.periods) * monthSeconds);
         if (now >= endAt) return 'completed';

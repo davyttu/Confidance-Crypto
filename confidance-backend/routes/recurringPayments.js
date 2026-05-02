@@ -3,7 +3,8 @@ const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 const { addTimelineEvent } = require('../services/timeline/timelineService');
 const { sendRecurringFailureEmail } = require('../services/email/recurringFailureEmail');
-const { notifyPaymentFailed } = require('../services/notificationService');
+const { notifyPaymentFailed, getUserLocale } = require('../services/notificationService');
+const { t, translateReason } = require('../locales/notificationTranslations');
 
 const router = express.Router();
 
@@ -67,6 +68,31 @@ const sanitizeMetadata = (metadata) =>
   Object.fromEntries(
     Object.entries(metadata || {}).filter(([, value]) => value !== undefined)
   );
+
+/**
+ * Quand le récurrent est terminé, aligner le statut du payment_link source (si présent).
+ */
+async function markPaymentLinkCompleted(paymentLinkId) {
+  const id = typeof paymentLinkId === 'string' ? paymentLinkId.trim() : '';
+  if (!id) return;
+  try {
+    const { error } = await supabase
+      .from('payment_links')
+      .update({
+        status: 'completed',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .in('status', ['pending', 'active']);
+    if (error) {
+      console.warn('⚠️ markPaymentLinkCompleted:', error.message);
+    } else {
+      console.log('✅ payment_links', id, '→ completed');
+    }
+  } catch (e) {
+    console.warn('⚠️ markPaymentLinkCompleted:', e.message || e);
+  }
+}
 
 const requireInternalKey = (req, res) => {
   const internalKey = process.env.INTERNAL_API_KEY;
@@ -159,7 +185,8 @@ router.post('/', async (req, res) => {
       payment_categorie,
       label,
       category,
-      categorie
+      categorie,
+      payment_link_id,
     } = req.body;
 
     // Validations
@@ -216,6 +243,10 @@ router.post('/', async (req, res) => {
     const normalizedContractAddress = String(contract_address).toLowerCase();
     const normalizedPayerAddress = String(payer_address).toLowerCase();
     const normalizedPayeeAddress = String(payee_address).toLowerCase();
+    const normalizedPaymentLinkId =
+      typeof payment_link_id === 'string' && payment_link_id.trim().length > 0
+        ? payment_link_id.trim()
+        : null;
 
     // Enregistrer dans Supabase
     const { data: recurringPayment, error } = await supabase
@@ -242,7 +273,8 @@ router.post('/', async (req, res) => {
         ticket_number,
         status: 'pending',
         payment_label: normalizedPaymentLabel || null,
-        payment_category: normalizedPaymentCategory || null
+        payment_category: normalizedPaymentCategory || null,
+        ...(normalizedPaymentLinkId ? { payment_link_id: normalizedPaymentLinkId } : {}),
       })
       .select()
       .single();
@@ -430,6 +462,10 @@ router.patch('/:id', async (req, res) => {
 
     console.log('✅ Paiement récurrent mis à jour:', id, status !== undefined ? { status } : '');
 
+    if (status === 'completed' && payment?.payment_link_id) {
+      await markPaymentLinkCompleted(payment.payment_link_id);
+    }
+
     if (payment?.id && payment?.user_id && status === 'active') {
       addTimelineEvent({
         payment_id: payment.id,
@@ -584,13 +620,17 @@ router.post('/notify-failed', async (req, res) => {
     });
 
     if (payment?.user_id) {
-      const reasonText = monthNumber
-        ? `Mensualité ${monthNumber} échouée. ${typeof failure_reason === 'string' ? failure_reason : ''}`.trim()
-        : (typeof failure_reason === 'string' ? failure_reason : 'Mensualité échouée');
+      const locale = await getUserLocale(payment.user_id);
+      const monthPart = monthNumber
+        ? t(locale, 'recurring_month_failed_reason', { month: monthNumber })
+        : '';
+      const reasonPart = typeof failure_reason === 'string' ? translateReason(locale, failure_reason) : t(locale, 'reason_unknown');
+      const reasonText = [monthPart, reasonPart].filter(Boolean).join(' ');
       await notifyPaymentFailed(
         payment.user_id,
-        payment.payment_label || 'Paiement récurrent',
-        reasonText
+        payment.payment_label || t(locale, 'recurring_payment_default_label'),
+        reasonText,
+        locale
       ).catch((err) => console.warn('⚠️ Notification in-app recurring failure:', err?.message || err));
     }
 

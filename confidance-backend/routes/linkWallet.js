@@ -21,6 +21,7 @@ const supabase = createClient(
  * }
  */
 router.post('/', authenticateToken, async (req, res) => {
+  console.log('LINK WALLET ROUTE HIT');
   try {
     const userId = req.user.userId;
     const { wallet_address, label } = req.body;
@@ -70,22 +71,37 @@ router.post('/', authenticateToken, async (req, res) => {
 
     const isFirstWallet = !userWallets || userWallets.length === 0;
 
-    // Générer un label automatique si non fourni
     const walletLabel = label || `Wallet ${(userWallets?.length || 0) + 1}`;
 
-    // Ajouter le nouveau wallet
     const { data, error } = await supabase
       .from('user_wallets')
       .insert({
         user_id: userId,
         wallet_address: walletLower,
         label: walletLabel,
-        is_primary: isFirstWallet // Le premier wallet devient automatiquement primary
+        is_primary: isFirstWallet
       })
       .select()
       .single();
 
     if (error) {
+      // Violation de contrainte unique (requête en double / race condition)
+      // Le wallet a peut-être été inséré par une requête concurrente
+      if (error.code === '23505') {
+        const { data: existing } = await supabase
+          .from('user_wallets')
+          .select('user_id, label')
+          .eq('wallet_address', walletLower)
+          .single();
+        if (existing && existing.user_id === userId) {
+          console.log(`✅ [LINK-WALLET] Wallet déjà lié (conflit unique résolu)`);
+          return res.json({
+            success: true,
+            message: 'Wallet déjà lié',
+            wallet: existing
+          });
+        }
+      }
       console.error('❌ [LINK-WALLET] Erreur insertion:', error);
       return res.status(500).json({ error: 'Impossible de lier le wallet' });
     }

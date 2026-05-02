@@ -109,6 +109,7 @@ async function notifySystem(userId, title, message) {
 
 module.exports = {
   createNotification,
+  getUserLocale,
   notifyPaymentExecuted,
   notifyPaymentScheduled,
   notifyPaymentCancelled,

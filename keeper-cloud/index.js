@@ -698,6 +698,36 @@ async function updateRecurringAfterExecution(paymentId, txHash, executedMonths, 
     } else {
       console.log(`   ✅ DB updated: executed_months = ${executedMonths}/${totalMonths}, status = ${newStatus}`);
 
+      if (newStatus === "completed") {
+        try {
+          const { data: linkRow, error: linkReadErr } = await supabase
+            .from("recurring_payments")
+            .select("payment_link_id")
+            .eq("id", paymentId)
+            .maybeSingle();
+          if (!linkReadErr && linkRow?.payment_link_id) {
+            const plId = String(linkRow.payment_link_id).trim();
+            if (plId) {
+              const { error: linkUpdErr } = await supabase
+                .from("payment_links")
+                .update({
+                  status: "completed",
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("id", plId)
+                .in("status", ["pending", "active"]);
+              if (linkUpdErr) {
+                console.warn(`   ⚠️ payment_links → completed: ${linkUpdErr.message}`);
+              } else {
+                console.log(`   ✅ payment_links ${plId} → completed`);
+              }
+            }
+          }
+        } catch (e) {
+          console.warn(`   ⚠️ Sync payment_link completed: ${e.message || e}`);
+        }
+      }
+
       // 🟣 Emit event (Albert)
       await emitEvent({
         type: "RECURRING_EXECUTED",

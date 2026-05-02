@@ -49,7 +49,13 @@ export interface EmailNotification {
 
 export type PaymentLinkType = 'instant' | 'scheduled' | 'recurring';
 export type PaymentLinkFrequency = 'monthly' | 'weekly';
-export type PaymentLinkStatus = 'pending' | 'active' | 'paid' | 'expired' | 'cancelled';
+export type PaymentLinkStatus =
+  | 'pending'
+  | 'active'
+  | 'paid'
+  | 'completed'
+  | 'expired'
+  | 'cancelled';
 
 export interface PaymentLink {
   id: string;

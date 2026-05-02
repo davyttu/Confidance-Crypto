@@ -15,18 +15,12 @@ import {
 import { decodeEventLog, erc20Abi } from 'viem';
 import { type TokenSymbol, getToken, getProtocolFeeBps, isZeroAddress } from '@/config/tokens';
 import { paymentFactoryAbi } from '@/lib/contracts/paymentFactoryAbi';
-import { CONTRACT_ADDRESSES, PAYMENT_FACTORY_RECURRING } from '@/lib/contracts/addresses';
+import { getRecurringFactoryAddress } from '@/lib/contracts/addresses';
+import { fetchRecurringFeeTotalsFromFactory } from '@/lib/contracts/recurringFeePreview';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTokenApproval } from '@/hooks/useTokenApproval';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-
-const getRecurringFactoryAddress = (chainId?: number): `0x${string}` => {
-  if (chainId === 84532) {
-    return CONTRACT_ADDRESSES.base_sepolia.factory_recurring as `0x${string}`;
-  }
-  return PAYMENT_FACTORY_RECURRING as `0x${string}`;
-};
 
 const getNetworkFromChainId = (chainId: number): string => {
   switch (chainId) {
@@ -284,15 +278,35 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
         Math.floor(parseFloat(params.beneficiaries[0]?.amount || '0') * 10 ** tokenData.decimals)
       );
       const isProVerified = user?.accountType === 'professional' && user?.proStatus === 'verified';
-      const feeBps = getProtocolFeeBps({ isInstantPayment: false, isProVerified });
-      const monthlyFee = (perBeneficiaryAmount * BigInt(feeBps)) / BigInt(BASIS_POINTS_DENOMINATOR);
-      const totalPerMonth = perBeneficiaryAmount + monthlyFee;
-      const totalPerContract = calculateRecurringTotal(
+      const feeBpsFallback = getProtocolFeeBps({ isInstantPayment: false, isProVerified });
+
+      if (!publicClient) {
+        throw new Error('Client blockchain indisponible');
+      }
+
+      const fromChain = await fetchRecurringFeeTotalsFromFactory(
+        publicClient,
+        factoryAddress,
+        address,
         perBeneficiaryAmount,
         params.totalMonths,
-        feeBps,
-        params.firstMonthAmount
+        params.firstMonthAmount && params.firstMonthAmount > 0n ? params.firstMonthAmount : undefined
       );
+
+      const monthlyFee = fromChain
+        ? fromChain.monthlyFee
+        : (perBeneficiaryAmount * BigInt(feeBpsFallback)) / BigInt(BASIS_POINTS_DENOMINATOR);
+      const totalPerMonth = fromChain
+        ? fromChain.totalPerMonth
+        : perBeneficiaryAmount + monthlyFee;
+      const totalPerContract = fromChain
+        ? fromChain.totalRequired
+        : calculateRecurringTotal(
+            perBeneficiaryAmount,
+            params.totalMonths,
+            feeBpsFallback,
+            params.firstMonthAmount
+          );
       setApprovalTotalPerContract(totalPerContract);
 
       // Étape 1: Approuver la Factory
@@ -506,13 +520,26 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
 
           const monthlyAmountValue = BigInt(Math.floor(parseFloat(beneficiary.amount) * 10 ** tokenData.decimals));
           const isProVerified = user?.accountType === 'professional' && user?.proStatus === 'verified';
-          const feeBps = getProtocolFeeBps({ isInstantPayment: false, isProVerified });
-          const totalRequired = calculateRecurringTotal(
+          const feeBpsFallback = getProtocolFeeBps({ isInstantPayment: false, isProVerified });
+
+          const fromChain = await fetchRecurringFeeTotalsFromFactory(
+            publicClient,
+            factoryAddress,
+            address,
             monthlyAmountValue,
             currentParams.totalMonths,
-            feeBps,
-            currentParams.firstMonthAmount
-          ); // ⭐ MOD
+            currentParams.firstMonthAmount && currentParams.firstMonthAmount > 0n
+              ? currentParams.firstMonthAmount
+              : undefined
+          );
+          const totalRequired = fromChain
+            ? fromChain.totalRequired
+            : calculateRecurringTotal(
+                monthlyAmountValue,
+                currentParams.totalMonths,
+                feeBpsFallback,
+                currentParams.firstMonthAmount
+              );
 
           console.log(`💳 [BATCH RECURRING] Approbation contrat ${currentApprovingIndex + 1}/${contractAddresses.length}...`, {
             contract: contractToApprove,

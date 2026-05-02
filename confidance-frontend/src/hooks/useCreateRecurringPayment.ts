@@ -15,7 +15,8 @@ import {
 import { decodeEventLog, erc20Abi } from 'viem';
 import { type TokenSymbol, getToken, getProtocolFeeBps, isZeroAddress } from '@/config/tokens';
 import { paymentFactoryAbi } from '@/lib/contracts/paymentFactoryAbi';
-import { CONTRACT_ADDRESSES, PAYMENT_FACTORY_RECURRING } from '@/lib/contracts/addresses';
+import { getRecurringFactoryAddress } from '@/lib/contracts/addresses';
+import { fetchRecurringFeeTotalsFromFactory } from '@/lib/contracts/recurringFeePreview';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTokenApproval } from '@/hooks/useTokenApproval';
 
@@ -41,13 +42,6 @@ const getNetworkFromChainId = (chainId: number): string => {
 
 const BASIS_POINTS_DENOMINATOR = 10000;
 
-const getRecurringFactoryAddress = (chainId?: number): `0x${string}` => {
-  if (chainId === 84532) {
-    return CONTRACT_ADDRESSES.base_sepolia.factory_recurring as `0x${string}`;
-  }
-  return PAYMENT_FACTORY_RECURRING as `0x${string}`;
-};
-
 interface CreateRecurringPaymentParams {
   tokenSymbol: TokenSymbol; // USDC ou USDT uniquement
   beneficiary: `0x${string}`;
@@ -59,6 +53,8 @@ interface CreateRecurringPaymentParams {
   cancellable?: boolean; // Optionnel (non implémenté dans le contrat actuel)
   label?: string;
   category?: string;
+  /** `payment_links.id` si création depuis un lien /pay/... */
+  paymentLinkId?: string;
 }
 
 type PaymentStatus =
@@ -240,14 +236,27 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
       }
 
       const isProVerified = user?.accountType === 'professional' && user?.proStatus === 'verified';
-      const feeBps = getProtocolFeeBps({ isInstantPayment: false, isProVerified });
+      const feeBpsFallback = getProtocolFeeBps({ isInstantPayment: false, isProVerified });
 
-      // Calculer le total requis
-      const { 
-        monthlyFee: fee, 
-        totalPerMonth: perMonth, 
-        totalRequired: total 
-      } = calculateRecurringTotal(params.monthlyAmount, params.totalMonths, feeBps, params.firstMonthAmount);
+      const fromChain = await fetchRecurringFeeTotalsFromFactory(
+        publicClient,
+        factoryAddress,
+        address,
+        params.monthlyAmount,
+        params.totalMonths,
+        typeof params.firstMonthAmount === 'bigint' && params.firstMonthAmount > 0n
+          ? params.firstMonthAmount
+          : undefined
+      );
+
+      const { monthlyFee: fee, totalPerMonth: perMonth, totalRequired: total } = fromChain
+        ? fromChain
+        : calculateRecurringTotal(
+            params.monthlyAmount,
+            params.totalMonths,
+            feeBpsFallback,
+            params.firstMonthAmount
+          );
 
       setMonthlyFee(fee);
       setTotalPerMonth(perMonth);
@@ -258,7 +267,8 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
         monthlyFee: fee.toString(),
         totalPerMonth: perMonth.toString(),
         totalMonths: params.totalMonths,
-        totalRequired: total.toString()
+        totalRequired: total.toString(),
+        source: fromChain ? 'factory_previewFeePerMonth' : 'fallback_app_feeBps',
       });
 
       // ✅ FIX : Workflow identique aux Scheduled Payments : Approbation → Création
@@ -718,6 +728,9 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
               transaction_hash: createTxHash,
               payment_label: params.label || '',
               payment_category: params.category || '',
+              ...(params.paymentLinkId?.trim()
+                ? { payment_link_id: params.paymentLinkId.trim() }
+                : {}),
               ...(isAuthenticated && user ? { user_id: user.id } : { guest_email: guestEmail }),
             }),
           });

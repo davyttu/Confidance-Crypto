@@ -40,6 +40,30 @@ const MONTH_IN_SECONDS =
   process.env.NEXT_PUBLIC_CHAIN === 'base_sepolia' ? 300 : 2592000; // 5 min en testnet
 const DASHBOARD_SEEN_KEY = 'dashboardLastSeenAt';
 
+/** eth_getLogs limit ~10k blocks ; fetch by chunks to avoid 413 */
+const CHUNK_SIZE = 9999n;
+
+async function getLogsInChunks(
+  client: { getLogs: (opts: unknown) => Promise<unknown[]>; getBlockNumber: () => Promise<bigint> },
+  params: { address: `0x${string}`; abi: unknown; eventName: string }
+) {
+  const toBlock = await client.getBlockNumber();
+  const fromBlock = 0n;
+  const allLogs: unknown[] = [];
+  let current = fromBlock;
+  while (current <= toBlock) {
+    const end = current + CHUNK_SIZE > toBlock ? toBlock : current + CHUNK_SIZE;
+    const logs = await client.getLogs({
+      ...params,
+      fromBlock: current,
+      toBlock: end,
+    });
+    allLogs.push(...(Array.isArray(logs) ? logs : []));
+    current = end + 1n;
+  }
+  return allLogs;
+}
+
 export function TransactionTable({ payments, onRename, onCancel, onDelete, userAddress, period, showRecurringParentsOnly = false }: TransactionTableProps) {
   const { t, ready: translationsReady } = useTranslation();
   const [isMounted, setIsMounted] = useState(false);
@@ -173,7 +197,7 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete, userA
 
     payments.forEach((payment) => addPaymentIfRecurring(payment));
     const recurringPayments = Array.from(allContractsMap.values());
-    if (recurringPayments.length === 0) return;
+    if (recurringPayments.length === 0 || !publicClient) return;
 
     let isMounted = true;
 
@@ -242,21 +266,17 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete, userA
               let monthStatusByIndex: Record<number, 'executed' | 'failed'> | undefined;
               try {
                 const [executedLogs, failedLogs] = await Promise.all([
-                  publicClient.getLogs({
+                  getLogsInChunks(publicClient, {
                     address,
                     abi: recurringPaymentERC20Abi,
                     eventName: 'MonthlyPaymentExecuted',
-                    fromBlock: 0n,
-                    toBlock: 'latest',
                   }),
-                  publicClient.getLogs({
+                  getLogsInChunks(publicClient, {
                     address,
                     abi: recurringPaymentERC20Abi,
                     eventName: 'MonthlyPaymentFailed',
-                    fromBlock: 0n,
-                    toBlock: 'latest',
                   }),
-                ]);
+                ]) as [unknown[], unknown[]];
                 const merged = [
                   ...executedLogs.map((log) => ({
                     status: 'executed' as const,

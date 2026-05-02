@@ -97,7 +97,26 @@ export function BeneficiaryList({ onEdit }: BeneficiaryListProps) {
     payments.forEach((payment: Payment) => {
       const tokenSymbol = payment.token_symbol || 'ETH';
       const decimals = tokenSymbol === 'ETH' ? 18 : 6; // ETH = 18, USDC/USDT = 6
-      
+      const isRecurring = payment.is_recurring || payment.payment_type === 'recurring';
+      const totalMonths = Number(payment.total_months || 0);
+      const executedMonths = Number(payment.executed_months ?? 0);
+      const isFirstMonthCustom =
+        payment.is_first_month_custom === true || payment.is_first_month_custom === 'true';
+
+      // Pour les paiements récurrents : n compter que les mensualités déjà exécutées/released
+      // (pas le montant total contracté, pour éviter d'afficher des montants non encore versés)
+      const getRecurringTotalPerBeneficiary = (perMonthAmount: string): bigint => {
+        if (totalMonths <= 0) return parseAmount(perMonthAmount, decimals);
+        if (executedMonths <= 0) return BigInt(0); // Pending : aucune mensualité versée
+        const monthly = parseAmount(perMonthAmount, decimals);
+        if (isFirstMonthCustom && payment.first_month_amount) {
+          const firstMonth = parseAmount(payment.first_month_amount, decimals);
+          if (executedMonths === 1) return firstMonth;
+          return firstMonth + monthly * BigInt(executedMonths - 1);
+        }
+        return monthly * BigInt(executedMonths);
+      };
+
       // Convertir le montant principal
       const amount = parseAmount(payment.amount, decimals);
       
@@ -112,8 +131,12 @@ export function BeneficiaryList({ onEdit }: BeneficiaryListProps) {
           
           stats[beneficiaryAddress].count += 1;
           
-          // Convertir le montant du batch beneficiary
-          const beneficiaryAmount = parseAmount(batchBeneficiary.amount, decimals);
+          // Montant : récurrent = total sur toutes les mensualités, sinon montant du batch
+          const beneficiaryAmount = isRecurring && totalMonths > 0
+            ? getRecurringTotalPerBeneficiary(
+                batchBeneficiary.amount || payment.monthly_amount || payment.amount || '0'
+              )
+            : parseAmount(batchBeneficiary.amount, decimals);
           
           if (!stats[beneficiaryAddress].totalAmount[tokenSymbol]) {
             stats[beneficiaryAddress].totalAmount[tokenSymbol] = BigInt(0);
@@ -131,11 +154,18 @@ export function BeneficiaryList({ onEdit }: BeneficiaryListProps) {
         
         stats[beneficiaryAddress].count += 1;
         
+        // Montant : récurrent = total sur toutes les mensualités, sinon montant du paiement
+        const beneficiaryAmount = isRecurring && totalMonths > 0
+          ? getRecurringTotalPerBeneficiary(
+              payment.monthly_amount || payment.amount || '0'
+            )
+          : amount;
+        
         if (!stats[beneficiaryAddress].totalAmount[tokenSymbol]) {
           stats[beneficiaryAddress].totalAmount[tokenSymbol] = BigInt(0);
         }
         
-        stats[beneficiaryAddress].totalAmount[tokenSymbol] += amount;
+        stats[beneficiaryAddress].totalAmount[tokenSymbol] += beneficiaryAmount;
       }
     });
     

@@ -13,6 +13,7 @@ const authenticateToken = (req, res, next) => {
   const token = req.cookies?.token || req.headers.authorization?.split(' ')[1];
 
   if (!token) {
+    console.log('auth: no token received (Authorization header or cookie)');
     return res.status(401).json({ error: 'Non authentifié' });
   }
 

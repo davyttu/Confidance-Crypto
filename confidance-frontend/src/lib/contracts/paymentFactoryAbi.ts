@@ -209,6 +209,16 @@ export const paymentFactoryAbi = [
     type: 'function',
   },
   {
+    inputs: [
+      { name: 'monthlyAmount', type: 'uint256' },
+      { name: 'payer', type: 'address' },
+    ],
+    name: 'previewFeePerMonth',
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
     inputs: [{ name: 'amountToPayee', type: 'uint256' }],
     name: 'calculateSingleTotal',
     outputs: [

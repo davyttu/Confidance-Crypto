@@ -42,3 +42,11 @@ export const CONTRACT_ADDRESSES = {
     factory_instant: "0x0000000000000000000000000000000000000000",
   },
 };
+
+/** Factory récurrente (alignée avec useCreateRecurringPayment / batch recurring). */
+export function getRecurringFactoryAddress(chainId?: number): `0x${string}` {
+  if (chainId === 84532) {
+    return CONTRACT_ADDRESSES.base_sepolia.factory_recurring as `0x${string}`;
+  }
+  return PAYMENT_FACTORY_RECURRING as `0x${string}`;
+}

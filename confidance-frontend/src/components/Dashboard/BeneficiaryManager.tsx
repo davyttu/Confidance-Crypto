@@ -83,17 +83,17 @@ export function BeneficiaryManager({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 overflow-y-auto">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] my-auto flex flex-col overflow-hidden">
         {/* En-tête */}
-        <div className="px-6 py-4 border-b border-gray-200">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-gray-900">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
               {isEditing ? t('dashboard.beneficiaries.modalTitleEdit') : t('dashboard.beneficiaries.modalTitleNew')}
             </h2>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -102,8 +102,8 @@ export function BeneficiaryManager({
           </div>
         </div>
 
-        {/* Formulaire */}
-        <form onSubmit={handleSubmit} className="px-6 py-4 space-y-4">
+        {/* Formulaire - scrollable */}
+        <form onSubmit={handleSubmit} className="flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-4">
           {/* Nom */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -202,7 +202,7 @@ export function BeneficiaryManager({
         </form>
 
         {/* Actions */}
-        <div className="px-6 py-4 border-t border-gray-200 flex gap-3">
+        <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex gap-3 flex-shrink-0">
           <button
             onClick={onClose}
             disabled={isSubmitting}

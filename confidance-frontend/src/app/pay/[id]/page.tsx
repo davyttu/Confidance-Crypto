@@ -184,6 +184,7 @@ export default function PayLinkPage() {
         firstPaymentTime: startAt,
         totalMonths,
         dayOfMonth,
+        paymentLinkId: link.id,
       });
       return;
     }

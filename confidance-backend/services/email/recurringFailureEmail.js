@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { getLogoDataUri } = require('./logoDataUri');
 
 const APP_URL = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 const BREVO_API_KEY = process.env.BREVO_API_KEY;
@@ -65,7 +66,8 @@ async function sendRecurringFailureEmail({ supabase, payment, reason, monthNumbe
       return;
     }
 
-    const logoUrl = `${APP_URL}/logo-confidance.png`;
+    const logoDataUri = getLogoDataUri();
+    const logoImgSrc = logoDataUri || `${APP_URL}/logo-confidance.png`;
     const label = payment.payment_label || 'Paiement récurrent';
     const category = payment.payment_category ? ` (${payment.payment_category})` : '';
     const tokenSymbol = payment.token_symbol || 'USDC';
@@ -120,7 +122,7 @@ async function sendRecurringFailureEmail({ supabase, payment, reason, monthNumbe
         <div style="margin-top: 32px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
           <p style="margin: 0 0 4px; font-size: 14px;">Albert.E,</p>
           <p style="margin: 0 0 16px; font-size: 14px; color: #6b7280;">Votre assistant technique.</p>
-          <img src="${logoUrl}" alt="Confidance" style="height: 36px; display: block; margin-bottom: 6px;" />
+          <img src="${logoImgSrc}" alt="Confidance" width="180" height="39" style="height: 39px; max-width: 180px; display: block; margin-bottom: 6px;" />
           <p style="margin: 0; font-size: 12px; color: #9ca3af;">Defi protocol</p>
         </div>
       </div>

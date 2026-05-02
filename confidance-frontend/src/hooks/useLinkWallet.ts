@@ -31,16 +31,22 @@ export function useLinkWallet() {
         setIsLinking(true);
         setError(null);
 
+        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+        if (!token) {
+          console.log('⏭️ [AUTO-LINK] Pas de token, liaison ignorée');
+          setIsLinking(false);
+          return;
+        }
+
         console.log('🔗 [AUTO-LINK] Tentative de liaison du wallet', address, 'pour user', user.email);
 
-        // Utiliser l'URL complète du backend
         const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
         const response = await fetch(`${backendUrl}/api/link-wallet`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
           },
-          credentials: 'include',
           body: JSON.stringify({
             wallet_address: address
           })
@@ -86,7 +92,7 @@ export function useLinkWallet() {
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [isAuthenticated, isConnected, address, user, isLinking]);
+  }, [isAuthenticated, isConnected, address, user?.id]);
 
   return { isLinking, error };
 }

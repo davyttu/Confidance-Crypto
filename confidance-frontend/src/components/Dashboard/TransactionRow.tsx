@@ -170,13 +170,20 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
     }
     // Parent row: always show the initial/reference amount (not the last executed installment).
     // When first month is custom, show first_month_amount (e.g. 3 USDC); otherwise monthly amount.
+    let amount: string;
     if (isFirstMonthCustom && payment.first_month_amount) {
-      return payment.first_month_amount;
+      amount = payment.first_month_amount;
+    } else if (payment.monthly_amount) {
+      amount = payment.monthly_amount;
+    } else {
+      amount = payment.amount;
     }
-    if (payment.monthly_amount) {
-      return payment.monthly_amount;
+    // For batch recurring: multiply by beneficiary count to show total (e.g. 3 beneficiaries × 2 USDC = 6 USDC)
+    if (payment.batch_beneficiaries && payment.batch_beneficiaries.length > 0) {
+      const count = payment.batch_beneficiaries.length;
+      return (BigInt(amount) * BigInt(count)).toString();
     }
-    return payment.amount;
+    return amount;
   };
 
   const getNextInstallmentAmount = () => {

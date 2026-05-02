@@ -1,11 +1,14 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { useAccount, useDisconnect } from 'wagmi';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useAccount, useChainId, useDisconnect, useReadContract } from 'wagmi';
+import { formatUnits, parseUnits } from 'viem';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { type TokenSymbol, getToken, getProtocolFeeBps } from '@/config/tokens';
+import { getRecurringFactoryAddress } from '@/lib/contracts/addresses';
+import { paymentFactoryAbi } from '@/lib/contracts/paymentFactoryAbi';
 import {
   getCustomTokens,
   saveCustomTokens,
@@ -91,6 +94,7 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
     at: number;
   }>({ meta: { decimalDigits: 0, hasDecimal: false }, transcript: '', at: 0 });
   const { address, isConnected } = useAccount();
+  const chainId = useChainId();
   const { disconnect } = useDisconnect();
   const { openConnectModal } = useConnectModal();
   const router = useRouter();
@@ -1476,7 +1480,7 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
 
   // État: paiement récurrent
   const [isRecurringMode, setIsRecurringMode] = useState(false);
-  const [recurringMonths, setRecurringMonths] = useState<number>(1);
+  const [recurringMonths, setRecurringMonths] = useState<number>(2);
 
   // État: type de paiement (instant / programmé / récurrent)
   const [paymentTiming, setPaymentTiming] = useState<PaymentTiming>('instant');
@@ -1537,22 +1541,119 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
     !!formData.customTokenAddress;
 
   const isProVerified = user?.accountType === 'professional' && user?.proStatus === 'verified';
-  const recurringFeeBps = getProtocolFeeBps({ isInstantPayment: false, isProVerified });
-  const recurringFeeRate = recurringFeeBps / 10000;
+  const recurringFeeBpsFallback = getProtocolFeeBps({ isInstantPayment: false, isProVerified });
+  const recurringFeeRateFallback = recurringFeeBpsFallback / 10000;
+
   const recurringAmountValue = Number.isFinite(parseFloat(formData.amount)) ? parseFloat(formData.amount) : 0;
-  const recurringMonthlyFee = recurringAmountValue * recurringFeeRate;
-  const recurringTotalPerMonth = recurringAmountValue + recurringMonthlyFee;
   const beneficiaryCount = isBatchMode ? 1 + additionalBeneficiaries.length : 1;
-  const recurringTotalPerMonthAll = recurringTotalPerMonth * beneficiaryCount;
   const firstMonthValue = Number.isFinite(parseFloat(firstMonthAmountInput)) ? parseFloat(firstMonthAmountInput) : 0;
   const hasCustomFirstMonth = isFirstMonthDifferent && firstMonthValue > 0;
-  const firstMonthAmount = hasCustomFirstMonth ? firstMonthValue : recurringAmountValue;
-  const firstMonthFee = firstMonthAmount * recurringFeeRate;
-  const firstMonthTotal = firstMonthAmount + firstMonthFee;
-  const firstMonthTotalAll = firstMonthTotal * beneficiaryCount;
+  const firstMonthAmountNum = hasCustomFirstMonth ? firstMonthValue : recurringAmountValue;
   const remainingMonths = Math.max(recurringMonths - 1, 0);
+
+  const recurringFactoryAddr = getRecurringFactoryAddress(chainId);
+
+  const recurringMonthlyWei = useMemo(() => {
+    if (!isRecurringMode || !isRecurringAvailable || recurringAmountValue <= 0) return undefined;
+    try {
+      const d = Math.min(18, effectiveToken.decimals);
+      return parseUnits(recurringAmountValue.toFixed(d), effectiveToken.decimals);
+    } catch {
+      return undefined;
+    }
+  }, [isRecurringMode, isRecurringAvailable, recurringAmountValue, effectiveToken.decimals]);
+
+  const firstMonthWei = useMemo(() => {
+    if (!isRecurringMode || !isRecurringAvailable || !hasCustomFirstMonth || firstMonthValue <= 0) return undefined;
+    try {
+      const d = Math.min(18, effectiveToken.decimals);
+      return parseUnits(firstMonthValue.toFixed(d), effectiveToken.decimals);
+    } catch {
+      return undefined;
+    }
+  }, [isRecurringMode, isRecurringAvailable, hasCustomFirstMonth, firstMonthValue, effectiveToken.decimals]);
+
+  // Récap : compte Pro Confidance → frais Pro affichés (bps app). Particulier → preview chaîne (aligné factory).
+  const enabledMonthlyPreview =
+    !isProVerified &&
+    paymentTiming === 'recurring' &&
+    isRecurringMode &&
+    isRecurringAvailable &&
+    !!recurringMonthlyWei &&
+    !!address;
+
+  const { data: onChainMonthlyProtocolFee } = useReadContract({
+    address: recurringFactoryAddr,
+    abi: paymentFactoryAbi,
+    functionName: 'previewFeePerMonth',
+    args: [
+      recurringMonthlyWei ?? 0n,
+      (address ?? '0x0000000000000000000000000000000000000000') as `0x${string}`,
+    ],
+    query: { enabled: enabledMonthlyPreview },
+  });
+
+  const enabledFirstPreview =
+    enabledMonthlyPreview && hasCustomFirstMonth && !!firstMonthWei && !!address;
+
+  const { data: onChainFirstProtocolFee } = useReadContract({
+    address: recurringFactoryAddr,
+    abi: paymentFactoryAbi,
+    functionName: 'previewFeePerMonth',
+    args: [
+      firstMonthWei ?? 0n,
+      (address ?? '0x0000000000000000000000000000000000000000') as `0x${string}`,
+    ],
+    query: { enabled: enabledFirstPreview },
+  });
+
+  const hasOnChainRecurringPreview =
+    enabledMonthlyPreview &&
+    onChainMonthlyProtocolFee !== undefined &&
+    recurringMonthlyWei !== undefined;
+
+  const recurringMonthlyFee = hasOnChainRecurringPreview
+    ? Number(formatUnits(onChainMonthlyProtocolFee as bigint, effectiveToken.decimals))
+    : recurringAmountValue * recurringFeeRateFallback;
+
+  const recurringTotalPerMonth = hasOnChainRecurringPreview
+    ? Number(
+        formatUnits(
+          recurringMonthlyWei + (onChainMonthlyProtocolFee as bigint),
+          effectiveToken.decimals
+        )
+      )
+    : recurringAmountValue + recurringMonthlyFee;
+
+  let firstMonthFee: number;
+  let firstMonthTotal: number;
+  if (!hasCustomFirstMonth) {
+    firstMonthFee = recurringMonthlyFee;
+    firstMonthTotal = recurringTotalPerMonth;
+  } else if (
+    enabledFirstPreview &&
+    onChainFirstProtocolFee !== undefined &&
+    firstMonthWei !== undefined
+  ) {
+    firstMonthFee = Number(formatUnits(onChainFirstProtocolFee as bigint, effectiveToken.decimals));
+    firstMonthTotal = Number(
+      formatUnits(firstMonthWei + (onChainFirstProtocolFee as bigint), effectiveToken.decimals)
+    );
+  } else {
+    firstMonthFee = firstMonthAmountNum * recurringFeeRateFallback;
+    firstMonthTotal = firstMonthAmountNum + firstMonthFee;
+  }
+
+  const recurringTotalPerMonthAll = recurringTotalPerMonth * beneficiaryCount;
+  const firstMonthTotalAll = firstMonthTotal * beneficiaryCount;
+
   const recurringTotalToApprove =
-    (firstMonthTotal + (remainingMonths * recurringTotalPerMonth)) * beneficiaryCount;
+    (firstMonthTotal + remainingMonths * recurringTotalPerMonth) * beneficiaryCount;
+
+  const recurringFeeBpsDisplay =
+    hasOnChainRecurringPreview && recurringMonthlyWei > 0n
+      ? Number(((onChainMonthlyProtocolFee as bigint) * 10000n) / recurringMonthlyWei)
+      : recurringFeeBpsFallback;
   const dateDiffSeconds = formData.releaseDate
     ? (formData.releaseDate.getTime() - Date.now()) / 1000
     : null;
@@ -2839,7 +2940,7 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
                   {isMounted && translationsReady ? t('create.date.monthsLabel') : 'Number of monthly payments'}
                 </label>
                 <div className="grid grid-cols-6 gap-2">
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((month) => (
+                  {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((month) => (
                     <button
                       key={month}
                       type="button"
@@ -3107,8 +3208,8 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600 dark:text-gray-400">
                     + {isMounted && translationsReady 
-                      ? t('create.summary.protocolFees', { percentage: (recurringFeeBps / 100).toString() })
-                      : `Protocol fees (${recurringFeeBps / 100}%)`}
+                      ? t('create.summary.protocolFees', { percentage: (recurringFeeBpsDisplay / 100).toString() })
+                      : `Protocol fees (${recurringFeeBpsDisplay / 100}%)`}
                   </span>
                   <span className="font-medium text-orange-600 dark:text-orange-400">
                     {recurringMonthlyFee.toFixed(6)} {effectiveToken.symbol}
