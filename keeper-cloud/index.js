@@ -50,6 +50,32 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+/**
+ * Normalise release_time depuis Supabase (bigint, nombre en ms, string ISO, etc.) en secondes Unix.
+ */
+function toUnixSecondsReleaseTime(value) {
+  if (value == null) return NaN;
+  if (typeof value === "number" && Number.isFinite(value)) {
+    if (value > 1e12) return Math.floor(value / 1000);
+    return Math.floor(value);
+  }
+  if (typeof value === "string") {
+    const t = value.trim();
+    if (/^\d+$/.test(t)) {
+      const n = Number(t);
+      if (!Number.isFinite(n)) return NaN;
+      if (n > 1e12) return Math.floor(n / 1000);
+      return Math.floor(n);
+    }
+    const parsed = Date.parse(t);
+    if (!Number.isNaN(parsed)) return Math.floor(parsed / 1000);
+  }
+  if (value != null && typeof value === "object" && typeof value.toString === "function") {
+    return toUnixSecondsReleaseTime(value.toString());
+  }
+  return NaN;
+}
+
 async function addTimelineEvent(payload) {
   try {
     const required = ["payment_id", "user_id", "event_type", "event_label", "actor_type", "explanation"];
@@ -384,7 +410,7 @@ async function loadScheduledPayments() {
           subType: isBatch ? "batch" : isERC20 ? "single_erc20" : "single_eth",
           id: row.id,
           contractAddress: row.contract_address,
-          releaseTime: row.release_time,
+          releaseTime: toUnixSecondsReleaseTime(row.release_time),
           amount: row.amount,
           tokenSymbol: tokenSymbol,
           tokenAddress: row.token_address,
@@ -402,7 +428,7 @@ async function loadScheduledPayments() {
         // ✅ FIX CRITIQUE : Filtrer UNIQUEMENT les paiements avec is_instant=true
         // Ne PAS filtrer les paiements programmés avec timeUntil négatif (ceux-là doivent être exécutés !)
         if (payment.is_instant === true) {
-          const releaseTime = Number(payment.releaseTime);
+          const releaseTime = toUnixSecondsReleaseTime(payment.releaseTime);
           const timeUntil = releaseTime - now;
           console.log(`   ⚠️ Paiement ${payment.id.substring(0, 8)} est instantané (is_instant=true), ignoré`);
           return false; // Exclure les paiements instantanés
@@ -558,11 +584,18 @@ async function markScheduledAsFailed(paymentId, errorMsg) {
       }
 
       const now = Math.floor(Date.now() / 1000);
-      const releaseTime = Number(paymentData.release_time);
-      const timeUntil = releaseTime - now;
+      const releaseTime = toUnixSecondsReleaseTime(paymentData.release_time);
+      const timeUntil = Number.isFinite(releaseTime) ? releaseTime - now : NaN;
+
+      if (paymentData.release_time != null && !Number.isFinite(releaseTime)) {
+        console.warn(
+          `   ⚠️ release_time illisible pour ${String(paymentId).substring(0, 8)}, abandon mark failed (vérifier la colonne en DB)`
+        );
+        return;
+      }
 
       // ✅ PROTECTION CRITIQUE : Ne JAMAIS marquer comme failed si le release_time n'est pas encore atteint
-      if (timeUntil > 0) {
+      if (Number.isFinite(timeUntil) && timeUntil > 0) {
         console.log(`   🛡️ PROTECTION: Tentative de marquer comme failed AVANT le release_time (${Math.floor(timeUntil / 60)}m restantes)`);
         console.log(`   ✅ Paiement ${paymentId.substring(0, 8)} reste en PENDING, ne sera PAS marqué comme failed`);
         console.log(`   📋 Raison bloquée: ${errorMsg.substring(0, 200)}`);
@@ -743,6 +776,58 @@ async function updateRecurringAfterExecution(paymentId, txHash, executedMonths, 
   }
 }
 
+/**
+ * Réaligne payment_links (pending/active → completed) pour tout récurrent déjà terminé
+ * avec un payment_link_id. Indispensable si le lien a été rempli après le passage en
+ * completed, ou si une ancienne version du keeper n’avait pas encore la synchro.
+ */
+async function syncPaymentLinksForCompletedRecurrings() {
+  try {
+    const { data: rows, error } = await supabase
+      .from("recurring_payments")
+      .select("payment_link_id")
+      .eq("status", "completed")
+      .not("payment_link_id", "is", null);
+
+    if (error) {
+      console.warn("   ⚠️ syncPaymentLinks (lecture recurring):", error.message);
+      return;
+    }
+    if (!rows?.length) return;
+
+    const ids = [
+      ...new Set(
+        rows
+          .map((r) => String(r.payment_link_id || "").trim())
+          .filter((plId) => plId.length > 0)
+      ),
+    ];
+
+    for (const plId of ids) {
+      const { error: linkUpdErr } = await supabase
+        .from("payment_links")
+        .update({
+          status: "completed",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", plId)
+        .in("status", ["pending", "active"]);
+
+      if (linkUpdErr) {
+        console.warn(`   ⚠️ syncPaymentLinks → payment_links ${plId}:`, linkUpdErr.message);
+      }
+    }
+
+    if (ids.length > 0) {
+      console.log(
+        `   🔗 syncPaymentLinks: ${ids.length} lien(s) source(s) vérifié(s) (récurrents completed + payment_link_id)`
+      );
+    }
+  } catch (e) {
+    console.warn("   ⚠️ syncPaymentLinks:", e.message || e);
+  }
+}
+
 async function markRecurringAsFailed(paymentId, errorMsg) {
   try {
     // ✅ FIX : Ne pas utiliser error_message ni last_execution_at si les colonnes n'existent pas
@@ -809,8 +894,17 @@ async function executeScheduledPayment(payment) {
     }
 
     // ✅ FIX CRITIQUE : Vérifier d'abord le release_time depuis la DB
-    const dbReleaseTime = Number(payment.releaseTime);
-    const timeUntilFromDB = dbReleaseTime - now;
+    const dbReleaseTime = toUnixSecondsReleaseTime(payment.releaseTime);
+    const timeUntilFromDB = Number.isFinite(dbReleaseTime) ? dbReleaseTime - now : NaN;
+
+    if (!Number.isFinite(dbReleaseTime)) {
+      console.error(`   ❌ release_time invalide ou illisible en DB: ${JSON.stringify(payment.releaseTime)}`);
+      await markScheduledAsFailed(
+        payment.id,
+        "release_time invalide en base (attendu: unix secondes ou date ISO). Corriger la ligne scheduled_payments."
+      );
+      return;
+    }
 
     console.log(`   ⏰ Release time (DB): ${new Date(dbReleaseTime * 1000).toLocaleString()}`);
     console.log(`   ⏰ Current time: ${new Date(now * 1000).toLocaleString()}`);
@@ -820,12 +914,6 @@ async function executeScheduledPayment(payment) {
       const seconds = timeUntilFromDB % 60;
       console.log(`   ⏳ Encore ${minutes}m ${seconds}s (vérification depuis DB, pas d'appel contrat)`);
       console.log(`   ✅ Paiement reste en PENDING, aucun appel au contrat avant le release_time`);
-      return;
-    }
-
-    // ✅ PROTECTION : Ne jamais appeler le contrat si le release_time n'est pas encore atteint
-    if (timeUntilFromDB > 0) {
-      console.log(`   ⚠️ PROTECTION: Release_time pas encore atteint, retour anticipé`);
       return;
     }
 
@@ -1069,20 +1157,22 @@ async function executeScheduledPayment(payment) {
     if (error.reason) console.error(`   📋 Error reason:`, error.reason);
 
     try {
-      const dbReleaseTime = Number(payment.releaseTime);
+      const dbReleaseTime = toUnixSecondsReleaseTime(payment.releaseTime);
       const now = Math.floor(Date.now() / 1000);
-      const timeUntilFromDB = dbReleaseTime - now;
+      const timeUntilFromDB = Number.isFinite(dbReleaseTime) ? dbReleaseTime - now : NaN;
 
       console.log(
-        `   🔍 Vérification release_time dans catch: ${new Date(dbReleaseTime * 1000).toLocaleString()}, maintenant: ${new Date(now * 1000).toLocaleString()}, temps restant: ${Math.floor(
-          timeUntilFromDB / 60
-        )}m ${timeUntilFromDB % 60}s`
+        `   🔍 Vérification release_time dans catch: ${
+          Number.isFinite(dbReleaseTime) ? new Date(dbReleaseTime * 1000).toLocaleString() : "invalid"
+        }, maintenant: ${new Date(now * 1000).toLocaleString()}, temps restant: ${
+          Number.isFinite(timeUntilFromDB) ? `${Math.floor(timeUntilFromDB / 60)}m ${timeUntilFromDB % 60}s` : "n/a"
+        }`
       );
 
       if (errorMsg.includes("Already released")) {
         console.log(`   ✅ Already released`);
         await markScheduledAsReleased(payment.id, "already_released");
-      } else if (timeUntilFromDB > 60) {
+      } else if (Number.isFinite(timeUntilFromDB) && timeUntilFromDB > 60) {
         console.log(
           `   ⚠️ Erreur mais release_time pas encore atteint (${Math.floor(timeUntilFromDB / 60)}m ${timeUntilFromDB % 60}s restantes), on réessaiera plus tard`
         );
@@ -1098,11 +1188,15 @@ async function executeScheduledPayment(payment) {
         });
 
         return;
-      } else if (timeUntilFromDB <= -300) {
+      } else if (Number.isFinite(timeUntilFromDB) && timeUntilFromDB <= -300) {
         console.log(`   ⚠️ Release_time passé depuis ${Math.floor(-timeUntilFromDB / 60)}m, marquant comme failed`);
         await markScheduledAsFailed(payment.id, errorMsg);
       } else {
-        console.log(`   ⚠️ Erreur mais release_time vient d'être atteint (${Math.floor(timeUntilFromDB / 60)}m), on réessaiera au prochain check`);
+        console.log(
+          `   ⚠️ Erreur mais release_time vient d'être atteint (${
+            Number.isFinite(timeUntilFromDB) ? `${Math.floor(timeUntilFromDB / 60)}m` : "?"
+          }), on réessaiera au prochain check`
+        );
         console.log(`   📋 Erreur: ${errorMsg.substring(0, 200)}`);
         console.log(`   ✅ Paiement reste en PENDING pour le moment`);
         return;
@@ -1557,16 +1651,17 @@ async function healthCheck() {
       });
     }
 
-    // Vérifier connexion Supabase (2 tables) - Filtrer par réseau
-    const { data: scheduled, error: err1 } = await supabase
+    // Vérifier connexion Supabase (2 tables) — mêmes filtres que loadScheduledPayments / loadRecurringPayments
+    const { count: scheduledCount, error: err1 } = await supabase
       .from("scheduled_payments")
-      .select("count", { count: "exact", head: true })
+      .select("id", { count: "exact", head: true })
       .eq("status", "pending")
+      .or("is_instant.is.null,is_instant.eq.false")
       .eq("network", NETWORK_STRING);
 
-    const { data: recurring, error: err2 } = await supabase
+    const { count: recurringCount, error: err2 } = await supabase
       .from("recurring_payments")
-      .select("count", { count: "exact", head: true })
+      .select("id", { count: "exact", head: true })
       .in("status", ["pending", "active"])
       .eq("network", NETWORK_STRING);
 
@@ -1579,7 +1674,9 @@ async function healthCheck() {
         error2: err2 ? err2.message : null,
       });
     } else {
-      console.log(`✅ Supabase OK (${scheduled || 0} scheduled, ${recurring || 0} recurring)`);
+      console.log(
+        `✅ Supabase OK (${scheduledCount ?? 0} scheduled pending non-instant, ${recurringCount ?? 0} recurring pending/active)`
+      );
     }
   } catch (error) {
     console.error("❌ Health check failed:", error.message);
@@ -1628,8 +1725,10 @@ async function start() {
 
   await healthCheck();
   await checkAndExecuteAll();
+  await syncPaymentLinksForCompletedRecurrings();
 
   setInterval(checkAndExecuteAll, CHECK_INTERVAL);
+  setInterval(syncPaymentLinksForCompletedRecurrings, 5 * 60 * 1000);
   setInterval(healthCheck, 5 * 60 * 1000);
   setInterval(selfPing, 5 * 60 * 1000);
 
