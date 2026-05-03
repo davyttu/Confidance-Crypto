@@ -1475,6 +1475,13 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
     };
   };
   const effectiveToken = getEffectiveToken();
+  const customTokenPayload = formData.customTokenAddress
+    ? {
+        address: formData.customTokenAddress as `0x${string}`,
+        decimals: effectiveToken.decimals,
+        symbol: effectiveToken.symbol,
+      }
+    : undefined;
 
   const { suggestedCategory, confidence, matchedKeywords } = useSuggestedCategory(formData.label);
 
@@ -1759,7 +1766,7 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
   };
 
   // Validation date
-  const validateDate = (date: Date | null): string | null => {
+  const validateDate = (date: Date | null, allowNearNow: boolean): string | null => {
     if (!date) {
       return translate('create.validation.dateRequired', 'Choose a date');
     }
@@ -1767,17 +1774,17 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
     const now = new Date();
     const diffInSeconds = (date.getTime() - now.getTime()) / 1000;
     
+    // Paiement instantané : tolérer un léger retard (horloge/latence)
+    if (allowNearNow && diffInSeconds >= -60 && diffInSeconds < 60) {
+      return null;
+    }
+
     // Vérifier si la date est dans le passé
     if (diffInSeconds < 0) {
       return translate(
         'create.validation.datePast',
         'This date is in the past. Please choose a future date.'
       );
-    }
-    
-    // Si c'est un paiement instantané (moins d'1 minute), on ne valide pas
-    if (diffInSeconds < 60) {
-      return null; // Paiement instantané, pas d'erreur
     }
 
     const minDate = new Date(now.getTime() + 10 * 60 * 1000);
@@ -1814,6 +1821,7 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
       const date = new Date();
       date.setSeconds(date.getSeconds() + 30);
       handleDateChange(date);
+      setErrors((prev) => ({ ...prev, date: '' }));
     }
 
     if (nextTiming === 'scheduled') {
@@ -1840,15 +1848,23 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
       const date = new Date();
       date.setSeconds(date.getSeconds() + 30);
       setFormData((prev) => ({ ...prev, releaseDate: date }));
+      setErrors((prev) => ({ ...prev, date: '' }));
     }
   }, [paymentTiming, formData.releaseDate]);
 
   useEffect(() => {
-    if (paymentTiming === 'scheduled' && !formData.releaseDate) {
+    if (paymentTiming !== 'scheduled') return;
+    const now = new Date();
+    const minDate = new Date(now.getTime() + 10 * 60 * 1000);
+    const needsDefault =
+      !formData.releaseDate ||
+      formData.releaseDate.getTime() < minDate.getTime();
+    if (needsDefault) {
       const date = new Date();
       date.setMinutes(date.getMinutes() + 20);
       date.setSeconds(0, 0);
       setFormData((prev) => ({ ...prev, releaseDate: date }));
+      setErrors((prev) => ({ ...prev, date: '' }));
     }
   }, [paymentTiming, formData.releaseDate]);
 
@@ -1976,7 +1992,7 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
   const handleDateChange = (date: Date) => {
     setFormData((prev) => ({ ...prev, releaseDate: date }));
 
-    const error = validateDate(date);
+    const error = validateDate(date, paymentTiming === 'instant');
     setErrors((prev) => ({ ...prev, date: error || '' }));
   };
 
@@ -2037,7 +2053,15 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
       newErrors.amount = amountError;
     }
 
-    const dateError = validateDate(formData.releaseDate);
+    let releaseDateToUse = formData.releaseDate;
+    if (!releaseDateToUse && paymentTiming === 'instant') {
+      const date = new Date();
+      date.setSeconds(date.getSeconds() + 30);
+      releaseDateToUse = date;
+      setFormData((prev) => ({ ...prev, releaseDate: date }));
+    }
+
+    const dateError = validateDate(releaseDateToUse, paymentTiming === 'instant');
     if (dateError) {
       newErrors.date = dateError;
     }
@@ -2070,6 +2094,7 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
       setErrors(newErrors);
       return;
     }
+    setErrors({});
 
     console.log('✅ [FORM SUBMIT] Validation passée, préparation des données...');
 
@@ -2092,7 +2117,7 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
       return BigInt(Math.floor(firstNum * 10 ** effectiveToken.decimals));
     })();
 
-    const releaseTime = Math.floor(formData.releaseDate!.getTime() / 1000);
+    const releaseTime = Math.floor(releaseDateToUse!.getTime() / 1000);
 
     console.log('📋 [FORM SUBMIT] Données préparées:', {
       tokenSymbol: formData.tokenSymbol,

@@ -44,7 +44,7 @@ export interface UseTokenApprovalReturn {
   currentAllowance: bigint | undefined;
   isAllowanceSufficient: boolean;
   isCheckingAllowance: boolean;
-  approve: (amountOverride?: bigint, tokenSymbolOverride?: TokenSymbol, tokenAddressOverride?: `0x${string}`) => void; // ✅ FIX : Permettre de passer un montant, tokenSymbol et tokenAddress override
+  approve: (amountOverride?: bigint, tokenSymbolOverride?: TokenSymbol, tokenAddressOverride?: `0x${string}`) => Promise<void>; // ✅ FIX : Permettre de passer un montant, tokenSymbol et tokenAddress override
   isApproving: boolean;
   isApproveSuccess: boolean;
   approveError: Error | null;
@@ -109,6 +109,7 @@ export function useTokenApproval({
   // 2. Écrire la transaction d'approbation
   const {
     writeContract,
+    writeContractAsync,
     data: approveTxHash,
     error: approveError,
     reset,
@@ -247,7 +248,7 @@ export function useTokenApproval({
       currentAllowance: BigInt(0),
       isAllowanceSufficient: true,
       isCheckingAllowance: false,
-      approve: () => {
+      approve: async () => {
         console.warn('⚠️ Tentative d\'approbation pour token natif (ETH), ignorée');
       },
       isApproving: false,
@@ -267,7 +268,7 @@ export function useTokenApproval({
     && currentAllowance >= totalAmountToApprove;
 
   // ✅ MODIFIÉ : Approuver le montant TOTAL (avec possibilité d'override pour montant, tokenSymbol et tokenAddress)
-  const approve = (amountOverride?: bigint, tokenSymbolOverride?: TokenSymbol, tokenAddressOverride?: `0x${string}`) => {
+  const approve = async (amountOverride?: bigint, tokenSymbolOverride?: TokenSymbol, tokenAddressOverride?: `0x${string}`) => {
     // ✅ FIX CRITIQUE : Utiliser le tokenSymbol et tokenAddress override si fournis, sinon utiliser ceux du hook
     const finalTokenSymbol = tokenSymbolOverride || tokenSymbol;
     const finalToken = tokenSymbolOverride ? getToken(tokenSymbolOverride) : token;
@@ -461,12 +462,36 @@ export function useTokenApproval({
         tokenDecimals: finalToken.decimals,
       });
       
-      writeContract({
-        address: finalTokenAddress,
-        abi: erc20Abi,
-        functionName: 'approve',
-        args: [spenderAddress, amountAsBigInt],
-      });
+      if (publicClient && userAddress) {
+        const { request } = await publicClient.simulateContract({
+          account: userAddress,
+          address: finalTokenAddress,
+          abi: erc20Abi,
+          functionName: 'approve',
+          args: [spenderAddress, amountAsBigInt],
+        });
+        if (writeContractAsync) {
+          const hash = await writeContractAsync(request);
+          console.log('✅ [useTokenApproval] Hash reçu:', hash);
+        } else {
+          writeContract(request);
+        }
+      } else if (writeContractAsync) {
+        const hash = await writeContractAsync({
+          address: finalTokenAddress,
+          abi: erc20Abi,
+          functionName: 'approve',
+          args: [spenderAddress, amountAsBigInt],
+        });
+        console.log('✅ [useTokenApproval] Hash reçu:', hash);
+      } else {
+        writeContract({
+          address: finalTokenAddress,
+          abi: erc20Abi,
+          functionName: 'approve',
+          args: [spenderAddress, amountAsBigInt],
+        });
+      }
       
       console.log('✅ [useTokenApproval] writeContract appelé pour approbation (pas d\'erreur immédiate)');
       console.log('💡 [useTokenApproval] Si MetaMask annule la transaction, vérifiez:');

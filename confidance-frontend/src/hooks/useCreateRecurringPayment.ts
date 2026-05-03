@@ -142,6 +142,8 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
   const [currentParams, setCurrentParams] = useState<CreateRecurringPaymentParams | null>(null);
   const [progressMessage, setProgressMessage] = useState<string>('');
   const [capturedPayerAddress, setCapturedPayerAddress] = useState<`0x${string}` | undefined>();
+  /** Conservé jusqu’au POST /recurring (évite perte si currentParams est stale). */
+  const capturedPaymentLinkIdRef = useRef<string | null>(null);
 
   // Guest email
   const [guestEmail, setGuestEmail] = useState<string>('');
@@ -207,6 +209,7 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
       setError(null);
       setCurrentParams(params);
       setCapturedPayerAddress(address);
+      capturedPaymentLinkIdRef.current = params.paymentLinkId?.trim() || null;
       hasCalledWriteContract.current = false;
 
       // Validation : Tokens supportés (USDC/USDT uniquement)
@@ -671,6 +674,10 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
           const params = currentParams;
           const userAddress = capturedPayerAddress;
           const tokenData = params ? getToken(params.tokenSymbol) : null;
+          const paymentLinkIdForApi =
+            capturedPaymentLinkIdRef.current?.trim() ||
+            params?.paymentLinkId?.trim() ||
+            null;
 
           if (!params || !userAddress) {
             console.error('❌ Paramètres manquants pour enregistrement');
@@ -728,9 +735,7 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
               transaction_hash: createTxHash,
               payment_label: params.label || '',
               payment_category: params.category || '',
-              ...(params.paymentLinkId?.trim()
-                ? { payment_link_id: params.paymentLinkId.trim() }
-                : {}),
+              payment_link_id: paymentLinkIdForApi,
               ...(isAuthenticated && user ? { user_id: user.id } : { guest_email: guestEmail }),
             }),
           });
@@ -845,6 +850,7 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
     setCurrentParams(null);
     setProgressMessage('');
     setCapturedPayerAddress(undefined);
+    capturedPaymentLinkIdRef.current = null;
     setMonthlyFee(null);
     setTotalPerMonth(null);
     setTotalRequired(null);

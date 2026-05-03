@@ -35,6 +35,8 @@ router.post('/', async (req, res) => {
       cancellable,
       network,
       transaction_hash,
+      is_instant,
+      payment_type,
       user_id,        // ✅ Fourni si utilisateur connecté
       guest_email     // ✅ Fourni si utilisateur invité
     } = req.body;
@@ -47,23 +49,21 @@ router.post('/', async (req, res) => {
     // Déterminer si user connecté ou invité
     let ticket_number = null;
 
-    if (!user_id) {
-      // Mode INVITÉ
-      if (!guest_email) {
-        return res.status(400).json({ 
-          error: 'Email requis pour les utilisateurs invités' 
-        });
-      }
+    if (!user_id && guest_email) {
+      // Mode invité avec email fourni
       ticket_number = generateTicketNumber();
     }
+
+    const normalizedPayer = payer_address?.toLowerCase();
+    const normalizedPayee = payee_address?.toLowerCase();
 
     // Enregistrer dans Supabase
     const { data: payment, error } = await supabase
       .from('scheduled_payments')
       .insert({
         contract_address,
-        payer_address,
-        payee_address,
+        payer_address: normalizedPayer,
+        payee_address: normalizedPayee,
         token_symbol: token_symbol || 'ETH',
         token_address,
         amount,
@@ -71,6 +71,8 @@ router.post('/', async (req, res) => {
         cancellable: cancellable || false,
         network: network || 'base_mainnet',
         transaction_hash,
+        is_instant: !!is_instant,
+        payment_type: payment_type || (is_instant ? 'instant' : 'scheduled'),
         user_id: user_id || null,
         guest_email: guest_email || null,
         ticket_number,
@@ -219,10 +221,10 @@ router.get('/:walletAddress', async (req, res) => {
     // ✅ ÉTAPE 3 : COMBINER les deux types avec flag is_recurring
     const allPayments = [
       // Paiements simples/batch (is_recurring = false)
-      ...(simplePayments || []).map(p => ({ 
-        ...p, 
+      ...(simplePayments || []).map(p => ({
+        ...p,
         is_recurring: false,
-        payment_type: 'simple' 
+        payment_type: p.payment_type || (p.is_instant ? 'instant' : 'scheduled')
       })),
       // Paiements récurrents (is_recurring = true)
       ...(recurringPayments || []).map(p => {

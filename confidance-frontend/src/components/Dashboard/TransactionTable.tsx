@@ -676,10 +676,12 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete, userA
                   beneficiaries.push(beneficiary);
                 }
               } else {
-                const key = child.payee_address.toLowerCase();
+                const rawPayee = typeof child.payee_address === 'string' ? child.payee_address : '';
+                if (!rawPayee) continue;
+                const key = rawPayee.toLowerCase();
                 if (seen.has(key)) continue;
                 seen.add(key);
-                beneficiaries.push({ address: child.payee_address, amount: child.amount });
+                beneficiaries.push({ address: rawPayee, amount: child.amount });
               }
             }
             const txHash =
@@ -736,7 +738,7 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete, userA
               for (let monthIndex = 0; monthIndex < totalMonths; monthIndex++) {
                 const statuses = perChild.map((entry) => entry.monthlyStatuses[monthIndex] || 'pending');
                 const details = batchChildren.map((child, i) => ({
-                  address: child.payee_address,
+                  address: child.payee_address || '',
                   status: statuses[i] || 'pending',
                 }));
                 batchMonthDetails.push(details);
@@ -999,11 +1001,23 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete, userA
 
   // Filtrer et trier les paiements
   const processedPayments = useMemo(() => {
+    const recurringParentsWithInstances = new Set(
+      expandedPayments
+        .filter((payment) => payment.__recurringInstance && payment.__parentId)
+        .map((payment) => payment.__parentId as string)
+    );
     let filtered = expandedPayments.filter((payment) => {
       if (showRecurringParentsOnly && (payment.is_recurring || payment.payment_type === 'recurring')) return true;
       if (payment.__recurringInstance) return true;
       const isRecurringParent = payment.is_recurring || payment.payment_type === 'recurring';
-      if (isRecurringParent && isIncomingForPayment(payment) && !isOutgoingForPayment(payment)) return false;
+      if (
+        isRecurringParent &&
+        isIncomingForPayment(payment) &&
+        !isOutgoingForPayment(payment) &&
+        recurringParentsWithInstances.has(payment.id)
+      ) {
+        return false;
+      }
       return true;
     });
 
@@ -1038,7 +1052,7 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete, userA
             ? payment.category
             : '';
         const mainMatch =
-          payment.payee_address.toLowerCase().includes(searchLower) ||
+          Boolean(payment.payee_address?.toLowerCase().includes(searchLower)) ||
           (beneficiaryName && beneficiaryName.toLowerCase().includes(searchLower));
         const batchMatch = Array.isArray(payment.batch_beneficiaries) && payment.batch_beneficiaries.some(
           (b) => {
@@ -1064,11 +1078,12 @@ export function TransactionTable({ payments, onRename, onCancel, onDelete, userA
       const aIsInstance = Boolean(a.__recurringInstance);
       const bIsInstance = Boolean(b.__recurringInstance);
       switch (sortField) {
-        case 'beneficiary':
-          comparison = (getBeneficiaryName(a.payee_address) || a.payee_address).localeCompare(
-            getBeneficiaryName(b.payee_address) || b.payee_address
-          );
+        case 'beneficiary': {
+          const aLabel = (getBeneficiaryName(a.payee_address) || a.payee_address || '').toString();
+          const bLabel = (getBeneficiaryName(b.payee_address) || b.payee_address || '').toString();
+          comparison = aLabel.localeCompare(bLabel);
           break;
+        }
 
         case 'amount':
           comparison = Number(BigInt(a.amount) - BigInt(b.amount));

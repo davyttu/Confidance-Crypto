@@ -959,7 +959,7 @@
       "message": "Tu destinatario recibirá los fondos en {{chain}}. Asegúrate de que su cartera soporta esta red.",
       "checklistTitle": "Checklist para una transacción sin problemas",
       "checklistToggle": "Checklist",
-      "switchHint": "¿Quieres cambiar de blockchain? Usa el selector de red arriba a la derecha — ¡un clic y listo!"
+      "switchHint": "Los pagos son en Base. Si tu cartera está en otra red, cámbiala desde la cartera (arriba a la derecha)."
     },
     "blockchainChecklist": {
       "address": "He verificado la dirección del destinatario",

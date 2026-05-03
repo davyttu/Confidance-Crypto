@@ -244,6 +244,8 @@ export function useCreatePayment(): UseCreatePaymentReturn {
   // ✅ FIX : Flag pour éviter les enregistrements multiples
   const isSavingRef = useRef<boolean>(false);
   const savedContractAddressRef = useRef<`0x${string}` | undefined>(undefined);
+  const isSubmittingRef = useRef<boolean>(false);
+  const [createTxHashOverride, setCreateTxHashOverride] = useState<`0x${string}` | undefined>(undefined);
   // ✅ FIX CRITIQUE : Ref pour toujours avoir la dernière instance du hook d'approbation
   const approvalHookRef = useRef<UseTokenApprovalReturn | null>(null);
   // ✅ FIX : Ref pour le timeout de sécurité du processus de création
@@ -256,11 +258,52 @@ export function useCreatePayment(): UseCreatePaymentReturn {
   // Hook pour écrire les transactions
   const {
     writeContract,
+    writeContractAsync,
     data: createTxHash,
     error: writeError,
     reset: resetWrite,
     isPending: isWritePending,
   } = useWriteContract();
+
+  const effectiveCreateTxHash = createTxHashOverride || createTxHash;
+
+  const sendContract = async (
+    requestConfig: {
+      abi: any;
+      address: `0x${string}`;
+      functionName: string;
+      args: any[];
+      value?: bigint;
+    },
+    label: string
+  ) => {
+    try {
+      if (publicClient && address) {
+        const { request } = await publicClient.simulateContract({
+          account: address,
+          ...requestConfig,
+        });
+        if (writeContractAsync) {
+          const hash = await writeContractAsync(request);
+          setCreateTxHashOverride(hash);
+          console.log(`✅ [${label}] Hash reçu:`, hash);
+        } else {
+          writeContract(request);
+        }
+        return;
+      }
+      if (writeContractAsync) {
+        const hash = await writeContractAsync(requestConfig as any);
+        setCreateTxHashOverride(hash);
+        console.log(`✅ [${label}] Hash reçu:`, hash);
+      } else {
+        writeContract(requestConfig as any);
+      }
+    } catch (error) {
+      console.error(`❌ [${label}] Envoi transaction échoué`, error);
+      throw error;
+    }
+  };
 
   // Attendre confirmation de la transaction de création
   const {
@@ -269,14 +312,14 @@ export function useCreatePayment(): UseCreatePaymentReturn {
     error: confirmError,
     data: receipt,
   } = useWaitForTransactionReceipt({
-    hash: createTxHash,
+    hash: effectiveCreateTxHash,
   });
   
   // ✅ FIX : Logs pour suivre la confirmation de la transaction
   useEffect(() => {
-    if (createTxHash) {
+    if (effectiveCreateTxHash) {
       console.log('📋 État confirmation transaction:', {
-        hash: createTxHash,
+        hash: effectiveCreateTxHash,
         isConfirming,
         isConfirmed,
         hasReceipt: !!receipt,
@@ -284,11 +327,11 @@ export function useCreatePayment(): UseCreatePaymentReturn {
         confirmError: confirmError?.message,
       });
     }
-  }, [createTxHash, isConfirming, isConfirmed, receipt, confirmError]);
+  }, [effectiveCreateTxHash, isConfirming, isConfirmed, receipt, confirmError]);
   
   // ✅ FIX : Mettre à jour le statut quand la transaction est confirmée
   useEffect(() => {
-    if (isConfirmed && createTxHash && status === 'creating') {
+    if (isConfirmed && effectiveCreateTxHash && status === 'creating') {
       console.log('✅ Transaction confirmée, passage à confirming...');
       setStatus('confirming');
       setProgressMessage(
@@ -297,7 +340,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
         })
       );
     }
-  }, [isConfirmed, createTxHash, status]);
+  }, [isConfirmed, effectiveCreateTxHash, status]);
 
   // Hook d'approbation (pour ERC20)
   // ✅ FIX CRITIQUE : Ne pas créer le hook si currentParams n'est pas défini
@@ -362,6 +405,11 @@ export function useCreatePayment(): UseCreatePaymentReturn {
 
   // Fonction principale de création
   const createPayment = async (params: CreatePaymentParams) => {
+    if (isSubmittingRef.current) {
+      console.warn('⚠️ createPayment ignoré: une transaction est déjà en cours.');
+      return;
+    }
+    isSubmittingRef.current = true;
     console.log('🚀🚀🚀 [DEBUT] createPayment appelé 🚀🚀🚀');
     console.log('📋 [DEBUT] Paramètres reçus:', {
       tokenSymbol: params.tokenSymbol,
@@ -386,6 +434,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
 
     try {
       setError(null);
+      setCreateTxHashOverride(undefined);
       // ✅ FIX : Réinitialiser le hash d'approbation pour cette nouvelle tentative
       currentApproveTxHash.current = undefined;
       const tokenData = params.customToken
@@ -550,13 +599,16 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             valueToSendFormatted: `${(Number(params.amount) / 1e18).toFixed(6)} ETH`,
           });
 
-          writeContract({
-            abi: factoryAbi,
-            address: factoryAddress,
-            functionName: 'createInstantPaymentETH',
-            args: [params.beneficiary],
-            value: params.amount, // ✅ Montant exact, pas de fees
-          });
+          await sendContract(
+            {
+              abi: factoryAbi,
+              address: factoryAddress,
+              functionName: 'createInstantPaymentETH',
+              args: [params.beneficiary],
+              value: params.amount, // ✅ Montant exact, pas de fees
+            },
+            'ETH INSTANTANÉ'
+          );
           console.log('✅ [ETH INSTANTANÉ] writeContract appelé (pas d\'erreur synchrone)');
           console.log('⏳ [ETH INSTANTANÉ] Attente de la réponse MetaMask...');
         } else {
@@ -565,8 +617,61 @@ export function useCreatePayment(): UseCreatePaymentReturn {
           setProgressMessage(t('create.modal.creatingPaymentETH', { defaultValue: 'Creating ETH payment...' }));
 
           const amountToPayee = params.amount;
-          const protocolFee = (amountToPayee * BigInt(feeBpsForPayment)) / BigInt(10000);
-          const totalRequired = amountToPayee + protocolFee;
+          const baseFeeCandidates = [
+            feeBpsForPayment,
+            PROTOCOL_FEE_BPS_PARTICULAR,
+            PROTOCOL_FEE_BPS_PRO,
+            0,
+          ];
+          const uniqueFeeCandidates = Array.from(new Set(baseFeeCandidates));
+          let effectiveFeeBps = feeBpsForPayment;
+          let protocolFee = (amountToPayee * BigInt(effectiveFeeBps)) / BigInt(10000);
+          let totalRequired = amountToPayee + protocolFee;
+          const releaseTime = BigInt(params.releaseTime);
+
+          const trySimulate = async (value: bigint) => {
+            if (!publicClient || !address) return true;
+            try {
+              await publicClient.simulateContract({
+                account: address,
+                abi: factoryAbi,
+                address: factoryAddress,
+                functionName: 'createPaymentETH',
+                args: [
+                  params.beneficiary,
+                  amountToPayee,
+                  releaseTime,
+                  params.cancellable || false,
+                ],
+                value,
+              });
+              return true;
+            } catch (error) {
+              console.warn('⚠️ [ETH PROGRAMMÉ] Simulation failed for value:', value.toString(), error);
+              return false;
+            }
+          };
+
+          if (publicClient && address) {
+            let matched = false;
+            for (const candidate of uniqueFeeCandidates) {
+              const candidateFee = (amountToPayee * BigInt(candidate)) / BigInt(10000);
+              const candidateTotal = amountToPayee + candidateFee;
+              const ok = await trySimulate(candidateTotal);
+              if (ok) {
+                effectiveFeeBps = candidate;
+                protocolFee = candidateFee;
+                totalRequired = candidateTotal;
+                matched = true;
+                break;
+              }
+            }
+            if (!matched) {
+              throw new Error(
+                'La simulation du paiement programmé a échoué. Vérifiez la date et le montant.'
+              );
+            }
+          }
 
           console.log('💰 Calcul paiement programmé:', {
             amountToPayee: amountToPayee.toString(),
@@ -583,22 +688,26 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             releaseTime: params.releaseTime,
             releaseTimeDate: new Date(params.releaseTime * 1000).toISOString(),
             cancellable: params.cancellable || false,
+            feeBps: effectiveFeeBps,
             valueToSend: totalRequired.toString(),
             valueToSendFormatted: `${(Number(totalRequired) / 1e18).toFixed(6)} ETH`,
           });
 
-          writeContract({
-            abi: factoryAbi,
-            address: factoryAddress,
-            functionName: 'createPaymentETH',
-            args: [
-              params.beneficiary,
-              amountToPayee,
-              BigInt(params.releaseTime),
-              params.cancellable || false,
-            ],
-            value: totalRequired,
-          });
+          await sendContract(
+            {
+              abi: factoryAbi,
+              address: factoryAddress,
+              functionName: 'createPaymentETH',
+              args: [
+                params.beneficiary,
+                amountToPayee,
+                releaseTime,
+                params.cancellable || false,
+              ],
+              value: totalRequired,
+            },
+            'ETH PROGRAMMÉ'
+          );
           console.log('✅ [ETH PROGRAMMÉ] writeContract appelé (pas d\'erreur synchrone)');
           console.log('⏳ [ETH PROGRAMMÉ] Attente de la réponse MetaMask...');
         }
@@ -650,16 +759,19 @@ export function useCreatePayment(): UseCreatePaymentReturn {
               amount: params.amount.toString(),
             });
 
-            writeContract({
-              abi: factoryAbi,
-              address: factoryAddress,
-              functionName: 'createInstantPaymentERC20',
-              args: [
-                params.beneficiary,
-                tokenData.address as `0x${string}`,
-                params.amount, // ✅ Montant exact, pas de fees
-              ],
-            });
+            await sendContract(
+              {
+                abi: factoryAbi,
+                address: factoryAddress,
+                functionName: 'createInstantPaymentERC20',
+                args: [
+                  params.beneficiary,
+                  tokenData.address as `0x${string}`,
+                  params.amount, // ✅ Montant exact, pas de fees
+                ],
+              },
+              'ERC20 INSTANTANÉ'
+            );
           }
         } else {
           // PAIEMENT PROGRAMMÉ ERC20 (taux selon statut)
@@ -1043,6 +1155,8 @@ export function useCreatePayment(): UseCreatePaymentReturn {
       setError(err as Error);
       setStatus('error');
       setProgressMessage(t('create.modal.errorCreating', { defaultValue: 'Error during creation' }));
+    } finally {
+      isSubmittingRef.current = false;
     }
   };
 
@@ -1223,7 +1337,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
           console.error('❌ État actuel:', {
             status: currentStatus,
             approveTxHash: approvalHook.approveTxHash,
-            createTxHash,
+            createTxHash: effectiveCreateTxHash,
             isApproveSuccess: approvalHook.isApproveSuccess,
             approveError: approvalHook.approveError?.message,
             contractAddress: contractAddressRef.current,
@@ -1819,16 +1933,19 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             amount: currentParams.amount.toString(),
           });
           console.log('📤 Appel writeContract pour créer le paiement instantané...');
-          writeContract({
-            abi: factoryAbi,
-            address: factoryAddress,
-            functionName: 'createInstantPaymentERC20',
-            args: [
-              currentParams.beneficiary,
-              token.address as `0x${string}`,
-              currentParams.amount,
-            ],
-          });
+          await sendContract(
+            {
+              abi: factoryAbi,
+              address: factoryAddress,
+              functionName: 'createInstantPaymentERC20',
+              args: [
+                currentParams.beneficiary,
+                token.address as `0x${string}`,
+                currentParams.amount,
+              ],
+            },
+            'ERC20 INSTANTANÉ (POST-APPROVAL)'
+          );
           console.log('✅ writeContract appelé pour paiement instantané');
         } else {
           // PROGRAMMÉ
@@ -1841,18 +1958,21 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             cancellable: currentParams.cancellable || false,
           });
           console.log('📤 Appel writeContract pour créer le paiement programmé...');
-          writeContract({
-            abi: factoryAbi,
-            address: factoryAddress,
-            functionName: 'createPaymentERC20',
-            args: [
-              currentParams.beneficiary,
-              token.address as `0x${string}`,
-              currentParams.amount,
-              BigInt(currentParams.releaseTime),
-              currentParams.cancellable || false,
-            ],
-          });
+          await sendContract(
+            {
+              abi: factoryAbi,
+              address: factoryAddress,
+              functionName: 'createPaymentERC20',
+              args: [
+                currentParams.beneficiary,
+                token.address as `0x${string}`,
+                currentParams.amount,
+                BigInt(currentParams.releaseTime),
+                currentParams.cancellable || false,
+              ],
+            },
+            'ERC20 PROGRAMMÉ'
+          );
           console.log('✅ writeContract appelé pour paiement programmé');
         }
       } catch (checkAndCreateError: any) {
@@ -1936,13 +2056,13 @@ export function useCreatePayment(): UseCreatePaymentReturn {
       }
       
       // ✅ FIX : Utiliser le receipt de useWaitForTransactionReceipt si disponible, sinon le récupérer
-      if (isConfirmed && createTxHash && publicClient && !contractAddress) {
+      if (isConfirmed && effectiveCreateTxHash && publicClient && !contractAddress) {
         console.log('🔍 Début extraction adresse contrat...');
-        console.log('📋 Hash transaction de création:', createTxHash);
+        console.log('📋 Hash transaction de création:', effectiveCreateTxHash);
         console.log('📋 Hash transaction d\'approbation:', approvalHook.approveTxHash);
         
         // ✅ FIX CRITIQUE : Vérifier que createTxHash n'est pas le hash d'approbation
-        if (createTxHash === approvalHook.approveTxHash) {
+        if (effectiveCreateTxHash === approvalHook.approveTxHash) {
           console.warn('⚠️ createTxHash est identique à approveTxHash - attente de la transaction de création...');
           return;
         }
@@ -1962,7 +2082,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
 
           // ✅ FIX : Utiliser le receipt de useWaitForTransactionReceipt si disponible
           const receiptToUse = receipt || await publicClient.getTransactionReceipt({
-            hash: createTxHash,
+            hash: effectiveCreateTxHash,
           });
 
           if (!receiptToUse) {
@@ -2242,9 +2362,11 @@ export function useCreatePayment(): UseCreatePaymentReturn {
                 cancellable: params.cancellable || false,
                 network: getNetworkFromChainId(chainId),
                 chain_id: chainId,
-                transaction_hash: createTxHash,
+                transaction_hash: effectiveCreateTxHash,
                 is_instant: isInstantPayment,
                 payment_type: paymentType,
+                user_id: user?.id || null,
+                guest_email: user?.email || null,
               };
 
               console.log('📤 [FRONTEND] Envoi à l\'API avec is_instant et payment_type:', {
@@ -2362,7 +2484,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
                   }
 
                   // 2. Transaction de création (toujours présente)
-                  if (createTxHash && receiptToUse) {
+                  if (effectiveCreateTxHash && receiptToUse) {
                     console.log('📋 Enregistrement transaction de création...');
 
                     const creationGas = calculateGasFromReceipt(receiptToUse);
@@ -2371,7 +2493,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
                       scheduledPaymentId: paymentId,
                       userAddress: userAddress,
                       chainId: chainId,
-                      txHash: createTxHash,
+                      txHash: effectiveCreateTxHash,
                       txType: 'create',
                       tokenAddress: tokenData?.address || null,
                       gasUsed: creationGas.gas_used,
@@ -2380,7 +2502,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
                     });
 
                     console.log('✅ Transaction de création enregistrée:', {
-                      hash: createTxHash,
+                      hash: effectiveCreateTxHash,
                       gas_used: creationGas.gas_used,
                       gas_cost: creationGas.total_gas_fee,
                     });
@@ -2406,7 +2528,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             
             // ✅ FIX : Vérifier que receiptToUse et factoryLogs existent avant de les utiliser
             try {
-              const receiptToUse = receipt || (publicClient && createTxHash ? await publicClient.getTransactionReceipt({ hash: createTxHash }) : null);
+              const receiptToUse = receipt || (publicClient && effectiveCreateTxHash ? await publicClient.getTransactionReceipt({ hash: effectiveCreateTxHash }) : null);
               const factoryLogs = receiptToUse ? receiptToUse.logs.filter(
                 log => log.address.toLowerCase() === FACTORY_SCHEDULED_ADDRESS.toLowerCase()
               ) : [];
@@ -2415,14 +2537,14 @@ export function useCreatePayment(): UseCreatePaymentReturn {
                 receiptStatus: receiptToUse?.status,
                 logsCount: receiptToUse?.logs?.length || 0,
                 factoryLogsCount: factoryLogs.length,
-                transactionHash: createTxHash,
-                basescanLink: createTxHash ? `https://basescan.org/tx/${createTxHash}` : 'N/A',
+                transactionHash: effectiveCreateTxHash,
+                basescanLink: effectiveCreateTxHash ? `https://basescan.org/tx/${effectiveCreateTxHash}` : 'N/A',
                 allLogAddresses: receiptToUse?.logs?.map(l => l.address) || [],
               });
             } catch (diagError) {
               console.error('📋 Détails de diagnostic (erreur lors de la récupération):', {
-                transactionHash: createTxHash,
-                basescanLink: createTxHash ? `https://basescan.org/tx/${createTxHash}` : 'N/A',
+                transactionHash: effectiveCreateTxHash,
+                basescanLink: effectiveCreateTxHash ? `https://basescan.org/tx/${effectiveCreateTxHash}` : 'N/A',
                 error: diagError,
               });
             }
@@ -2431,7 +2553,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             // Pour l'instant, on passe à success mais on affiche un message d'avertissement
             console.warn('⚠️ L\'adresse du contrat n\'a pas pu être extraite automatiquement.');
             console.warn('⚠️ Vous devrez peut-être l\'ajouter manuellement dans la base de données.');
-            console.warn(`⚠️ Vérifiez la transaction sur Basescan: https://basescan.org/tx/${createTxHash}`);
+            console.warn(`⚠️ Vérifiez la transaction sur Basescan: https://basescan.org/tx/${effectiveCreateTxHash}`);
             console.warn('⚠️ Dans les logs de la transaction, cherchez l\'adresse du contrat créé (généralement la première adresse inconnue).');
             
             // ✅ FIX : Même si on ne trouve pas l'adresse, on passe à success avec le hash
@@ -2464,7 +2586,9 @@ export function useCreatePayment(): UseCreatePaymentReturn {
                     cancellable: currentParams.cancellable || false,
                     network: getNetworkFromChainId(chainId),
                     chain_id: chainId,
-                    transaction_hash: createTxHash,
+                    transaction_hash: effectiveCreateTxHash,
+                    user_id: user?.id || null,
+                    guest_email: user?.email || null,
                     needs_manual_address: true, // ✅ FIX : Flag pour indiquer que l'adresse doit être ajoutée manuellement
                   }),
                 });
@@ -2488,7 +2612,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
           setStatus('success');
           setProgressMessage(t('create.modal.transactionConfirmed', { defaultValue: 'Transaction confirmed!' }));
         }
-      } else if (isConfirmed && createTxHash && !contractAddress) {
+      } else if (isConfirmed && effectiveCreateTxHash && !contractAddress) {
         // ✅ FIX : Fallback si l'extraction échoue mais que la transaction est confirmée
         console.log('⚠️ Transaction confirmée mais extraction adresse en cours ou échouée, passage à success...');
         setStatus('success');
@@ -2497,7 +2621,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
     };
 
     extractAndSave();
-  }, [isConfirmed, createTxHash, publicClient, contractAddress, receipt]);
+  }, [isConfirmed, effectiveCreateTxHash, publicClient, contractAddress, receipt]);
 
   // Effect : Gestion des erreurs
   useEffect(() => {
@@ -2595,6 +2719,59 @@ export function useCreatePayment(): UseCreatePaymentReturn {
     contractAddressRef.current = contractAddress;
   }, [contractAddress]);
 
+  // ✅ FIX : Détecter les transactions jamais soumises (MetaMask annulée sans hash)
+  useEffect(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+
+    // Ne pas déclencher si MetaMask est encore en attente (isApproving)
+    if (status === 'approving' && !approvalHook.isApproving) {
+      timeoutRef.current = setTimeout(() => {
+        if (statusRef.current !== 'approving') return;
+        if (!approvalHook.isApproving && !approvalHook.approveTxHash) {
+          console.error('❌ Aucun hash d\'approbation reçu après 30s - MetaMask a probablement annulé la transaction.');
+          setError(new Error('L\'approbation a été annulée par MetaMask avant soumission.'));
+          setStatus('error');
+          setProgressMessage(
+            t('create.modal.errorApprovalNoHash', {
+              defaultValue:
+                'Approval cancelled by MetaMask before submission. Please try again and check your wallet.',
+            })
+          );
+        }
+        timeoutRef.current = null;
+      }, 120000);
+    }
+
+    // Ne pas déclencher si MetaMask est encore en attente (isWritePending)
+    if (status === 'creating' && !isWritePending) {
+      timeoutRef.current = setTimeout(() => {
+        if (statusRef.current !== 'creating') return;
+        if (!isWritePending && !effectiveCreateTxHash) {
+          console.error('❌ Aucun hash de création reçu après 30s - MetaMask a probablement annulé la transaction.');
+          setError(new Error('La transaction de création a été annulée par MetaMask avant soumission.'));
+          setStatus('error');
+          setProgressMessage(
+            t('create.modal.errorCreationNoHash', {
+              defaultValue:
+                'Transaction cancelled by MetaMask before submission. Please try again and check your wallet.',
+            })
+          );
+        }
+        timeoutRef.current = null;
+      }, 120000);
+    }
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    };
+  }, [status, approvalHook.approveTxHash, approvalHook.isApproving, effectiveCreateTxHash, isWritePending, t]);
+
   // ✅ FIX : Nettoyer les timeouts quand le status change vers success, error, ou confirming
   // (confirming signifie que la transaction est confirmée et on extrait l'adresse, donc le timeout n'est plus nécessaire)
   useEffect(() => {
@@ -2631,6 +2808,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
     currentApproveTxHash.current = undefined; // ✅ FIX : Reset hash d'approbation
     isSavingRef.current = false; // ✅ FIX : Reset flag d'enregistrement
     savedContractAddressRef.current = undefined; // ✅ FIX : Reset adresse enregistrée
+    setCreateTxHashOverride(undefined);
     resetWrite();
     approvalHook.reset();
   };
@@ -2646,7 +2824,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
     status,
     error,
     approveTxHash: approvalHook.approveTxHash,
-    createTxHash,
+    createTxHash: effectiveCreateTxHash,
     contractAddress,
     createPayment,
     reset,

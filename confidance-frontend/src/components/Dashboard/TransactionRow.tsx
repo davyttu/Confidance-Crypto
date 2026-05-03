@@ -85,7 +85,10 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
     payment.status !== 'failed';
 
   const beneficiaryName = getBeneficiaryName(payment.payee_address);
-  const displayName = beneficiaryName || `${payment.payee_address.slice(0, 6)}...${payment.payee_address.slice(-4)}`;
+  const rawPayee = payment.payee_address || '';
+  const displayName = beneficiaryName || (rawPayee
+    ? `${rawPayee.slice(0, 6)}...${rawPayee.slice(-4)}`
+    : 'Unknown');
   const normalizedWallet = address?.toLowerCase();
   const isIncoming = Boolean(
     normalizedWallet &&

@@ -648,7 +648,7 @@
       "message": "Your recipient will receive funds on {{chain}}. Make sure their wallet supports this network.",
       "checklistTitle": "Quick checklist for a smooth transaction",
       "checklistToggle": "Checklist",
-      "switchHint": "To switch blockchain, use the network selector at the top-right — one click and you're good to go!"
+      "switchHint": "Payments are on Base. If your wallet is on another network, switch it from your wallet (top right)."
     },
     "blockchainChecklist": {
       "address": "I've verified the recipient's address",

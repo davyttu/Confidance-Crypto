@@ -274,7 +274,7 @@ router.post('/', async (req, res) => {
         status: 'pending',
         payment_label: normalizedPaymentLabel || null,
         payment_category: normalizedPaymentCategory || null,
-        ...(normalizedPaymentLinkId ? { payment_link_id: normalizedPaymentLinkId } : {}),
+        payment_link_id: normalizedPaymentLinkId,
       })
       .select()
       .single();
@@ -462,7 +462,9 @@ router.patch('/:id', async (req, res) => {
 
     console.log('✅ Paiement récurrent mis à jour:', id, status !== undefined ? { status } : '');
 
-    if (status === 'completed' && payment?.payment_link_id) {
+    // Toujours si la ligne est en completed (pas seulement quand status est dans le body) :
+    // corrige les cas où payment_link_id a été renseigné après coup ou PATCH partiel.
+    if (payment?.status === 'completed' && payment?.payment_link_id) {
       await markPaymentLinkCompleted(payment.payment_link_id);
     }
 

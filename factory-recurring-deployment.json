@@ -3,8 +3,8 @@
   "environment": "prod",
   "network": "base_mainnet",
   "chainId": "8453",
-  "factoryAddress": "0x4129092F74159736146984a830F624075e1bC63D",
-  "deployedAt": "2026-01-28T21:06:55.991Z",
+  "factoryAddress": "0x62B2C06C1F1D8e677D0b309E51b25fdDeBF6e781",
+  "deployedAt": "2026-05-02T21:15:41.187Z",
   "deployedBy": "0x9DE23D58d4064Fcf7347E64D19FE64BB4aac2Bf6",
   "constants": {
     "protocolWallet": "0xa34eDf91Cc494450000Eef08e6563062B2F115a9",

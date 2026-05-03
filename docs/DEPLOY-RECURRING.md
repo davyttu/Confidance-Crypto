@@ -1,6 +1,9 @@
-# Déploiement et vérification – Paiements récurrents (Base Sepolia)
+# Déploiement et vérification – Paiements récurrents (Base Mainnet / Sepolia)
 
-Pour tester les paiements récurrents avec **jour du mois 1–31** (période de test), il faut redéployer la factory récurrente sur Base Sepolia et la vérifier sur Basescan.
+Ce document couvre le déploiement en **testnet (Base Sepolia)** et en **prod (Base Mainnet)**.
+La factory accepte `secondsPerMonth` :
+- **Testnet** : 300 (5 minutes)
+- **Mainnet** : 2592000 (30 jours)
 
 ## Prérequis
 
@@ -36,7 +39,7 @@ npx hardhat run scripts/deployFactoryRecurring.js --network base_sepolia
 
 Le script écrit l’adresse dans `factory-recurring-deployment.test.json`.
 
-### 3. Mettre à jour l’adresse dans le frontend
+### 3. Mettre à jour l’adresse dans le frontend (testnet)
 
 ```bash
 npm run update-frontend:recurring
@@ -58,6 +61,29 @@ npx hardhat verify --network base_sepolia <FACTORY_ADDRESS> 300
 
 ---
 
+## Déploiement prod (Base Mainnet)
+
+### 1. Déployer la factory récurrente sur Base Mainnet
+
+```bash
+npx hardhat run scripts/deployFactoryRecurring.js --network base_mainnet
+```
+
+Le script écrit l’adresse dans `factory-recurring-deployment.json`.
+
+### 2. Mettre à jour l’adresse dans le frontend (prod)
+
+- Mettre à jour `confidance-frontend/src/lib/contracts/addresses.ts` (fallback mainnet)
+- Mettre à jour `NEXT_PUBLIC_PAYMENT_FACTORY_RECURRING` dans `.env.local`
+
+### 3. Vérifier le contrat sur Basescan Mainnet
+
+```bash
+npx hardhat verify --network base_mainnet <FACTORY_ADDRESS> 2592000
+```
+
+---
+
 ## Résumé
 
 | Commande | Effet |
@@ -66,4 +92,11 @@ npx hardhat verify --network base_sepolia <FACTORY_ADDRESS> 300
 | `npm run update-frontend:recurring` | Met à jour l’adresse dans le frontend |
 | `npm run verify:recurring` | Vérifie le contrat sur sepolia.basescan.org |
 
-Après ces étapes, tu peux tester les paiements récurrents avec un jour du mois entre 1 et 31 sur Base Sepolia.
+### Mainnet
+
+| Commande | Effet |
+|----------|--------|
+| `npx hardhat run scripts/deployFactoryRecurring.js --network base_mainnet` | Déploie PaymentFactory_Recurring sur Base Mainnet (30 jours) |
+| `npx hardhat verify --network base_mainnet <FACTORY_ADDRESS> 2592000` | Vérifie le contrat sur basescan.org |
+
+Après ces étapes, tu peux tester les paiements récurrents sur Base Sepolia ou passer en prod sur Base Mainnet.

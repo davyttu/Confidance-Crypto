@@ -1125,7 +1125,7 @@
       "message": "您的收款人将在 {{chain}} 上收到资金。请确保其钱包支持此网络。",
       "checklistTitle": "顺利交易的快速检查清单",
       "checklistToggle": "检查清单",
-      "switchHint": "想换区块链？点击页面右上角的网络选择器即可 — 一键搞定！"
+      "switchHint": "付款在 Base 上进行。若钱包在其他网络，请在钱包（右上角）中切换。"
     },
     "blockchainChecklist": {
       "address": "我已验证收款人地址",

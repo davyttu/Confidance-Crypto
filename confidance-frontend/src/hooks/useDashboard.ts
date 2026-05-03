@@ -81,8 +81,9 @@ export function useDashboard(): UseDashboardReturn {
       setIsLoading(true);
       setError(null);
 
-      console.log('🔍 [useDashboard] Fetching payments for address:', address);
-      const response = await fetch(`${API_URL}/api/payments/${address}`);
+      const normalizedAddress = address.toLowerCase();
+      console.log('🔍 [useDashboard] Fetching payments for address:', normalizedAddress);
+      const response = await fetch(`${API_URL}/api/payments/${encodeURIComponent(normalizedAddress)}`);
       
       if (!response.ok) {
         throw new Error('Erreur lors du chargement des paiements');

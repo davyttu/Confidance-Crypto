@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useAccount, useChainId, useChains, useSwitchChain } from 'wagmi';
+import { useAccount, useChainId } from 'wagmi';
 import { useTranslation } from 'react-i18next';
-import { Check, ChevronDown, Info } from 'lucide-react';
+import { Check, Info } from 'lucide-react';
 import { CHAINS } from '@/config/chains';
 
 const CHAIN_ICON_BY_ID: Record<number, string> = {
@@ -27,10 +27,7 @@ export default function BlockchainAwarenessBanner() {
   const { t, ready } = useTranslation();
   const { isConnected } = useAccount();
   const chainId = useChainId();
-  const chains = useChains();
-  const switchChain = useSwitchChain();
   const [isMounted, setIsMounted] = useState(false);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [infoTooltipOpen, setInfoTooltipOpen] = useState(false);
   const [popoverRect, setPopoverRect] = useState<{ top: number; left: number } | null>(null);
   const infoButtonRef = useRef<HTMLButtonElement>(null);
@@ -62,7 +59,6 @@ export default function BlockchainAwarenessBanner() {
   const chainName = currentChain?.name ?? `Chain ${chainId}`;
   const icon = CHAIN_ICON_BY_ID[chainId as keyof typeof CHAIN_ICON_BY_ID] ?? '/globe.svg';
   const gradient = CHAIN_GRADIENT_BY_ID[chainId as keyof typeof CHAIN_GRADIENT_BY_ID] ?? 'from-primary-500 to-purple-500';
-  const availableChains = chains.filter((c) => CHAINS[c.id as keyof typeof CHAINS]);
 
   const checklistItems = [
     { key: 'create.blockchainChecklist.address', fallback: "I've verified the recipient's address" },
@@ -122,9 +118,10 @@ export default function BlockchainAwarenessBanner() {
                   <p className="text-primary-200 text-[11px] leading-relaxed border-t border-gray-600 pt-3">
                     {isMounted && ready
                       ? t('create.blockchain.switchHint', {
-                          defaultValue: 'To switch blockchain, use the network selector at the top-right — one click and you\'re good to go!',
+                          defaultValue:
+                            'Payments are on Base. If your wallet is on another network, switch it from your wallet (top right).',
                         })
-                      : 'To switch blockchain, use the network selector at the top-right — one click and you\'re good to go!'}
+                      : 'Payments are on Base. If your wallet is on another network, switch it from your wallet (top right).'}
                   </p>
                 </div>,
                 document.body
@@ -163,56 +160,6 @@ export default function BlockchainAwarenessBanner() {
                 </div>
               </div>
             </div>
-
-            {availableChains.length > 1 && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setDropdownOpen((o) => !o)}
-                  className="absolute -bottom-2 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 shadow hover:border-primary-400 dark:hover:border-primary-500 transition-colors"
-                >
-                  {isMounted && ready
-                    ? t('create.blockchain.switchNetwork', { defaultValue: 'Switch network' })
-                    : 'Switch network'}
-                  <ChevronDown className={`w-3.5 h-3.5 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
-                </button>
-
-                {dropdownOpen && (
-                  <>
-                    <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)} />
-                    <div className="absolute left-0 top-full mt-2 z-20 w-56 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-xl overflow-hidden">
-                      {availableChains
-                        .filter((c) => c.id !== chainId)
-                        .map((chain) => {
-                          const cfg = CHAINS[chain.id as keyof typeof CHAINS];
-                          const name = cfg?.name ?? chain.name ?? `Chain ${chain.id}`;
-                          const chainIcon = CHAIN_ICON_BY_ID[chain.id as keyof typeof CHAIN_ICON_BY_ID] ?? '/globe.svg';
-                          const chainGrad = CHAIN_GRADIENT_BY_ID[chain.id as keyof typeof CHAIN_GRADIENT_BY_ID] ?? 'from-primary-500 to-purple-500';
-                          return (
-                            <button
-                              key={chain.id}
-                              type="button"
-                              onClick={() => {
-                                switchChain.mutate({ chainId: chain.id });
-                                setDropdownOpen(false);
-                              }}
-                              disabled={switchChain.isPending}
-                              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/80 text-left transition-colors border-b border-gray-100 dark:border-gray-800 last:border-0"
-                            >
-                              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${chainGrad} p-0.5`}>
-                                <div className="w-full h-full rounded-[6px] bg-white dark:bg-gray-900 flex items-center justify-center">
-                                  <img src={chainIcon} alt="" className="w-5 h-5" />
-                                </div>
-                              </div>
-                              <span className="font-medium text-gray-900 dark:text-white">{name}</span>
-                            </button>
-                          );
-                        })}
-                    </div>
-                  </>
-                )}
-              </>
-            )}
           </div>
 
         </div>

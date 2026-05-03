@@ -44,6 +44,13 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
+/** Ethereum addresses in DB must match dashboard queries (lowercase). */
+const normalizeHexAddress = (value) => {
+  if (value == null || value === '') return value;
+  if (typeof value !== 'string') return value;
+  return value.toLowerCase();
+};
+
 const formatPaymentCreatedExplanation = (label, category) => {
   const trimmedLabel = typeof label === 'string' ? label.trim() : '';
   const trimmedCategory = typeof category === 'string' ? category.trim() : '';
@@ -390,13 +397,21 @@ app.post('/api/payments', optionalAuth, async (req, res) => {
       return res.status(400).json({ error: 'transaction_hash is required' });
     }
 
+    const normalizedContractAddress = normalizeHexAddress(contract_address);
+    const normalizedPayerAddress = normalizeHexAddress(payer_address);
+    const normalizedPayeeAddress = normalizeHexAddress(payee_address);
+    const normalizedTokenAddress =
+      token_address && typeof token_address === 'string'
+        ? normalizeHexAddress(token_address)
+        : token_address;
+
     // ✅ FIX : Vérifier si le paiement existe déjà (protection contre doublons)
     // Utiliser une transaction pour éviter les race conditions
     try {
       const { data: existingPayment, error: checkError } = await supabase
         .from('scheduled_payments')
         .select('*')
-        .eq('contract_address', contract_address)
+        .eq('contract_address', normalizedContractAddress)
         .maybeSingle();
 
       // PGRST116 = no rows returned (normal, pas d'erreur)
@@ -463,11 +478,11 @@ app.post('/api/payments', optionalAuth, async (req, res) => {
     }
 
     const insertData = {
-      contract_address,
-      payer_address,
-      payee_address,
+      contract_address: normalizedContractAddress,
+      payer_address: normalizedPayerAddress,
+      payee_address: normalizedPayeeAddress,
       token_symbol,
-      token_address,
+      token_address: normalizedTokenAddress,
       amount,
       release_time,
       cancellable: cancellable || false,
@@ -516,7 +531,7 @@ app.post('/api/payments', optionalAuth, async (req, res) => {
         const { data: existing, error: fetchError } = await supabase
           .from('scheduled_payments')
           .select('*')
-          .eq('contract_address', contract_address)
+          .eq('contract_address', normalizedContractAddress)
           .single();
         
         if (fetchError) {
@@ -664,6 +679,13 @@ app.post('/api/payments/batch', optionalAuth, async (req, res) => {
       return res.status(400).json({ error: 'release_time is required' });
     }
 
+    const normalizedBatchContract = normalizeHexAddress(contract_address);
+    const normalizedBatchPayer = normalizeHexAddress(payer_address);
+    const beneficiariesNormalized = beneficiaries.map((b) => ({
+      ...b,
+      address: b && b.address != null ? normalizeHexAddress(String(b.address)) : b?.address,
+    }));
+
     // ✅ Déterminer isInstant et payment_type de manière explicite (NE JAMAIS laisser NULL)
     // Normaliser is_instant (peut être true, "true", 1, etc.)
     const normalizedIsInstant = is_instant === true || 
@@ -708,11 +730,14 @@ app.post('/api/payments/batch', optionalAuth, async (req, res) => {
     
     // Préparer les données pour insertion
     const insertData = {
-      contract_address,
-      payer_address,
-      payee_address: beneficiaries[0].address, // Premier bénéficiaire comme référence
+      contract_address: normalizedBatchContract,
+      payer_address: normalizedBatchPayer,
+      payee_address: beneficiariesNormalized[0].address, // Premier bénéficiaire comme référence
       token_symbol: token_symbol || 'ETH',      // ✅ Utiliser token_symbol depuis req.body
-      token_address: token_address || null,     // ✅ Utiliser token_address depuis req.body
+      token_address:
+        token_address && typeof token_address === 'string'
+          ? normalizeHexAddress(token_address)
+          : token_address || null,     // ✅ Utiliser token_address depuis req.body
       amount: total_sent || total_to_beneficiaries || '0',
       release_time: parseInt(release_time),
       cancellable: cancellable || false,
@@ -724,8 +749,8 @@ app.post('/api/payments/batch', optionalAuth, async (req, res) => {
       is_batch: true,
       is_instant: isInstant || false, // ✅ Ajouter is_instant
       payment_type: finalPaymentType, // ✅ Ajouter payment_type (TOUJOURS défini)
-      batch_count: beneficiaries.length,
-      batch_beneficiaries: beneficiaries, // Supabase accepte direct l'objet JS pour JSONB
+      batch_count: beneficiariesNormalized.length,
+      batch_beneficiaries: beneficiariesNormalized, // Supabase accepte direct l'objet JS pour JSONB
       user_id: user ? user.userId : null,
       guest_email: !user ? req.body.guest_email : null,
     };
@@ -758,7 +783,7 @@ app.post('/api/payments/batch', optionalAuth, async (req, res) => {
     }
 
     console.log('✅ [BATCH] Paiement enregistré:', data.id);
-    console.log(`   👥 ${beneficiaries.length} bénéficiaires`);
+    console.log(`   👥 ${beneficiariesNormalized.length} bénéficiaires`);
     console.log(`   💰 Montant total: ${insertData.amount}`);
 
     if (data?.id && data?.user_id) {
@@ -905,7 +930,7 @@ app.get('/api/payments/:address', async (req, res) => {
     const { data: simplePayments, error: simpleError } = await supabase
       .from('scheduled_payments')
       .select('*')
-      .or(`payer_address.eq.${normalizedAddress},payee_address.eq.${normalizedAddress}`)
+      .or(`payer_address.ilike.${normalizedAddress},payee_address.ilike.${normalizedAddress}`)
       .order('created_at', { ascending: false });
 
     if (simpleError) {
@@ -917,7 +942,7 @@ app.get('/api/payments/:address', async (req, res) => {
     const { data: recurringPayments, error: recurringError } = await supabase
       .from('recurring_payments')
       .select('*')
-      .or(`payer_address.eq.${normalizedAddress},payee_address.eq.${normalizedAddress}`)
+      .or(`payer_address.ilike.${normalizedAddress},payee_address.ilike.${normalizedAddress}`)
       .order('created_at', { ascending: false });
 
     if (recurringError) {

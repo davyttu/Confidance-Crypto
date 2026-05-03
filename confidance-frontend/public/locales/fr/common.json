@@ -659,7 +659,7 @@
       "message": "Votre destinataire recevra les fonds sur {{chain}}. Vérifiez que son portefeuille prend en charge ce réseau.",
       "checklistTitle": "Checklist pour une transaction sereine",
       "checklistToggle": "Checklist",
-      "switchHint": "Pour changer de blockchain, direction le sélecteur de réseau en haut à droite — un clic et c'est fait !"
+      "switchHint": "Les paiements sont sur Base. Si votre wallet est sur un autre réseau, changez-le depuis le wallet (en haut à droite)."
     },
     "blockchainChecklist": {
       "address": "J'ai vérifié l'adresse du destinataire",
