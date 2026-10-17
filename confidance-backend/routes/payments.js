@@ -38,8 +38,15 @@ router.post('/', async (req, res) => {
       is_instant,
       payment_type,
       user_id,        // ✅ Fourni si utilisateur connecté
-      guest_email     // ✅ Fourni si utilisateur invité
+      guest_email,    // ✅ Fourni si utilisateur invité
+      payment_label,
+      payment_category,
     } = req.body;
+
+    const normalizedPaymentLabel =
+      typeof payment_label === 'string' ? payment_label.trim().slice(0, 200) : '';
+    const normalizedPaymentCategory =
+      typeof payment_category === 'string' ? payment_category.trim().slice(0, 64) : '';
 
     // Validations de base
     if (!contract_address || !payer_address || !payee_address || !amount || !release_time) {
@@ -76,7 +83,9 @@ router.post('/', async (req, res) => {
         user_id: user_id || null,
         guest_email: guest_email || null,
         ticket_number,
-        status: 'pending'
+        status: 'pending',
+        payment_label: normalizedPaymentLabel || null,
+        payment_category: normalizedPaymentCategory || null,
       })
       .select()
       .single();

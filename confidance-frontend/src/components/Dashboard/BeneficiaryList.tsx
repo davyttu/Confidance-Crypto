@@ -5,7 +5,9 @@ import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useBeneficiaries, type Beneficiary, type BeneficiaryCategory } from '@/hooks/useBeneficiaries';
 import { useDashboard, type Payment } from '@/hooks/useDashboard';
+import { formatUnits } from 'viem';
 import { truncateAddress } from '@/lib/utils/addressFormatter';
+import { getDashboardDisplayDecimals } from '@/config/tokens';
 
 interface BeneficiaryListProps {
   onEdit: (beneficiary: Beneficiary) => void;
@@ -96,7 +98,7 @@ export function BeneficiaryList({ onEdit }: BeneficiaryListProps) {
     
     payments.forEach((payment: Payment) => {
       const tokenSymbol = payment.token_symbol || 'ETH';
-      const decimals = tokenSymbol === 'ETH' ? 18 : 6; // ETH = 18, USDC/USDT = 6
+      const decimals = getDashboardDisplayDecimals(tokenSymbol);
       const isRecurring = payment.is_recurring || payment.payment_type === 'recurring';
       const totalMonths = Number(payment.total_months || 0);
       const executedMonths = Number(payment.executed_months ?? 0);
@@ -172,13 +174,16 @@ export function BeneficiaryList({ onEdit }: BeneficiaryListProps) {
     return stats;
   }, [payments]);
 
-  // Formater le montant
+  // Formater le montant (assez de décimales pour les petits ETH, ex. 0.00001 — 4 décimales max affichaient 0,0000)
   const formatAmount = (amount: bigint, symbol: string) => {
-    const decimals = symbol === 'ETH' ? 18 : 6;
-    const amountNum = Number(amount) / Math.pow(10, decimals);
-    return amountNum.toLocaleString('fr-FR', {
-      minimumFractionDigits: symbol === 'ETH' ? 4 : 2,
-      maximumFractionDigits: symbol === 'ETH' ? 4 : 2,
+    const decimals = getDashboardDisplayDecimals(symbol);
+    const raw = formatUnits(amount, decimals);
+    const n = parseFloat(raw);
+    if (!Number.isFinite(n)) return raw;
+    const maxFrac = symbol === 'ETH' || symbol === 'DAI' ? 8 : 6;
+    return n.toLocaleString('fr-FR', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: maxFrac,
     });
   };
 

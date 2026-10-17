@@ -1202,7 +1202,8 @@
     "mustBeOnBase": "Debes estar en",
     "toUseApp": "para usar esta aplicación",
     "currentNetwork": "Red actual: ChainID {{chainId}}",
-    "switchNetworkHint": "💡 Haz clic en tu cartera y cambia a Base Mainnet"
+    "switchNetworkHint": "💡 Haz clic en tu cartera y cambia a Base Mainnet",
+    "chainComingSoon": "Próximamente"
   },
   "help": {
     "title": "Centro de ayuda",
@@ -1231,6 +1232,7 @@
       "back": "Volver al centro de ayuda",
       "title": "Contactar soporte",
       "subtitle": "Nuestro equipo está para ayudarte",
+      "evolutionNote": "El protocolo evoluciona constantemente. Contamos contigo para reportar los errores o bugs que encuentres, y así mejorar Confidance juntos.",
       "email": { "title": "Email", "description": "Respuesta en 24 h de media" },
       "discord": { "title": "Discord", "description": "Únete a la comunidad", "comingSoon": "Próximamente" },
       "form": {

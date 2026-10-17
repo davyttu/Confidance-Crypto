@@ -8,12 +8,15 @@ import { useTranslationReady } from '@/hooks/useTranslationReady';
 import { Payment } from '@/hooks/useDashboard';
 import { useEthUsdPrice } from '@/hooks/useEthUsdPrice';
 import { formatAmount } from '@/lib/utils/amountFormatter';
-import { getToken, isZeroAddress } from '@/config/tokens';
+import { getToken, getDashboardDisplayDecimals, isZeroAddress } from '@/config/tokens';
 import { erc20Abi } from '@/lib/contracts/erc20Abi';
+import { getCustomTokens, type CustomToken } from '@/lib/custom-tokens';
 
 interface StatsCardsProps {
   payments: Payment[];
   selectedWallets?: string[];
+  statsCardFilter?: 'pending' | 'recurring_active' | null;
+  onStatsCardFilterChange?: (filter: 'pending' | 'recurring_active' | null) => void;
 }
 
 type BalanceToken = 'ETH' | 'USDC' | 'USDT' | 'ALL';
@@ -44,8 +47,26 @@ function getPeriodBounds(period: TotalSentPeriod): { startSec: number; endSec: n
 export function StatsCards({ payments, selectedWallets = [], statsCardFilter = null, onStatsCardFilterChange }: StatsCardsProps) {
   const { t, ready } = useTranslationReady();
   const [balanceToken, setBalanceToken] = useState<BalanceToken>('ETH');
-  const [totalSentToken, setTotalSentToken] = useState<BalanceToken>('ETH');
+  const [totalSentToken, setTotalSentToken] = useState<string>('ETH');
   const [totalSentPeriod, setTotalSentPeriod] = useState<TotalSentPeriod>('all');
+  const [customTokensList, setCustomTokensList] = useState<CustomToken[]>([]);
+
+  useEffect(() => {
+    const refresh = () => setCustomTokensList(getCustomTokens());
+    refresh();
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'confidance.customTokens' || e.key === null) refresh();
+    };
+    const onVisibility = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') refresh();
+    };
+    window.addEventListener('storage', onStorage);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [payments]);
   const { address } = useAccount();
   const publicClient = usePublicClient();
   const { priceUsd, isLoading: isPriceLoading } = useEthUsdPrice();
@@ -61,28 +82,35 @@ export function StatsCards({ payments, selectedWallets = [], statsCardFilter = n
   const periodBounds = useMemo(() => getPeriodBounds(totalSentPeriod), [totalSentPeriod]);
 
   // Calculer les stats : paiements réellement envoyés, filtrés par période
-  // - Paiements uniques : comptés si status = released/completed
-  // - Paiements récurrents : comptés si status = active/released/completed ET executed_months > 0
-  // Chaque échéance d'un paiement récurrent compte comme une transaction distincte
-  // Pour les paiements batch récurrents : chaque destinataire = 1 transaction par échéance
-  const { totalSentByToken, totalSentCountByToken } = useMemo(() => {
-    const totals = {
+  // Inclut ETH, USDC, USDT et tout autre token (ex. TMP enregistré).
+  // totalSentAllPaymentsCount = nombre d’événements (tous tokens), pour le libellé « X paiements au total ».
+  const { totalSentByToken, totalSentCountByToken, totalSentAllPaymentsCount } = useMemo(() => {
+    const totals: Record<string, bigint> = {
       ETH: BigInt(0),
       USDC: BigInt(0),
       USDT: BigInt(0),
     };
-    const countByToken = { ETH: 0, USDC: 0, USDT: 0 };
+    const countByToken: Record<string, number> = {
+      ETH: 0,
+      USDC: 0,
+      USDT: 0,
+    };
+
+    const bump = (sym: string, amount: bigint, count: number) => {
+      const s = sym.toUpperCase();
+      if (!totals[s]) totals[s] = BigInt(0);
+      if (countByToken[s] === undefined) countByToken[s] = 0;
+      totals[s] += amount;
+      countByToken[s] += count;
+    };
 
     const completedStatuses = new Set<string>(['released', 'completed']);
-    // Pour les paiements récurrents, 'active' signifie que le paiement est en cours avec des échéances déjà exécutées
     const recurringActiveStatuses = new Set<string>(['active', 'released', 'completed']);
     const startSec = periodBounds?.startSec ?? 0;
     const endSec = periodBounds?.endSec ?? Number.MAX_SAFE_INTEGER;
 
     const inRange = (ts: number) => ts >= startSec && ts <= endSec;
 
-    // Grouper les paiements récurrents batch (même tx_hash, même first_payment_time) pour harmoniser executed_months
-    // Le keeper peut mettre à jour une ligne avant l'autre → utiliser le max du batch
     const batchKey = (p: Payment) =>
       [p.payer_address, p.first_payment_time ?? p.release_time, p.transaction_hash || p.tx_hash].join('|');
     const batchExecutedMax = new Map<string, number>();
@@ -94,7 +122,6 @@ export function StatsCards({ payments, selectedWallets = [], statsCardFilter = n
       batchExecutedMax.set(key, Math.max(prev, ex));
     });
 
-    // Aplatir : pour un paiement batch récurrent avec __batchChildren, traiter chaque enfant
     const paymentsToProcess = payments.flatMap((p) => {
       const isRecurring = p.is_recurring || p.payment_type === 'recurring';
       const children = p.__batchChildren;
@@ -102,7 +129,6 @@ export function StatsCards({ payments, selectedWallets = [], statsCardFilter = n
       return [p];
     });
 
-    // Dédupliquer par id pour éviter de compter deux fois
     const seenIds = new Set<string>();
     const uniquePayments = paymentsToProcess.filter((p) => {
       const id = p.id || p.contract_address || '';
@@ -113,18 +139,15 @@ export function StatsCards({ payments, selectedWallets = [], statsCardFilter = n
 
     uniquePayments.forEach((payment) => {
       const symbol = (payment.token_symbol || 'ETH').toUpperCase();
-      if (symbol !== 'USDC' && symbol !== 'USDT' && symbol !== 'ETH') return;
 
       const isRecurring = payment.is_recurring || payment.payment_type === 'recurring';
 
       if (isRecurring) {
-        // Pour les paiements récurrents, on accepte aussi le statut 'active'
         if (!recurringActiveStatuses.has(payment.status)) return;
-        // Pour les batch : utiliser le max executed_months du groupe (compense le délai du keeper)
         const key = batchKey(payment);
         const executed = batchExecutedMax.has(key) ? batchExecutedMax.get(key)! : Number(payment.executed_months ?? 0);
-        if (executed <= 0) return; // Pas d'échéance exécutée = rien à compter
-        
+        if (executed <= 0) return;
+
         const firstPaymentTime = Number(payment.first_payment_time ?? payment.release_time ?? 0);
         const monthlyAmount = BigInt(payment.monthly_amount ?? payment.amount ?? '0');
         const firstMonthCustom = payment.is_first_month_custom === true || payment.is_first_month_custom === 'true';
@@ -132,28 +155,44 @@ export function StatsCards({ payments, selectedWallets = [], statsCardFilter = n
           ? BigInt(payment.first_month_amount)
           : monthlyAmount;
 
-        // Compter chaque échéance exécutée comme une transaction distincte
         for (let k = 0; k < executed; k++) {
           const releaseTimeK = firstPaymentTime + k * MONTH_IN_SECONDS;
           if (!inRange(releaseTimeK)) continue;
           const amountK = k === 0 ? firstMonthAmount : monthlyAmount;
-          totals[symbol] += amountK;
-          countByToken[symbol as keyof typeof countByToken] += 1;
+          bump(symbol, amountK, 1);
         }
       } else {
-        // Paiement unique : doit être released ou completed
         if (!completedStatuses.has(payment.status)) return;
-        
+
         const releaseTime = Number(payment.release_time ?? 0);
         if (!inRange(releaseTime)) return;
         const amount = BigInt(payment.amount ?? '0');
-        totals[symbol] += amount;
-        countByToken[symbol as keyof typeof countByToken] += 1;
+        bump(symbol, amount, 1);
       }
     });
 
-    return { totalSentByToken: totals, totalSentCountByToken: countByToken };
+    const totalSentAllPaymentsCount = Object.values(countByToken).reduce((sum, n) => sum + n, 0);
+    return { totalSentByToken: totals, totalSentCountByToken: countByToken, totalSentAllPaymentsCount };
   }, [payments, periodBounds]);
+
+  const displayedTotalSentCount = totalSentAllPaymentsCount;
+
+  const sentTokenSelectOptions = useMemo(() => {
+    const extras = new Set<string>();
+    payments.forEach((p) => {
+      const s = (p.token_symbol || 'ETH').toUpperCase();
+      if (s !== 'ETH' && s !== 'USDC' && s !== 'USDT') extras.add(s);
+    });
+    customTokensList.forEach((c) => extras.add(c.symbol.toUpperCase()));
+    const sorted = Array.from(extras).sort((a, b) => a.localeCompare(b));
+    return ['ETH', 'USDC', 'USDT', ...sorted, 'ALL'];
+  }, [payments, customTokensList]);
+
+  useEffect(() => {
+    if (!sentTokenSelectOptions.includes(totalSentToken)) {
+      setTotalSentToken('ETH');
+    }
+  }, [sentTokenSelectOptions, totalSentToken]);
 
   const pending = payments.filter(p => p.status === 'pending').length;
   const recurringActive = payments.filter((payment) => {
@@ -276,21 +315,31 @@ export function StatsCards({ payments, selectedWallets = [], statsCardFilter = n
   }, [priceUsd, totalBalanceEth]);
 
   const sentEthAmount = useMemo(() => {
-    return Number(formatUnits(totalSentByToken.ETH, 18));
-  }, [totalSentByToken.ETH]);
+    return Number(formatUnits(totalSentByToken['ETH'] ?? 0n, 18));
+  }, [totalSentByToken]);
 
   const sentUsdcAmount = useMemo(() => {
-    return Number(formatUnits(totalSentByToken.USDC, 6));
-  }, [totalSentByToken.USDC]);
+    return Number(formatUnits(totalSentByToken['USDC'] ?? 0n, 6));
+  }, [totalSentByToken]);
 
   const sentUsdtAmount = useMemo(() => {
-    return Number(formatUnits(totalSentByToken.USDT, 6));
-  }, [totalSentByToken.USDT]);
+    return Number(formatUnits(totalSentByToken['USDT'] ?? 0n, 6));
+  }, [totalSentByToken]);
 
   const totalSentAllEth = useMemo(() => {
     if (!priceUsd || priceUsd <= 0) return null;
-    return sentEthAmount + (sentUsdcAmount + sentUsdtAmount) / priceUsd;
-  }, [priceUsd, sentEthAmount, sentUsdcAmount, sentUsdtAmount]);
+    let ethEq = sentEthAmount + (sentUsdcAmount + sentUsdtAmount) / priceUsd;
+    customTokensList.forEach((ct) => {
+      const usd = ct.usdPerToken;
+      if (usd == null || !Number.isFinite(usd) || usd <= 0) return;
+      const sym = ct.symbol.toUpperCase();
+      const wei = totalSentByToken[sym] ?? 0n;
+      if (wei === 0n) return;
+      const human = Number(formatUnits(wei, ct.decimals));
+      ethEq += (human * usd) / priceUsd;
+    });
+    return ethEq;
+  }, [priceUsd, sentEthAmount, sentUsdcAmount, sentUsdtAmount, customTokensList, totalSentByToken]);
 
   const totalSentAllUsd = useMemo(() => {
     if (totalSentAllEth === null || !priceUsd || priceUsd <= 0) return null;
@@ -308,20 +357,18 @@ export function StatsCards({ payments, selectedWallets = [], statsCardFilter = n
       };
     }
     if (totalSentToken === 'ETH') {
-      return { main: `${formatAmount(totalSentByToken.ETH, 18)} ETH`, sub: null };
+      return { main: `${formatAmount(totalSentByToken['ETH'] ?? 0n, 18)} ETH`, sub: null };
     }
     if (totalSentToken === 'USDC') {
-      return { main: `${formatAmount(totalSentByToken.USDC, 6)} USDC`, sub: null };
+      return { main: `${formatAmount(totalSentByToken['USDC'] ?? 0n, 6)} USDC`, sub: null };
     }
-    return { main: `${formatAmount(totalSentByToken.USDT, 6)} USDT`, sub: null };
-  }, [totalSentAllEth, totalSentAllUsd, totalSentByToken.ETH, totalSentByToken.USDC, totalSentByToken.USDT, totalSentToken]);
-
-  const displayedTotalSentCount = useMemo(() => {
-    if (totalSentToken === 'ALL') {
-      return totalSentCountByToken.ETH + totalSentCountByToken.USDC + totalSentCountByToken.USDT;
+    if (totalSentToken === 'USDT') {
+      return { main: `${formatAmount(totalSentByToken['USDT'] ?? 0n, 6)} USDT`, sub: null };
     }
-    return totalSentCountByToken[totalSentToken];
-  }, [totalSentToken, totalSentCountByToken]);
+    const dec = getDashboardDisplayDecimals(totalSentToken);
+    const raw = totalSentByToken[totalSentToken] ?? 0n;
+    return { main: `${formatAmount(raw, dec)} ${totalSentToken}`, sub: null };
+  }, [totalSentAllEth, totalSentAllUsd, totalSentByToken, totalSentToken]);
 
   const balanceDisplay = useMemo(() => {
     if (addressesToQuery.length === 0) {
@@ -492,13 +539,14 @@ export function StatsCards({ payments, selectedWallets = [], statsCardFilter = n
             </p>
             <select
               value={totalSentToken}
-              onChange={(event) => setTotalSentToken(event.target.value as BalanceToken)}
+              onChange={(event) => setTotalSentToken(event.target.value)}
               className="text-xs bg-white text-gray-900 border border-white/60 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-white/70"
             >
-              <option value="ETH">ETH</option>
-              <option value="USDC">USDC</option>
-              <option value="USDT">USDT</option>
-              <option value="ALL">ALL</option>
+              {sentTokenSelectOptions.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
             </select>
           </div>
           <div className="flex items-center gap-1.5">

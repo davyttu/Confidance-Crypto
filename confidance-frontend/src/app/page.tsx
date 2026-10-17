@@ -4,7 +4,7 @@
 import { useAccount, useChainId, useDisconnect } from 'wagmi';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { useEffect, useState } from 'react';
-import { testSupabaseConnection } from '@/lib/supabase/test';
+import { testSupabaseConnection } from '@/lib/Supabase/test';
 import Link from 'next/link';
 import { 
   ArrowRight, 

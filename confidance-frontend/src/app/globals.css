@@ -81,3 +81,52 @@
 .animate-pulse-slow {
   animation: pulse-slow 3s ease-in-out infinite;
 }
+
+/* RainbowKit: chains not yet live (Polygon, Arbitrum, Avalanche) */
+[data-testid="rk-chain-option-137"],
+[data-testid="rk-chain-option-42161"],
+[data-testid="rk-chain-option-43114"],
+.rk-chain-coming-soon {
+  opacity: 0.42 !important;
+  filter: grayscale(0.9);
+  cursor: not-allowed !important;
+  position: relative;
+}
+
+[data-testid="rk-chain-option-137"]:hover,
+[data-testid="rk-chain-option-42161"]:hover,
+[data-testid="rk-chain-option-43114"]:hover,
+.rk-chain-coming-soon:hover {
+  opacity: 0.55 !important;
+}
+
+[data-testid="rk-chain-option-137"]::after,
+[data-testid="rk-chain-option-42161"]::after,
+[data-testid="rk-chain-option-43114"]::after,
+.rk-chain-coming-soon::after {
+  content: attr(data-coming-soon);
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(20, 20, 20, 0.95);
+  color: #f3f4f6;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  padding: 4px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  z-index: 2;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+[data-testid="rk-chain-option-137"]:hover::after,
+[data-testid="rk-chain-option-42161"]:hover::after,
+[data-testid="rk-chain-option-43114"]:hover::after,
+.rk-chain-coming-soon:hover::after {
+  opacity: 1;
+}

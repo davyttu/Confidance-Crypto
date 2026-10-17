@@ -6,6 +6,7 @@ import { useAccount, useChainId } from 'wagmi';
 import { useTranslation } from 'react-i18next';
 import { Check, Info } from 'lucide-react';
 import { CHAINS } from '@/config/chains';
+import { COMING_SOON_CHAIN_IDS } from '@/components/wallet/DisabledChainsGuard';
 
 const CHAIN_ICON_BY_ID: Record<number, string> = {
   8453: '/blockchains/base.svg',
@@ -22,6 +23,13 @@ const CHAIN_GRADIENT_BY_ID: Record<number, string> = {
   137: 'from-[#8247E5] to-[#A855F7]', // Polygon
   84532: 'from-[#0052FF] via-[#6366F1] to-[#8B5CF6]', // Base Sepolia
 };
+
+const COMING_SOON_CHAINS = COMING_SOON_CHAIN_IDS.map((id) => ({
+  chainId: id,
+  name: CHAINS[id]?.name ?? `Chain ${id}`,
+  icon: CHAIN_ICON_BY_ID[id] ?? '/globe.svg',
+  gradient: CHAIN_GRADIENT_BY_ID[id] ?? 'from-gray-400 to-gray-500',
+}));
 
 export default function BlockchainAwarenessBanner() {
   const { t, ready } = useTranslation();
@@ -130,38 +138,81 @@ export default function BlockchainAwarenessBanner() {
           </div>
         </div>
 
-        {/* Selected chain card — style proche du CurrencySelector */}
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="relative">
-            <div
-              className={`
-                relative overflow-hidden rounded-2xl p-5 min-w-[200px]
-                border-2 transition-all duration-300
-                bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900
-                border-primary-400 dark:border-primary-600
-                shadow-lg shadow-primary-500/10
-              `}
-            >
-              <div className={`absolute inset-0 opacity-[0.07] bg-gradient-to-br ${gradient}`} />
-              <div className="relative flex items-center gap-4">
-                <div className="w-14 h-14 rounded-xl bg-white dark:bg-gray-800 shadow-sm flex items-center justify-center border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
-                  <img src={icon} alt={chainName} className="w-8 h-8 object-contain" />
-                </div>
-                <div>
-                  <p className="font-bold text-base text-gray-900 dark:text-white">{chainName}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    {isMounted && ready
-                      ? t('create.blockchain.selected', { defaultValue: 'Selected network' })
-                      : 'Selected network'}
-                  </p>
-                </div>
-                <div className="absolute top-3 right-3">
-                  <Check className="w-5 h-5 text-primary-500" strokeWidth={2.5} />
-                </div>
+        {/* Selected chain + coming soon chains — style proche du CurrencySelector */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div
+            className={`
+              relative overflow-hidden rounded-2xl p-5
+              border-2 transition-all duration-300
+              bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900
+              border-primary-400 dark:border-primary-600
+              shadow-lg shadow-primary-500/10
+            `}
+          >
+            <div className={`absolute inset-0 opacity-[0.07] bg-gradient-to-br ${gradient}`} />
+            <div className="relative flex items-center gap-4">
+              <div className="w-14 h-14 rounded-xl bg-white dark:bg-gray-800 shadow-sm flex items-center justify-center border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
+                <img src={icon} alt={chainName} className="w-8 h-8 object-contain" />
+              </div>
+              <div>
+                <p className="font-bold text-base text-gray-900 dark:text-white">{chainName}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  {isMounted && ready
+                    ? t('create.blockchain.selected', { defaultValue: 'Selected network' })
+                    : 'Selected network'}
+                </p>
+              </div>
+              <div className="absolute top-3 right-3">
+                <Check className="w-5 h-5 text-primary-500" strokeWidth={2.5} />
               </div>
             </div>
           </div>
 
+          {COMING_SOON_CHAINS.map((chain) => {
+            const comingSoonLabel = isMounted && ready
+              ? t('wallet.chainComingSoon', { defaultValue: 'Bientôt disponible' })
+              : 'Bientôt disponible';
+
+            return (
+              <button
+                key={chain.chainId}
+                type="button"
+                disabled
+                aria-disabled="true"
+                title={comingSoonLabel}
+                className="
+                  group relative overflow-hidden rounded-2xl p-5 text-left
+                  border-2 border-gray-200 dark:border-gray-700
+                  bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900
+                  opacity-45 grayscale cursor-not-allowed
+                  transition-all duration-300
+                "
+              >
+                <div className={`absolute inset-0 opacity-[0.07] bg-gradient-to-br ${chain.gradient}`} />
+                <div className="relative flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-xl bg-white dark:bg-gray-800 shadow-sm flex items-center justify-center border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
+                    <img src={chain.icon} alt={chain.name} className="w-8 h-8 object-contain" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-base text-gray-900 dark:text-white">{chain.name}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      {comingSoonLabel}
+                    </p>
+                  </div>
+                </div>
+                <span
+                  className="
+                    pointer-events-none absolute inset-x-3 top-1/2 -translate-y-1/2
+                    rounded-md bg-gray-900/95 px-2 py-1 text-center text-xs font-medium text-gray-100
+                    opacity-0 shadow-lg transition-opacity duration-150
+                    group-hover:opacity-100
+                  "
+                >
+                  {comingSoonLabel}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>

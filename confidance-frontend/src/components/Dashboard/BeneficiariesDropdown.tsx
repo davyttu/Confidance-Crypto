@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { Copy, Check, Edit2, ChevronDown, X } from 'lucide-react';
 import { Payment } from '@/hooks/useDashboard';
 import { useBeneficiaries } from '@/hooks/useBeneficiaries';
+import { getDashboardDisplayDecimals } from '@/config/tokens';
 
 interface BeneficiariesDropdownProps {
   payment: Payment;
@@ -123,6 +124,8 @@ export function BeneficiariesDropdown({
 
   // Formater le montant avec la locale actuelle
   const formatAmount = (amount: string | number, symbol: string) => {
+    const displayDecimals = getDashboardDisplayDecimals(symbol);
+    const fractionDigits = displayDecimals === 18 ? 4 : 2;
     // Mapper les langues i18n vers les locales de formatage
     const localeMap: Record<string, string> = {
       'fr': 'fr-FR',
@@ -138,8 +141,8 @@ export function BeneficiariesDropdown({
     // Si c'est déjà un nombre, le retourner formaté
     if (typeof amount === 'number') {
       return amount.toLocaleString(locale, {
-        minimumFractionDigits: symbol === 'ETH' ? 4 : 2,
-        maximumFractionDigits: symbol === 'ETH' ? 4 : 2,
+        minimumFractionDigits: fractionDigits,
+        maximumFractionDigits: fractionDigits,
       });
     }
 
@@ -150,25 +153,24 @@ export function BeneficiariesDropdown({
       // C'est déjà un nombre décimal formaté, le retourner tel quel
       const numValue = parseFloat(amount.replace(',', '.'));
       return numValue.toLocaleString(locale, {
-        minimumFractionDigits: symbol === 'ETH' ? 4 : 2,
-        maximumFractionDigits: symbol === 'ETH' ? 4 : 2,
+        minimumFractionDigits: fractionDigits,
+        maximumFractionDigits: fractionDigits,
       });
     }
 
     // Sinon, c'est probablement un BigInt (chaîne représentant un entier)
     try {
-      const decimals = symbol === 'ETH' ? 18 : 6;
-      const amountNum = Number(BigInt(amount)) / Math.pow(10, decimals);
+      const amountNum = Number(BigInt(amount)) / Math.pow(10, displayDecimals);
       return amountNum.toLocaleString(locale, {
-        minimumFractionDigits: symbol === 'ETH' ? 4 : 2,
-        maximumFractionDigits: symbol === 'ETH' ? 4 : 2,
+        minimumFractionDigits: fractionDigits,
+        maximumFractionDigits: fractionDigits,
       });
     } catch (error) {
       // Si la conversion BigInt échoue, essayer de parser comme nombre
       const numValue = parseFloat(amount);
       return isNaN(numValue) ? '0' : numValue.toLocaleString(locale, {
-        minimumFractionDigits: symbol === 'ETH' ? 4 : 2,
-        maximumFractionDigits: symbol === 'ETH' ? 4 : 2,
+        minimumFractionDigits: fractionDigits,
+        maximumFractionDigits: fractionDigits,
       });
     }
   };

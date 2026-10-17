@@ -17,6 +17,7 @@ interface FeeDisplayProps {
   tokenDecimals?: number;
   showDetails?: boolean;
   releaseDate?: Date | null; // Pour détecter les paiements instantanés
+  hideTitle?: boolean;
 }
 
 export default function FeeDisplay({
@@ -25,6 +26,7 @@ export default function FeeDisplay({
   tokenDecimals,
   showDetails = true,
   releaseDate,
+  hideTitle = false,
 }: FeeDisplayProps) {
   const { t, ready: translationsReady } = useTranslation();
   const [isMounted, setIsMounted] = useState(false);
@@ -53,17 +55,22 @@ export default function FeeDisplay({
 
   const fees = calculateFees(amount, token.decimals, { isInstantPayment, isProVerified });
 
+  const contentClassName = hideTitle
+    ? 'space-y-4'
+    : 'glass rounded-2xl p-6 space-y-4';
+
   return (
     <div className="space-y-4">
-      {/* Titre */}
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          {isMounted && translationsReady ? t('create.summary.title') : '💰 Récapitulatif'}
-        </h3>
-      </div>
+      {!hideTitle && (
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            {isMounted && translationsReady ? t('create.summary.title') : '💰 Récapitulatif'}
+          </h3>
+        </div>
+      )}
 
       {/* Card récapitulatif */}
-      <div className="glass rounded-2xl p-6 space-y-4">
+      <div className={contentClassName}>
         {/* Montant bénéficiaire */}
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-600 dark:text-gray-400">
@@ -113,7 +120,11 @@ export default function FeeDisplay({
         )}
 
         {/* TOTAL à envoyer */}
-        <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-950/30 -m-6 mt-0 p-6 rounded-b-2xl">
+        <div
+          className={`flex items-center justify-between bg-blue-50 dark:bg-blue-950/30 p-4 rounded-xl ${
+            hideTitle ? '' : '-m-6 mt-0 p-6 rounded-b-2xl rounded-t-none'
+          }`}
+        >
           <span className="text-base font-bold text-gray-900 dark:text-white">
             {isMounted && translationsReady ? t('create.summary.totalToSend') : 'TOTAL à envoyer'}
           </span>

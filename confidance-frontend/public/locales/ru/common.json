@@ -782,7 +782,8 @@
     "mustBeOnBase": "Вы должны быть в сети",
     "toUseApp": "для использования приложения",
     "currentNetwork": "Текущая сеть: ChainID {{chainId}}",
-    "switchNetworkHint": "💡 Нажмите на кошелёк и переключитесь на Base Mainnet"
+    "switchNetworkHint": "💡 Нажмите на кошелёк и переключитесь на Base Mainnet",
+    "chainComingSoon": "Скоро"
   },
   "help": {
     "title": "Центр помощи",
@@ -811,6 +812,7 @@
       "back": "Вернуться в центр помощи",
       "title": "Связаться с поддержкой",
       "subtitle": "Наша команда готова помочь",
+      "evolutionNote": "Протокол постоянно развивается. Мы рассчитываем на вас: сообщайте об ошибках и багах, чтобы вместе улучшать Confidance.",
       "email": { "title": "Email", "description": "Ответ в среднем за 24 ч" },
       "discord": { "title": "Discord", "description": "Присоединяйтесь к сообществу", "comingSoon": "Скоро" },
       "form": {

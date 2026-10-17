@@ -38,6 +38,9 @@ interface UseTokenApprovalProps {
   spenderAddress: `0x${string}` | undefined;
   amount: bigint;
   releaseTime?: number; // ✅ NOUVEAU : pour détecter paiement instantané
+  /** Contrat ERC-20 réel pour lecture allowance / cohérence approve quand le formulaire utilise un token enregistré (tokenSymbol reste ex. USDC). */
+  customErc20Address?: `0x${string}`;
+  customErc20Decimals?: number;
 }
 
 export interface UseTokenApprovalReturn {
@@ -59,10 +62,25 @@ export function useTokenApproval({
   spenderAddress,
   amount,
   releaseTime, // ✅ NOUVEAU
+  customErc20Address,
+  customErc20Decimals,
 }: UseTokenApprovalProps): UseTokenApprovalReturn {
   const { address: userAddress } = useAccount();
   const publicClient = usePublicClient();
   const token = getToken(tokenSymbol);
+
+  const catalogErc20Address =
+    token.address && token.address !== 'NATIVE'
+      ? (token.address as `0x${string}`)
+      : undefined;
+  const allowanceReadAddress =
+    !token.isNative && customErc20Address
+      ? customErc20Address
+      : catalogErc20Address || '0x0000000000000000000000000000000000000000';
+  const effectiveDecimalsForGuards =
+    customErc20Address && typeof customErc20Decimals === 'number'
+      ? customErc20Decimals
+      : token.decimals || 18;
   
   // ✅ FIX : Log pour déboguer
   console.log('🔧 useTokenApproval hook créé/mis à jour:', {
@@ -70,6 +88,7 @@ export function useTokenApproval({
     amount: amount.toString(),
     isNative: token.isNative,
     hasSpenderAddress: !!spenderAddress,
+    hasCustomErc20: !!customErc20Address,
   });
 
   // ✅ NOUVEAU : Détecter si c'est un paiement instantané
@@ -97,7 +116,7 @@ export function useTokenApproval({
     isLoading: isCheckingAllowance,
     refetch: refetchAllowance,
   } = useReadContract({
-    address: token.address || '0x0000000000000000000000000000000000000000',
+    address: allowanceReadAddress,
     abi: erc20Abi,
     functionName: 'allowance',
     args: allowanceArgs,
@@ -348,7 +367,7 @@ export function useTokenApproval({
     }
 
     // ✅ FIX : Vérifier que le montant est raisonnable (pas plus de 1 billion de tokens)
-    const MAX_REASONABLE = BigInt(10 ** 12) * BigInt(10 ** (token.decimals || 18));
+    const MAX_REASONABLE = BigInt(10 ** 12) * BigInt(10 ** effectiveDecimalsForGuards);
     if (amountToApprove > MAX_REASONABLE) {
       console.warn('⚠️ Montant très élevé pour approbation:', {
         amountToApprove: amountToApprove.toString(),
@@ -356,9 +375,13 @@ export function useTokenApproval({
       });
     }
 
-    // ✅ FIX CRITIQUE : Vérifier que le token.address correspond bien au tokenSymbol (utiliser les valeurs finales)
+    // ✅ FIX CRITIQUE : Vérifier que le token.address correspond bien au tokenSymbol (catalogue),
+    // sauf si on approuve explicitement le contrat « custom » déjà lié au hook (évite faux mismatch USDC + adresse custom).
     const expectedToken = getToken(finalTokenSymbol);
-    if (finalTokenAddress !== expectedToken.address) {
+    const approvingConfiguredCustom =
+      !!customErc20Address &&
+      finalTokenAddress.toLowerCase() === customErc20Address.toLowerCase();
+    if (!approvingConfiguredCustom && finalTokenAddress !== expectedToken.address) {
       console.error('❌ ERREUR CRITIQUE: Mismatch entre tokenSymbol et token.address !', {
         finalTokenSymbol,
         finalTokenAddress,
@@ -380,6 +403,11 @@ export function useTokenApproval({
       throw new Error(`Impossible d'approuver un token natif (ETH). Le tokenSymbol=${finalTokenSymbol} ne devrait pas nécessiter d'approbation.`);
     }
 
+    const approvalDecimals =
+      approvingConfiguredCustom && typeof customErc20Decimals === 'number'
+        ? customErc20Decimals
+        : finalToken.decimals;
+
     console.log('🔍 [useTokenApproval] Lancement approbation:', {
       token: finalTokenSymbol,
       tokenAddress: finalTokenAddress,
@@ -388,9 +416,9 @@ export function useTokenApproval({
       isInstant: isInstantPayment,
       feesAdded: !isInstantPayment,
       totalToApprove: amountToApprove.toString(),
-      totalToApproveFormatted: `${(Number(amountToApprove) / (10 ** finalToken.decimals)).toFixed(6)} ${finalTokenSymbol}`,
+      totalToApproveFormatted: `${(Number(amountToApprove) / (10 ** approvalDecimals)).toFixed(6)} ${finalTokenSymbol}`,
       spenderAddress,
-      decimals: finalToken.decimals,
+      decimals: approvalDecimals,
       isNative: finalToken.isNative,
       hasTokenOverride: !!tokenSymbolOverride,
     });
@@ -428,7 +456,7 @@ export function useTokenApproval({
         args: [spenderAddress, amountToApprove.toString()],
         argsFormatted: [
           spenderAddress,
-          `${amountToApprove.toString()} (${(Number(amountToApprove) / (10 ** finalToken.decimals)).toFixed(6)} ${finalTokenSymbol})`,
+          `${amountToApprove.toString()} (${(Number(amountToApprove) / (10 ** approvalDecimals)).toFixed(6)} ${finalTokenSymbol})`,
         ],
         abiLength: erc20Abi.length,
       });
@@ -439,8 +467,8 @@ export function useTokenApproval({
       console.log('   - Token Symbol:', finalTokenSymbol);
       console.log('   - Spender Address:', spenderAddress);
       console.log('   - Amount (raw):', amountToApprove.toString());
-      console.log('   - Amount (formatted):', `${(Number(amountToApprove) / (10 ** finalToken.decimals)).toFixed(6)} ${finalTokenSymbol}`);
-      console.log('   - Decimals:', finalToken.decimals);
+      console.log('   - Amount (formatted):', `${(Number(amountToApprove) / (10 ** approvalDecimals)).toFixed(6)} ${finalTokenSymbol}`);
+      console.log('   - Decimals:', approvalDecimals);
       
       // ✅ FIX : Vérifier que amountToApprove est bien un bigint et pas une string
       const amountAsBigInt = typeof amountToApprove === 'bigint' ? amountToApprove : BigInt(amountToApprove.toString());
@@ -454,12 +482,12 @@ export function useTokenApproval({
         ],
         argsFormatted: [
           `spender: ${spenderAddress}`,
-          `amount: ${amountAsBigInt.toString()} (${(Number(amountAsBigInt) / (10 ** finalToken.decimals)).toFixed(6)} ${finalTokenSymbol})`,
+          `amount: ${amountAsBigInt.toString()} (${(Number(amountAsBigInt) / (10 ** approvalDecimals)).toFixed(6)} ${finalTokenSymbol})`,
         ],
         amountType: typeof amountAsBigInt,
         amountIsBigInt: typeof amountAsBigInt === 'bigint',
         userAddress: userAddress || 'non disponible',
-        tokenDecimals: finalToken.decimals,
+        tokenDecimals: approvalDecimals,
       });
       
       if (publicClient && userAddress) {
@@ -497,7 +525,7 @@ export function useTokenApproval({
       console.log('💡 [useTokenApproval] Si MetaMask annule la transaction, vérifiez:');
       console.log('   1. Que l\'adresse du token est correcte:', finalTokenAddress);
       console.log('   2. Que l\'adresse du spender est correcte:', spenderAddress);
-      console.log('   3. Que le montant est valide:', amountAsBigInt.toString(), `(${(Number(amountAsBigInt) / (10 ** finalToken.decimals)).toFixed(6)} ${finalTokenSymbol})`);
+      console.log('   3. Que le montant est valide:', amountAsBigInt.toString(), `(${(Number(amountAsBigInt) / (10 ** approvalDecimals)).toFixed(6)} ${finalTokenSymbol})`);
       console.log('   4. Que vous avez suffisamment de tokens pour approuver');
     } catch (err) {
       console.error('❌ [useTokenApproval] Erreur lors de l\'appel writeContract pour approbation:', err);

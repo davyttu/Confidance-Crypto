@@ -960,6 +960,7 @@
       "back": "Retour au centre d'aide",
       "title": "Contacter le Support",
       "subtitle": "Notre équipe est là pour vous aider",
+      "evolutionNote": "Le protocole est en constante évolution. Nous comptons sur vous pour nous signaler les erreurs ou bugs rencontrés, afin d’améliorer Confidance ensemble.",
       "email": {
         "title": "Email",
         "description": "Réponse sous 24h en moyenne"
@@ -1161,7 +1162,8 @@
     "mustBeOnBase": "Vous devez être sur",
     "toUseApp": "pour utiliser cette application",
     "currentNetwork": "Réseau actuel : ChainID {{chainId}}",
-    "switchNetworkHint": "💡 Cliquez sur votre wallet et changez de réseau vers Base Mainnet"
+    "switchNetworkHint": "💡 Cliquez sur votre wallet et changez de réseau vers Base Mainnet",
+    "chainComingSoon": "Bientôt disponible"
   },
   "links": {
     "cta": "Créer un lien de paiement",

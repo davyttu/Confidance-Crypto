@@ -22,6 +22,7 @@ import AddCustomTokenModal from './AddCustomTokenModal';
 import DateTimePicker from './DateTimePicker';
 import FeeDisplay from './FeeDisplay';
 import PaymentProgressModal from './PaymentProgressModal';
+import PaymentStepCard from './PaymentStepCard';
 import { useTokenBalance } from '@/hooks/useTokenBalance';
 import { useCreatePayment } from '@/hooks/useCreatePayment';
 import { useCreateBatchPayment } from '@/hooks/useCreateBatchPayment';
@@ -2102,10 +2103,16 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
       updateBeneficiaryHistory(formData.beneficiary);
     }
 
-    const token = getToken(formData.tokenSymbol);
-    const amountBigInt = BigInt(
-      Math.floor(parseFloat(formData.amount) * 10 ** token.decimals)
-    );
+    // ⚠️ Ne pas utiliser getToken(formData.tokenSymbol) pour les décimales : avec token custom,
+    // tokenSymbol reste souvent un placeholder (ex. USDC) alors que le montant doit suivre effectiveToken.
+    const amountBigInt = getAmountBigInt();
+    if (amountBigInt === null || amountBigInt <= 0n) {
+      setErrors((prev) => ({
+        ...prev,
+        amount: translate('create.validation.amountInvalid', 'Invalid amount'),
+      }));
+      return;
+    }
 
     // ⭐ Calcul optionnel: première mensualité personnalisée
     const firstMonthAmountBigInt = (() => {
@@ -2348,30 +2355,33 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
       {/* Blockchain awareness — juste avant le choix de crypto */}
       <BlockchainAwarenessBanner />
 
-      {/* Section 1 : Choix de la crypto */}
-      <div className="glass rounded-2xl p-6">
-        <CurrencySelector
-          selectedToken={formData.customTokenAddress ?? formData.tokenSymbol}
-          onSelectToken={handleTokenChange}
-          customTokens={customTokens}
-          onOpenAddModal={() => setShowAddCustomTokenModal(true)}
-        />
-        <AddCustomTokenModal
-          isOpen={showAddCustomTokenModal}
-          onClose={() => setShowAddCustomTokenModal(false)}
-          onAdd={handleAddCustomToken}
-        />
-        
-        <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
-          {isMounted && translationsReady ? t('create.summary.balance') : 'Available balance'} : <span className="font-medium">{balanceFormatted}</span>
+      {/* Section 2 : Choix de la crypto */}
+      <div className="glass rounded-2xl p-6 relative overflow-hidden">
+        <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-[#0052FF] to-[#00D4FF] opacity-80" />
+        <div className="pl-1">
+          <CurrencySelector
+            selectedToken={formData.customTokenAddress ?? formData.tokenSymbol}
+            onSelectToken={handleTokenChange}
+            customTokens={customTokens}
+            onOpenAddModal={() => setShowAddCustomTokenModal(true)}
+          />
+          <AddCustomTokenModal
+            isOpen={showAddCustomTokenModal}
+            onClose={() => setShowAddCustomTokenModal(false)}
+            onAdd={handleAddCustomToken}
+          />
+
+          <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
+            {isMounted && translationsReady ? t('create.summary.balance') : 'Available balance'} : <span className="font-medium">{balanceFormatted}</span>
+          </div>
         </div>
       </div>
 
-      {/* Section 2 : Bénéficiaire(s) */}
-      <div className="glass rounded-2xl p-6 space-y-4">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          {isMounted && translationsReady ? t('create.beneficiary.address') : 'Beneficiary address'}
-        </label>
+      {/* Section 3 : Bénéficiaire(s) */}
+      <PaymentStepCard
+        step={3}
+        title={isMounted && translationsReady ? t('create.beneficiary.address') : 'Beneficiary address'}
+      >
         <div className="relative">
           <input
             type="text"
@@ -2588,11 +2598,12 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
             
           </div>
         )}
-      </div>
+      </PaymentStepCard>
 
       {/* ✅ SECTION PAYMENT IDENTITY */}
       <div id="payment-description">
         <PaymentIdentitySection
+          step={4}
           label={formData.label}
           category={formData.category}
           onLabelChange={handleLabelChange}
@@ -2606,11 +2617,25 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
         />
       </div>
 
-      {/* Section 3 : Montant */}
-      <div className="glass rounded-2xl p-6 space-y-4">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          {isMounted && translationsReady ? t('create.amount.label') : 'Amount'} {isBatchMode && (isMounted && translationsReady ? t('create.amount.perBeneficiary') : '(per beneficiary)')} {isRecurringMode && (isMounted && translationsReady ? t('create.amount.monthly') : '(monthly)')}
-        </label>
+      {/* Section 5 : Montant */}
+      <PaymentStepCard
+        step={5}
+        title={
+          <>
+            {isMounted && translationsReady ? t('create.amount.label') : 'Amount'}
+            {isBatchMode && (
+              <span className="font-medium text-base text-gray-500 dark:text-gray-400">
+                {isMounted && translationsReady ? t('create.amount.perBeneficiary') : '(per beneficiary)'}
+              </span>
+            )}
+            {isRecurringMode && (
+              <span className="font-medium text-base text-gray-500 dark:text-gray-400">
+                {isMounted && translationsReady ? t('create.amount.monthly') : '(monthly)'}
+              </span>
+            )}
+          </>
+        }
+      >
         <div className="relative">
           <input
             ref={amountInputRef}
@@ -2892,16 +2917,17 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
             </span>
           </div>
         )}
-      </div>
+      </PaymentStepCard>
 
-      {/* Section 4 : Timing */}
-      <div className="glass rounded-2xl p-6 space-y-4">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          {isMounted && translationsReady
+      {/* Section 6 : Timing */}
+      <PaymentStepCard
+        step={6}
+        title={
+          isMounted && translationsReady
             ? t('create.date.paymentTypeLabel', { defaultValue: 'Payment type' })
-            : 'Payment type'}
-        </label>
-
+            : 'Payment type'
+        }
+      >
         <div className="grid grid-cols-3 gap-2">
           <button
             type="button"
@@ -3101,15 +3127,14 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
             )}
           </>
         )}
-      </div>
+      </PaymentStepCard>
 
-      {/* Section 4.5 : Type de paiement */}
-      <div className="glass rounded-2xl p-6">
+      {/* Section 7 : Type de paiement (annulable / définitif) */}
+      <PaymentStepCard
+        step={7}
+        title={isMounted && translationsReady ? t('create.paymentType.label') : '🔒 Payment type'}
+      >
         <div className="space-y-3">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            {isMounted && translationsReady ? t('create.paymentType.label') : '🔒 Payment type'}
-          </label>
-          
           {/* ✅ Message si paiement instantané */}
           {formData.releaseDate && (formData.releaseDate.getTime() - Date.now()) / 1000 < 60 && (
             <div className="p-3 bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 rounded-lg">
@@ -3194,19 +3219,17 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
             </label>
           </div>
         </div>
-      </div>
+      </PaymentStepCard>
 
-      {/* Section 5 : Récapitulatif frais */}
+      {/* Section 8 : Récapitulatif frais */}
       {getAmountBigInt() && (
-        <div className="glass rounded-2xl p-6">
+        <PaymentStepCard
+          step={8}
+          title={isMounted && translationsReady ? t('create.summary.title') : '💰 Summary'}
+        >
           {/* Affichage spécifique pour paiement récurrent */}
           {isRecurringMode ? (
             <div className="space-y-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {isMounted && translationsReady ? t('create.summary.title') : '💰 Summary'}
-                </h3>
-              </div>
               {/* Calcul total */}
               <div className="space-y-3">
                 <div className="flex justify-between items-center text-sm">
@@ -3439,9 +3462,10 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
               tokenSymbol={effectiveToken.symbol}
               tokenDecimals={formData.customTokenAddress ? effectiveToken.decimals : undefined}
               releaseDate={formData.releaseDate}
+              hideTitle
             />
           )}
-        </div>
+        </PaymentStepCard>
       )}
 
       {/* Bouton submit */}

@@ -101,9 +101,16 @@ export default function ContactPage() {
         <h1 className="text-4xl font-bold text-gray-900 mb-4">
           {isMounted && translationsReady ? t('help.contact.title') : 'Contacter le Support'}
         </h1>
-        <p className="text-gray-600 mb-12">
+        <p className="text-lg text-gray-600 mb-4">
           {isMounted && translationsReady ? t('help.contact.subtitle') : 'Notre équipe est là pour vous aider'}
         </p>
+        <div className="mb-12 max-w-2xl rounded-xl border border-blue-100 bg-blue-50/70 px-5 py-4">
+          <p className="text-[15px] leading-relaxed text-gray-700">
+            {isMounted && translationsReady
+              ? t('help.contact.evolutionNote')
+              : 'Le protocole est en constante évolution. Nous comptons sur vous pour nous signaler les erreurs ou bugs rencontrés, afin d’améliorer Confidance ensemble.'}
+          </p>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
           <div className="bg-white rounded-2xl p-8 shadow-lg">

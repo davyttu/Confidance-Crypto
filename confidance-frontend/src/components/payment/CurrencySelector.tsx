@@ -132,13 +132,22 @@ export default function CurrencySelector({
   );
   const isNative = selectedBuiltIn?.isNative ?? false;
 
+  const stepGradient = 'from-[#0052FF] to-[#00D4FF]';
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          {isMounted && ready ? t('create.currency.select') : 'Choisissez la crypto à envoyer'}
-        </label>
-        <span className="text-xs text-gray-500">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <span
+            className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-white font-bold text-sm bg-gradient-to-br ${stepGradient} shadow-md flex-shrink-0`}
+          >
+            2
+          </span>
+          <h3 className="font-bold text-lg text-gray-900 dark:text-white tracking-tight">
+            {isMounted && ready ? t('create.currency.select') : 'Choisissez la crypto à envoyer'}
+          </h3>
+        </div>
+        <span className="text-xs text-gray-500 flex-shrink-0">
           {totalCount} {isMounted && ready ? t('create.currency.available') : 'disponibles'}
         </span>
       </div>
@@ -224,18 +233,30 @@ export default function CurrencySelector({
         {canAddMore && onOpenAddModal && (
           <button
             type="button"
-            onClick={onOpenAddModal}
+            disabled
+            aria-disabled="true"
+            title={t('wallet.chainComingSoon', { defaultValue: 'Bientôt disponible' })}
             className="
-              relative overflow-hidden rounded-2xl p-6 
-              border-2 border-dashed border-gray-300 dark:border-gray-600 
-              bg-gray-50 dark:bg-gray-800/50 
-              hover:border-primary-400 hover:bg-primary-50/50 dark:hover:bg-primary-950/20 
+              group relative overflow-hidden rounded-2xl p-6 
+              border-2 border-dashed border-gray-200 dark:border-gray-700 
+              bg-gray-50 dark:bg-gray-800/40 
+              opacity-45 grayscale cursor-not-allowed
               transition-all duration-300 flex flex-col items-center justify-center gap-2 min-h-[140px]
             "
           >
             <span className="text-2xl" aria-hidden>➕</span>
-            <span className="text-sm font-medium text-gray-600 dark:text-gray-400 text-center">
+            <span className="text-sm font-medium text-gray-500 dark:text-gray-500 text-center">
               {t('create.currency.registerCrypto', { defaultValue: 'Register a cryptocurrency' })}
+            </span>
+            <span
+              className="
+                pointer-events-none absolute inset-x-3 top-1/2 -translate-y-1/2
+                rounded-md bg-gray-900/95 px-2 py-1 text-center text-xs font-medium text-gray-100
+                opacity-0 shadow-lg transition-opacity duration-150
+                group-hover:opacity-100
+              "
+            >
+              {t('wallet.chainComingSoon', { defaultValue: 'Bientôt disponible' })}
             </span>
           </button>
         )}

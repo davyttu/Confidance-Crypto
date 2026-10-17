@@ -85,6 +85,27 @@ export const getToken = (symbol: TokenSymbol): Token => {
   return SUPPORTED_TOKENS[symbol];
 };
 
+/**
+ * Décimales pour afficher un montant on-chain (wei) dans le dashboard.
+ * Les symboles hors catalogue (tokens enregistrés : TMP, etc.) suivent l’ERC-20 courant → 18.
+ */
+export function getDashboardDisplayDecimals(symbol: string): number {
+  switch (symbol) {
+    case 'ETH':
+      return 18;
+    case 'USDC':
+    case 'USDT':
+      return 6;
+    case 'cbBTC':
+    case 'WBTC':
+      return 8;
+    case 'DAI':
+      return 18;
+    default:
+      return 18;
+  }
+}
+
 // Liste des tokens pour l'UI (exclut cbBTC et WBTC)
 export const TOKEN_LIST: Token[] = Object.values(SUPPORTED_TOKENS).filter(
   (token) =>

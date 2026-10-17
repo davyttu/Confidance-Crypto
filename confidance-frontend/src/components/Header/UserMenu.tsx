@@ -3,9 +3,9 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { RegisterModal } from '@/components/Auth/RegisterModal';
-import { LoginModal } from '@/components/Auth/LoginModal';
-import { VerifyEmailModal } from '@/components/Auth/VerifyEmailModal';
+import { RegisterModal } from '@/components/auth/RegisterModal';
+import { LoginModal } from '@/components/auth/LoginModal';
+import { VerifyEmailModal } from '@/components/auth/VerifyEmailModal';
 import Link from 'next/link';
 
 export function UserMenu() {

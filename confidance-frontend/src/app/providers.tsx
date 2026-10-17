@@ -11,6 +11,7 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { I18nextProvider, useTranslation } from 'react-i18next';
 import i18n from '@/lib/i18n';
 import { WalletConnectErrorHandler } from '@/components/WalletConnectErrorHandler';
+import { DisabledChainsGuard } from '@/components/wallet/DisabledChainsGuard';
 
 // Singleton pour éviter les multiples initialisations de WalletConnect Core
 function makeQueryClient() {
@@ -73,6 +74,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <QueryClientProvider client={queryClient}>
           <RainbowKitProviderWithLocale>
             <WalletConnectErrorHandler />
+            <DisabledChainsGuard />
             <ThemeProvider>
               {children}
             </ThemeProvider>

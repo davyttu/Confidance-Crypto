@@ -379,6 +379,10 @@ app.post('/api/payments', optionalAuth, async (req, res) => {
       transaction_hash,
       is_instant,
       payment_type,
+      payment_label,
+      payment_category,
+      label,
+      category,
     } = req.body;
 
     console.log('📥 [SIMPLE] Nouvelle demande - BODY COMPLET:', JSON.stringify(req.body, null, 2));
@@ -405,6 +409,23 @@ app.post('/api/payments', optionalAuth, async (req, res) => {
         ? normalizeHexAddress(token_address)
         : token_address;
 
+    const labelSource =
+      typeof payment_label === 'string' && payment_label.trim()
+        ? payment_label
+        : typeof label === 'string'
+          ? label
+          : '';
+    const categorySource =
+      typeof payment_category === 'string' && payment_category.trim()
+        ? payment_category
+        : typeof category === 'string'
+          ? category
+          : '';
+    const normalizedPaymentLabel =
+      typeof labelSource === 'string' ? labelSource.trim().slice(0, 200) : '';
+    const normalizedPaymentCategory =
+      typeof categorySource === 'string' ? categorySource.trim().slice(0, 64) : '';
+
     // ✅ FIX : Vérifier si le paiement existe déjà (protection contre doublons)
     // Utiliser une transaction pour éviter les race conditions
     try {
@@ -420,6 +441,29 @@ app.post('/api/payments', optionalAuth, async (req, res) => {
         // Ne pas retourner d'erreur, continuer avec l'insertion
       } else if (existingPayment) {
         console.log('ℹ️ [SIMPLE] Paiement déjà existant:', existingPayment.id);
+        const patch = {};
+        if (normalizedPaymentLabel && !existingPayment.payment_label) {
+          patch.payment_label = normalizedPaymentLabel;
+        }
+        if (normalizedPaymentCategory && !existingPayment.payment_category) {
+          patch.payment_category = normalizedPaymentCategory;
+        }
+        if (Object.keys(patch).length > 0) {
+          const { data: merged, error: mergeErr } = await supabase
+            .from('scheduled_payments')
+            .update(patch)
+            .eq('id', existingPayment.id)
+            .select()
+            .single();
+          if (!mergeErr && merged) {
+            return res.json({
+              success: true,
+              payment: merged,
+              alreadyExists: true,
+            });
+          }
+          console.warn('⚠️ [SIMPLE] Impossible de fusionner libellé/catégorie sur doublon:', mergeErr?.message);
+        }
         // Retourner le paiement existant au lieu d'erreur
         return res.json({ 
           success: true, 
@@ -497,6 +541,8 @@ app.post('/api/payments', optionalAuth, async (req, res) => {
       is_batch: false,
       batch_count: null,
       batch_beneficiaries: null,
+      payment_label: normalizedPaymentLabel || null,
+      payment_category: normalizedPaymentCategory || null,
     };
     
     // ✅ VÉRIFICATION FINALE avant insertion
@@ -579,7 +625,10 @@ app.post('/api/payments', optionalAuth, async (req, res) => {
         event_label: 'Paiement créé',
         actor_type: 'user',
         actor_label: 'Vous',
-        explanation: formatPaymentCreatedExplanation(req.body.label, req.body.category),
+        explanation: formatPaymentCreatedExplanation(
+          normalizedPaymentLabel || label,
+          normalizedPaymentCategory || category
+        ),
         metadata
       });
 
@@ -608,7 +657,7 @@ app.post('/api/payments', optionalAuth, async (req, res) => {
             gas_fee: req.body.gas_fee ?? 0,
             protocol_fee: req.body.protocol_fee ?? 0,
             payment_type: finalPaymentType,
-            category: req.body.category ?? null,
+            category: normalizedPaymentCategory || category || null,
             tx_hash: transaction_hash
           })
         });
@@ -647,7 +696,28 @@ app.post('/api/payments/batch', optionalAuth, async (req, res) => {
       payment_type,
       token_symbol,           // ✅ Ajouter token_symbol depuis le body
       token_address,          // ✅ Ajouter token_address depuis le body
+      payment_label: batchPaymentLabel,
+      payment_category: batchPaymentCategory,
+      label: batchLabel,
+      category: batchCategory,
     } = req.body;
+
+    const batchLabelSource =
+      typeof batchPaymentLabel === 'string' && batchPaymentLabel.trim()
+        ? batchPaymentLabel
+        : typeof batchLabel === 'string'
+          ? batchLabel
+          : '';
+    const batchCategorySource =
+      typeof batchPaymentCategory === 'string' && batchPaymentCategory.trim()
+        ? batchPaymentCategory
+        : typeof batchCategory === 'string'
+          ? batchCategory
+          : '';
+    const normalizedBatchPaymentLabel =
+      typeof batchLabelSource === 'string' ? batchLabelSource.trim().slice(0, 200) : '';
+    const normalizedBatchPaymentCategory =
+      typeof batchCategorySource === 'string' ? batchCategorySource.trim().slice(0, 64) : '';
 
     console.log('📥 [BATCH] Nouvelle demande:', { 
       contract_address, 
@@ -753,6 +823,8 @@ app.post('/api/payments/batch', optionalAuth, async (req, res) => {
       batch_beneficiaries: beneficiariesNormalized, // Supabase accepte direct l'objet JS pour JSONB
       user_id: user ? user.userId : null,
       guest_email: !user ? req.body.guest_email : null,
+      payment_label: normalizedBatchPaymentLabel || null,
+      payment_category: normalizedBatchPaymentCategory || null,
     };
     
     // ✅ Vérification finale avant insertion
@@ -800,7 +872,10 @@ app.post('/api/payments/batch', optionalAuth, async (req, res) => {
         event_label: 'Paiement créé',
         actor_type: 'user',
         actor_label: 'Vous',
-        explanation: formatPaymentCreatedExplanation(req.body.label, req.body.category),
+        explanation: formatPaymentCreatedExplanation(
+          normalizedBatchPaymentLabel || batchLabel,
+          normalizedBatchPaymentCategory || batchCategory
+        ),
         metadata
       });
 
@@ -829,7 +904,7 @@ app.post('/api/payments/batch', optionalAuth, async (req, res) => {
             gas_fee: req.body.gas_fee ?? 0,
             protocol_fee: req.body.protocol_fee ?? 0,
             payment_type: finalPaymentType,
-            category: req.body.category ?? null,
+            category: normalizedBatchPaymentCategory || batchCategory || null,
             tx_hash: transaction_hash
           })
         });

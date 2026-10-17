@@ -10,6 +10,7 @@ import {
   CATEGORY_COLORS 
 } from '@/types/payment-identity';
 import { useCategorySuggestion } from '@/hooks/useCategorySuggestion';
+import PaymentStepCard from './PaymentStepCard';
 
 interface PaymentIdentitySectionProps {
   label: string;
@@ -22,6 +23,7 @@ interface PaymentIdentitySectionProps {
   matchedKeywords?: string[];
   error?: string;
   disabled?: boolean;
+  step?: number;
 }
 
 export default function PaymentIdentitySection({
@@ -34,7 +36,8 @@ export default function PaymentIdentitySection({
   confidence: confidenceProp,
   matchedKeywords: matchedKeywordsProp,
   error,
-  disabled = false
+  disabled = false,
+  step = 4,
 }: PaymentIdentitySectionProps) {
   const { t, i18n } = useTranslation();
   
@@ -73,18 +76,21 @@ export default function PaymentIdentitySection({
   };
 
   return (
-    <div className={`glass rounded-2xl p-6 space-y-4 ${disabled ? 'opacity-60' : ''}`}>
-      {/* En-tête avec icône */}
-      <div className="flex items-center gap-2">
-        <span className="text-2xl">💡</span>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          {t('create.identity.title', 'Payment description')}
-        </label>
-        {onToggleDisabled && (
+    <PaymentStepCard
+      step={step}
+      className={disabled ? 'opacity-60' : ''}
+      title={
+        <>
+          <span className="text-xl" aria-hidden>💡</span>
+          <span>{t('create.identity.title', 'Payment description')}</span>
+        </>
+      }
+      titleExtra={
+        onToggleDisabled ? (
           <button
             type="button"
             onClick={onToggleDisabled}
-            className="ml-1 h-4 w-4 rounded-full border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600 transition-colors flex items-center justify-center"
+            className="h-4 w-4 rounded-full border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600 transition-colors flex items-center justify-center flex-shrink-0"
             aria-label={disabled ? t('links.create.aria.enablePaymentDescription') : t('links.create.aria.disablePaymentDescription')}
             title={disabled ? t('links.create.aria.enablePaymentDescription') : t('links.create.aria.disablePaymentDescription')}
           >
@@ -92,9 +98,9 @@ export default function PaymentIdentitySection({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
-        )}
-      </div>
-
+        ) : undefined
+      }
+    >
       {/* Input Label */}
       <div className="space-y-2">
         <input
@@ -223,6 +229,6 @@ export default function PaymentIdentitySection({
           </p>
         </div>
       </div>
-    </div>
+    </PaymentStepCard>
   );
 }

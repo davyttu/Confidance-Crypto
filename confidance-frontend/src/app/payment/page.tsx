@@ -9,26 +9,11 @@ import { useEffect, useState } from 'react';
 export default function PaymentPage() {
   const { t, ready } = useTranslation();
   const [isMounted, setIsMounted] = useState(false);
-  const [voiceSessionActive, setVoiceSessionActive] = useState(false);
-  const [hasBeneficiaries, setHasBeneficiaries] = useState(false);
   const [voiceLang, setVoiceLang] = useState('FR');
-  const voiceLangOptions = ['FR', 'EN', 'ES', 'RU', 'ZH'];
   const voiceLangStorageKey = 'voiceRecognitionLang';
 
   useEffect(() => {
     setIsMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const onActive = () => setVoiceSessionActive(true);
-    const onInactive = () => setVoiceSessionActive(false);
-    window.addEventListener('voice-session-active', onActive);
-    window.addEventListener('voice-session-inactive', onInactive);
-    return () => {
-      window.removeEventListener('voice-session-active', onActive);
-      window.removeEventListener('voice-session-inactive', onInactive);
-    };
   }, []);
 
   useEffect(() => {
@@ -46,15 +31,9 @@ export default function PaymentPage() {
         {/* Bandeau invité */}
         <GuestBanner />
 
-        {!hasBeneficiaries && (
-          <p className="max-w-md mx-auto text-center text-sm text-gray-600 dark:text-gray-400 mb-6">
-            {isMounted && ready ? t('create.voiceNeedBeneficiary', { defaultValue: 'To use the voice command, save at least one beneficiary (they will appear in favorites).' }) : 'To use the voice command, save at least one beneficiary (they will appear in favorites).'}
-          </p>
-        )}
-
         {/* Formulaire */}
         <div id="payment-form" className="max-w-3xl mx-auto">
-          <PaymentForm onBeneficiariesChange={setHasBeneficiaries} />
+          <PaymentForm />
         </div>
 
         {/* Section info */}
@@ -142,85 +121,53 @@ export default function PaymentPage() {
         </div>
       </div>
 
-      {/* Bouton vocal flottant — même taille que Help, badge langue rattaché en haut */}
+      {/* Bouton vocal flottant — coming soon (désactivé pour le lancement Base) */}
       <div className="fixed bottom-28 right-6 z-40 flex flex-col items-end">
-        <div className="relative">
+        <div className="relative group">
           <button
             type="button"
-            title={
-              voiceSessionActive
-                ? (isMounted && ready ? t('create.voiceStopCta', { defaultValue: 'Stop the voice command' }) : 'Stop the voice command')
-                : `${isMounted && ready ? t('create.voiceCta', { defaultValue: 'Create a payment by voice' }) : 'Create a payment by voice'} (${voiceLang})`
-            }
-            onClick={() => {
-              if (voiceSessionActive) {
-                document.getElementById('payment-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                window.dispatchEvent(new CustomEvent('voice-payment-stop'));
-              } else if (hasBeneficiaries) {
-                document.getElementById('payment-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                window.dispatchEvent(new CustomEvent('voice-payment-start'));
-              }
-            }}
-            disabled={!voiceSessionActive && !hasBeneficiaries}
-            className={`
+            disabled
+            aria-disabled="true"
+            title={isMounted && ready ? t('wallet.chainComingSoon', { defaultValue: 'Bientôt disponible' }) : 'Bientôt disponible'}
+            className="
               w-16 h-16 rounded-full
-              shadow-lg hover:shadow-xl
-              transform hover:scale-105 active:scale-95
+              bg-gradient-to-br from-gray-400 to-gray-500 text-white
+              opacity-45 grayscale cursor-not-allowed
+              shadow-md
               transition-all duration-200
               flex flex-col items-center justify-center gap-0.5
-              ${voiceSessionActive
-                ? 'bg-gradient-to-br from-red-500 to-red-600 text-white'
-                : 'bg-gradient-to-br from-blue-600 to-purple-600 text-white'}
-              ${(!voiceSessionActive && !hasBeneficiaries) ? 'opacity-60 cursor-not-allowed' : ''}
-            `}
+            "
           >
-            {voiceSessionActive ? (
-              <>
-                <svg viewBox="0 0 24 24" className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-                <span className="text-[10px] font-semibold uppercase tracking-wider">
-                  {isMounted && ready ? t('create.voiceStopCtaShort', { defaultValue: 'Stop' }) : 'Stop'}
-                </span>
-              </>
-            ) : (
-              <>
-                <svg viewBox="0 0 24 24" className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 14a3 3 0 003-3V7a3 3 0 10-6 0v4a3 3 0 003 3z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-14 0" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v3" />
-                </svg>
-                <span className="text-xs font-medium">
-                  {isMounted && ready ? t('create.voiceCtaShort', { defaultValue: 'Voice' }) : 'Voice'}
-                </span>
-              </>
-            )}
+            <svg viewBox="0 0 24 24" className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 14a3 3 0 003-3V7a3 3 0 10-6 0v4a3 3 0 003 3z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-14 0" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v3" />
+            </svg>
+            <span className="text-xs font-medium">
+              {isMounted && ready ? t('create.voiceCtaShort', { defaultValue: 'Voice' }) : 'Voice'}
+            </span>
           </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              const currentIndex = voiceLangOptions.indexOf(voiceLang);
-              const next = voiceLangOptions[(currentIndex + 1) % voiceLangOptions.length];
-              setVoiceLang(next);
-              try {
-                const storageValue =
-                  next === 'FR' ? 'fr-FR' :
-                  next === 'EN' ? 'en-US' :
-                  next === 'ES' ? 'es-ES' :
-                  next === 'RU' ? 'ru-RU' : 'zh-CN';
-                localStorage.setItem(voiceLangStorageKey, storageValue);
-              } catch {
-                // ignore storage failure
-              }
-            }}
-            className="absolute -top-1 -right-1 w-7 h-7 rounded-full border-2 border-white dark:border-gray-900 bg-white dark:bg-gray-800 text-[10px] font-bold text-primary-600 dark:text-primary-400 shadow-md flex items-center justify-center hover:bg-primary-50 dark:hover:bg-gray-700 transition-colors"
-            title={isMounted && ready ? t('create.voiceLang', { defaultValue: 'Voice language' }) : 'Voice language'}
-            aria-label={isMounted && ready ? t('create.voiceLang', { defaultValue: 'Voice language' }) : 'Voice language'}
+          <span
+            className="
+              pointer-events-none absolute right-full top-1/2 mr-2 -translate-y-1/2
+              whitespace-nowrap rounded-md bg-gray-900/95 px-2 py-1
+              text-center text-xs font-medium text-gray-100
+              opacity-0 shadow-lg transition-opacity duration-150
+              group-hover:opacity-100
+            "
+          >
+            {isMounted && ready ? t('wallet.chainComingSoon', { defaultValue: 'Bientôt disponible' }) : 'Bientôt disponible'}
+          </span>
+          <span
+            className="
+              absolute -top-1 -right-1 w-7 h-7 rounded-full border-2 border-white dark:border-gray-900
+              bg-gray-200 dark:bg-gray-700 text-[10px] font-bold text-gray-500 dark:text-gray-400
+              shadow-md flex items-center justify-center opacity-60 grayscale cursor-not-allowed
+            "
+            aria-hidden
           >
             {voiceLang}
-          </button>
+          </span>
         </div>
       </div>
     </div>

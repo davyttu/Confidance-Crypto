@@ -8,6 +8,8 @@ export type CustomToken = {
   name: string;
   symbol: string;
   decimals: number;
+  /** Optionnel : 1 unité de ce token = X USD (pour agréger la carte « ALL » avec ETH/USDC/USDT). */
+  usdPerToken?: number;
 };
 
 const STORAGE_KEY = 'confidance.customTokens';
@@ -30,12 +32,18 @@ export function getCustomTokens(): CustomToken[] {
           typeof item.symbol === 'string' &&
           typeof item.decimals === 'number'
       )
-      .map((item) => ({
-        address: item.address.trim(),
-        name: String(item.name).trim(),
-        symbol: String(item.symbol).trim().toUpperCase() || '???',
-        decimals: Math.min(18, Math.max(0, Math.floor(item.decimals))),
-      }))
+      .map((item) => {
+        const usdRaw = item.usdPerToken;
+        const usdPerToken =
+          typeof usdRaw === 'number' && Number.isFinite(usdRaw) && usdRaw > 0 ? usdRaw : undefined;
+        return {
+          address: item.address.trim(),
+          name: String(item.name).trim(),
+          symbol: String(item.symbol).trim().toUpperCase() || '???',
+          decimals: Math.min(18, Math.max(0, Math.floor(item.decimals))),
+          ...(usdPerToken !== undefined ? { usdPerToken } : {}),
+        };
+      })
       .filter((item) => /^0x[a-fA-F0-9]{40}$/.test(item.address))
       .slice(0, MAX_CUSTOM_TOKENS);
     return normalized;
@@ -49,12 +57,19 @@ export function saveCustomTokens(tokens: CustomToken[]): void {
   try {
     const trimmed = tokens
       .slice(0, MAX_CUSTOM_TOKENS)
-      .map((t) => ({
-        address: t.address.trim(),
-        name: t.name.trim(),
-        symbol: t.symbol.trim().toUpperCase() || '???',
-        decimals: Math.min(18, Math.max(0, Math.floor(t.decimals))),
-      }));
+      .map((t) => {
+        const usd =
+          typeof t.usdPerToken === 'number' && Number.isFinite(t.usdPerToken) && t.usdPerToken > 0
+            ? t.usdPerToken
+            : undefined;
+        return {
+          address: t.address.trim(),
+          name: t.name.trim(),
+          symbol: t.symbol.trim().toUpperCase() || '???',
+          decimals: Math.min(18, Math.max(0, Math.floor(t.decimals))),
+          ...(usd !== undefined ? { usdPerToken: usd } : {}),
+        };
+      });
     localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed));
   } catch {
     // ignore

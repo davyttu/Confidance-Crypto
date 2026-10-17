@@ -167,6 +167,10 @@ interface CreatePaymentParams {
   amount: bigint;
   releaseTime: number; // Unix timestamp en secondes
   cancellable?: boolean; // Optionnel, par défaut false
+  /** Libellé affiché dans le dashboard (ex. « LIGHT ») */
+  label?: string;
+  /** Catégorie (clé PaymentCategory ou libre) */
+  category?: string;
 }
 
 type PaymentStatus = 
@@ -236,6 +240,8 @@ export function useCreatePayment(): UseCreatePaymentReturn {
   const [currentParams, setCurrentParams] = useState<CreatePaymentParams | null>(null);
   const [progressMessage, setProgressMessage] = useState<string>('');
   const [capturedPayerAddress, setCapturedPayerAddress] = useState<`0x${string}` | undefined>();
+  /** Snapshot synchrone des params du dernier createPayment (libellé, catégorie, customToken…) pour l’API DB — évite currentParams null / stale dans l’effet post-tx. */
+  const lastCreatePaymentParamsRef = useRef<CreatePaymentParams | null>(null);
   
   // ✅ FIX : Stocker le hash d'approbation pour cette tentative (protection contre double déclenchement)
   const currentApproveTxHash = useRef<`0x${string}` | undefined>(undefined);
@@ -387,6 +393,8 @@ export function useCreatePayment(): UseCreatePaymentReturn {
     spenderAddress: isInstantFromParams ? FACTORY_INSTANT_ADDRESS : FACTORY_SCHEDULED_ADDRESS, // ✅ Spender selon instant/programmé
     amount: amountForApproval,
     releaseTime: currentParams?.releaseTime,
+    customErc20Address: currentParams?.customToken?.address as `0x${string}` | undefined,
+    customErc20Decimals: currentParams?.customToken?.decimals,
   });
   
   // ✅ FIX CRITIQUE : Mettre à jour la ref à chaque render pour toujours avoir la dernière instance
@@ -510,6 +518,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
         amount: params.amount.toString(),
         beneficiary: params.beneficiary,
       });
+      lastCreatePaymentParamsRef.current = params;
       setCurrentParams(params);
       setCapturedPayerAddress(address);
 
@@ -882,7 +891,8 @@ export function useCreatePayment(): UseCreatePaymentReturn {
           // ✅ FIX : Vérifier uniquement que tokenData correspond (pas de vérification stricte sur approvalTokenSymbol)
           // car approvalTokenSymbol peut être 'ETH' si currentParams n'est pas encore mis à jour
           // Le hook se mettra à jour automatiquement au prochain render
-          if (params.tokenSymbol !== tokenData.symbol) {
+          // Sauf token custom : le formulaire garde souvent tokenSymbol catalogue (ex. USDC) avec customToken réel.
+          if (!params.customToken && params.tokenSymbol !== tokenData.symbol) {
             console.error('❌ ERREUR: Le token du paiement ne correspond pas !', {
               paramsTokenSymbol: params.tokenSymbol,
               tokenDataSymbol: tokenData.symbol,
@@ -1028,12 +1038,14 @@ export function useCreatePayment(): UseCreatePaymentReturn {
               allParamsValid: !!params.tokenSymbol && !!tokenData.address && !!factoryAddress && approvalAmount > BigInt(0),
             });
             
-            // ✅ FIX : Vérifier que l'adresse du token correspond bien au tokenSymbol
-            const expectedToken = getToken(params.tokenSymbol as TokenSymbol);
-            if (tokenData.address !== expectedToken.address) {
-              const errorMsg = `Erreur: L'adresse du token (${tokenData.address}) ne correspond pas au tokenSymbol (${params.tokenSymbol}). Attendu: ${expectedToken.address}`;
-              console.error('❌ [ERREUR CRITIQUE]', errorMsg);
-              throw new Error(errorMsg);
+            // ✅ FIX : Vérifier que l'adresse du token correspond bien au tokenSymbol (tokens catalogue uniquement)
+            if (!params.customToken) {
+              const expectedToken = getToken(params.tokenSymbol as TokenSymbol);
+              if (tokenData.address !== expectedToken.address) {
+                const errorMsg = `Erreur: L'adresse du token (${tokenData.address}) ne correspond pas au tokenSymbol (${params.tokenSymbol}). Attendu: ${expectedToken.address}`;
+                console.error('❌ [ERREUR CRITIQUE]', errorMsg);
+                throw new Error(errorMsg);
+              }
             }
             
             // ✅ FIX : Vérifier que le montant est valide
@@ -2308,12 +2320,21 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             try {
               setProgressMessage(t('create.modal.savingToDatabase', { defaultValue: 'Enregistrement dans la base de données...' }));
               
-              // Capturer les valeurs actuelles
-              const params = currentParams;
+              // Préférer le snapshot du createPayment (libellé / catégorie) — currentParams peut être null si reset ou stale dans cet effet
+              const params = lastCreatePaymentParamsRef.current ?? currentParams;
               const userAddress = capturedPayerAddress;
               
-              // ✅ FIX USDC : Recalculer tokenData depuis params au moment de l'enregistrement
-              const tokenData = params ? getToken(params.tokenSymbol) : null;
+              // Token catalogue ou custom (même logique que createPayment / affichage)
+              const tokenData = params
+                ? params.customToken
+                  ? {
+                      address: params.customToken.address,
+                      decimals: params.customToken.decimals,
+                      symbol: params.customToken.symbol,
+                      isNative: false as const,
+                    }
+                  : getToken(params.tokenSymbol)
+                : null;
 
               if (!params || !userAddress) {
                 console.error('❌ Paramètres manquants pour enregistrement');
@@ -2351,11 +2372,16 @@ export function useCreatePayment(): UseCreatePaymentReturn {
               // Déterminer le type de paiement
               const paymentType = isInstantPayment ? 'instant' : 'scheduled';
 
+              const trimmedLabel =
+                typeof params.label === 'string' ? params.label.trim().slice(0, 200) : '';
+              const trimmedCategory =
+                typeof params.category === 'string' ? params.category.trim().slice(0, 64) : '';
+
               const requestBody = {
                 contract_address: foundAddress,
                 payer_address: userAddress,
                 payee_address: params.beneficiary,
-                token_symbol: params.tokenSymbol,
+                token_symbol: params.customToken?.symbol ?? params.tokenSymbol,
                 token_address: tokenData?.address || null,
                 amount: params.amount.toString(),
                 release_time: params.releaseTime,
@@ -2367,6 +2393,8 @@ export function useCreatePayment(): UseCreatePaymentReturn {
                 payment_type: paymentType,
                 user_id: user?.id || null,
                 guest_email: user?.email || null,
+                payment_label: trimmedLabel || null,
+                payment_category: trimmedCategory || null,
               };
 
               console.log('📤 [FRONTEND] Envoi à l\'API avec is_instant et payment_type:', {
@@ -2567,28 +2595,46 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             
             // ✅ FIX : Essayer d'enregistrer quand même dans Supabase avec contract_address = null
             // Le backend pourra peut-être récupérer l'adresse depuis la transaction
-            if (currentParams && capturedPayerAddress) {
+            const fallbackParams = lastCreatePaymentParamsRef.current ?? currentParams;
+            if (fallbackParams && capturedPayerAddress) {
               try {
                 console.log('📤 Tentative d\'enregistrement dans Supabase sans adresse de contrat...');
-                const tokenData = getToken(currentParams.tokenSymbol);
-                
+                const tokenData = fallbackParams.customToken
+                  ? {
+                      address: fallbackParams.customToken.address,
+                      decimals: fallbackParams.customToken.decimals,
+                      symbol: fallbackParams.customToken.symbol,
+                      isNative: false as const,
+                    }
+                  : getToken(fallbackParams.tokenSymbol);
+                const trimmedLabel =
+                  typeof fallbackParams.label === 'string' ? fallbackParams.label.trim().slice(0, 200) : '';
+                const trimmedCategory =
+                  typeof fallbackParams.category === 'string' ? fallbackParams.category.trim().slice(0, 64) : '';
+                const nowFb = Math.floor(Date.now() / 1000);
+                const isInstantFb = (fallbackParams.releaseTime - nowFb) < 60;
+
                 const response = await fetch(`${API_URL}/api/payments`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
                     contract_address: null, // ✅ FIX : null au lieu de l'adresse manquante
                     payer_address: capturedPayerAddress,
-                    payee_address: currentParams.beneficiary,
-                    token_symbol: currentParams.tokenSymbol,
+                    payee_address: fallbackParams.beneficiary,
+                    token_symbol: fallbackParams.customToken?.symbol ?? fallbackParams.tokenSymbol,
                     token_address: tokenData?.address || null,
-                    amount: currentParams.amount.toString(),
-                    release_time: currentParams.releaseTime,
-                    cancellable: currentParams.cancellable || false,
+                    amount: fallbackParams.amount.toString(),
+                    release_time: fallbackParams.releaseTime,
+                    cancellable: fallbackParams.cancellable || false,
                     network: getNetworkFromChainId(chainId),
                     chain_id: chainId,
                     transaction_hash: effectiveCreateTxHash,
+                    is_instant: isInstantFb,
+                    payment_type: isInstantFb ? 'instant' : 'scheduled',
                     user_id: user?.id || null,
                     guest_email: user?.email || null,
+                    payment_label: trimmedLabel || null,
+                    payment_category: trimmedCategory || null,
                     needs_manual_address: true, // ✅ FIX : Flag pour indiquer que l'adresse doit être ajoutée manuellement
                   }),
                 });
@@ -2803,6 +2849,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
     setError(null);
     setContractAddress(undefined);
     setCurrentParams(null);
+    lastCreatePaymentParamsRef.current = null;
     setProgressMessage('');
     setCapturedPayerAddress(undefined);
     currentApproveTxHash.current = undefined; // ✅ FIX : Reset hash d'approbation

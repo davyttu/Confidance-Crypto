@@ -950,6 +950,7 @@
       "back": "Back to help center",
       "title": "Contact Support",
       "subtitle": "Our team is here to help you",
+      "evolutionNote": "The protocol is constantly evolving. We count on you to report any errors or bugs you encounter, so we can keep improving Confidance together.",
       "email": {
         "title": "Email",
         "description": "Response within 24 hours on average"
@@ -1151,7 +1152,8 @@
     "mustBeOnBase": "You must be on",
     "toUseApp": "to use this application",
     "currentNetwork": "Current network: ChainID {{chainId}}",
-    "switchNetworkHint": "💡 Click on your wallet and switch network to Base Mainnet"
+    "switchNetworkHint": "💡 Click on your wallet and switch network to Base Mainnet",
+    "chainComingSoon": "Coming soon"
   },
   "firstStep": {
     "recommended": "Recommended",

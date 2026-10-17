@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { Payment } from '@/hooks/useDashboard';
 import { useBeneficiaries } from '@/hooks/useBeneficiaries';
 import { truncateAddress } from '@/lib/utils/addressFormatter';
+import { getDashboardDisplayDecimals } from '@/config/tokens';
 
 interface MonthlyPayment {
   monthNumber: number;
@@ -226,7 +227,7 @@ export function RecurringPaymentHistory({ payment }: RecurringPaymentHistoryProp
 
   const formatAmount = (amount: string) => {
     const symbol = payment.token_symbol || 'ETH';
-    const decimals = symbol === 'ETH' ? 18 : 6;
+    const decimals = getDashboardDisplayDecimals(symbol);
     const amountNum = Number(BigInt(amount || '0')) / Math.pow(10, decimals);
 
     const localeMap: Record<string, string> = {
@@ -242,7 +243,7 @@ export function RecurringPaymentHistory({ payment }: RecurringPaymentHistoryProp
 
     return amountNum.toLocaleString(locale, {
       minimumFractionDigits: 0,
-      maximumFractionDigits: symbol === 'ETH' ? 5 : 2,
+      maximumFractionDigits: decimals === 18 ? 5 : 2,
     });
   };
 

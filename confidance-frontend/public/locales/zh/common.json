@@ -781,7 +781,8 @@
     "mustBeOnBase": "您需要在",
     "toUseApp": "才能使用此应用",
     "currentNetwork": "当前网络：ChainID {{chainId}}",
-    "switchNetworkHint": "💡 点击钱包并切换到 Base Mainnet"
+    "switchNetworkHint": "💡 点击钱包并切换到 Base Mainnet",
+    "chainComingSoon": "即将推出"
   },
   "help": {
     "title": "帮助中心",
@@ -810,6 +811,7 @@
       "back": "返回帮助中心",
       "title": "联系支持",
       "subtitle": "我们的团队随时为您服务",
+      "evolutionNote": "协议仍在不断演进。欢迎向我们反馈您遇到的错误或问题，帮助我们一起改进 Confidance。",
       "email": { "title": "电子邮件", "description": "平均 24 小时内回复" },
       "discord": { "title": "Discord", "description": "加入社区", "comingSoon": "即将推出" },
       "form": {

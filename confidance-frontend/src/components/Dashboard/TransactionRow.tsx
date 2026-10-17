@@ -19,6 +19,7 @@ import {
   CATEGORY_LABELS,
   PaymentCategory
 } from '@/types/payment-identity';
+import { getDashboardDisplayDecimals } from '@/config/tokens';
 
 type DashboardPayment = Payment & {
   __isNew?: boolean;
@@ -144,7 +145,7 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
 
   // Formater le montant avec la locale actuelle
   const formatAmount = (amount: string, symbol: string) => {
-    const decimals = symbol === 'ETH' ? 18 : 6;
+    const decimals = getDashboardDisplayDecimals(symbol);
     const amountNum = Number(BigInt(amount)) / Math.pow(10, decimals);
     
     // Mapper les langues i18n vers les locales de formatage
@@ -161,7 +162,7 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
     
     return amountNum.toLocaleString(locale, {
       minimumFractionDigits: 0,
-      maximumFractionDigits: symbol === 'ETH' ? 5 : 2,
+      maximumFractionDigits: symbol === 'ETH' || decimals === 18 ? 5 : 2,
     });
   };
 
