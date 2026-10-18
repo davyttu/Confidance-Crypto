@@ -5,13 +5,30 @@ import { useEffect, useState } from 'react';
 import '@rainbow-me/rainbowkit/styles.css';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider } from 'wagmi';
-import { RainbowKitProvider, darkTheme } from '@rainbow-me/rainbowkit';
+import { RainbowKitProvider, darkTheme, type Locale } from '@rainbow-me/rainbowkit';
 import { config } from '@/lib/wagmi';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { I18nextProvider, useTranslation } from 'react-i18next';
 import i18n from '@/lib/i18n';
 import { WalletConnectErrorHandler } from '@/components/WalletConnectErrorHandler';
 import { DisabledChainsGuard } from '@/components/wallet/DisabledChainsGuard';
+
+/** Map app i18n codes → RainbowKit locales (modal Connect Wallet). */
+const RAINBOW_LOCALE_MAP: Record<string, Locale> = {
+  fr: 'fr-FR',
+  en: 'en-US',
+  es: 'es-419',
+  ru: 'ru-RU',
+  zh: 'zh-CN',
+};
+
+function resolveRainbowKitLocale(lang?: string | null): Locale {
+  const stored =
+    typeof window !== 'undefined' ? window.localStorage.getItem('i18nextLng') : null;
+  const raw = (lang || stored || 'en').trim();
+  const base = raw.split('-')[0]?.toLowerCase() || 'en';
+  return RAINBOW_LOCALE_MAP[raw] || RAINBOW_LOCALE_MAP[base] || 'en-US';
+}
 
 // Singleton pour éviter les multiples initialisations de WalletConnect Core
 function makeQueryClient() {
@@ -37,29 +54,32 @@ function getQueryClient() {
   }
 }
 
-// Composant interne pour accéder à la langue i18n
+// Sync RainbowKit modal language with the app language switcher
 function RainbowKitProviderWithLocale({ children }: { children: React.ReactNode }) {
   const { i18n: i18nInstance } = useTranslation();
-  const [locale, setLocale] = useState<string>('en-US');
+  const [locale, setLocale] = useState<Locale>(() =>
+    resolveRainbowKitLocale(i18nInstance.language)
+  );
 
   useEffect(() => {
-    // Mapper les langues i18n vers les locales RainbowKit complètes
-    const langMap: Record<string, string> = {
-      'fr': 'fr-FR',
-      'en': 'en-US',
-      'es': 'es-419',
-      'ru': 'ru-RU',
-      'zh': 'zh-CN',
+    const apply = (lng?: string) => {
+      setLocale(resolveRainbowKitLocale(lng || i18nInstance.language));
     };
-    
-    const currentLang = i18nInstance.language || 'fr';
-    const baseLang = currentLang.split('-')[0];
-    const mappedLocale = langMap[currentLang] || langMap[baseLang] || 'en-US';
-    setLocale(mappedLocale);
-  }, [i18nInstance.language]);
+
+    apply(i18nInstance.language);
+    i18nInstance.on('languageChanged', apply);
+    return () => {
+      i18nInstance.off('languageChanged', apply);
+    };
+  }, [i18nInstance]);
 
   return (
-    <RainbowKitProvider theme={darkTheme()} modalSize="compact" locale={locale as any}>
+    <RainbowKitProvider
+      key={locale}
+      theme={darkTheme()}
+      modalSize="compact"
+      locale={locale}
+    >
       {children}
     </RainbowKitProvider>
   );
