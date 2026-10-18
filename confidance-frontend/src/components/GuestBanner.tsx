@@ -1,13 +1,38 @@
 // components/GuestBanner.tsx
 'use client';
 
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function GuestBanner() {
   const { isAuthenticated } = useAuth();
+  const { t, ready } = useTranslation();
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Si connecté, ne rien afficher
   if (isAuthenticated) return null;
+
+  const title =
+    isMounted && ready
+      ? t('create.guest.title')
+      : 'You are creating as a guest';
+  const emailHint =
+    isMounted && ready
+      ? t('create.guest.emailHint')
+      : 'You will receive a confirmation email with the details of your scheduled payment.';
+  const accountHint =
+    isMounted && ready
+      ? t('create.guest.accountHint')
+      : 'Create an account to access your dashboard and manage all your payments!';
+  const accountHintStrong =
+    isMounted && ready
+      ? t('create.guest.accountHintStrong')
+      : 'Create an account';
 
   return (
     <div className="max-w-3xl mx-auto mb-6">
@@ -28,13 +53,14 @@ export default function GuestBanner() {
           </svg>
           <div className="flex-1">
             <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
-              Vous créez en tant qu'invité
+              {title}
             </h3>
             <p className="text-sm text-blue-800 dark:text-blue-200 mb-2">
-              Vous recevrez un email de confirmation avec les détails de votre paiement programmé.
+              {emailHint}
             </p>
             <p className="text-sm text-blue-700 dark:text-blue-300">
-              💡 <strong>Créez un compte</strong> pour accéder à votre dashboard et gérer tous vos paiements !
+              💡 <strong>{accountHintStrong}</strong>{' '}
+              {accountHint}
             </p>
           </div>
         </div>

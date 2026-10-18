@@ -1137,6 +1137,12 @@
     "wallet": {
       "connectFirst": "要创建计划支付，请先连接钱包"
     },
+    "guest": {
+      "title": "您正在以访客身份创建",
+      "emailHint": "您将收到一封确认邮件，其中包含计划支付的详细信息。",
+      "accountHintStrong": "创建账户",
+      "accountHint": "即可访问控制台并管理所有支付！"
+    },
     "amount": {
       "label": "金额",
       "perBeneficiary": "（每位受益人）",

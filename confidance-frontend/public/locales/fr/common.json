@@ -669,6 +669,12 @@
     "wallet": {
       "connectFirst": "Pour créer un paiement programmé, connectez d'abord votre wallet"
     },
+    "guest": {
+      "title": "Vous créez en tant qu'invité",
+      "emailHint": "Vous recevrez un email de confirmation avec les détails de votre paiement programmé.",
+      "accountHintStrong": "Créez un compte",
+      "accountHint": "pour accéder à votre dashboard et gérer tous vos paiements !"
+    },
     "currency": {
       "select": "Choisissez la crypto à envoyer",
       "available": "disponibles",

@@ -969,6 +969,12 @@
     "wallet": {
       "connectFirst": "Para crear un pago programado, conecta primero tu cartera"
     },
+    "guest": {
+      "title": "Estás creando como invitado",
+      "emailHint": "Recibirás un correo de confirmación con los detalles de tu pago programado.",
+      "accountHintStrong": "Crea una cuenta",
+      "accountHint": "para acceder a tu panel y gestionar todos tus pagos."
+    },
     "currency": {
       "select": "Elige la cripto a enviar",
       "available": "disponibles",

@@ -658,6 +658,12 @@
     "wallet": {
       "connectFirst": "To create a scheduled payment, first connect your wallet"
     },
+    "guest": {
+      "title": "You are creating as a guest",
+      "emailHint": "You will receive a confirmation email with the details of your scheduled payment.",
+      "accountHintStrong": "Create an account",
+      "accountHint": "to access your dashboard and manage all your payments!"
+    },
     "currency": {
       "select": "Choose the crypto to send",
       "available": "available",
