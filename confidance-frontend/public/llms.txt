@@ -6,7 +6,8 @@ Canonical site: https://confidance-defi.com
 
 ## Protocol documentation (primary)
 
-- [Official vocabulary & core concepts](https://confidance-defi.com/docs): Payment vs Execution vs Transaction, payment types, identity (label/category), statuses, timeline events, categories, fees, advisory AI rules, versioning.
+- [Official vocabulary — Markdown for agents](https://confidance-defi.com/docs.md): Confidance Vocabulary Freeze v1.0 (Payment, Execution, Transaction, types, identity, statuses, timeline, categories, fees, advisory AI, versioning). Prefer this URL for machine reading.
+- [Official vocabulary — HTML for humans](https://confidance-defi.com/docs): Same protocol rules, rendered for browsers. Do not treat HTML and Markdown as different vocabularies.
 - [Read the blockchain / proofs](https://confidance-defi.com/second-step): How Confidance relates to public explorers, ETH vs ERC-20 traces, Internal Transactions.
 - [Find my proof (Basescan guide)](https://confidance-defi.com/find-proof): Step-by-step guide to locate a payment on Basescan.
 
@@ -27,6 +28,6 @@ Canonical site: https://confidance-defi.com
 
 ## Notes for agents
 
-- Prefer `/docs` as the source of truth for terminology. Do not invent synonyms that rename frozen vocabulary terms.
+- Prefer `/docs.md` for terminology extraction. Use `/docs` as the human-facing official documentation page. Do not invent synonyms that rename frozen vocabulary terms.
 - Confidance does not custody funds or private keys. Users authorize actions via their own wallet.
 - Soft launch: Base network is the primary live chain; other chains may be marked coming soon in the product UI.
