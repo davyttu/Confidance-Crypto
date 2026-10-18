@@ -1118,6 +1118,7 @@
       "errorOccurred": "Ha ocurrido un error",
       "loading": "Cargando...",
       "creatingPaymentETH": "Creando pago ETH...",
+      "creatingInstantPayment": "⚡ Pago instantáneo...",
       "creatingPayment": "Creando pago...",
       "paymentCreatedSuccess": "¡Pago creado con éxito!",
       "paymentCreatedNotSaved": "¡Pago creado! (No guardado en DB)",

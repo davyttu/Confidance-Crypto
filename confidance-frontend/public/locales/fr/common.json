@@ -831,6 +831,7 @@
       "errorOccurred": "Une erreur est survenue",
       "loading": "Chargement...",
       "creatingPaymentETH": "Création du paiement ETH...",
+      "creatingInstantPayment": "⚡ Paiement instantané...",
       "creatingPayment": "Création du paiement...",
       "paymentCreatedSuccess": "Paiement créé avec succès !",
       "paymentCreatedNotSaved": "Paiement créé ! (Non enregistré dans la DB)",

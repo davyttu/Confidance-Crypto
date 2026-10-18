@@ -1262,6 +1262,7 @@
       "errorOccurred": "发生错误",
       "loading": "加载中...",
       "creatingPaymentETH": "正在创建 ETH 支付...",
+      "creatingInstantPayment": "⚡ 即时支付...",
       "creatingPayment": "正在创建支付...",
       "paymentCreatedSuccess": "支付创建成功！",
       "paymentCreatedNotSaved": "支付已创建！（未保存到数据库）",

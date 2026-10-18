@@ -1772,9 +1772,9 @@ export function useCreatePayment(): UseCreatePaymentReturn {
         // L'approbation est confirmée, lancer la création
         setStatus('creating');
         setProgressMessage(
-          isInstantPayment 
-            ? '⚡ Paiement instantané...' 
-            : t('create.modal.creatingPayment', { defaultValue: 'Création du paiement...' })
+          isInstantPayment
+            ? t('create.modal.creatingInstantPayment', { defaultValue: '⚡ Instant payment...' })
+            : t('create.modal.creatingPayment', { defaultValue: 'Creating payment...' })
         );
 
         if (!token.address) {

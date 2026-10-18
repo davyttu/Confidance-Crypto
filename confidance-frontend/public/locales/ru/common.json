@@ -1249,6 +1249,7 @@
       "errorOccurred": "Произошла ошибка",
       "loading": "Загрузка...",
       "creatingPaymentETH": "Создание ETH-платежа...",
+      "creatingInstantPayment": "⚡ Мгновенный платёж...",
       "creatingPayment": "Создание платежа...",
       "paymentCreatedSuccess": "Платёж успешно создан!",
       "paymentCreatedNotSaved": "Платёж создан! (не сохранён в БД)",

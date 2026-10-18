@@ -821,6 +821,7 @@
       "errorOccurred": "An error occurred",
       "loading": "Loading...",
       "creatingPaymentETH": "Creating ETH payment...",
+      "creatingInstantPayment": "⚡ Instant payment...",
       "creatingPayment": "Creating payment...",
       "paymentCreatedSuccess": "Payment created successfully!",
       "paymentCreatedNotSaved": "Payment created! (Not saved in DB)",
