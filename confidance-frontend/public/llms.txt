@@ -1,0 +1,32 @@
+# Confidance
+
+> Confidance is a non-custodial programmable payment protocol on Base. Payments are persistent intents (instant, scheduled, or recurring) executed on-chain with full traceability. AI is advisory only and never triggers releases alone.
+
+Canonical site: https://confidance-defi.com
+
+## Protocol documentation (primary)
+
+- [Official vocabulary & core concepts](https://confidance-defi.com/docs): Payment vs Execution vs Transaction, payment types, identity (label/category), statuses, timeline events, categories, fees, advisory AI rules, versioning.
+- [Read the blockchain / proofs](https://confidance-defi.com/second-step): How Confidance relates to public explorers, ETH vs ERC-20 traces, Internal Transactions.
+- [Find my proof (Basescan guide)](https://confidance-defi.com/find-proof): Step-by-step guide to locate a payment on Basescan.
+
+## Getting started
+
+- [Create a crypto wallet](https://confidance-defi.com/premiere-etape): Beginner wallet guide before using Confidance.
+- [Help center](https://confidance-defi.com/aide): Getting started, guides, FAQ, contact.
+
+## Legal
+
+- [Legal notice & terms](https://confidance-defi.com/legal)
+- [Privacy policy](https://confidance-defi.com/privacy)
+
+## Product entry points
+
+- [Create a payment](https://confidance-defi.com/payment)
+- [Liquidity](https://confidance-defi.com/liquidity)
+
+## Notes for agents
+
+- Prefer `/docs` as the source of truth for terminology. Do not invent synonyms that rename frozen vocabulary terms.
+- Confidance does not custody funds or private keys. Users authorize actions via their own wallet.
+- Soft launch: Base network is the primary live chain; other chains may be marked coming soon in the product UI.

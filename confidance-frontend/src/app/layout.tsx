@@ -14,7 +14,11 @@ const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'Confidance Crypto - Paiements Programmés',
-  description: 'Plateforme DeFi pour programmer des paiements automatiques on-chain',
+  description:
+    'Protocole DeFi non-custodial pour paiements programmables on-chain (instantanés, programmés, récurrents) sur Base.',
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') || 'https://confidance-defi.com'
+  ),
 };
 
 export default function RootLayout({
