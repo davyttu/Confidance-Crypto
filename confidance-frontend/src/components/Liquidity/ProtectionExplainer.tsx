@@ -43,12 +43,12 @@ export default function ProtectionExplainer({ isOpen, onClose }: ProtectionExpla
                   <span className="text-2xl">🔐</span>
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">1. Tu déposes ton ETH</h3>
+                  <h3 className="font-semibold text-gray-900 mb-2">{t('liquidity.protectionExplainer.step1Title')}</h3>
                   <p className="text-gray-600">
-                    Ton ETH reste en sécurité et continue d'exister. Il sert simplement de garantie.
+                    {t('liquidity.protectionExplainer.step1Desc')}
                   </p>
                   <div className="mt-3 p-3 bg-gray-50 rounded-lg text-sm">
-                    <strong>Exemple :</strong> Tu déposes 1 ETH (≈ 2 000 €)
+                    {t('liquidity.protectionExplainer.step1Example')}
                   </div>
                 </div>
               </div>
@@ -79,12 +79,12 @@ export default function ProtectionExplainer({ isOpen, onClose }: ProtectionExpla
                   <span className="text-2xl">✅</span>
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">3. Tout va bien si le marché est stable</h3>
+                  <h3 className="font-semibold text-gray-900 mb-2">{t('liquidity.protectionExplainer.step3Title')}</h3>
                   <p className="text-gray-600">
-                    Tant que l'ETH maintient sa valeur, ta position est saine et tu ne paies que les intérêts.
+                    {t('liquidity.protectionExplainer.step3Desc')}
                   </p>
                   <div className="mt-3 p-3 bg-gray-50 rounded-lg text-sm">
-                    <strong>Coût :</strong> 6% par an, soit environ 72 USDC sur 1 an
+                    {t('liquidity.protectionExplainer.step3Cost')}
                   </div>
                 </div>
               </div>
@@ -115,12 +115,12 @@ export default function ProtectionExplainer({ isOpen, onClose }: ProtectionExpla
                   <span className="text-2xl">🛡️</span>
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">5. Protection automatique</h3>
+                  <h3 className="font-semibold text-gray-900 mb-2">{t('liquidity.protectionExplainer.step5Title')}</h3>
                   <p className="text-gray-600">
-                    Si tu ne réagis pas, le système vend juste assez d'ETH pour préserver le reste de ton dépôt.
+                    {t('liquidity.protectionExplainer.step5Desc')}
                   </p>
                   <div className="mt-3 p-3 bg-gray-50 rounded-lg text-sm">
-                    <strong>Priorité :</strong> Vente partielle uniquement, on protège ton capital
+                    {t('liquidity.protectionExplainer.step5Priority')}
                   </div>
                 </div>
               </div>

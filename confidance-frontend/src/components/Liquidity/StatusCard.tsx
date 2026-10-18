@@ -46,7 +46,7 @@ export default function StatusCard({
   return (
     <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-2xl p-6 sticky top-6">
       <h3 className="text-lg font-semibold text-gray-900 mb-6">
-        Résumé de votre position
+        {t('liquidity.statusCard.positionSummary')}
       </h3>
       
       {/* État visuel */}
@@ -74,7 +74,7 @@ export default function StatusCard({
         </div>
         
         <div className="flex items-center justify-between">
-          <span className="text-gray-600">📈 Taux annuel</span>
+          <span className="text-gray-600">📈 {t('liquidity.statusCard.annualRate')}</span>
           <div className="font-semibold">6%</div>
         </div>
         
@@ -98,13 +98,23 @@ export default function StatusCard({
         </div>
       </div>
       
-      {/* CTA principal */}
-      <button 
-        disabled={parseFloat(depositedETH) === 0}
-        className="w-full mt-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {t('liquidity.statusCard.confirmAndReceive')}
-      </button>
+      {/* CTA principal — coming soon */}
+      <div className="relative group mt-8">
+        <button
+          type="button"
+          disabled
+          aria-disabled="true"
+          title={t('liquidity.comingSoon')}
+          className="w-full py-4 bg-gradient-to-r from-gray-400 to-gray-500 text-white font-semibold rounded-xl opacity-50 grayscale cursor-not-allowed"
+        >
+          {t('liquidity.statusCard.confirmAndReceive')}
+        </button>
+        <span
+          className="pointer-events-none absolute left-1/2 bottom-full mb-2 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900/95 px-3 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100"
+        >
+          {t('liquidity.comingSoon')}
+        </span>
+      </div>
       
       <p className="text-xs text-center text-gray-500 mt-3">
         {t('liquidity.statusCard.repayAnytime')}

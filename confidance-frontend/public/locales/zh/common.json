@@ -1395,6 +1395,7 @@
     }
   },
   "liquidity": {
+    "comingSoon": "即将推出",
     "connectWallet": "连接钱包",
     "connectWalletDescription": "要使用流动性功能，请先连接您的钱包。",
     "title": "无需出售 ETH 即可获得流动性",

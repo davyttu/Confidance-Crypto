@@ -82,14 +82,14 @@ export default function LiquidityForm({ onShowExplanation }: LiquidityFormProps)
           
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-500">
-              ≈ {ethValue} €
+              {t('liquidity.form.approxEur', { value: ethValue })}
             </span>
             
             <button 
               type="button"
               className="text-blue-600 hover:text-blue-700 font-medium"
             >
-              Max : 0.00 ETH
+              {t('liquidity.form.max', { amount: '0.00' })}
             </button>
           </div>
         </div>
@@ -107,7 +107,7 @@ export default function LiquidityForm({ onShowExplanation }: LiquidityFormProps)
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-4">
           <label className="text-sm font-medium text-gray-700">
-            Liquidité que vous souhaitez
+            {t('liquidity.form.liquidityYouWant')}
           </label>
           
           {/* Token selector */}
@@ -204,14 +204,23 @@ export default function LiquidityForm({ onShowExplanation }: LiquidityFormProps)
         />
       )}
 
-      {/* Bouton submit */}
-      <button
-        type="submit"
-        disabled={!isFormValid}
-        className="w-full py-4 px-6 rounded-xl font-bold text-lg bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-xl hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-      >
-        {t('liquidity.form.confirmAndReceive')}
-      </button>
+      {/* Bouton submit — coming soon */}
+      <div className="relative group">
+        <button
+          type="button"
+          disabled
+          aria-disabled="true"
+          title={t('liquidity.comingSoon')}
+          className="w-full py-4 px-6 rounded-xl font-bold text-lg bg-gradient-to-r from-gray-400 to-gray-500 text-white opacity-50 grayscale cursor-not-allowed"
+        >
+          {t('liquidity.form.confirmAndReceive')}
+        </button>
+        <span
+          className="pointer-events-none absolute left-1/2 bottom-full mb-2 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900/95 px-3 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100"
+        >
+          {t('liquidity.comingSoon')}
+        </span>
+      </div>
 
       <p className="text-xs text-center text-gray-500">
         {t('liquidity.form.repayAnytime')}

@@ -1381,6 +1381,7 @@
     }
   },
   "liquidity": {
+    "comingSoon": "Bientôt disponible",
     "connectWallet": "Connectez votre wallet",
     "connectWalletDescription": "Pour accéder à la liquidité, veuillez d'abord connecter votre wallet",
     "title": "Accédez à de la liquidité sans vendre votre ETH",

@@ -1190,6 +1190,7 @@
     }
   },
   "liquidity": {
+    "comingSoon": "Coming soon",
     "connectWallet": "Connect your wallet",
     "connectWalletDescription": "To access liquidity, please connect your wallet first.",
     "title": "Access liquidity without selling your ETH",

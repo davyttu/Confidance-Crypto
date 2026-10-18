@@ -1372,6 +1372,7 @@
     }
   },
   "liquidity": {
+    "comingSoon": "Próximamente",
     "connectWallet": "Conecta tu cartera",
     "connectWalletDescription": "Para acceder a la liquidez, conecta primero tu cartera.",
     "title": "Accede a liquidez sin vender tu ETH",

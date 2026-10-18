@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { useTranslation } from 'react-i18next';
 import LiquidityForm from '@/components/Liquidity/LiquidityForm';
@@ -8,9 +8,19 @@ import StatusCard from '@/components/Liquidity/StatusCard';
 import ProtectionExplainer from '@/components/Liquidity/ProtectionExplainer';
 
 export default function LiquidityPage() {
-  const { t } = useTranslation();
-  const { address, isConnected } = useAccount();
+  const { t, ready } = useTranslation();
+  const { isConnected } = useAccount();
   const [showExplanation, setShowExplanation] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Avoid SSR/client i18n + wagmi mismatches (translations load only in the browser)
+  if (!isMounted || !ready) {
+    return <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50" />;
+  }
 
   if (!isConnected) {
     return (
@@ -34,7 +44,6 @@ export default function LiquidityPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
-      {/* Header */}
       <div className="max-w-7xl mx-auto px-6 py-12">
         <div className="text-center mb-12">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 mb-4">
@@ -50,20 +59,16 @@ export default function LiquidityPage() {
           </p>
         </div>
 
-        {/* Main Content - 2 colonnes */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Colonne gauche - Formulaire */}
           <div className="lg:col-span-2">
             <LiquidityForm onShowExplanation={() => setShowExplanation(true)} />
           </div>
 
-          {/* Colonne droite - Résumé */}
           <div className="lg:col-span-1">
             <StatusCard />
           </div>
         </div>
 
-        {/* Features en bas */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16">
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
             <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
@@ -103,7 +108,6 @@ export default function LiquidityPage() {
         </div>
       </div>
 
-      {/* Modal d'explication */}
       <ProtectionExplainer 
         isOpen={showExplanation} 
         onClose={() => setShowExplanation(false)} 
