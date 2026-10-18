@@ -79,6 +79,11 @@ function RainbowKitProviderWithLocale({ children }: { children: React.ReactNode 
       theme={darkTheme()}
       modalSize="compact"
       locale={locale}
+      appInfo={{
+        appName: 'Confidance',
+        // Sentinel URL — hidden via CSS (RainbowKit always renders "Learn more")
+        learnMoreUrl: 'https://confidance-defi.com/#rainbowkit-learn-more-disabled',
+      }}
     >
       {children}
     </RainbowKitProvider>

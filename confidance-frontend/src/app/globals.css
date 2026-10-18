@@ -130,3 +130,9 @@
 .rk-chain-coming-soon:hover::after {
   opacity: 1;
 }
+
+/* RainbowKit Connect modal: hide "Learn more" next to "Get a Wallet" */
+[data-rk] a[href*="rainbowkit-learn-more-disabled"],
+[data-rk] a[href*="understanding-web3"] {
+  display: none !important;
+}
