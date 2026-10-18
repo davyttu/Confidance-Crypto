@@ -162,9 +162,6 @@ export default function BlockchainAwarenessBanner() {
                     : 'Selected network'}
                 </p>
               </div>
-              <div className="absolute top-3 right-3">
-                <Check className="w-5 h-5 text-primary-500" strokeWidth={2.5} />
-              </div>
             </div>
           </div>
 
