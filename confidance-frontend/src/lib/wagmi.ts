@@ -9,19 +9,6 @@ import {
   trustWallet,
 } from '@rainbow-me/rainbowkit/wallets';
 
-/**
- * MetaMask fox is hard to read on RainbowKit dark modal (orange on dark).
- * Use local SVG + light icon background for better contrast on phones.
- */
-const metaMaskWalletReadable: typeof metaMaskWallet = (createWallet) => {
-  const wallet = metaMaskWallet(createWallet);
-  return {
-    ...wallet,
-    iconBackground: '#FFFFFF',
-    iconUrl: '/wallets/metamask.svg',
-  };
-};
-
 // Obligatoire pour WalletConnect. Créez un projet gratuit sur https://cloud.walletconnect.com
 const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'e4e1f0c2b5a7d8e9f0a1b2c3d4e5f6a7';
 const targetChain = process.env.NEXT_PUBLIC_CHAIN;
@@ -54,7 +41,7 @@ export const config = getDefaultConfig({
     {
       groupName: 'Popular',
       wallets: [
-        metaMaskWalletReadable,
+        metaMaskWallet,
         walletConnectWallet,
         rainbowWallet,
         trustWallet,
