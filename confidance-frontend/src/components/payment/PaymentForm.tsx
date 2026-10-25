@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useAccount, useChainId, useDisconnect, useReadContract } from 'wagmi';
+import { useAccount, useChainId, useReadContract } from 'wagmi';
 import { formatUnits, parseUnits } from 'viem';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { useRouter } from 'next/navigation';
@@ -96,7 +96,6 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
   }>({ meta: { decimalDigits: 0, hasDecimal: false }, transcript: '', at: 0 });
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
-  const { disconnect } = useDisconnect();
   const { openConnectModal } = useConnectModal();
   const router = useRouter();
   const walletConnected = Boolean(address);
@@ -914,13 +913,6 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
         setIsListening(false);
       }
     });
-  };
-
-  const handleReconnectWallet = () => {
-    disconnect();
-    if (openConnectModal) {
-      setTimeout(() => openConnectModal(), 50);
-    }
   };
 
   useEffect(() => {
@@ -2313,20 +2305,13 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
         <p className="text-gray-600 dark:text-gray-400">
           {isMounted && translationsReady ? t('create.wallet.connectFirst') : 'To create a scheduled payment, first connect your wallet'}
         </p>
-        <div className="mt-6 flex flex-col gap-3">
+        <div className="mt-6">
           <button
             onClick={() => openConnectModal?.()}
             type="button"
             className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all"
           >
             {isMounted && translationsReady ? t('common.connectWallet', { defaultValue: 'Connect Wallet' }) : 'Connect Wallet'}
-          </button>
-          <button
-            onClick={handleReconnectWallet}
-            type="button"
-            className="w-full px-6 py-3 bg-gray-100 text-gray-700 font-semibold rounded-lg hover:bg-gray-200 transition-all"
-          >
-            {isMounted && translationsReady ? t('common.resetWallet', { defaultValue: 'Reset wallet connection' }) : 'Reset wallet connection'}
           </button>
         </div>
       </div>

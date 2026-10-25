@@ -1,7 +1,7 @@
 // src/app/page.tsx
 'use client';
 
-import { useAccount, useChainId, useDisconnect } from 'wagmi';
+import { useAccount, useChainId } from 'wagmi';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { useEffect, useState } from 'react';
 import { testSupabaseConnection } from '@/lib/Supabase/test';
@@ -23,7 +23,6 @@ export default function Home() {
   const { t, ready } = useTranslation();
   const [isMounted, setIsMounted] = useState(false);
   const { address } = useAccount();
-  const { disconnect } = useDisconnect();
   const { openConnectModal } = useConnectModal();
   const chainId = useChainId();
   const walletConnected = Boolean(address);
@@ -33,13 +32,6 @@ export default function Home() {
     setIsMounted(true);
     testSupabaseConnection().then(setSupabaseOk);
   }, []);
-
-  const handleReconnectWallet = () => {
-    disconnect();
-    if (openConnectModal) {
-      setTimeout(() => openConnectModal(), 50);
-    }
-  };
 
   // ✅ FIX : Utiliser des valeurs par défaut pendant l'hydratation
   const features = isMounted && ready ? [
@@ -173,20 +165,13 @@ export default function Home() {
               </div>
 
               {!walletConnected && (
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                <div className="flex items-center justify-center pt-2">
                   <button
                     onClick={() => openConnectModal?.()}
                     className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all"
                     type="button"
                   >
                     {isMounted && ready ? t('common.connectWallet', { defaultValue: 'Connect Wallet' }) : 'Connect Wallet'}
-                  </button>
-                  <button
-                    onClick={handleReconnectWallet}
-                    className="px-6 py-3 bg-gray-100 text-gray-700 font-semibold rounded-lg hover:bg-gray-200 transition-all"
-                    type="button"
-                  >
-                    {isMounted && ready ? t('common.resetWallet', { defaultValue: 'Reset wallet connection' }) : 'Reset wallet connection'}
                   </button>
                 </div>
               )}
