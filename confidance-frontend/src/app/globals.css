@@ -82,9 +82,8 @@
   animation: pulse-slow 3s ease-in-out infinite;
 }
 
-/* RainbowKit: chains not yet live (Polygon, Arbitrum, Avalanche) */
+/* RainbowKit: chains not yet live (Polygon, Avalanche). Arbitrum is selectable. */
 [data-testid="rk-chain-option-137"],
-[data-testid="rk-chain-option-42161"],
 [data-testid="rk-chain-option-43114"],
 .rk-chain-coming-soon {
   opacity: 0.42 !important;
@@ -94,14 +93,12 @@
 }
 
 [data-testid="rk-chain-option-137"]:hover,
-[data-testid="rk-chain-option-42161"]:hover,
 [data-testid="rk-chain-option-43114"]:hover,
 .rk-chain-coming-soon:hover {
   opacity: 0.55 !important;
 }
 
 [data-testid="rk-chain-option-137"]::after,
-[data-testid="rk-chain-option-42161"]::after,
 [data-testid="rk-chain-option-43114"]::after,
 .rk-chain-coming-soon::after {
   content: attr(data-coming-soon);
@@ -125,7 +122,6 @@
 }
 
 [data-testid="rk-chain-option-137"]:hover::after,
-[data-testid="rk-chain-option-42161"]:hover::after,
 [data-testid="rk-chain-option-43114"]:hover::after,
 .rk-chain-coming-soon:hover::after {
   opacity: 1;
