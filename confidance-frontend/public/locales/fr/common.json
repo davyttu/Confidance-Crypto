@@ -659,7 +659,7 @@
       "message": "Votre destinataire recevra les fonds sur {{chain}}. Vérifiez que son portefeuille prend en charge ce réseau.",
       "checklistTitle": "Checklist pour une transaction sereine",
       "checklistToggle": "Checklist",
-      "switchHint": "Les paiements sont sur Base. Si votre wallet est sur un autre réseau, changez-le depuis le wallet (en haut à droite)."
+      "switchHint": "Les paiements se font sur Base ou Arbitrum. Choisissez un réseau ici, puis confirmez le changement dans votre wallet."
     },
     "blockchainChecklist": {
       "address": "J'ai vérifié l'adresse du destinataire",

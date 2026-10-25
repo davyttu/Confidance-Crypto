@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useAccount, useChainId } from 'wagmi';
+import { useAccount, useChainId, useSwitchChain } from 'wagmi';
 import { useTranslation } from 'react-i18next';
 import { Check, Info } from 'lucide-react';
 import { CHAINS } from '@/config/chains';
@@ -24,17 +24,25 @@ const CHAIN_GRADIENT_BY_ID: Record<number, string> = {
   84532: 'from-[#0052FF] via-[#6366F1] to-[#8B5CF6]', // Base Sepolia
 };
 
-const COMING_SOON_CHAINS = COMING_SOON_CHAIN_IDS.map((id) => ({
-  chainId: id,
-  name: CHAINS[id]?.name ?? `Chain ${id}`,
-  icon: CHAIN_ICON_BY_ID[id] ?? '/globe.svg',
-  gradient: CHAIN_GRADIENT_BY_ID[id] ?? 'from-gray-400 to-gray-500',
-}));
+const LIVE_CHAIN_IDS = [8453, 42161] as const;
+
+function chainCard(id: number) {
+  return {
+    chainId: id,
+    name: CHAINS[id]?.name ?? `Chain ${id}`,
+    icon: CHAIN_ICON_BY_ID[id] ?? '/globe.svg',
+    gradient: CHAIN_GRADIENT_BY_ID[id] ?? 'from-gray-400 to-gray-500',
+  };
+}
+
+const LIVE_CHAINS = LIVE_CHAIN_IDS.map(chainCard);
+const COMING_SOON_CHAINS = COMING_SOON_CHAIN_IDS.map(chainCard);
 
 export default function BlockchainAwarenessBanner() {
   const { t, ready } = useTranslation();
   const { isConnected } = useAccount();
   const chainId = useChainId();
+  const { switchChain, isPending: isSwitching } = useSwitchChain();
   const [isMounted, setIsMounted] = useState(false);
   const [infoTooltipOpen, setInfoTooltipOpen] = useState(false);
   const [popoverRect, setPopoverRect] = useState<{ top: number; left: number } | null>(null);
@@ -63,10 +71,10 @@ export default function BlockchainAwarenessBanner() {
 
   if (!isConnected) return null;
 
-  const currentChain = CHAINS[chainId as keyof typeof CHAINS];
-  const chainName = currentChain?.name ?? `Chain ${chainId}`;
-  const icon = CHAIN_ICON_BY_ID[chainId as keyof typeof CHAIN_ICON_BY_ID] ?? '/globe.svg';
   const gradient = CHAIN_GRADIENT_BY_ID[chainId as keyof typeof CHAIN_GRADIENT_BY_ID] ?? 'from-primary-500 to-purple-500';
+  const selectedLabel = isMounted && ready
+    ? t('create.blockchain.selected', { defaultValue: 'Selected network' })
+    : 'Selected network';
 
   const checklistItems = [
     { key: 'create.blockchainChecklist.address', fallback: "I've verified the recipient's address" },
@@ -127,9 +135,9 @@ export default function BlockchainAwarenessBanner() {
                     {isMounted && ready
                       ? t('create.blockchain.switchHint', {
                           defaultValue:
-                            'Payments are on Base. If your wallet is on another network, switch it from your wallet (top right).',
+                            'Payments run on Base or Arbitrum. Select a network here and confirm the switch in your wallet.',
                         })
-                      : 'Payments are on Base. If your wallet is on another network, switch it from your wallet (top right).'}
+                      : 'Payments run on Base or Arbitrum. Select a network here and confirm the switch in your wallet.'}
                   </p>
                 </div>,
                 document.body
@@ -138,32 +146,42 @@ export default function BlockchainAwarenessBanner() {
           </div>
         </div>
 
-        {/* Selected chain + coming soon chains — style proche du CurrencySelector */}
+        {/* Base and Arbitrum are selectable. Polygon and Avalanche stay closed. */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div
-            className={`
-              relative overflow-hidden rounded-2xl p-5
-              border-2 transition-all duration-300
-              bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900
-              border-primary-400 dark:border-primary-600
-              shadow-lg shadow-primary-500/10
-            `}
-          >
-            <div className={`absolute inset-0 opacity-[0.07] bg-gradient-to-br ${gradient}`} />
-            <div className="relative flex items-center gap-4">
-              <div className="w-14 h-14 rounded-xl bg-white dark:bg-gray-800 shadow-sm flex items-center justify-center border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
-                <img src={icon} alt={chainName} className="w-8 h-8 object-contain" />
-              </div>
-              <div>
-                <p className="font-bold text-base text-gray-900 dark:text-white">{chainName}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  {isMounted && ready
-                    ? t('create.blockchain.selected', { defaultValue: 'Selected network' })
-                    : 'Selected network'}
-                </p>
-              </div>
-            </div>
-          </div>
+          {LIVE_CHAINS.map((chain) => {
+            const isSelected = chainId === chain.chainId;
+            return (
+              <button
+                key={chain.chainId}
+                type="button"
+                disabled={isSelected || isSwitching}
+                aria-pressed={isSelected}
+                onClick={() => switchChain({ chainId: chain.chainId })}
+                className={`
+                  relative overflow-hidden rounded-2xl p-5 text-left
+                  border-2 transition-all duration-300
+                  bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900
+                  ${isSelected
+                    ? 'border-primary-400 dark:border-primary-600 shadow-lg shadow-primary-500/10 cursor-default'
+                    : 'border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-700 cursor-pointer'}
+                  disabled:cursor-default
+                `}
+              >
+                <div className={`absolute inset-0 opacity-[0.07] bg-gradient-to-br ${chain.gradient}`} />
+                <div className="relative flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-xl bg-white dark:bg-gray-800 shadow-sm flex items-center justify-center border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
+                    <img src={chain.icon} alt={chain.name} className="w-8 h-8 object-contain" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-base text-gray-900 dark:text-white">{chain.name}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 min-h-[1rem]">
+                      {isSelected ? selectedLabel : '\u00A0'}
+                    </p>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
 
           {COMING_SOON_CHAINS.map((chain) => {
             const comingSoonLabel = isMounted && ready
