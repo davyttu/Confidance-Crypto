@@ -143,10 +143,10 @@ export default function Home() {
                   {isMounted && ready ? (supabaseOk ? t('home.status.operational') : t('home.status.maintenance')) : (supabaseOk ? 'Système opérationnel' : 'Maintenance')}
                 </div>
                 
-                {walletConnected && chainId === 8453 && (
+                {walletConnected && (chainId === 8453 || chainId === 42161) && (
                   <div className="glass px-4 py-2 rounded-full text-sm font-medium text-blue-600 dark:text-blue-400">
                     <span className="inline-block w-2 h-2 rounded-full mr-2 bg-current animate-pulse" />
-                    Base Mainnet
+                    {chainId === 42161 ? 'Arbitrum' : 'Base Mainnet'}
                   </div>
                 )}
               </div>

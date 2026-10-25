@@ -3,15 +3,15 @@
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
-/** Chains shown in the RainbowKit switcher but not selectable yet (Base launch). */
-export const COMING_SOON_CHAIN_IDS = [137, 42161, 43114] as const;
+/** Chains shown in the RainbowKit switcher but not selectable yet. Arbitrum is live. */
+export const COMING_SOON_CHAIN_IDS = [137, 43114] as const;
 
 const DISABLED_SELECTOR = COMING_SOON_CHAIN_IDS.map(
   (id) => `[data-testid="rk-chain-option-${id}"]`
 ).join(',');
 
 /**
- * Greys out Polygon / Arbitrum / Avalanche in RainbowKit's "Switch Networks"
+ * Greys out Polygon / Avalanche in RainbowKit's "Switch Networks"
  * modal and blocks selection, with a localized "coming soon" hover label.
  */
 export function DisabledChainsGuard() {

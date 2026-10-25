@@ -139,7 +139,7 @@ function NetworkSelect({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const chains = Object.values(CHAINS);
+  const chains = Object.values(CHAINS).filter((chain) => chain.chainId === 8453 || chain.chainId === 42161);
   const selectedChain = CHAINS[value];
   const selectedIcon = CHAIN_ICON_BY_ID[value] ?? '/globe.svg';
 

@@ -46,7 +46,7 @@ export function WalletGuard({ children }: WalletGuardProps) {
   }
 
   // Wrong network
-  if (chainId !== 8453) {
+  if (chainId !== 8453 && chainId !== 42161) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="max-w-md w-full space-y-6 text-center">
@@ -59,7 +59,7 @@ export function WalletGuard({ children }: WalletGuardProps) {
               {t('wallet.wrongNetwork')}
             </h2>
             <p className="text-muted-foreground">
-              <>{t('wallet.mustBeOnBase')} <strong>Base Mainnet</strong> {t('wallet.toUseApp')}</>
+              <>{t('wallet.mustBeOnBase')} <strong>Base or Arbitrum</strong> {t('wallet.toUseApp')}</>
             </p>
             <p className="text-sm text-muted-foreground">
               {t('wallet.currentNetwork', { chainId })}

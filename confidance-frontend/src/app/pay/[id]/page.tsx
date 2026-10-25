@@ -106,7 +106,7 @@ export default function PayLinkPage() {
 
   const networkName = link?.chain_id ? (CHAINS[link.chain_id]?.name || `Chain ${link.chain_id}`) : '-';
   const isChainMismatch = link?.chain_id && chainId && link.chain_id !== chainId;
-  const supportedChainIds = [8453, 84532];
+  const supportedChainIds = [8453, 84532, 42161];
   const isUnsupportedChain = link?.chain_id && !supportedChainIds.includes(link.chain_id);
   const isWeekly = link?.frequency === 'weekly';
 

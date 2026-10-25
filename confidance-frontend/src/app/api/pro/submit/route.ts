@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createPublicClient, createWalletClient, http } from "viem";
-import { base } from "viem/chains";
+import { arbitrum, base } from "viem/chains";
 import { privateKeyToAccount } from "viem/accounts";
 
 const supabaseUrl = process.env.SUPABASE_URL;
@@ -23,6 +23,14 @@ const PRO_ALLOWLIST_RPC =
   process.env.PRO_ALLOWLIST_RPC || process.env.BASE_RPC || process.env.RPC_URL;
 const FACTORY_SCHEDULED_ADDRESS = process.env.FACTORY_SCHEDULED_ADDRESS;
 const FACTORY_RECURRING_ADDRESS = process.env.FACTORY_RECURRING_ADDRESS;
+const ARBITRUM_RPC =
+  process.env.PRO_ALLOWLIST_ARBITRUM_RPC ||
+  process.env.ARBITRUM_RPC ||
+  "https://arb1.arbitrum.io/rpc";
+const ARBITRUM_FACTORIES = [
+  "0x3746BC33ce743962E2554c962BB4A1d6b2Cf0E4C",
+  "0xd84e6AE29c492F305f2686C02425242E282DA5E3",
+] as const;
 
 const PRO_ALLOWLIST_ABI = [
   {
@@ -76,6 +84,24 @@ async function setProWalletOnChain(wallet: string, isPro: boolean) {
 
     await publicClient.waitForTransactionReceipt({ hash: txHash });
     results.push({ factory, txHash });
+  }
+
+  const arbTransport = http(ARBITRUM_RPC);
+  const arbWallet = createWalletClient({ account, chain: arbitrum, transport: arbTransport });
+  const arbPublic = createPublicClient({ chain: arbitrum, transport: arbTransport });
+  for (const factory of ARBITRUM_FACTORIES) {
+    try {
+      const txHash = await arbWallet.writeContract({
+        address: factory,
+        abi: PRO_ALLOWLIST_ABI,
+        functionName: "setProWallets",
+        args: [[wallet as `0x${string}`], isPro]
+      });
+      await arbPublic.waitForTransactionReceipt({ hash: txHash });
+      results.push({ factory, txHash });
+    } catch (error) {
+      console.error("PRO submit Arbitrum tx error", { factory, error });
+    }
   }
 
   return { ok: true, results };
