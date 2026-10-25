@@ -214,7 +214,7 @@
       },
       "secure": {
         "title": "安全",
-        "description": "Non-custodial。无捷径。"
+        "description": "无托管。无捷径。"
       },
       "flexible": {
         "title": "灵活",
