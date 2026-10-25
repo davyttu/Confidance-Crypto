@@ -13,14 +13,14 @@ import {
 import { decodeEventLog } from 'viem';
 import {
   type TokenSymbol,
-  getToken,
+  getWriteToken,
   getProtocolFeeBps,
   PROTOCOL_FEE_BPS_PARTICULAR,
   PROTOCOL_FEE_BPS_PRO,
 } from '@/config/tokens';
 import { useTokenApproval, type UseTokenApprovalReturn } from './useTokenApproval';
 import { paymentFactoryScheduledAbi, paymentFactoryInstantAbi } from '@/lib/contracts/paymentFactoryAbi';
-import { PAYMENT_FACTORY_SCHEDULED, PAYMENT_FACTORY_INSTANT } from '@/lib/contracts/addresses';
+import { PAYMENT_FACTORY_SCHEDULED, PAYMENT_FACTORY_INSTANT, getPaymentFactory } from '@/lib/contracts/addresses';
 import { erc20Abi } from '@/lib/contracts/erc20Abi';
 import { calculateGasFromReceipt, saveGasTransaction } from '@/lib/utils/gas';
 import { useAuth } from '@/contexts/AuthContext';
@@ -29,8 +29,11 @@ import { useAuth } from '@/contexts/AuthContext';
 const FACTORY_SCHEDULED_ADDRESS: `0x${string}` = PAYMENT_FACTORY_SCHEDULED as `0x${string}`;
 const FACTORY_INSTANT_ADDRESS: `0x${string}` = PAYMENT_FACTORY_INSTANT as `0x${string}`;
 
-const getFactoryAddress = (isInstant: boolean): `0x${string}` =>
-  (isInstant ? FACTORY_INSTANT_ADDRESS : FACTORY_SCHEDULED_ADDRESS);
+const getFactoryAddress = (
+  isInstant: boolean,
+  scheduled: `0x${string}` = FACTORY_SCHEDULED_ADDRESS,
+  instant: `0x${string}` = FACTORY_INSTANT_ADDRESS,
+): `0x${string}` => (isInstant ? instant : scheduled);
 
 const getFactoryAbi = (isInstant: boolean) =>
   (isInstant ? paymentFactoryInstantAbi : paymentFactoryScheduledAbi);
@@ -40,6 +43,7 @@ const resolveOnchainFeeBps = async (params: {
   address?: `0x${string}`;
   publicClient?: ReturnType<typeof usePublicClient>;
   isProVerified: boolean;
+  scheduledFactory?: `0x${string}`;
 }): Promise<number> => {
   if (params.isInstantPayment) {
     return 0;
@@ -49,7 +53,7 @@ const resolveOnchainFeeBps = async (params: {
   }
   try {
     const isProOnchain = await params.publicClient.readContract({
-      address: FACTORY_SCHEDULED_ADDRESS,
+      address: params.scheduledFactory ?? FACTORY_SCHEDULED_ADDRESS,
       abi: paymentFactoryScheduledAbi,
       functionName: 'isProWallet',
       args: [params.address],
@@ -205,6 +209,8 @@ export function useCreatePayment(): UseCreatePaymentReturn {
   const { t } = useTranslation();
   const { address } = useAccount();
   const chainId = useChainId();
+  const FACTORY_SCHEDULED_ADDRESS = getPaymentFactory(chainId, 'scheduled');
+  const FACTORY_INSTANT_ADDRESS = getPaymentFactory(chainId, 'instant');
   const publicClient = usePublicClient();
   const { user } = useAuth();
   
@@ -359,7 +365,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
           symbol: currentParams.customToken.symbol,
           isNative: false as const,
         }
-      : getToken(currentParams.tokenSymbol)
+      : getWriteToken(chainId, currentParams.tokenSymbol)
     : null;
   
   // 🔧 FIX ERC20 ALLOWANCE : Calculer totalRequired
@@ -452,7 +458,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             symbol: params.customToken.symbol,
             isNative: false as const,
           }
-        : getToken(params.tokenSymbol);
+        : getWriteToken(chainId, params.tokenSymbol);
       
       console.log('🔍 [createPayment] Token data:', {
         symbol: tokenData.symbol,
@@ -469,8 +475,9 @@ export function useCreatePayment(): UseCreatePaymentReturn {
         address,
         publicClient,
         isProVerified,
+        scheduledFactory: FACTORY_SCHEDULED_ADDRESS,
       });
-      const factoryAddress = getFactoryAddress(isInstantPayment);
+      const factoryAddress = getFactoryAddress(isInstantPayment, FACTORY_SCHEDULED_ADDRESS, FACTORY_INSTANT_ADDRESS);
       const factoryAbi = getFactoryAbi(isInstantPayment);
       
       // ✅ FIX : Vérifier que le contrat Factory existe bien
@@ -992,7 +999,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             
             // ✅ FIX : Log pour diagnostic
             const hookTokenSymbol = currentParams?.tokenSymbol || approvalTokenSymbol;
-            const hookToken = getToken(hookTokenSymbol);
+            const hookToken = getWriteToken(chainId, hookTokenSymbol);
             console.log('🔍 [AVANT APPROBATION] État avant appel approve():', {
               paramsTokenSymbol: params.tokenSymbol,
               approvalTokenSymbol,
@@ -1006,7 +1013,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             });
             
             // ✅ FIX CRITIQUE : Le hook peut utiliser un tokenSymbol différent au moment de sa création
-            // Mais la fonction approve() utilise getToken(tokenSymbol) en interne, donc elle utilisera
+            // Mais la fonction approve() utilise getWriteToken(chainId, tokenSymbol) en interne, donc elle utilisera
             // le tokenSymbol passé au hook lors de sa création. Si le hook a été créé avec 'USDC'
             // alors qu'on veut approuver 'USDT', cela échouera.
             // Solution: Vérifier que le hook utilise bien le bon token, et si ce n'est pas le cas,
@@ -1040,7 +1047,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             
             // ✅ FIX : Vérifier que l'adresse du token correspond bien au tokenSymbol (tokens catalogue uniquement)
             if (!params.customToken) {
-              const expectedToken = getToken(params.tokenSymbol as TokenSymbol);
+              const expectedToken = getWriteToken(chainId, params.tokenSymbol as TokenSymbol);
               if (tokenData.address !== expectedToken.address) {
                 const errorMsg = `Erreur: L'adresse du token (${tokenData.address}) ne correspond pas au tokenSymbol (${params.tokenSymbol}). Attendu: ${expectedToken.address}`;
                 console.error('❌ [ERREUR CRITIQUE]', errorMsg);
@@ -1369,7 +1376,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
       const now = Math.floor(Date.now() / 1000);
       const isInstantPayment = (currentParams.releaseTime - now) < 60;
 
-      const factoryAddress = getFactoryAddress(isInstantPayment);
+      const factoryAddress = getFactoryAddress(isInstantPayment, FACTORY_SCHEDULED_ADDRESS, FACTORY_INSTANT_ADDRESS);
       const factoryAbi = getFactoryAbi(isInstantPayment);
 
       // ✅ FIX : Attendre un peu que l'allowance soit mise à jour (refetch peut prendre du temps)
@@ -1381,6 +1388,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
             address,
             publicClient,
             isProVerified,
+            scheduledFactory: FACTORY_SCHEDULED_ADDRESS,
           });
 
           // ✅ FIX : Calculer le montant total requis (sans fees pour paiements instantanés)
@@ -2251,6 +2259,8 @@ export function useCreatePayment(): UseCreatePaymentReturn {
           const knownTokens = [
             '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913', // USDC Base
             '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2', // USDT Base
+            '0xaf88d065e77c8cc2239327c5edb3a432268e5831', // USDC Arbitrum
+            '0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9', // USDT Arbitrum
             '0x50c5725949a6f0c72e6c4a641f24049a917db0cb', // DAI Base (si utilisé)
             '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf', // cbBTC Base
             '0x0555E30da8f98308EdB960aa94C0Db47230d2B9c', // WBTC Base
@@ -2333,7 +2343,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
                       symbol: params.customToken.symbol,
                       isNative: false as const,
                     }
-                  : getToken(params.tokenSymbol)
+                  : getWriteToken(chainId, params.tokenSymbol)
                 : null;
 
               if (!params || !userAddress) {
@@ -2365,7 +2375,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
               const now = Math.floor(Date.now() / 1000);
               const isInstantPayment = (params.releaseTime - now) < 60;
 
-              const factoryAddress = getFactoryAddress(isInstantPayment);
+              const factoryAddress = getFactoryAddress(isInstantPayment, FACTORY_SCHEDULED_ADDRESS, FACTORY_INSTANT_ADDRESS);
               const factoryAbi = getFactoryAbi(isInstantPayment);
 
               
@@ -2606,7 +2616,7 @@ export function useCreatePayment(): UseCreatePaymentReturn {
                       symbol: fallbackParams.customToken.symbol,
                       isNative: false as const,
                     }
-                  : getToken(fallbackParams.tokenSymbol);
+                  : getWriteToken(chainId, fallbackParams.tokenSymbol);
                 const trimmedLabel =
                   typeof fallbackParams.label === 'string' ? fallbackParams.label.trim().slice(0, 200) : '';
                 const trimmedCategory =

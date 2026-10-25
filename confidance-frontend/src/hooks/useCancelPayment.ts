@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAccount, usePublicClient, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { scheduledPaymentAbi } from '@/lib/contracts/scheduledPaymentAbi';
 import { recurringPaymentERC20Abi } from '@/lib/contracts/recurringPaymentERC20Abi';
+import { getFactoryAddress, PAYMENT_FACTORY_INSTANT, PAYMENT_FACTORY_RECURRING, PAYMENT_FACTORY_SCHEDULED } from '@/lib/contracts/addresses';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -13,6 +14,7 @@ interface CancelPaymentParams {
   paymentId: string;
   payerAddress?: string; // Adresse du payer depuis la DB (optionnel pour vérification)
   isRecurring?: boolean; // Indique si c'est un paiement récurrent (optionnel, sera détecté automatiquement)
+  network?: string;
 }
 
 type CancelStatus = 'idle' | 'checking' | 'cancelling' | 'confirming' | 'updating-db' | 'success' | 'error';
@@ -123,7 +125,7 @@ export function useCancelPayment(): UseCancelPaymentReturn {
     return result;
   };
 
-  const cancelPayment = async ({ contractAddress, paymentId, payerAddress: payerAddressFromDB, isRecurring: isRecurringParam }: CancelPaymentParams) => {
+  const cancelPayment = async ({ contractAddress, paymentId, payerAddress: payerAddressFromDB, isRecurring: isRecurringParam, network }: CancelPaymentParams) => {
     try {
       setError(null);
       setCurrentPaymentId(paymentId);
@@ -133,12 +135,19 @@ export function useCancelPayment(): UseCancelPaymentReturn {
         throw new Error('Veuillez connecter votre wallet pour annuler le paiement');
       }
 
-      // Vérifier le chainId (Base Mainnet = 8453, Base Sepolia = 84532)
-      const expectedChainId =
-        process.env.NEXT_PUBLIC_CHAIN === 'base_sepolia' ? 84532 : 8453;
-      if (chainId !== expectedChainId) {
-        const expectedName = expectedChainId === 84532 ? 'Base Sepolia' : 'Base Mainnet';
-        throw new Error(`Vous devez être connecté à ${expectedName} (chainId: ${expectedChainId}). Vous êtes actuellement sur chainId: ${chainId}`);
+      const paymentChain = network === 'arbitrum_mainnet'
+        ? { id: 42161, name: 'Arbitrum' }
+        : network === 'base_sepolia'
+          ? { id: 84532, name: 'Base Sepolia' }
+          : network === 'base_mainnet'
+            ? { id: 8453, name: 'Base' }
+            : process.env.NEXT_PUBLIC_CHAIN === 'base_sepolia'
+              ? { id: 84532, name: 'Base Sepolia' }
+              : { id: 8453, name: 'Base' };
+      if (chainId !== paymentChain.id) {
+        throw new Error(
+          `Ce paiement est sur ${paymentChain.name}. Changez de réseau dans votre wallet pour l'annuler. Vous êtes sur le chainId ${chainId}.`
+        );
       }
 
       // Étape 1 : Vérifier que le wallet est connecté et le client disponible
@@ -205,10 +214,15 @@ export function useCancelPayment(): UseCancelPaymentReturn {
       // ✅ Vérifier les nouvelles factories + l'ancienne pour compatibilité
       const FACTORY_ADDRESSES = [
         '0x88530C2f1A77BD8eb69caf91816E42982d25aa6C', // Ancienne factory (legacy)
-        '0x479eFA3f706373a676F4489850bd414855D0941d', // PaymentFactory_Scheduled
-        '0x2eD61AE2e31D5F42676815922d262a88c64fabA9', // PaymentFactory_Recurring
-        '0xF8AE1807C9a6Ed4C25cd59513825277A8e8F0368', // PaymentFactory_Instant
-      ];
+        '0x479eFA3f706373a676F4489850bd414855D0941d', // PaymentFactory_Scheduled (ancienne)
+        '0x2eD61AE2e31D5F42676815922d262a88c64fabA9', // PaymentFactory_Recurring (ancienne)
+        PAYMENT_FACTORY_SCHEDULED,
+        PAYMENT_FACTORY_RECURRING,
+        PAYMENT_FACTORY_INSTANT,
+        getFactoryAddress(42161, 'scheduled'),
+        getFactoryAddress(42161, 'instant'),
+        getFactoryAddress(42161, 'recurring'),
+      ].filter((addr): addr is string => Boolean(addr));
       const isFactoryAddress = FACTORY_ADDRESSES.some(
         addr => payerAddress.toLowerCase() === addr.toLowerCase()
       );

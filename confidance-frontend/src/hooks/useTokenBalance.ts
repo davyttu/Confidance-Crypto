@@ -1,7 +1,7 @@
 // src/hooks/useTokenBalance.ts
 
-import { useAccount, useBalance, useReadContract } from 'wagmi';
-import { type TokenSymbol, getToken } from '@/config/tokens';
+import { useAccount, useBalance, useChainId, useReadContract } from 'wagmi';
+import { type TokenSymbol, getWriteToken } from '@/config/tokens';
 import { erc20Abi } from '@/lib/contracts/erc20Abi';
 
 interface UseTokenBalanceReturn {
@@ -15,7 +15,8 @@ interface UseTokenBalanceReturn {
 
 export function useTokenBalance(tokenSymbol: TokenSymbol): UseTokenBalanceReturn {
   const { address } = useAccount();
-  const token = getToken(tokenSymbol);
+  const chainId = useChainId();
+  const token = getWriteToken(chainId, tokenSymbol);
 
   // Pour ETH natif
   const {

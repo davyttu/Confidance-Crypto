@@ -1,6 +1,7 @@
 // app/api/email/transaction/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { render } from '@react-email/render';
+import { chainDisplayName, explorerAddressUrl, explorerDisplayName } from '@/lib/explorer';
 
 export async function POST(request: NextRequest) {
   try {
@@ -33,6 +34,7 @@ export async function POST(request: NextRequest) {
       transactionHash,
       paymentType,
       cancellable,
+      network,
     } = body;
 
     // Validation
@@ -53,7 +55,11 @@ export async function POST(request: NextRequest) {
     }
 
     // URLs
+    const paymentNetwork = typeof network === 'string' && network.trim() ? network.trim() : 'base_mainnet';
     const basescanUrl = `https://basescan.org/address/${contractAddress}`;
+    const contractUrl = contractAddress
+      ? explorerAddressUrl(contractAddress, paymentNetwork)
+      : basescanUrl;
     const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard`;
 
     console.log('📧 Préparation de l\'email pour:', recipientEmail);
@@ -88,10 +94,12 @@ export async function POST(request: NextRequest) {
         status,
         contractAddress,
         transactionHash,
-        basescanUrl,
+        basescanUrl: contractUrl,
         dashboardUrl,
         paymentType,
         cancellable,
+        networkName: chainDisplayName(paymentNetwork),
+        explorerName: explorerDisplayName(paymentNetwork),
       });
 
       console.log('✅ Composant React créé');

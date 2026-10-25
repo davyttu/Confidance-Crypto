@@ -3,12 +3,13 @@
 import { useState, useEffect } from 'react';
 import {
   useAccount,
+  useChainId,
   useReadContract,
   useWriteContract,
   useWaitForTransactionReceipt,
   usePublicClient,
 } from 'wagmi';
-import { type TokenSymbol, getToken } from '@/config/tokens';
+import { type TokenSymbol, getWriteToken } from '@/config/tokens';
 import { erc20Abi } from '@/lib/contracts/erc20Abi';
 
 const safeStringify = (value: unknown): string => {
@@ -66,8 +67,9 @@ export function useTokenApproval({
   customErc20Decimals,
 }: UseTokenApprovalProps): UseTokenApprovalReturn {
   const { address: userAddress } = useAccount();
+  const chainId = useChainId();
   const publicClient = usePublicClient();
-  const token = getToken(tokenSymbol);
+  const token = getWriteToken(chainId, tokenSymbol);
 
   const catalogErc20Address =
     token.address && token.address !== 'NATIVE'
@@ -290,7 +292,7 @@ export function useTokenApproval({
   const approve = async (amountOverride?: bigint, tokenSymbolOverride?: TokenSymbol, tokenAddressOverride?: `0x${string}`) => {
     // ✅ FIX CRITIQUE : Utiliser le tokenSymbol et tokenAddress override si fournis, sinon utiliser ceux du hook
     const finalTokenSymbol = tokenSymbolOverride || tokenSymbol;
-    const finalToken = tokenSymbolOverride ? getToken(tokenSymbolOverride) : token;
+    const finalToken = tokenSymbolOverride ? getWriteToken(chainId, tokenSymbolOverride) : token;
     const finalTokenAddress = tokenAddressOverride || (finalToken.address === 'NATIVE' ? undefined : finalToken.address as `0x${string}`);
     
     console.log('🔍 [useTokenApproval] Fonction approve() appelée', { 
@@ -377,7 +379,7 @@ export function useTokenApproval({
 
     // ✅ FIX CRITIQUE : Vérifier que le token.address correspond bien au tokenSymbol (catalogue),
     // sauf si on approuve explicitement le contrat « custom » déjà lié au hook (évite faux mismatch USDC + adresse custom).
-    const expectedToken = getToken(finalTokenSymbol);
+    const expectedToken = getWriteToken(chainId, finalTokenSymbol);
     const approvingConfiguredCustom =
       !!customErc20Address &&
       finalTokenAddress.toLowerCase() === customErc20Address.toLowerCase();

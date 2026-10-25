@@ -8,7 +8,7 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { parseUnits } from 'viem';
 import { useTranslation } from 'react-i18next';
 import { CHAINS } from '@/config/chains';
-import { getToken, type TokenSymbol } from '@/config/tokens';
+import { getWriteToken, type TokenSymbol } from '@/config/tokens';
 import { usePaymentLinks } from '@/hooks/usePaymentLinks';
 import { useCreatePayment } from '@/hooks/useCreatePayment';
 import { useCreateRecurringPayment } from '@/hooks/useCreateRecurringPayment';
@@ -163,7 +163,7 @@ export default function PayLinkPage() {
         return;
       }
 
-      const token = getToken(link.token_symbol);
+      const token = getWriteToken(chainId, link.token_symbol);
       const amount = parseUnits(link.amount, token.decimals);
       const firstMonthAmount = isFirstMonthCustom && link.first_month_amount
         ? parseUnits(link.first_month_amount, token.decimals)
@@ -194,7 +194,7 @@ export default function PayLinkPage() {
       return;
     }
 
-    const token = getToken(link.token_symbol);
+    const token = getWriteToken(chainId, link.token_symbol);
     const amount = parseUnits(link.amount, token.decimals);
     const releaseTime = link.payment_type === 'scheduled'
       ? Number(link.execute_at)
@@ -744,6 +744,7 @@ export default function PayLinkPage() {
         contractAddress={activeContractAddress}
         tokenSymbol={tokenSymbol}
         totalMonths={isRecurringLink ? Number(link?.periods || 0) || undefined : undefined}
+        chainId={chainId}
         onClose={() => {
           resetCreate();
           resetRecurring();

@@ -29,6 +29,8 @@ interface TransactionReceiptEmailProps {
   dashboardUrl: string;
   paymentType?: string;
   cancellable?: boolean;
+  networkName?: string;
+  explorerName?: string;
 }
 
 const statusLabels = {
@@ -53,6 +55,8 @@ export const TransactionReceiptEmail = ({
   dashboardUrl,
   paymentType,
   cancellable,
+  networkName = 'Base',
+  explorerName = 'Basescan',
 }: TransactionReceiptEmailProps) => {
   // Valeur par défaut si le status n'est pas reconnu
   const statusInfo = statusLabels[status] || statusLabels['pending'];
@@ -93,7 +97,7 @@ export const TransactionReceiptEmail = ({
           <Section style={greetingSection}>
             <Heading style={greeting}>Bonjour {recipientName} 👋</Heading>
             <Text style={introText}>
-              Voici le récapitulatif de votre paiement programmé sur la blockchain Base.
+              Voici le récapitulatif de votre paiement programmé sur la blockchain {networkName}.
             </Text>
           </Section>
 
@@ -172,7 +176,7 @@ export const TransactionReceiptEmail = ({
                 📊 Voir dans le Dashboard
               </Button>
               <Button style={secondaryButton} href={basescanUrl}>
-                🔍 Voir sur Basescan
+                🔍 Voir sur {explorerName}
               </Button>
             </Section>
           </Section>
@@ -181,7 +185,7 @@ export const TransactionReceiptEmail = ({
           <Section style={infoSection}>
             <Text style={infoTitle}>🔒 Sécurité</Text>
             <Text style={infoText}>
-              Ce paiement est sécurisé par un smart contract sur la blockchain Base. 
+              Ce paiement est sécurisé par un smart contract sur la blockchain {networkName}. 
               Aucune partie ne peut modifier les termes après création. Les fonds sont 
               protégés par la technologie blockchain et seront automatiquement libérés selon 
               les conditions définies.

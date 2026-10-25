@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { Payment, BatchBeneficiary } from '@/hooks/useDashboard';
 import { formatAmount } from '@/lib/utils/amountFormatter';
 import { truncateAddress, copyToClipboard } from '@/lib/utils/addressFormatter';
+import { explorerAddressUrl } from '@/lib/explorer';
 import { useBeneficiaries } from '@/hooks/useBeneficiaries';
 import { useState, useEffect } from 'react';
 
@@ -153,7 +154,7 @@ export function BeneficiariesModal({ payment, onClose }: BeneficiariesModalProps
           <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
             <span>📄 Contrat</span>
             <a
-              href={`https://basescan.org/address/${payment.contract_address}`}
+              href={explorerAddressUrl(payment.contract_address, payment.network)}
               target="_blank"
               rel="noopener noreferrer"
               className="font-mono hover:text-blue-600 dark:hover:text-blue-400 transition-colors"

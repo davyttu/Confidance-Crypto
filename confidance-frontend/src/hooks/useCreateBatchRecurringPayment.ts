@@ -13,7 +13,7 @@ import {
   usePublicClient,
 } from 'wagmi';
 import { decodeEventLog, erc20Abi } from 'viem';
-import { type TokenSymbol, getToken, getProtocolFeeBps, isZeroAddress } from '@/config/tokens';
+import { type TokenSymbol, getWriteToken, getProtocolFeeBps, isZeroAddress } from '@/config/tokens';
 import { paymentFactoryAbi } from '@/lib/contracts/paymentFactoryAbi';
 import { getRecurringFactoryAddress } from '@/lib/contracts/addresses';
 import { fetchRecurringFeeTotalsFromFactory } from '@/lib/contracts/recurringFeePreview';
@@ -269,7 +269,7 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
         throw new Error('Le jour du mois doit être entre 1 et 28');
       }
 
-      const tokenData = getToken(params.tokenSymbol);
+      const tokenData = getWriteToken(chainId, params.tokenSymbol);
       if (!tokenData.address || tokenData.address === 'NATIVE' || isZeroAddress(tokenData.address)) {
         throw new Error(`Token ${params.tokenSymbol} n'a pas d'adresse de contrat`);
       }
@@ -341,7 +341,7 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
         try {
           console.log('✅ [BATCH RECURRING] Factory approuvée ! Étape 2: Création des contrats...');
 
-          const tokenData = getToken(currentParams.tokenSymbol);
+          const tokenData = getWriteToken(chainId, currentParams.tokenSymbol);
           if (!tokenData.address || tokenData.address === 'NATIVE' || isZeroAddress(tokenData.address)) {
             throw new Error('Token address manquante');
           }
@@ -512,7 +512,7 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
         try {
           const contractToApprove = contractAddresses[currentApprovingIndex];
           const beneficiary = currentParams.beneficiaries[currentApprovingIndex];
-          const tokenData = getToken(currentParams.tokenSymbol);
+          const tokenData = getWriteToken(chainId, currentParams.tokenSymbol);
 
           if (!tokenData.address) {
             throw new Error('Token address manquante');
@@ -621,7 +621,7 @@ export function useCreateBatchRecurringPayment(): UseCreateBatchRecurringPayment
           console.log('✅ [BATCH RECURRING] Toutes les approbations terminées ! Sauvegarde DB...');
           setProgressMessage(t('create.modal.savingToDatabase', { defaultValue: 'Saving to database...' }));
 
-          const tokenData = getToken(currentParams.tokenSymbol);
+          const tokenData = getWriteToken(chainId, currentParams.tokenSymbol);
 
           // Sauvegarder chaque paiement récurrent
           for (let i = 0; i < contractAddresses.length; i++) {

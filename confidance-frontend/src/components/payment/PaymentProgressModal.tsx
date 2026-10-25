@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { type TokenSymbol } from '@/config/tokens';
+import { explorerDisplayName, explorerTxUrl } from '@/lib/explorer';
 
 interface PaymentProgressModalProps {
   isOpen: boolean;
@@ -26,6 +27,8 @@ interface PaymentProgressModalProps {
   monthlyAmount?: bigint | null; // Montant mensuel récurrent
   onClose: () => void;
   onViewPayment?: () => void;
+  /** Réseau de la transaction qui vient d'être envoyée. 8453 par défaut. */
+  chainId?: number;
 }
 
 export default function PaymentProgressModal({
@@ -49,8 +52,11 @@ export default function PaymentProgressModal({
   totalMonths,
   firstMonthAmount,
   monthlyAmount,
+  chainId = 8453,
 }: PaymentProgressModalProps) {
   const { t } = useTranslation();
+  const explorerName = explorerDisplayName(undefined, chainId);
+  const onBasescan = explorerName === 'Basescan';
   const clampedStep =
     totalSteps > 0 ? Math.min(Math.max(currentStep, 1), totalSteps) : 0;
   const formatTokenAmount = (amount: bigint | null | undefined) => {
@@ -177,7 +183,9 @@ export default function PaymentProgressModal({
               <p className="text-gray-600 dark:text-gray-400">
                 {contractAddress 
                   ? t('create.modal.paymentDeployedSuccess', { defaultValue: 'Your scheduled payment has been successfully deployed' })
-                  : t('create.modal.viewOnBasescanDetails', { defaultValue: 'Check Basescan to see the details' })
+                  : onBasescan
+                    ? t('create.modal.viewOnBasescanDetails', { defaultValue: 'Check Basescan to see the details' })
+                    : `Check ${explorerName} to see the details`
                 }
               </p>
             </div>
@@ -220,12 +228,14 @@ export default function PaymentProgressModal({
             <div className="flex gap-3">
               {createTxHash && (
                 <a
-                  href={`https://basescan.org/tx/${createTxHash}`}
+                  href={explorerTxUrl(createTxHash, undefined, chainId)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex-1 py-3 px-4 rounded-xl border-2 border-primary-500 text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-950/30 transition-all text-center font-medium"
                 >
-                  {t('create.modal.viewOnBasescan', { defaultValue: 'View on Basescan' })}
+                  {onBasescan
+                    ? t('create.modal.viewOnBasescan', { defaultValue: 'View on Basescan' })
+                    : `View on ${explorerName}`}
                 </a>
               )}
               {contractAddress && onViewPayment && (
@@ -426,7 +436,7 @@ export default function PaymentProgressModal({
             <div className="space-y-2 text-sm">
               {approveTxHash && (
                 <a
-                  href={`https://basescan.org/tx/${approveTxHash}`}
+                  href={explorerTxUrl(approveTxHash, undefined, chainId)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-center gap-2 text-primary-600 hover:text-primary-700"
@@ -439,7 +449,7 @@ export default function PaymentProgressModal({
               )}
               {createTxHash && (
                 <a
-                  href={`https://basescan.org/tx/${createTxHash}`}
+                  href={explorerTxUrl(createTxHash, undefined, chainId)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-center gap-2 text-primary-600 hover:text-primary-700"

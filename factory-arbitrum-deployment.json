@@ -1,0 +1,41 @@
+{
+  "version": "ARBITRUM_FACTORIES_V1",
+  "network": "arbitrum_mainnet",
+  "chainId": "42161",
+  "deployedBy": "0x9DE23D58d4064Fcf7347E64D19FE64BB4aac2Bf6",
+  "frontendUpdated": false,
+  "factories": {
+    "scheduled": {
+      "name": "PaymentFactory_Scheduled",
+      "address": "0x3746BC33ce743962E2554c962BB4A1d6b2Cf0E4C",
+      "constructorArgs": [],
+      "deployedAt": "2026-10-25T17:52:42.527Z"
+    },
+    "instant": {
+      "name": "PaymentFactory_Instant",
+      "address": "0x4B0F57DC60EEFdbDC0a4B79E1A0082b8125dc4b5",
+      "constructorArgs": [],
+      "deployedAt": "2026-10-25T17:52:45.066Z"
+    },
+    "recurring": {
+      "name": "PaymentFactory_Recurring",
+      "address": "0xd84e6AE29c492F305f2686C02425242E282DA5E3",
+      "constructorArgs": [
+        "2592000"
+      ],
+      "deployedAt": "2026-10-25T17:52:47.973Z"
+    }
+  },
+  "constants": {
+    "protocolWallet": "0xa34eDf91Cc494450000Eef08e6563062B2F115a9",
+    "secondsPerMonth": 2592000,
+    "feeBpsParticular": 179,
+    "feeBpsPro": 156
+  },
+  "tokens": {
+    "note": "Référence pour l'étape 2. Aucun token n'est passé aux constructeurs.",
+    "ETH": "NATIVE",
+    "USDC": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+    "USDT": "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9"
+  }
+}

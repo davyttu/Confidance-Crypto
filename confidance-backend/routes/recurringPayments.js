@@ -29,6 +29,10 @@ const TOKEN_ADDRESSES = {
     USDC: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
     // USDT testnet non fourni → laissé vide si non utilisé
     USDT: null
+  },
+  arbitrum_mainnet: {
+    USDC: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
+    USDT: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9'
   }
 };
 

@@ -319,6 +319,7 @@ export default function DashboardPage() {
           paymentId: target.id,
           payerAddress: target.payer_address,
           isRecurring,
+          network: target.network,
         });
       }
 

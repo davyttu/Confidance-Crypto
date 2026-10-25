@@ -6,7 +6,7 @@ import { formatUnits, parseUnits } from 'viem';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
-import { type TokenSymbol, getToken, getProtocolFeeBps } from '@/config/tokens';
+import { type TokenSymbol, getWriteToken, getProtocolFeeBps } from '@/config/tokens';
 import { getRecurringFactoryAddress } from '@/lib/contracts/addresses';
 import { paymentFactoryAbi } from '@/lib/contracts/paymentFactoryAbi';
 import {
@@ -1458,7 +1458,7 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
           isNative: false,
         };
     }
-    const builtIn = getToken(formData.tokenSymbol);
+    const builtIn = getWriteToken(chainId, formData.tokenSymbol);
     return {
       address: builtIn.address === 'NATIVE' ? '' : builtIn.address,
       symbol: builtIn.symbol,
@@ -3501,6 +3501,7 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
         monthlyAmount={isRecurringMode && isBatchMode ? batchRecurringPayment.monthlyAmount : null}
         onClose={handleCloseModal}
         onViewPayment={handleViewPayment}
+        chainId={chainId}
       />
     </form>
   );

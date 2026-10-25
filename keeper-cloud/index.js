@@ -2,8 +2,18 @@ const fs = require("fs");
 
 const networkArg = process.argv[2]; // ex: polygon | arbitrum | avalanche
 const envFile = networkArg ? `.env.${networkArg}` : ".env";
+const isolatedNetwork = Boolean(
+  networkArg && networkArg !== "base" && networkArg !== "base_sepolia" && networkArg !== "base-sepolia"
+);
 
-if (fs.existsSync(envFile)) {
+if (isolatedNetwork) {
+  if (!fs.existsSync(envFile)) {
+    console.error(`❌ Fichier ${envFile} introuvable.`);
+    console.error(`   Le keeper ${networkArg} ne démarre pas, pour ne pas reprendre la configuration Base.`);
+    process.exit(1);
+  }
+  require("dotenv").config({ path: envFile, override: true });
+} else if (fs.existsSync(envFile)) {
   require("dotenv").config({ path: envFile });
 } else {
   require("dotenv").config();
@@ -36,8 +46,20 @@ const NETWORK_MAP = {
   avalanche: "avalanche_mainnet",
 };
 const NETWORK_STRING = NETWORK_MAP[NETWORK] || `chain_${NETWORK}`;
-const EXPLORER_BASE =
-  NETWORK_STRING === "base_sepolia" ? "https://sepolia.basescan.org" : "https://basescan.org";
+const EXPLORER_BY_NETWORK = {
+  base_mainnet: "https://basescan.org",
+  base_sepolia: "https://sepolia.basescan.org",
+  polygon_mainnet: "https://polygonscan.com",
+  arbitrum_mainnet: "https://arbiscan.io",
+  avalanche_mainnet: "https://snowtrace.io",
+};
+const EXPLORER_BASE = EXPLORER_BY_NETWORK[NETWORK_STRING] || "https://basescan.org";
+
+if (isolatedNetwork && NETWORK_STRING !== NETWORK_MAP[networkArg]) {
+  console.error(`❌ ${envFile} indique NETWORK=${NETWORK}.`);
+  console.error(`   Attendu pour cet argument : ${networkArg}. Arrêt, le keeper Base n'est pas lancé à sa place.`);
+  process.exit(1);
+}
 
 // Supabase Configuration
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -924,6 +946,8 @@ async function executeScheduledPayment(payment) {
       "0x50c5725949a6f0c72e6c4a641f24049a917db0cb", // DAI Base
       "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf", // cbBTC Base
       "0x0555E30da8f98308EdB960aa94C0Db47230d2B9c", // WBTC Base
+      "0xaf88d065e77c8cc2239327c5edb3a432268e5831", // USDC Arbitrum
+      "0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9", // USDT Arbitrum
     ];
 
     const isTokenAddress = knownTokenAddresses.some((addr) => addr.toLowerCase() === payment.contractAddress?.toLowerCase());

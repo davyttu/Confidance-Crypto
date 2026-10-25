@@ -20,6 +20,7 @@ import {
   PaymentCategory
 } from '@/types/payment-identity';
 import { getDashboardDisplayDecimals } from '@/config/tokens';
+import { chainDisplayName, chainIconPath, explorerAddressUrl, explorerDisplayName } from '@/lib/explorer';
 
 type DashboardPayment = Payment & {
   __isNew?: boolean;
@@ -588,11 +589,15 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
         {contractEntries.length > 0 ? (
           <div className="relative inline-flex items-center justify-center">
             <a
-              href={`https://basescan.org/address/${contractEntries[0].address}`}
+              href={explorerAddressUrl(contractEntries[0].address, payment.network)}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center"
-              title={t('dashboard.table.viewOnBasescan')}
+              title={
+                explorerDisplayName(payment.network) === 'Basescan'
+                  ? t('dashboard.table.viewOnBasescan')
+                  : `Voir sur ${explorerDisplayName(payment.network)}`
+              }
               onMouseEnter={(e) => {
                 if (tooltipHideTimeoutRef.current) {
                   window.clearTimeout(tooltipHideTimeoutRef.current);
@@ -613,8 +618,8 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
               }}
             >
               <img
-                src="/blockchains/base.svg"
-                alt="Base"
+                src={chainIconPath(payment.network)}
+                alt={chainDisplayName(payment.network)}
                 className="w-6 h-6"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;

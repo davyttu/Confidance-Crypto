@@ -55,6 +55,7 @@ export function useEmailTransaction(): UseEmailTransactionReturn {
         transactionHash: payment.tx_hash || payment.transaction_hash,
         paymentType: getPaymentType(),
         cancellable: payment.cancellable,
+        network: payment.network || 'base_mainnet',
       };
 
       // Appeler l'API

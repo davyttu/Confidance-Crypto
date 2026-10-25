@@ -12,6 +12,8 @@ const {
   // 👇 AJOUT (Polygon)
   POLYGON_RPC,
   POLYGONSCAN_API_KEY,
+
+  ARBITRUM_RPC,
 } = process.env;
 
 module.exports = {
@@ -64,6 +66,14 @@ module.exports = {
       accounts: [PRIVATE_KEY],
       timeout: 60000,
     },
+
+    // Arbitrum One. Les scripts Base refusent toujours tout chainId autre que 8453.
+    arbitrum_mainnet: {
+      url: ARBITRUM_RPC || "https://arb1.arbitrum.io/rpc",
+      chainId: 42161,
+      accounts: [PRIVATE_KEY],
+      timeout: 120000,
+    },
   },
 
   etherscan: {
@@ -93,6 +103,14 @@ module.exports = {
         urls: {
           apiURL: "https://api.polygonscan.com/api",
           browserURL: "https://polygonscan.com",
+        },
+      },
+      {
+        network: "arbitrum_mainnet",
+        chainId: 42161,
+        urls: {
+          apiURL: "https://api.etherscan.io/v2/api?chainid=42161",
+          browserURL: "https://arbiscan.io",
         },
       },
     ],

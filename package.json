@@ -7,6 +7,8 @@
     "test": "npx hardhat test",
     "deploy": "npx hardhat run scripts/deploy.js --network core_testnet",
     "deploy:recurring": "npx hardhat run scripts/deployFactoryRecurring.js --network base_sepolia",
+    "deploy:arbitrum": "npx hardhat run scripts/deployArbitrumFactories.js --network arbitrum_mainnet",
+    "verify:arbitrum": "npx hardhat run scripts/verifyArbitrumFactories.js --network arbitrum_mainnet",
     "verify:recurring": "npx hardhat run scripts/verify-recurring.js --network base_sepolia",
     "update-frontend:recurring": "node scripts/update-frontend-recurring-address.js",
     "start:keeper": "node keeper/index.js"

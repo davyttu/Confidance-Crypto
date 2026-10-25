@@ -80,10 +80,53 @@ export const SUPPORTED_TOKENS: Record<TokenSymbol, Token> = {
   },
 };
 
-// Helper pour obtenir un token par symbole
+// Helper pour obtenir un token par symbole.
+// Le catalogue actif reste Base (ou Base Sepolia si NEXT_PUBLIC_CHAIN=base_sepolia).
 export const getToken = (symbol: TokenSymbol): Token => {
   return SUPPORTED_TOKENS[symbol];
 };
+
+const CHAIN_TOKEN_ADDRESSES: Record<number, Partial<Record<TokenSymbol, `0x${string}` | 'NATIVE'>>> = {
+  8453: {
+    ETH: 'NATIVE',
+    USDC: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+    USDT: '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2',
+    cbBTC: '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf',
+    WBTC: '0x0555E30da8f98308EdB960aa94C0Db47230d2B9c',
+  },
+  84532: {
+    ETH: 'NATIVE',
+    USDC: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
+    USDT: ZERO_ADDRESS,
+  },
+  42161: {
+    ETH: 'NATIVE',
+    USDC: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
+    USDT: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9',
+  },
+};
+
+/**
+ * Token pour un chainId précis. null si ce token n'existe pas sur ce réseau.
+ * getToken() n'utilise pas cette table : les écrans de paiement restent sur Base.
+ */
+export function getChainToken(chainId: number, symbol: TokenSymbol): Token | null {
+  const address = CHAIN_TOKEN_ADDRESSES[chainId]?.[symbol];
+  if (!address || address.toLowerCase() === ZERO_ADDRESS.toLowerCase()) return null;
+  return { ...SUPPORTED_TOKENS[symbol], address };
+}
+
+/**
+ * Token utilisé pour créer ou approuver un paiement.
+ * Sur Base, c'est exactement getToken() (catalogue de production).
+ * Sur Arbitrum, c'est l'adresse du réseau, jamais celle de Base.
+ */
+export function getWriteToken(chainId: number | undefined, symbol: TokenSymbol): Token {
+  if (chainId === 42161) {
+    return getChainToken(42161, symbol) ?? getToken(symbol);
+  }
+  return getToken(symbol);
+}
 
 /**
  * Décimales pour afficher un montant on-chain (wei) dans le dashboard.

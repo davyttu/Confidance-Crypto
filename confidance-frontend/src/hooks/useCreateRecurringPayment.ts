@@ -13,7 +13,7 @@ import {
   usePublicClient,
 } from 'wagmi';
 import { decodeEventLog, erc20Abi } from 'viem';
-import { type TokenSymbol, getToken, getProtocolFeeBps, isZeroAddress } from '@/config/tokens';
+import { type TokenSymbol, getWriteToken, getProtocolFeeBps, isZeroAddress } from '@/config/tokens';
 import { paymentFactoryAbi } from '@/lib/contracts/paymentFactoryAbi';
 import { getRecurringFactoryAddress } from '@/lib/contracts/addresses';
 import { fetchRecurringFeeTotalsFromFactory } from '@/lib/contracts/recurringFeePreview';
@@ -170,7 +170,7 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
   // ✅ FIX CRITIQUE : Deux approbations nécessaires
   // 1. Approuver la Factory (pour qu'elle puisse créer le contrat)
   // 2. Approuver le contrat créé (pour qu'il puisse faire les transferts mensuels)
-  const token = currentParams ? getToken(currentParams.tokenSymbol) : null;
+  const token = currentParams ? getWriteToken(chainId, currentParams.tokenSymbol) : null;
   const amountForApproval = totalRequired || BigInt(1);
 
   // Hook pour approuver la Factory (étape 1)
@@ -217,7 +217,7 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
         throw new Error(t('create.recurring.onlyUSDCUSDT', { defaultValue: 'Recurring payments available only for USDC and USDT' }));
       }
 
-      const tokenData = getToken(params.tokenSymbol);
+      const tokenData = getWriteToken(chainId, params.tokenSymbol);
       
       if (!tokenData.address || tokenData.address === 'NATIVE' || isZeroAddress(tokenData.address)) {
         throw new Error(t('create.recurring.tokenNoAddress', { token: params.tokenSymbol, defaultValue: `Token ${params.tokenSymbol} has no contract address` }));
@@ -409,7 +409,7 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
         try {
           console.log('✅✅✅ [RECURRING] Approbation Factory confirmée ! Étape 2/3: Création du contrat...');
 
-          const tokenData = getToken(currentParams.tokenSymbol);
+          const tokenData = getWriteToken(chainId, currentParams.tokenSymbol);
           if (!tokenData.address) {
             throw new Error(t('create.recurring.tokenAddressMissing', { defaultValue: 'Token address missing' }));
           }
@@ -611,7 +611,7 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
 
       if (status === 'approving_contract' && contractAddress && currentParams && !approvalContractHook.isApproving && !approvalContractHook.isApproveSuccess) {
         try {
-          const tokenData = getToken(currentParams.tokenSymbol);
+          const tokenData = getWriteToken(chainId, currentParams.tokenSymbol);
           if (!tokenData.address) {
             throw new Error(t('create.recurring.tokenAddressMissing', { defaultValue: 'Token address missing' }));
           }
@@ -673,7 +673,7 @@ export function useCreateRecurringPayment(): UseCreateRecurringPaymentReturn {
 
           const params = currentParams;
           const userAddress = capturedPayerAddress;
-          const tokenData = params ? getToken(params.tokenSymbol) : null;
+          const tokenData = params ? getWriteToken(chainId, params.tokenSymbol) : null;
           const paymentLinkIdForApi =
             capturedPaymentLinkIdRef.current?.trim() ||
             params?.paymentLinkId?.trim() ||

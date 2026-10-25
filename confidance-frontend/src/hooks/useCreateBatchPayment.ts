@@ -12,11 +12,11 @@ import {
 } from 'wagmi';
 import { parseEther, parseUnits, decodeEventLog } from 'viem';
 import { paymentFactoryAbi } from '@/lib/contracts/paymentFactoryAbi';
-import { PAYMENT_FACTORY_SCHEDULED, PAYMENT_FACTORY_INSTANT } from '@/lib/contracts/addresses';
+import { PAYMENT_FACTORY_SCHEDULED, PAYMENT_FACTORY_INSTANT, getPaymentFactory } from '@/lib/contracts/addresses';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   type TokenSymbol,
-  getToken,
+  getWriteToken,
   getProtocolFeeBps,
   PROTOCOL_FEE_BPS_PARTICULAR,
   PROTOCOL_FEE_BPS_PRO,
@@ -28,14 +28,18 @@ import { erc20Abi } from '@/lib/contracts/erc20Abi';
 const FACTORY_SCHEDULED_ADDRESS: `0x${string}` = PAYMENT_FACTORY_SCHEDULED as `0x${string}`;
 const FACTORY_INSTANT_ADDRESS: `0x${string}` = PAYMENT_FACTORY_INSTANT as `0x${string}`;
 
-const getFactoryAddress = (isInstant: boolean): `0x${string}` =>
-  (isInstant ? FACTORY_INSTANT_ADDRESS : FACTORY_SCHEDULED_ADDRESS);
+const getFactoryAddress = (
+  isInstant: boolean,
+  scheduled: `0x${string}` = FACTORY_SCHEDULED_ADDRESS,
+  instant: `0x${string}` = FACTORY_INSTANT_ADDRESS,
+): `0x${string}` => (isInstant ? instant : scheduled);
 
 const resolveOnchainFeeBps = async (params: {
   isInstantPayment: boolean;
   address?: `0x${string}`;
   publicClient?: ReturnType<typeof usePublicClient>;
   isProVerified: boolean;
+  scheduledFactory?: `0x${string}`;
 }): Promise<number> => {
   if (params.isInstantPayment) {
     return 0;
@@ -45,7 +49,7 @@ const resolveOnchainFeeBps = async (params: {
   }
   try {
     const isProOnchain = await params.publicClient.readContract({
-      address: FACTORY_SCHEDULED_ADDRESS,
+      address: params.scheduledFactory ?? FACTORY_SCHEDULED_ADDRESS,
       abi: paymentFactoryAbi,
       functionName: 'isProWallet',
       args: [params.address],
@@ -137,6 +141,8 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
   const { t } = useTranslation();
   const { address, isConnected, connector } = useAccount();
   const chainId = useChainId();
+  const FACTORY_SCHEDULED_ADDRESS = getPaymentFactory(chainId, 'scheduled');
+  const FACTORY_INSTANT_ADDRESS = getPaymentFactory(chainId, 'instant');
   const publicClient = usePublicClient();
   const { user, isAuthenticated } = useAuth();
 
@@ -169,7 +175,7 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
           symbol: currentParams.customToken.symbol,
           isNative: false as const,
         }
-      : getToken(currentParams.tokenSymbol || 'ETH')
+      : getWriteToken(chainId, currentParams.tokenSymbol || 'ETH')
     : null;
   const isInstantFromParams = currentParams
     ? (currentParams.releaseTime - Math.floor(Date.now() / 1000)) < 60
@@ -248,7 +254,7 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
             symbol: params.customToken.symbol,
             isNative: false as const,
           }
-        : getToken(tokenSymbol);
+        : getWriteToken(chainId, tokenSymbol);
       const isERC20 = !token.isNative;
 
       const payees: `0x${string}`[] = [];
@@ -282,8 +288,9 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
         address,
         publicClient,
         isProVerified,
+        scheduledFactory: FACTORY_SCHEDULED_ADDRESS,
       });
-      const factoryAddress = getFactoryAddress(isInstantPayment);
+      const factoryAddress = getFactoryAddress(isInstantPayment, FACTORY_SCHEDULED_ADDRESS, FACTORY_INSTANT_ADDRESS);
       
       // ✅ Calculer les montants selon le type de paiement
       let totalBenef: bigint;
@@ -1124,7 +1131,7 @@ export function useCreateBatchPayment(): UseCreateBatchPaymentReturn {
                     ? currentParams.customToken.address
                     : (() => {
                         const sym = currentParams.tokenSymbol || 'ETH';
-                        const t = getToken(sym);
+                        const t = getWriteToken(chainId, sym);
                         return t.isNative ? null : (t.address as string);
                       })(),
                   total_to_beneficiaries: totalToBeneficiaries?.toString(),
