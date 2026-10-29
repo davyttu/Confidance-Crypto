@@ -3,6 +3,7 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const { createClient } = require('@supabase/supabase-js');
 const { generateToken, authenticateToken } = require('../middleware/auth');
+const { sendVerificationCodeEmail } = require('../services/email/verificationCodeEmail');
 
 const router = express.Router();
 
@@ -73,19 +74,85 @@ router.post('/register', async (req, res) => {
       return res.status(500).json({ error: 'Erreur lors de la création du compte' });
     }
 
-    // TODO: Envoyer email avec code de vérification
-    console.log(`📧 Code de vérification pour ${email}: ${verificationCode}`);
+    try {
+      await sendVerificationCodeEmail({
+        to: email.toLowerCase(),
+        code: verificationCode,
+        locale: validLocale,
+      });
+    } catch (emailError) {
+      console.error('Verification email failed:', emailError.response?.status || emailError.code || emailError.message);
+      await supabase.from('users').delete().eq('id', newUser.id);
+      return res.status(502).json({ error: 'Impossible d\'envoyer l\'email de vérification. Réessayez.' });
+    }
 
     res.status(201).json({
       success: true,
       message: 'Compte créé ! Vérifiez votre email.',
       userId: newUser.id,
-      verificationCode: verificationCode // Retourner le code en dev
     });
 
   } catch (error) {
     console.error('Register error:', error);
     res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
+ * POST /api/auth/resend-code
+ * Renvoyer un code de vérification
+ */
+router.post('/resend-code', async (req, res) => {
+  try {
+    const { email, locale } = req.body || {};
+    if (!email) {
+      return res.status(400).json({ error: 'Email requis' });
+    }
+
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('id, email_verified')
+      .eq('email', email.toLowerCase())
+      .single();
+
+    if (error || !user) {
+      return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    }
+    if (user.email_verified) {
+      return res.status(400).json({ error: 'Email déjà vérifié' });
+    }
+
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+    const validLocale = locale && ['fr', 'en', 'es', 'ru', 'zh'].includes(locale) ? locale : 'fr';
+
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({
+        verification_code: verificationCode,
+        verification_code_expires_at: expiresAt,
+      })
+      .eq('id', user.id);
+
+    if (updateError) {
+      return res.status(500).json({ error: 'Erreur lors de l\'envoi du code' });
+    }
+
+    try {
+      await sendVerificationCodeEmail({
+        to: email.toLowerCase(),
+        code: verificationCode,
+        locale: validLocale,
+      });
+    } catch (emailError) {
+      console.error('Resend verification email failed:', emailError.response?.status || emailError.code || emailError.message);
+      return res.status(502).json({ error: 'Impossible d\'envoyer l\'email de vérification. Réessayez.' });
+    }
+
+    return res.json({ success: true, message: 'Code renvoyé' });
+  } catch (error) {
+    console.error('Resend code error:', error);
+    return res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -399,7 +466,22 @@ router.post('/change-email', authenticateToken, async (req, res) => {
       return res.status(500).json({ error: 'Erreur lors de la demande de changement d’email' });
     }
 
-    console.log(`📧 Code de confirmation changement email ${normalizedEmail}: ${verificationCode}`);
+    try {
+      await sendVerificationCodeEmail({
+        to: normalizedEmail,
+        code: verificationCode,
+        locale: 'fr',
+      });
+    } catch (emailError) {
+      console.error('Email change code failed:', emailError.response?.status || emailError.code || emailError.message);
+      await supabase.from('users').update({
+        pending_email: null,
+        pending_email_code: null,
+        pending_email_expires_at: null,
+      }).eq('id', userId);
+      return res.status(502).json({ error: 'Impossible d\'envoyer l\'email de confirmation. Réessayez.' });
+    }
+
     return res.json({ success: true, message: 'Code de confirmation envoyé' });
   } catch (error) {
     console.error('Change email error:', error);

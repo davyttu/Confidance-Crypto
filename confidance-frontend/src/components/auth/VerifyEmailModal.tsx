@@ -5,6 +5,8 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
 interface VerifyEmailModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -18,11 +20,14 @@ export function VerifyEmailModal({ isOpen, onClose, email, verificationCode }: V
   
   const [code, setCode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [info, setInfo] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const showDevCode = process.env.NODE_ENV !== 'production' && Boolean(verificationCode);
 
-  // Pré-remplir le code en développement
+  // Ne jamais préremplir le code sur le site en ligne.
   useEffect(() => {
-    if (verificationCode) {
+    if (process.env.NODE_ENV !== 'production' && verificationCode) {
       setCode(verificationCode);
     }
   }, [verificationCode]);
@@ -51,9 +56,34 @@ export function VerifyEmailModal({ isOpen, onClose, email, verificationCode }: V
     }
   };
 
+  const handleResend = async () => {
+    setError(null);
+    setInfo(null);
+    setIsResending(true);
+    try {
+      const locale = (typeof window !== 'undefined' ? window.localStorage.getItem('i18nextLng') : null) || 'fr';
+      const response = await fetch(`${API_URL}/api/auth/resend-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, locale: locale.split('-')[0] }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || t('verifyEmailModal.errors.wrongCode'));
+      }
+      setCode('');
+      setInfo(t('verifyEmailModal.codeResent'));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('verifyEmailModal.errors.wrongCode'));
+    } finally {
+      setIsResending(false);
+    }
+  };
+
   const handleClose = () => {
     setCode('');
     setError(null);
+    setInfo(null);
     onClose();
   };
 
@@ -124,8 +154,14 @@ export function VerifyEmailModal({ isOpen, onClose, email, verificationCode }: V
               </div>
             )}
 
+            {info && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-800">
+                {info}
+              </div>
+            )}
+
             {/* Info développement */}
-            {verificationCode && (
+            {showDevCode && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs text-yellow-800">
                 <strong>{t('verifyEmailModal.devMode')}</strong> {t('verifyEmailModal.devModeCode')}
               </div>
@@ -144,8 +180,13 @@ export function VerifyEmailModal({ isOpen, onClose, email, verificationCode }: V
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
               {t('verifyEmailModal.resendCode')}{' '}
-              <button className="text-blue-600 hover:text-blue-700 font-medium">
-                {t('verifyEmailModal.resend')}
+              <button
+                type="button"
+                onClick={handleResend}
+                disabled={isResending}
+                className="text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
+              >
+                {isResending ? t('verifyEmailModal.verifying') : t('verifyEmailModal.resend')}
               </button>
             </p>
           </div>

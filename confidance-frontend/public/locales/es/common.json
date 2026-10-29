@@ -7,6 +7,7 @@
     "verifying": "Verificando...",
     "resendCode": "¿No recibiste el código?",
     "resend": "Reenviar",
+    "codeResent": "Se ha enviado un nuevo código.",
     "devMode": "Modo desarrollo:",
     "devModeCode": "Código rellenado automáticamente",
     "errors": { "codeLength": "El código debe tener 6 dígitos", "wrongCode": "Código incorrecto" }

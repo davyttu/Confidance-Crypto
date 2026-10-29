@@ -7,6 +7,7 @@
     "verifying": "Vérification...",
     "resendCode": "Vous n'avez pas reçu le code ?",
     "resend": "Renvoyer",
+    "codeResent": "Un nouveau code a été envoyé.",
     "devMode": "Mode développement :",
     "devModeCode": "Code pré-rempli automatiquement",
     "errors": {

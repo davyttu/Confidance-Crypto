@@ -7,6 +7,7 @@
     "verifying": "验证中...",
     "resendCode": "没收到验证码？",
     "resend": "重新发送",
+    "codeResent": "新的验证码已发送。
     "devMode": "开发模式：",
     "devModeCode": "验证码已自动填写",
     "errors": { "codeLength": "验证码必须为 6 位数字", "wrongCode": "验证码错误" }
