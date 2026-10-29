@@ -1287,6 +1287,7 @@
   },
   "beneficiary": {
     "unnamed": "Unnamed",
+    "fromParty": "from {{name}}",
     "beneficiary": "Beneficiary",
     "beneficiaries": "Beneficiaries",
     "main": "Main",

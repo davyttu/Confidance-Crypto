@@ -670,6 +670,7 @@
   },
   "beneficiary": {
     "unnamed": "未命名",
+    "fromParty": "来自 {{name}}",
     "beneficiary": "受益人",
     "beneficiaries": "受益人",
     "main": "主要",

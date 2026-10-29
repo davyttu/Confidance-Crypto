@@ -645,6 +645,7 @@
   },
   "beneficiary": {
     "unnamed": "Sin nombre",
+    "fromParty": "de {{name}}",
     "beneficiary": "Beneficiario",
     "beneficiaries": "Beneficiarios",
     "main": "Principal",

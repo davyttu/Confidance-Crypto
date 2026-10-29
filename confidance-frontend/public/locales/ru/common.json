@@ -671,6 +671,7 @@
   },
   "beneficiary": {
     "unnamed": "Без имени",
+    "fromParty": "от {{name}}",
     "beneficiary": "Получатель",
     "beneficiaries": "Получатели",
     "main": "Основной",

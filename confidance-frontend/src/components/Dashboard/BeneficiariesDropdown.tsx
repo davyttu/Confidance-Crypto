@@ -4,6 +4,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import { useAccount } from 'wagmi';
 import { Copy, Check, Edit2, ChevronDown, X } from 'lucide-react';
 import { Payment } from '@/hooks/useDashboard';
 import { useBeneficiaries } from '@/hooks/useBeneficiaries';
@@ -21,6 +22,7 @@ export function BeneficiariesDropdown({
   showBatchControls = true,
 }: BeneficiariesDropdownProps) {
   const { t, i18n } = useTranslation();
+  const { address: connectedAddress } = useAccount();
   const { getBeneficiaryName } = useBeneficiaries();
   const [isOpen, setIsOpen] = useState(false);
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
@@ -75,7 +77,26 @@ export function BeneficiariesDropdown({
   };
 
   const beneficiaries = getAllBeneficiaries();
-  const additionalCount = beneficiaries.length - 1; // Nombre de bénéficiaires supplémentaires
+  const additionalCount = beneficiaries.length - 1;
+  const wallet = connectedAddress?.toLowerCase();
+  const payerAddress = payment.payer_address || '';
+  const payeeAddress = payment.payee_address || '';
+  const userIsPayee = Boolean(
+    wallet &&
+    (payeeAddress.toLowerCase() === wallet ||
+      payment.batch_beneficiaries?.some((beneficiary) => beneficiary.address?.toLowerCase() === wallet))
+  );
+  const showAsSender = Boolean(
+    userIsPayee &&
+    payerAddress &&
+    payerAddress.toLowerCase() !== wallet
+  );
+  const counterpartyAddress = showAsSender ? payerAddress : payeeAddress;
+  const partyLabel = (addr: string) => {
+    const name = getBeneficiaryName(addr);
+    const base = name || t('beneficiary.unnamed');
+    return showAsSender ? t('beneficiary.fromParty', { name: base }) : base;
+  };
 
   // Copier dans le presse-papier
   const copyToClipboard = (address: string) => {
@@ -86,20 +107,20 @@ export function BeneficiariesDropdown({
 
   // Si un seul bénéficiaire, pas besoin du dropdown
   if (additionalCount === 0 || !showBatchControls) {
-    const beneficiaryName = getBeneficiaryName(payment.payee_address);
-    const isCopied = copiedAddress === payment.payee_address;
+    const beneficiaryName = getBeneficiaryName(counterpartyAddress);
+    const isCopied = copiedAddress === counterpartyAddress;
     return (
       <div className="flex items-center gap-2">
         <div>
           <div className="text-sm font-medium text-gray-900 dark:text-white">
-            {beneficiaryName || t('beneficiary.unnamed')}
+            {partyLabel(counterpartyAddress)}
           </div>
           <div className="text-xs text-gray-500 dark:text-gray-400 font-mono">
-            {payment.payee_address.slice(0, 6)}...{payment.payee_address.slice(-4)}
+            {counterpartyAddress.slice(0, 6)}...{counterpartyAddress.slice(-4)}
           </div>
         </div>
         <button
-          onClick={() => copyToClipboard(payment.payee_address)}
+          onClick={() => copyToClipboard(counterpartyAddress)}
           className="flex-shrink-0 p-2 rounded-md hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
           title={isCopied ? t('beneficiary.copied') : t('beneficiary.copyAddress')}
         >
@@ -111,7 +132,7 @@ export function BeneficiariesDropdown({
         </button>
         {!beneficiaryName && (
           <button
-            onClick={() => onRename(payment.payee_address)}
+            onClick={() => onRename(counterpartyAddress)}
             className="text-gray-400 hover:text-blue-600 transition-colors"
             title={t('beneficiary.rename')}
           >
@@ -174,9 +195,6 @@ export function BeneficiariesDropdown({
       });
     }
   };
-
-  const mainBeneficiary = beneficiaries[0];
-  const mainBeneficiaryName = getBeneficiaryName(mainBeneficiary.address);
 
   const popup =
     isOpen && typeof document !== 'undefined'
@@ -270,7 +288,7 @@ export function BeneficiariesDropdown({
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <div className="text-sm font-medium text-gray-900 dark:text-white">
-              {mainBeneficiaryName || t('beneficiary.unnamed')}
+              {partyLabel(counterpartyAddress)}
             </div>
             {showBatchControls && (
               <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded-full bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 text-xs font-semibold">
@@ -280,22 +298,22 @@ export function BeneficiariesDropdown({
           </div>
           <div className="flex items-center gap-2">
             <div className="text-xs text-gray-500 dark:text-gray-400 font-mono">
-              {payment.payee_address.slice(0, 6)}...{payment.payee_address.slice(-4)}
+              {counterpartyAddress.slice(0, 6)}...{counterpartyAddress.slice(-4)}
             </div>
             <button
-              onClick={() => copyToClipboard(payment.payee_address)}
+              onClick={() => copyToClipboard(counterpartyAddress)}
               className="flex-shrink-0 p-1.5 rounded-md hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
-              title={copiedAddress === payment.payee_address ? t('beneficiary.copied') : t('beneficiary.copyAddress')}
+              title={copiedAddress === counterpartyAddress ? t('beneficiary.copied') : t('beneficiary.copyAddress')}
             >
-              {copiedAddress === payment.payee_address ? (
+              {copiedAddress === counterpartyAddress ? (
                 <Check className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
               ) : (
                 <Copy className="w-3.5 h-3.5 text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors" />
               )}
             </button>
-            {!mainBeneficiaryName && (
+            {!getBeneficiaryName(counterpartyAddress) && (
               <button
-                onClick={() => onRename(payment.payee_address)}
+                onClick={() => onRename(counterpartyAddress)}
                 className="text-gray-400 hover:text-blue-600 transition-colors"
                 title={t('beneficiary.rename')}
               >

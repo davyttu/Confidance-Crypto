@@ -630,6 +630,7 @@
   },
   "beneficiary": {
     "unnamed": "Non nommé",
+    "fromParty": "de {{name}}",
     "beneficiary": "Bénéficiaire",
     "beneficiaries": "Bénéficiaires",
     "main": "Principal",
