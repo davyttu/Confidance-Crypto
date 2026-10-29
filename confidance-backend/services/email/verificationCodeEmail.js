@@ -1,5 +1,27 @@
+const fs = require('fs');
+const path = require('path');
 const axios = require('axios');
 const nodemailer = require('nodemailer');
+
+const SMTP_KEYS = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASSWORD', 'SMTP_FROM_EMAIL'];
+
+function loadSharedMailboxSettings() {
+  if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASSWORD) return;
+  const envPath = path.resolve(__dirname, '../../../confidance-frontend/.env.local');
+  if (!fs.existsSync(envPath)) return;
+  for (const line of fs.readFileSync(envPath, 'utf8').split('\n')) {
+    const raw = line.trim();
+    if (!raw || raw.startsWith('#') || !raw.includes('=')) continue;
+    const splitAt = raw.indexOf('=');
+    const key = raw.slice(0, splitAt).trim();
+    if (!SMTP_KEYS.includes(key) || process.env[key]) continue;
+    let value = raw.slice(splitAt + 1).trim();
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1);
+    }
+    process.env[key] = value;
+  }
+}
 
 function emailCopy(locale) {
   if (locale === 'en') {
@@ -75,6 +97,7 @@ async function sendViaBrevo({ to, subject, html }) {
 }
 
 async function sendVerificationCodeEmail({ to, code, locale }) {
+  loadSharedMailboxSettings();
   const copy = emailCopy(locale);
   const html = htmlFor(copy, code);
   if (smtpTransport()) {
