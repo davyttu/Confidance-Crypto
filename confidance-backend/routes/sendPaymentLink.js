@@ -5,12 +5,12 @@ const router = express.Router();
 
 /**
  * POST /api/send-payment-link
- * Body: { toEmail?: string, toPhone?: string, link: string, subject?: string, bodyText?: string }
- * Envoie le lien par email et/ou SMS directement depuis le serveur (Brevo).
+ * Body: { toEmail?: string, toPhone?: string, link: string, locale?: string }
+ * Envoie le lien par email (boîte Confidance) et/ou SMS.
  */
 router.post('/', async (req, res) => {
   try {
-    const { toEmail, toPhone, link, subject, bodyText } = req.body || {};
+    const { toEmail, toPhone, link } = req.body || {};
 
     if (!link || typeof link !== 'string' || !link.trim()) {
       return res.status(400).json({ success: false, error: 'link_required' });
@@ -31,16 +31,12 @@ router.post('/', async (req, res) => {
         await sendPaymentLinkEmail({
           toEmail: String(toEmail).trim(),
           link: trimmedLink,
-          subject: subject ? String(subject).trim() : undefined,
-          bodyText: bodyText ? String(bodyText).trim() : undefined,
+          locale: req.body?.locale,
         });
         results.email = 'sent';
       } catch (err) {
-        if (err.message === 'EMAIL_NOT_CONFIGURED' || err.message === 'EMAIL_REQUIRED') {
-          return res.status(503).json({ success: false, error: err.message });
-        }
-        console.warn('⚠️ sendPaymentLinkEmail:', err?.message || err);
-        results.email = 'error';
+        console.warn('⚠️ sendPaymentLinkEmail:', err?.response?.status || err?.message || err);
+        return res.status(502).json({ success: false, error: 'EMAIL_SEND_FAILED' });
       }
     }
 

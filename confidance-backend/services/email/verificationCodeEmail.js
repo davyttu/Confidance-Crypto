@@ -277,11 +277,16 @@ async function sendVerificationCodeEmail({ to, code, locale }) {
   const copy = emailCopy(locale);
   const html = htmlFor(copy, code, locale);
   const text = textFor(copy, code);
-  if (smtpTransport()) {
-    await sendViaSmtp({ to, subject: copy.subject, html, text });
-    return;
-  }
-  await sendViaBrevo({ to, subject: copy.subject, html, text });
+  await sendMailboxMessage({ to, subject: copy.subject, html, text });
 }
 
-module.exports = { sendVerificationCodeEmail };
+async function sendMailboxMessage({ to, subject, html, text }) {
+  loadSharedMailboxSettings();
+  if (smtpTransport()) {
+    await sendViaSmtp({ to, subject, html, text });
+    return;
+  }
+  await sendViaBrevo({ to, subject, html, text });
+}
+
+module.exports = { sendVerificationCodeEmail, sendMailboxMessage };

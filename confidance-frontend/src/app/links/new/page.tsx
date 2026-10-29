@@ -302,8 +302,7 @@ export default function NewPaymentLinkPage() {
         body: JSON.stringify({
           toEmail: to,
           link: shareUrl,
-          subject: isTranslationReady ? t('links.create.success') : 'Payment link',
-          bodyText: `${isTranslationReady ? t('links.create.successDescription') : 'Share this link to receive payments'}\n\n${shareUrl}`,
+          locale: (i18n.language || 'en').split('-')[0],
         }),
       });
       const data = await res.json().catch(() => ({}));

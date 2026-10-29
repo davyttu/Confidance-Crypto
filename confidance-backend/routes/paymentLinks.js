@@ -371,16 +371,12 @@ router.post('/send', async (req, res) => {
         await sendPaymentLinkEmail({
           toEmail: String(toEmail).trim(),
           link: trimmedLink,
-          subject: subject ? String(subject).trim() : undefined,
-          bodyText: bodyText ? String(bodyText).trim() : undefined,
+          locale: req.body?.locale,
         });
         results.email = 'sent';
       } catch (err) {
-        if (err.message === 'EMAIL_NOT_CONFIGURED' || err.message === 'EMAIL_REQUIRED') {
-          return res.status(503).json({ success: false, error: err.message });
-        }
-        console.warn('⚠️ sendPaymentLinkEmail:', err?.message || err);
-        results.email = 'error';
+        console.warn('⚠️ sendPaymentLinkEmail:', err?.response?.status || err?.message || err);
+        return res.status(502).json({ success: false, error: 'EMAIL_SEND_FAILED' });
       }
     }
 
