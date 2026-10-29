@@ -279,12 +279,9 @@ export default function NewPaymentLinkPage() {
   }, [paymentType, frequency]);
 
   const shareUrl = useMemo(() => {
-    if (!createdId) return '';
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL
-      || (typeof window !== 'undefined' ? window.location.origin : '');
-    if (!baseUrl) return '';
-    return `${baseUrl}/pay/${createdId}`;
-  }, [createdId]);
+    if (!createdId || !isClient) return '';
+    return `${window.location.origin}/pay/${createdId}`;
+  }, [createdId, isClient]);
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(shareUrl);
