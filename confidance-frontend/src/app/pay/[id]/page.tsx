@@ -138,8 +138,14 @@ export default function PayLinkPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const isJustPaid = createStatus === 'success' || recurringStatus === 'success';
+  const isLinkClosed =
+    isJustPaid ||
+    Boolean(link?.payer_address) ||
+    ['paid', 'completed', 'released', 'cancelled', 'expired'].includes(link?.status);
+
   const handlePay = async () => {
-    if (!link || !address) return;
+    if (!link || !address || isLinkClosed) return;
     setError(null);
     resetCreate();
     resetRecurring();
@@ -213,8 +219,12 @@ export default function PayLinkPage() {
     const hasSuccess =
       createStatus === 'success' || recurringStatus === 'success';
     if (!hasSuccess || !link || !address) return;
+    if (link.status === 'paid' && link.payer_address) return;
 
-    const nextStatus = link.payment_type === 'instant' ? 'paid' : 'active';
+    const nextStatus = 'paid';
+    setLink((current: any) =>
+      current ? { ...current, status: nextStatus, payer_address: address } : current
+    );
     updateLinkStatus(link.id, nextStatus, address).catch(() => undefined);
   }, [createStatus, recurringStatus, link, address, updateLinkStatus]);
 
@@ -640,6 +650,16 @@ export default function PayLinkPage() {
               </div>
 
               {/* Bouton de paiement */}
+              {isLinkClosed ? (
+                <div className="w-full bg-green-50 border border-green-200 rounded-xl p-5 text-center">
+                  <p className="text-base font-bold text-green-900">
+                    {ready ? t('links.pay.alreadyUsedTitle') : 'This payment link has already been used'}
+                  </p>
+                  <p className="mt-2 text-sm text-green-800">
+                    {ready ? t('links.pay.alreadyUsedBody') : 'The payment was completed. This link can no longer be used.'}
+                  </p>
+                </div>
+              ) : (
               <button
                 onClick={handlePay}
                 disabled={!isConnected || isChainMismatch || isUnsupportedChain || isWeekly || isProcessing}
@@ -657,6 +677,7 @@ export default function PayLinkPage() {
                   </span>
                 )}
               </button>
+              )}
 
               {/* Avertissement */}
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">

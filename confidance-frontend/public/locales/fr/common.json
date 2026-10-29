@@ -1299,6 +1299,8 @@
       "loading": "Chargement du lien...",
       "backHome": "Retour à l'accueil",
       "cta": "Payer maintenant",
+      "alreadyUsedTitle": "Ce lien de paiement a déjà été utilisé",
+      "alreadyUsedBody": "Le paiement a été réalisé. Ce lien ne peut plus servir.",
       "types": {
         "instant": "Instantané",
         "scheduled": "Programmé",

@@ -1048,6 +1048,8 @@
       "loading": "正在加载支付链接...",
       "backHome": "返回首页",
       "cta": "立即支付",
+      "alreadyUsedTitle": "此付款链接已被使用",
+      "alreadyUsedBody": "付款已完成。此链接不能再次使用。",
       "types": {
         "instant": "即时",
         "scheduled": "预定",

@@ -1422,6 +1422,8 @@
       "loading": "Loading payment link...",
       "backHome": "Back to home",
       "cta": "Pay now",
+      "alreadyUsedTitle": "This payment link has already been used",
+      "alreadyUsedBody": "The payment was completed. This link can no longer be used.",
       "types": {
         "instant": "Instant",
         "scheduled": "Scheduled",

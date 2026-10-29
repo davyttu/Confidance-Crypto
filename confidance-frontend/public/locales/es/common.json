@@ -880,6 +880,8 @@
       "loading": "Cargando enlace de pago...",
       "backHome": "Volver al inicio",
       "cta": "Pagar ahora",
+      "alreadyUsedTitle": "Este enlace de pago ya se ha utilizado",
+      "alreadyUsedBody": "El pago se ha realizado. Este enlace ya no se puede usar.",
       "types": {
         "instant": "Instantáneo",
         "scheduled": "Programado",
