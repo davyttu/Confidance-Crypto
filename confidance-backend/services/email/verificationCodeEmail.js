@@ -1,8 +1,5 @@
 const axios = require('axios');
-
-const BREVO_API_KEY = process.env.BREVO_API_KEY;
-const BREVO_FROM_EMAIL = process.env.BREVO_FROM_EMAIL;
-const BREVO_FROM_NAME = process.env.BREVO_FROM_NAME || 'Confidance';
+const nodemailer = require('nodemailer');
 
 function emailCopy(locale) {
   if (locale === 'en') {
@@ -19,38 +16,72 @@ function emailCopy(locale) {
   };
 }
 
-async function sendVerificationCodeEmail({ to, code, locale }) {
-  if (!BREVO_API_KEY || !BREVO_FROM_EMAIL) {
-    const error = new Error('BREVO_NOT_CONFIGURED');
-    error.code = 'BREVO_NOT_CONFIGURED';
-    throw error;
-  }
-
-  const copy = emailCopy(locale);
-  const html = `
+function htmlFor(copy, code) {
+  return `
     <div style="font-family: Arial, sans-serif; color: #111827; max-width: 480px;">
       <p>${copy.intro}</p>
       <p style="font-size: 32px; letter-spacing: 8px; font-weight: 700; margin: 24px 0;">${code}</p>
       <p style="font-size: 13px; color: #6b7280;">${copy.ignore}</p>
     </div>
   `;
+}
 
+function smtpTransport() {
+  const host = process.env.SMTP_HOST;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASSWORD;
+  if (!host || !user || !pass) return null;
+  const port = parseInt(process.env.SMTP_PORT || '465', 10);
+  return nodemailer.createTransport({
+    host,
+    port,
+    secure: port === 465,
+    auth: { user, pass },
+  });
+}
+
+async function sendViaSmtp({ to, subject, html }) {
+  const fromEmail = process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER;
+  const fromName = process.env.BREVO_FROM_NAME || 'Confidance';
+  await smtpTransport().sendMail({
+    from: `"${fromName}" <${fromEmail}>`,
+    to,
+    subject,
+    html,
+  });
+}
+
+async function sendViaBrevo({ to, subject, html }) {
+  const apiKey = process.env.BREVO_API_KEY;
+  const fromEmail = process.env.BREVO_FROM_EMAIL;
+  if (!apiKey || !fromEmail) {
+    const error = new Error('EMAIL_NOT_CONFIGURED');
+    error.code = 'EMAIL_NOT_CONFIGURED';
+    throw error;
+  }
   await axios.post(
     'https://api.brevo.com/v3/smtp/email',
     {
-      sender: { email: BREVO_FROM_EMAIL, name: BREVO_FROM_NAME },
+      sender: { email: fromEmail, name: process.env.BREVO_FROM_NAME || 'Confidance' },
       to: [{ email: to }],
-      subject: copy.subject,
+      subject,
       htmlContent: html,
     },
     {
-      headers: {
-        'api-key': BREVO_API_KEY,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'api-key': apiKey, 'Content-Type': 'application/json' },
       timeout: 10000,
     }
   );
+}
+
+async function sendVerificationCodeEmail({ to, code, locale }) {
+  const copy = emailCopy(locale);
+  const html = htmlFor(copy, code);
+  if (smtpTransport()) {
+    await sendViaSmtp({ to, subject: copy.subject, html });
+    return;
+  }
+  await sendViaBrevo({ to, subject: copy.subject, html });
 }
 
 module.exports = { sendVerificationCodeEmail };
