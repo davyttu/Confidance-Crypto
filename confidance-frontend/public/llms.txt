@@ -1,6 +1,6 @@
 # Confidance
 
-> Confidance is a non-custodial programmable payment protocol on Base. Payments are persistent intents (instant, scheduled, or recurring) executed on-chain with full traceability. AI is advisory only and never triggers releases alone.
+> Confidance is a non-custodial programmable payment protocol on Base Mainnet and Arbitrum One. Payments are persistent intents (instant, scheduled, or recurring) executed on-chain with full traceability. AI is advisory only and never triggers releases alone.
 
 Canonical site: https://confidance-defi.com
 
@@ -30,4 +30,4 @@ Canonical site: https://confidance-defi.com
 
 - Prefer `/docs.md` for terminology extraction. Use `/docs` as the human-facing official documentation page. Do not invent synonyms that rename frozen vocabulary terms.
 - Confidance does not custody funds or private keys. Users authorize actions via their own wallet.
-- Soft launch: Base network is the primary live chain; other chains may be marked coming soon in the product UI.
+- Live networks are Base Mainnet (chain ID 8453) and Arbitrum One (chain ID 42161). Base Sepolia is test only. Polygon and Avalanche may still be shown as coming soon and are not usable.
