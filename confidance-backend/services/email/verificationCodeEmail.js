@@ -149,16 +149,9 @@ function htmlFor(copy, code, locale) {
       <td align="center">
         <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="width:100%;max-width:560px;background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;">
           <tr>
-            <td style="padding:28px 32px 20px;background:#111827;">
-              <table role="presentation" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td style="width:36px;height:36px;background:#4f46e5;border-radius:10px;text-align:center;color:#ffffff;font-family:Arial,sans-serif;font-size:20px;font-weight:700;line-height:36px;">C</td>
-                  <td style="padding-left:12px;font-family:Arial,sans-serif;">
-                    <div style="color:#ffffff;font-size:18px;font-weight:700;line-height:1.2;">Confidance</div>
-                    <div style="color:#c4b5fd;font-size:12px;line-height:1.4;">${copy.footer}</div>
-                  </td>
-                </tr>
-              </table>
+            <td style="padding:28px 32px 4px;background:#ffffff;">
+              <img src="cid:confidance-logo" alt="Confidance" width="240" style="display:block;border:0;width:240px;height:auto;" />
+              <p style="margin:2px 0 0 8px;font-family:Arial,sans-serif;font-size:12px;line-height:1.4;color:#6b7280;">${copy.footer}</p>
             </td>
           </tr>
           <tr>
@@ -222,15 +215,27 @@ function smtpTransport() {
   });
 }
 
+function logoAttachment() {
+  const logoPath = path.join(__dirname, 'assets', 'confidance-logo.png');
+  if (!fs.existsSync(logoPath)) return null;
+  return {
+    filename: 'confidance-logo.png',
+    path: logoPath,
+    cid: 'confidance-logo',
+  };
+}
+
 async function sendViaSmtp({ to, subject, html, text }) {
   const fromEmail = process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER;
   const fromName = process.env.BREVO_FROM_NAME || 'Confidance';
+  const logo = logoAttachment();
   await smtpTransport().sendMail({
     from: `"${fromName}" <${fromEmail}>`,
     to,
     subject,
     html,
     text,
+    attachments: logo ? [logo] : [],
   });
 }
 
@@ -242,15 +247,24 @@ async function sendViaBrevo({ to, subject, html, text }) {
     error.code = 'EMAIL_NOT_CONFIGURED';
     throw error;
   }
+  const logo = logoAttachment();
+  const payload = {
+    sender: { email: fromEmail, name: process.env.BREVO_FROM_NAME || 'Confidance' },
+    to: [{ email: to }],
+    subject,
+    htmlContent: html,
+    textContent: text,
+  };
+  if (logo) {
+    payload.attachment = [{
+      name: 'confidance-logo.png',
+      content: fs.readFileSync(logo.path).toString('base64'),
+      contentId: 'confidance-logo',
+    }];
+  }
   await axios.post(
     'https://api.brevo.com/v3/smtp/email',
-    {
-      sender: { email: fromEmail, name: process.env.BREVO_FROM_NAME || 'Confidance' },
-      to: [{ email: to }],
-      subject,
-      htmlContent: html,
-      textContent: text,
-    },
+    payload,
     {
       headers: { 'api-key': apiKey, 'Content-Type': 'application/json' },
       timeout: 10000,
