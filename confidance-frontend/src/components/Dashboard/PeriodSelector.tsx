@@ -5,10 +5,10 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
 import { getCurrentYearMonths } from '@/lib/utils/dateFormatter';
-import { usePublicClient } from 'wagmi';
+import { useChainId, usePublicClient } from 'wagmi';
 import { formatUnits } from 'viem';
 import { useEthUsdPrice } from '@/hooks/useEthUsdPrice';
-import { getToken, isZeroAddress } from '@/config/tokens';
+import { getWriteToken, isZeroAddress } from '@/config/tokens';
 import { erc20Abi } from '@/lib/contracts/erc20Abi';
 
 type WalletInfo = {
@@ -63,6 +63,7 @@ export function PeriodSelector({
   const closeTimeoutRef = useRef<number | null>(null);
   const [selectedWallets, setSelectedWallets] = useState<string[]>([]);
   const publicClient = usePublicClient();
+  const chainId = useChainId();
   const { priceUsd } = useEthUsdPrice();
   const [walletTotals, setWalletTotals] = useState<Record<string, WalletTotal>>({});
   const [walletTotalsLoading, setWalletTotalsLoading] = useState<Record<string, boolean>>({});
@@ -178,8 +179,8 @@ export function PeriodSelector({
     }
 
     let isMounted = true;
-    const usdcToken = getToken('USDC');
-    const usdtToken = getToken('USDT');
+    const usdcToken = getWriteToken(chainId, 'USDC');
+    const usdtToken = getWriteToken(chainId, 'USDT');
     const canReadToken = (token: { address: string; isNative: boolean }) =>
       !token.isNative && !isZeroAddress(token.address);
 
@@ -255,7 +256,7 @@ export function PeriodSelector({
     return () => {
       isMounted = false;
     };
-  }, [publicClient, walletsToDisplay]);
+  }, [publicClient, walletsToDisplay, chainId]);
 
   const handlePeriodTypeChange = (type: 'all' | 'month' | 'wallet' | 'beneficiary') => {
     setPeriodType(type);

@@ -3,12 +3,12 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { formatUnits } from 'viem';
-import { useAccount, usePublicClient } from 'wagmi';
+import { useAccount, useChainId, usePublicClient } from 'wagmi';
 import { useTranslationReady } from '@/hooks/useTranslationReady';
 import { Payment } from '@/hooks/useDashboard';
 import { useEthUsdPrice } from '@/hooks/useEthUsdPrice';
 import { formatAmount } from '@/lib/utils/amountFormatter';
-import { getToken, getDashboardDisplayDecimals, isZeroAddress } from '@/config/tokens';
+import { getWriteToken, getDashboardDisplayDecimals, isZeroAddress } from '@/config/tokens';
 import { erc20Abi } from '@/lib/contracts/erc20Abi';
 import { getCustomTokens, type CustomToken } from '@/lib/custom-tokens';
 
@@ -46,6 +46,7 @@ function getPeriodBounds(period: TotalSentPeriod): { startSec: number; endSec: n
 
 export function StatsCards({ payments, selectedWallets = [], statsCardFilter = null, onStatsCardFilterChange }: StatsCardsProps) {
   const { t, ready } = useTranslationReady();
+  const chainId = useChainId();
   const [balanceToken, setBalanceToken] = useState<BalanceToken>('ETH');
   const [totalSentToken, setTotalSentToken] = useState<string>('ETH');
   const [totalSentPeriod, setTotalSentPeriod] = useState<TotalSentPeriod>('all');
@@ -225,8 +226,8 @@ export function StatsCards({ payments, selectedWallets = [], statsCardFilter = n
     }
 
     let isMounted = true;
-    const usdcToken = getToken('USDC');
-    const usdtToken = getToken('USDT');
+    const usdcToken = getWriteToken(chainId, 'USDC');
+    const usdtToken = getWriteToken(chainId, 'USDT');
     const canReadToken = (token: { address: string; isNative: boolean }) =>
       !token.isNative && !isZeroAddress(token.address);
 
@@ -289,7 +290,7 @@ export function StatsCards({ payments, selectedWallets = [], statsCardFilter = n
     return () => {
       isMounted = false;
     };
-  }, [addressesToQuery, publicClient]);
+  }, [addressesToQuery, publicClient, chainId]);
 
   const ethAmount = useMemo(() => {
     return Number(formatUnits(balances.ETH, 18));
