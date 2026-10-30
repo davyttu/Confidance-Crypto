@@ -61,6 +61,8 @@ export function Footer() {
       { label: text.secondStep, href: '/second-step' },
       { label: 'Base Mainnet', href: 'https://base.org', external: true },
       { label: 'Basescan', href: 'https://basescan.org', external: true, logo: '/basescan-logo.png' },
+      { label: 'Arbitrum One', href: 'https://arbitrum.io', external: true },
+      { label: 'Arbiscan', href: 'https://arbiscan.io', external: true },
     ],
     legal: [
       { label: text.terms, href: '/legal' },
