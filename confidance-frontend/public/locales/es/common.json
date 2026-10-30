@@ -1140,7 +1140,7 @@
     "features": {
       "secure": { "title": "100% Seguro", "description": "Tus fondos están en un contrato verificado" },
       "automatic": { "title": "Automático", "description": "El pago se libera automáticamente en la fecha elegida" },
-      "transparent": { "title": "Transparente", "description": "Sigue tu pago en tiempo real en Basescan" }
+      "transparent": { "title": "Transparente", "description": "Sigue tu pago en tiempo real en la blockchain" }
     },
     "recurring": {
       "onlyUSDCUSDT": "Pagos recurrentes disponibles solo para USDC y USDT",

@@ -1313,7 +1313,7 @@
     "features": {
       "secure": { "title": "100% Безопасно", "description": "Средства в проверенном смарт-контракте" },
       "automatic": { "title": "Автоматически", "description": "Платёж разблокируется в выбранную дату" },
-      "transparent": { "title": "Прозрачно", "description": "Отслеживайте платёж в реальном времени на Basescan" }
+      "transparent": { "title": "Прозрачно", "description": "Отслеживайте платёж в реальном времени в блокчейне" }
     },
     "recurring": {
       "onlyUSDCUSDT": "Повторяющиеся платежи доступны только для USDC и USDT",

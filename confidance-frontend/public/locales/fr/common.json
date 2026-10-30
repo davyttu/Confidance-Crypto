@@ -910,7 +910,7 @@
       },
       "transparent": {
         "title": "Transparent",
-        "description": "Suivez votre paiement en temps réel sur Basescan"
+        "description": "Suivez votre paiement en temps réel sur la blockchain"
       }
     }
   },

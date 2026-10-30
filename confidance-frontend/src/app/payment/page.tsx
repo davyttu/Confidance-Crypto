@@ -115,7 +115,7 @@ export default function PaymentPage() {
               {isMounted && ready ? t('create.features.transparent.title') : 'Transparent'}
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              {isMounted && ready ? t('create.features.transparent.description') : 'Track your payment in real-time on Basescan'}
+              {isMounted && ready ? t('create.features.transparent.description') : 'Track your payment in real-time on the blockchain'}
             </p>
           </div>
         </div>

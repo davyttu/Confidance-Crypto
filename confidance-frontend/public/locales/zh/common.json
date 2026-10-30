@@ -1308,7 +1308,7 @@
     "features": {
       "secure": { "title": "100% 安全", "description": "您的资金存放在经过验证的智能合约中" },
       "automatic": { "title": "自动", "description": "支付将在选定日期自动释放" },
-      "transparent": { "title": "透明", "description": "在 Basescan 上实时跟踪您的支付" }
+      "transparent": { "title": "透明", "description": "在区块链上实时跟踪您的支付" }
     },
     "recurring": {
       "onlyUSDCUSDT": "定期支付仅适用于 USDC 和 USDT",
