@@ -747,6 +747,8 @@
       "recurring": "🔄 Monthly",
       "recurringTooltip": "⚠️ Feature only available for USDT/USDC",
       "monthsLabel": "Number of monthly payments",
+      "monthsCount_one": "{{count}} monthly payment",
+      "monthsCount_other": "{{count}} monthly payments",
       "monthsInfo": "💡 The amount will be debited each month for {{months}} months. Your treasury remains available.",
       "dayOfMonth": "Debits will occur on the {{day}} of each month",
       "autoRelease": "💡 The payment will be automatically released on this date",

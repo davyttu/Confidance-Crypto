@@ -1334,6 +1334,7 @@
       "recurring": "🔄 每月",
       "recurringTooltip": "⚠️ 仅适用于 USDT/USDC",
       "monthsLabel": "月度支付次数",
+      "monthsCount_other": "{{count}} 期",
       "monthsInfo": "💡 每月将扣款 {{months}} 个月。您的资金仍可用。",
       "dayOfMonth": "每月 {{day}} 日扣款",
       "autoRelease": "💡 支付将在此日期自动释放",

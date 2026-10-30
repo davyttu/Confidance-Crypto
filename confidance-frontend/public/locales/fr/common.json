@@ -759,6 +759,8 @@
       "recurring": "🔄 Mensualisation",
       "recurringTooltip": "⚠️ Fonction uniquement disponible pour USDT/USDC",
       "monthsLabel": "Nombre de mensualités",
+      "monthsCount_one": "{{count}} mensualité",
+      "monthsCount_other": "{{count}} mensualités",
       "monthsInfo": "💡 Le montant sera prélevé chaque mois pendant {{months}} mois. Votre trésorerie reste disponible.",
       "dayOfMonth": "Les prélèvements auront lieu le {{day}} de chaque mois",
       "autoRelease": "💡 Le paiement sera automatiquement libéré à cette date",

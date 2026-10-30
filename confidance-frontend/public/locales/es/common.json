@@ -1189,6 +1189,8 @@
       "totalToApprove": "TOTAL a aprobar",
       "approvalDoesNotLock": "Esta autorización no bloquea los fondos: permanecen en el wallet. Solo se cobra la cuota del momento.",
       "monthsLabel": "Número de pagos mensuales",
+      "monthsCount_one": "{{count}} mensualidad",
+      "monthsCount_other": "{{count}} mensualidades",
       "dayOfMonth": "Los débitos se realizarán el día {{day}} de cada mes",
       "autoRelease": "💡 El pago se liberará automáticamente en esta fecha",
       "cancellableStopsPayments": "Solo la opción \"Cancelable\" en el tipo de pago permite detener definitivamente los pagos mensuales restantes desde el panel",

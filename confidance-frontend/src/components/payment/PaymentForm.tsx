@@ -3470,7 +3470,9 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
         {activePayment.status !== 'idle' 
           ? (isMounted && translationsReady ? t('common.loading') : 'Creating...')
           : isRecurringMode
-          ? (isMounted && translationsReady ? t('create.submit') + ` (${recurringMonths} ${isMounted && translationsReady ? t('create.date.monthsLabel').toLowerCase() : 'months'})` : `Create recurring payment (${recurringMonths} months)`)
+          ? (isMounted && translationsReady
+            ? `${t('create.submit')} (${t('create.date.monthsCount', { count: recurringMonths })})`
+            : `Create recurring payment (${recurringMonths} ${recurringMonths === 1 ? 'month' : 'months'})`)
           : isBatchMode 
           ? (isMounted && translationsReady ? t('create.submit') + ` (${additionalBeneficiaries.length + 1} ${isMounted && translationsReady ? t('create.beneficiary.additional').toLowerCase() : 'beneficiaries'})` : `Create batch payment (${additionalBeneficiaries.length + 1} beneficiaries)`)
           : (isMounted && translationsReady ? t('create.submit') : 'Create scheduled payment')}
