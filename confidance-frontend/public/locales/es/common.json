@@ -243,7 +243,7 @@
       },
       "subscriptions": {
         "title": "Suscripciones",
-        "desc": "Pagos recurrentes automáticos"
+        "desc": "Cuotas cobradas una a una, sin bloquear toda la serie"
       },
       "insurance": {
         "title": "Seguros y garantías",
@@ -800,7 +800,8 @@
       },
       "hint": {
         "label": "Dale un título claro a tu enlace.",
-        "startAtInformative": "El primer pago mensual comienza cuando el destinatario abre el enlace y confirma el pago."
+        "startAtInformative": "El primer pago mensual comienza cuando el destinatario abre el enlace y confirma el pago.",
+        "fundsStayInWallet": "El importe de toda la serie no queda bloqueado. Los tokens permanecen en el wallet del pagador. En cada vencimiento solo se cobra esa cuota."
       },
       "aria": {
         "enableIdentity": "Activar identidad de pago",
@@ -891,6 +892,7 @@
       "verified": "Verificado",
       "copyAddress": "Copiar dirección",
       "recurringPayment": "Pago recurrente",
+      "fundsStayInWallet": "El importe de toda la serie no queda bloqueado. Tus tokens permanecen en tu wallet. En cada vencimiento solo se cobra esa cuota.",
       "months": "meses",
       "scheduledPayment": "Pago programado",
       "securityChecks": "Verificaciones de seguridad",
@@ -1185,6 +1187,7 @@
       "lastDueDate": "Último vencimiento:",
       "totalPerMonth": "TOTAL por pago mensual",
       "totalToApprove": "TOTAL a aprobar",
+      "approvalDoesNotLock": "Esta autorización no bloquea los fondos: permanecen en el wallet. Solo se cobra la cuota del momento.",
       "monthsLabel": "Número de pagos mensuales",
       "dayOfMonth": "Los débitos se realizarán el día {{day}} de cada mes",
       "autoRelease": "💡 El pago se liberará automáticamente en esta fecha",
@@ -1308,7 +1311,8 @@
         "security": {
           "title": "🔐 Seguridad",
           "questions": {
-            "fundsSafe": { "q": "¿Están mis fondos seguros?", "a": "Sí. Tus fondos están en un contrato auditable en Base. Nadie (ni nosotros) puede tocarlos antes de la fecha. Tienes el control al 100%." },
+            "fundsSafe": { "q": "¿Están mis fondos seguros?", "a": "Sí. Confidance no guarda tus claves. Un pago programado deposita el importe en el contrato hasta la fecha de liberación. Un pago recurrente no bloquea la serie: los tokens permanecen en tu wallet y solo se cobra la cuota del momento." },
+            "seriesNotLocked": { "q": "¿Un pago recurrente bloquea el importe de toda la serie?", "a": "No. El pagador no deposita por adelantado la suma de todas las cuotas. Los tokens permanecen en su wallet. En cada vencimiento, el contrato intenta transferir solo el importe de esa cuota y su comisión de protocolo, si el wallet tiene los fondos y la autorización cubre ese importe. Si no, esa cuota no se ejecuta. Si falla la primera cuota, la serie se detiene. La aprobación pedida al crear puede cubrir toda la serie: es un permiso, no un traslado anticipado." },
             "ifConfidanceDisappears": { "q": "¿Qué pasa si Confidance desaparece?", "a": "¡Tus pagos siguen funcionando! Los contratos están en la blockchain y son autónomos. Aunque el sitio esté caído, los pagos se liberan automáticamente." }
           }
         },
@@ -1331,7 +1335,7 @@
           "questions": {
             "blockchain": { "q": "¿Qué blockchain usáis?", "a": "Base Mainnet (Layer 2 de Ethereum). Rápida, segura y con tasas bajas." },
             "tokens": { "q": "¿Puedo enviar tokens (USDC, DAI)?", "a": "¡Soporte ERC20 próximamente! Por ahora solo ETH nativo." },
-            "metamaskRecurring": { "q": "¿Por qué varias ventanas de MetaMask para un pago recurrente?", "a": "En un pago recurrente (ej. 1 USDC × 3 meses) hay 3 pasos:\n\n1) Primera aprobación — Autorizas a la plataforma a usar tus tokens para crear el contrato.\n\n2) Creación — La transacción que registra tu plan (importe, duración, beneficiario).\n\n3) Segunda aprobación — Autorizas al contrato creado a debitar el total de las mensualidades (ej. 3 USDC por 3 meses).\n\nEs el funcionamiento normal de los tokens: cada «gastador» debe autorizarse por separado.\n\nVarios destinatarios: puede haber ventanas MetaMask adicionales (una aprobación por contrato por beneficiario)." }
+            "metamaskRecurring": { "q": "¿Por qué varias ventanas de MetaMask para un pago recurrente?", "a": "En un pago recurrente (ej. 1 USDC × 3 meses) hay 3 pasos:\n\n1) Primera aprobación — Autorizas a la plataforma a usar tus tokens para crear el contrato.\n\n2) Creación — La transacción que registra tu plan (importe, duración, beneficiario).\n\n3) Segunda aprobación — Autorizas al contrato creado a cobrar cada cuota. El importe mostrado puede cubrir toda la serie (ej. 3 USDC por 3 meses), pero los tokens no salen del wallet en ese momento. Solo se transfiere la cuota del momento, en su fecha.\n\nEs el funcionamiento normal de los tokens: cada «gastador» debe autorizarse por separado.\n\nVarios destinatarios: puede haber ventanas MetaMask adicionales (una aprobación por contrato por beneficiario)." }
           }
         }
       },

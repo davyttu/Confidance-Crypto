@@ -7,7 +7,7 @@
     "verifying": "验证中...",
     "resendCode": "没收到验证码？",
     "resend": "重新发送",
-    "codeResent": "新的验证码已发送。
+    "codeResent": "新的验证码已发送。",
     "devMode": "开发模式：",
     "devModeCode": "验证码已自动填写",
     "errors": { "codeLength": "验证码必须为 6 位数字", "wrongCode": "验证码错误" }
@@ -243,7 +243,7 @@
       },
       "subscriptions": {
         "title": "订阅",
-        "desc": "自动定期付款"
+        "desc": "按期扣款，不会锁定整段金额"
       },
       "insurance": {
         "title": "保险与担保",
@@ -878,7 +878,8 @@
         "security": {
           "title": "🔐 安全",
           "questions": {
-            "fundsSafe": { "q": "我的资金安全吗？", "a": "是的！您的资金存放在 Base 区块链上经过审计的智能合约中。任何人（包括我们）都无法在计划日期前动用。您保持 100% 控制权。" },
+            "fundsSafe": { "q": "我的资金安全吗？", "a": "是的。Confidance 不保管您的密钥。预定支付会把金额存入智能合约，直到释放日期。定期支付不会锁定整段金额：代币留在您的钱包里，到期时只划转当期。" },
+            "seriesNotLocked": { "q": "定期支付会锁定整段金额吗？", "a": "不会。付款人不会预先存入全部期数的总和。代币留在其钱包中。每个到期日，合约只尝试划转当期金额及其协议费，前提是钱包余额和授权覆盖该金额。否则该期不会执行。如果第一期失败，整段系列停止。创建时请求的授权可以覆盖整段系列：这是一项许可，不是提前转账。" },
             "ifConfidanceDisappears": { "q": "如果 Confidance 消失会怎样？", "a": "您的支付将继续运行！智能合约在区块链上自主运行。即使我们的网站离线，支付也会自动释放。" }
           }
         },
@@ -901,7 +902,7 @@
           "questions": {
             "blockchain": { "q": "你们使用哪个区块链？", "a": "我们使用 Base Mainnet（以太坊 Layer 2）。快速、安全、费用低。" },
             "tokens": { "q": "我可以发送代币 (USDC, DAI) 吗？", "a": "ERC20 支持即将推出！目前仅支持原生 ETH。" },
-            "metamaskRecurring": { "q": "为什么定期付款需要多个 MetaMask 弹窗？", "a": "定期付款（如 1 USDC × 3 个月）会经历 3 步：\n\n1) 第一次授权 — 您允许平台使用代币以创建合约。\n\n2) 创建 — 记录您计划（金额、期限、收款人）的交易。\n\n3) 第二次授权 — 您允许已创建的合约扣款全部期数总额（如 3 个月共 3 USDC）。\n\n这是代币的正常机制：每个「支出方」都需单独授权。\n\n多位收款人：可能会出现更多 MetaMask 弹窗（每位收款人每个合约需一次授权）。" }
+            "metamaskRecurring": { "q": "为什么定期付款需要多个 MetaMask 弹窗？", "a": "定期付款（如 1 USDC × 3 个月）会经历 3 步：\n\n1) 第一次授权 — 您允许平台使用代币以创建合约。\n\n2) 创建 — 记录您计划（金额、期限、收款人）的交易。\n\n3) 第二次授权 — 您允许已创建的合约按期扣款。显示的金额可以覆盖整段系列（如 3 个月共 3 USDC），但代币此时不会离开钱包。到期时只转当期金额。\n\n这是代币的正常机制：每个「支出方」都需单独授权。\n\n多位收款人：可能会出现更多 MetaMask 弹窗（每位收款人每个合约需一次授权）。" }
           }
         }
       },
@@ -968,7 +969,8 @@
       },
       "hint": {
         "label": "给你的链接一个清晰的标题。",
-        "startAtInformative": "首月付款将在收款人打开链接并确认支付后开始。"
+        "startAtInformative": "首月付款将在收款人打开链接并确认支付后开始。",
+        "fundsStayInWallet": "整段金额不会被锁定。代币留在付款人的钱包里。每个到期日只扣当期。"
       },
       "aria": {
         "enableIdentity": "启用支付标识",
@@ -1059,6 +1061,7 @@
       "verified": "已验证",
       "copyAddress": "复制地址",
       "recurringPayment": "定期支付",
+      "fundsStayInWallet": "整段金额不会被锁定。您的代币留在钱包里。每个到期日只扣当期。",
       "months": "个月",
       "scheduledPayment": "预定支付",
       "securityChecks": "安全检查",
@@ -1341,6 +1344,7 @@
       "lastDueDate": "末次应付：",
       "totalPerMonth": "每月总计",
       "totalToApprove": "待批准总计",
+      "approvalDoesNotLock": "这项授权不会锁定资金：代币留在钱包里。到期时只扣当期。",
       "nextPaymentsContinue": "即使某月失败，<strong>后续月份仍将正常继续</strong>",
       "cancellableStopsPayments": "仅支付类型中的「可取消」选项允许通过仪表板永久停止剩余月度支付",
       "treasuryRemainsAvailable": "您的资金仍然可用",

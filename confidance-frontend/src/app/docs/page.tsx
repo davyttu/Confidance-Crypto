@@ -160,6 +160,10 @@ export default function DocumentationPage() {
                     <span className="text-purple-500 mt-1">→</span>
                     <span><strong>Cancelable anytime:</strong> Payment can be canceled before future release</span>
                   </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-purple-500 mt-1">→</span>
+                    <span><strong>No prefunding:</strong> the payer does not deposit the sum of every instalment. Tokens stay in the wallet until each due date. The approval may cover the whole series; it does not move the funds in advance. On the due date, only that instalment is transferred, if the balance and the allowance cover it.</span>
+                  </li>
                 </ul>
               </div>
             </div>

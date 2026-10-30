@@ -88,7 +88,7 @@ export default function Home() {
     { icon: '💼', title: 'Salaires automatiques', desc: 'Payez vos équipes à date fixe' },
     { icon: '🏠', title: 'Loyers programmés', desc: 'Plus besoin de penser à payer chaque mois' },
     { icon: '🎁', title: 'Cadeaux futurs', desc: 'Surprise garantie pour un anniversaire' },
-    { icon: '💳', title: 'Abonnements', desc: 'Versements récurrents automatiques' },
+    { icon: '💳', title: 'Abonnements', desc: 'Mensualités prélevées une par une, sans bloquer toute la série' },
     { icon: '🛡️', title: 'Assurances & garanties', desc: 'Caution à la signature puis mensualités' },
   ];
 

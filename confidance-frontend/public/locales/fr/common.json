@@ -248,7 +248,7 @@
       },
       "subscriptions": {
         "title": "Abonnements",
-        "desc": "Versements récurrents automatiques"
+        "desc": "Mensualités prélevées une par une, sans bloquer toute la série"
       },
       "insurance": {
         "title": "Assurances & garanties",
@@ -767,6 +767,7 @@
       "totalPerMonth": "TOTAL par mensualité",
       "numberOfMonths": "Nombre de mois",
       "totalToApprove": "TOTAL à approuver",
+      "approvalDoesNotLock": "Cette autorisation ne bloque pas les fonds : ils restent dans le wallet. Seule l'échéance du moment est prélevée.",
       "nextPaymentsContinue": "Les <strong>prochaines mensualités continueront normalement</strong> même si un mois a échoué",
       "cancellableStopsPayments": "Seule l'option \"Annulable\" dans le type de paiement permet de stopper définitivement la suite des mensualités via le dashboard",
       "treasuryRemainsAvailable": "Votre trésorerie reste disponible",
@@ -1079,7 +1080,11 @@
           "questions": {
             "fundsSafe": {
               "q": "Mes fonds sont-ils en sécurité ?",
-              "a": "Oui ! Vos fonds sont sécurisés dans un smart contract audité sur la blockchain Base. Personne (même pas nous) ne peut y toucher avant la date programmée. Vous gardez le contrôle à 100%."
+              "a": "Oui. Confidance ne détient pas vos clés. Un paiement programmé dépose le montant dans le smart contract jusqu'à la date de libération. Un paiement récurrent ne bloque pas la série : les jetons restent dans votre wallet, et seule l'échéance du moment est prélevée."
+            },
+            "seriesNotLocked": {
+              "q": "Un paiement récurrent bloque-t-il le montant de toute la série ?",
+              "a": "Non. Le payeur ne dépose pas à l'avance la somme de toutes les échéances. Les jetons restent dans son wallet. À chaque échéance, le contrat tente de transférer uniquement le montant de cette échéance et ses frais de protocole, si le wallet contient les fonds et si l'autorisation couvre ce montant. Sinon, cette échéance n'est pas exécutée. Si la première échéance échoue, la série s'arrête. L'approbation demandée à la création peut couvrir toute la série : c'est une permission, pas un transfert anticipé."
             },
             "ifConfidanceDisappears": {
               "q": "Que se passe-t-il si Confidance disparaît ?",
@@ -1126,7 +1131,7 @@
             },
             "metamaskRecurring": {
               "q": "Pourquoi plusieurs fenêtres MetaMask pour un paiement récurrent ?",
-              "a": "Pour un paiement récurrent (ex. 1 USDC × 3 mois), vous voyez 3 étapes :\n\n1) Première approbation — Vous autorisez la plateforme à utiliser vos tokens pour créer le contrat.\n\n2) Création — La transaction qui enregistre votre planning (montant, durée, bénéficiaire).\n\n3) Deuxième approbation — Vous autorisez le contrat créé à prélever le total des mensualités (ex. 3 USDC pour 3 mois).\n\nC'est le fonctionnement normal des tokens : chaque « dépenseur » doit être autorisé séparément.\n\nPlusieurs destinataires : il peut y avoir des fenêtres MetaMask supplémentaires (une approbation par contrat par bénéficiaire)."
+              "a": "Pour un paiement récurrent (ex. 1 USDC × 3 mois), vous voyez 3 étapes :\n\n1) Première approbation — Vous autorisez la plateforme à utiliser vos tokens pour créer le contrat.\n\n2) Création — La transaction qui enregistre votre planning (montant, durée, bénéficiaire).\n\n3) Deuxième approbation — Vous autorisez le contrat créé à prélever chaque échéance. Le montant affiché peut couvrir toute la série (ex. 3 USDC pour 3 mois), mais les jetons ne quittent pas le wallet à ce moment-là. Seule l'échéance du moment est transférée, à sa date.\n\nC'est le fonctionnement normal des tokens : chaque « dépenseur » doit être autorisé séparément.\n\nPlusieurs destinataires : il peut y avoir des fenêtres MetaMask supplémentaires (une approbation par contrat par bénéficiaire)."
             }
           }
         }
@@ -1219,7 +1224,8 @@
       },
       "hint": {
         "label": "Donnez un titre clair à votre lien.",
-        "startAtInformative": "La première mensualité démarre quand le destinataire ouvre le lien et valide le paiement."
+        "startAtInformative": "La première mensualité démarre quand le destinataire ouvre le lien et valide le paiement.",
+        "fundsStayInWallet": "Le montant de toute la série n'est pas bloqué. Les jetons restent dans le wallet du payeur. À chaque échéance, seule cette mensualité est prélevée."
       },
       "aria": {
         "enableIdentity": "Activer l'identité de paiement",
@@ -1310,6 +1316,7 @@
       "verified": "Vérifié",
       "copyAddress": "Copier l'adresse",
       "recurringPayment": "Paiement récurrent",
+      "fundsStayInWallet": "Le montant de toute la série n'est pas bloqué. Vos jetons restent dans votre wallet. À chaque échéance, seule cette mensualité est prélevée.",
       "months": "mois",
       "scheduledPayment": "Paiement programmé",
       "securityChecks": "Vérifications de sécurité",

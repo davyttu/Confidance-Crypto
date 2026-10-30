@@ -248,7 +248,7 @@
       },
       "subscriptions": {
         "title": "Subscriptions",
-        "desc": "Automatic recurring payments"
+        "desc": "Instalments taken one by one, without locking the whole series"
       },
       "insurance": {
         "title": "Insurance & guarantees",
@@ -758,6 +758,7 @@
       "totalPerMonth": "TOTAL per monthly payment",
       "numberOfMonths": "Number of months",
       "totalToApprove": "TOTAL to approve",
+      "approvalDoesNotLock": "This approval does not lock the funds: they stay in the wallet. Only the current instalment is debited.",
       "nextPaymentsContinue": "The <strong>next monthly payments will continue normally</strong> even if one month failed",
       "cancellableStopsPayments": "Only the \"Cancellable\" option in the payment type allows you to permanently stop the remaining monthly payments via the dashboard",
       "treasuryRemainsAvailable": "Your treasury remains available",
@@ -1068,7 +1069,11 @@
           "questions": {
             "fundsSafe": {
               "q": "Are my funds safe?",
-              "a": "Yes! Your funds are secured in an audited smart contract on the Base blockchain. No one (not even us) can touch them before the scheduled date. You keep 100% control."
+              "a": "Yes. Confidance does not hold your keys. A scheduled payment deposits the amount in the smart contract until the release date. A recurring payment does not lock the series: the tokens stay in your wallet, and only the current instalment is transferred."
+            },
+            "seriesNotLocked": {
+              "q": "Does a recurring payment lock the amount of the whole series?",
+              "a": "No. The payer does not deposit the sum of every instalment in advance. The tokens stay in their wallet. On each due date the contract tries to transfer only that instalment and its protocol fee, if the wallet holds the funds and the allowance covers that amount. Otherwise that instalment is not executed. If the first instalment fails, the series stops. The approval requested at creation may cover the whole series: it is a permission, not an advance transfer."
             },
             "ifConfidanceDisappears": {
               "q": "What happens if Confidance disappears?",
@@ -1115,7 +1120,7 @@
             },
             "metamaskRecurring": {
               "q": "Why several MetaMask windows for a recurring payment?",
-              "a": "For a recurring payment (e.g. 1 USDC × 3 months), you see 3 steps:\n\n1) First approval — You allow the platform to use your tokens to create the contract.\n\n2) Creation — The transaction that records your schedule (amount, duration, beneficiary).\n\n3) Second approval — You allow the created contract to deduct the total of all installments (e.g. 3 USDC for 3 months).\n\nThis is how tokens work: each \"spender\" must be approved separately.\n\nMultiple recipients: there may be additional MetaMask windows (one approval per contract per beneficiary)."
+              "a": "For a recurring payment (e.g. 1 USDC × 3 months), you see 3 steps:\n\n1) First approval — You allow the platform to use your tokens to create the contract.\n\n2) Creation — The transaction that records your schedule (amount, duration, beneficiary).\n\n3) Second approval — You allow the created contract to debit each instalment. The amount shown may cover the whole series (e.g. 3 USDC for 3 months), but the tokens do not leave the wallet at that moment. Only the current instalment is transferred, on its due date.\n\nThis is how tokens work: each \"spender\" must be approved separately.\n\nMultiple recipients: there may be additional MetaMask windows (one approval per contract per beneficiary)."
             }
           }
         }
@@ -1342,7 +1347,8 @@
       },
       "hint": {
         "label": "Give your link a clear title.",
-        "startAtInformative": "The first monthly payment starts when the recipient opens the link and confirms the payment."
+        "startAtInformative": "The first monthly payment starts when the recipient opens the link and confirms the payment.",
+        "fundsStayInWallet": "The amount of the whole series is not locked. The tokens stay in the payer's wallet. On each due date, only that instalment is debited."
       },
       "aria": {
         "enableIdentity": "Enable payment identity",
@@ -1433,6 +1439,7 @@
       "verified": "Verified",
       "copyAddress": "Copy address",
       "recurringPayment": "Recurring payment",
+      "fundsStayInWallet": "The amount of the whole series is not locked. Your tokens stay in your wallet. On each due date, only that instalment is debited.",
       "months": "months",
       "scheduledPayment": "Scheduled payment",
       "securityChecks": "Security checks",

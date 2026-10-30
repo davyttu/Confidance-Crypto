@@ -30,4 +30,5 @@ Canonical site: https://confidance-defi.com
 
 - Prefer `/docs.md` for terminology extraction. Use `/docs` as the human-facing official documentation page. Do not invent synonyms that rename frozen vocabulary terms.
 - Confidance does not custody funds or private keys. Users authorize actions via their own wallet.
+- A recurring payment does not lock the sum of future instalments. Tokens stay in the payer’s wallet until each due date. The wallet approval authorizes the contract for the series; it does not prefund it. Only the current instalment is transferred when the balance and the allowance cover it.
 - Live networks are Base Mainnet (chain ID 8453) and Arbitrum One (chain ID 42161). Base Sepolia is test only. Polygon and Avalanche may still be shown as coming soon and are not usable.

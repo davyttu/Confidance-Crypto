@@ -456,6 +456,14 @@ export default function PayLinkPage() {
                           <p className="text-xs text-purple-700 mt-1">
                             {link.periods} {ready ? t('links.pay.months') : 'months'} × {monthlyAmountLabel}
                           </p>
+                          <p className="text-xs text-purple-800 mt-2">
+                            {ready
+                              ? t('links.pay.fundsStayInWallet', {
+                                  defaultValue:
+                                    'The amount of the whole series is not locked. Your tokens stay in your wallet. On each due date, only that instalment is debited.',
+                                })
+                              : 'The amount of the whole series is not locked. Your tokens stay in your wallet. On each due date, only that instalment is debited.'}
+                          </p>
                           {isFirstMonthCustom && link.first_month_amount && (
                             <div className="mt-2 space-y-1 text-xs text-purple-700">
                               <div>

@@ -3281,6 +3281,14 @@ export default function PaymentForm({ onBeneficiariesChange }: PaymentFormProps 
                 </span>
               </div>
 
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                {isMounted && translationsReady
+                  ? t('create.date.approvalDoesNotLock', {
+                      defaultValue: 'This approval does not lock the funds: they stay in the wallet. Only the current instalment is debited.',
+                    })
+                  : 'This approval does not lock the funds: they stay in the wallet. Only the current instalment is debited.'}
+              </p>
+
               {/* Dates première et dernière échéance */}
               {formData.releaseDate && (
                 <div className="bg-purple-50 dark:bg-purple-950/30 rounded-xl p-4 space-y-2">

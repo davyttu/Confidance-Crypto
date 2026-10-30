@@ -34,6 +34,7 @@ Paiement exécuté mensuellement sur une durée limitée.
 - Durée limitée : le nombre de mensualités est défini à la création.
 - Première mensualité différente : un montant initial peut être distinct des mensualités suivantes.
 - Annulation à tout moment : le Payment peut être annulé avant une exécution future.
+- Sans préfinancement : le payeur ne dépose pas la somme de toutes les échéances. Les jetons restent dans son wallet jusqu’à chaque échéance. L’autorisation donnée au contrat peut couvrir la série entière : ce n’est pas un transfert anticipé. À l’échéance, seule cette mensualité est prélevée, si le solde et l’autorisation couvrent ce montant.
 
 ## 4. Identité d’un paiement (Payment Identity)
 ### label

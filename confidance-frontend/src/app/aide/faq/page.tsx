@@ -24,7 +24,13 @@ export default function FAQPage() {
           qKey: 'help.faq.categories.security.questions.fundsSafe.q',
           qFallback: 'Mes fonds sont-ils en sécurité ?',
           aKey: 'help.faq.categories.security.questions.fundsSafe.a',
-          aFallback: 'Oui ! Vos fonds sont verrouillés dans un smart contract audité sur la blockchain Base. Personne (même pas nous) ne peut y toucher avant la date programmée. Vous gardez le contrôle à 100%.',
+          aFallback: 'Oui. Confidance ne détient pas vos clés. Un paiement programmé dépose le montant dans le smart contract jusqu\'à la date de libération. Un paiement récurrent ne bloque pas la série : les jetons restent dans votre wallet, et seule l\'échéance du moment est prélevée.',
+        },
+        {
+          qKey: 'help.faq.categories.security.questions.seriesNotLocked.q',
+          qFallback: 'Un paiement récurrent bloque-t-il le montant de toute la série ?',
+          aKey: 'help.faq.categories.security.questions.seriesNotLocked.a',
+          aFallback: 'Non. Le payeur ne dépose pas à l\'avance la somme de toutes les échéances. Les jetons restent dans son wallet. À chaque échéance, le contrat tente de transférer uniquement le montant de cette échéance et ses frais de protocole, si le wallet contient les fonds et si l\'autorisation couvre ce montant. Sinon, cette échéance n\'est pas exécutée. Si la première échéance échoue, la série s\'arrête. L\'approbation demandée à la création peut couvrir toute la série : c\'est une permission, pas un transfert anticipé.',
         },
         {
           qKey: 'help.faq.categories.security.questions.ifConfidanceDisappears.q',
@@ -90,7 +96,7 @@ export default function FAQPage() {
           qKey: 'help.faq.categories.technical.questions.metamaskRecurring.q',
           qFallback: 'Pourquoi plusieurs fenêtres MetaMask pour un paiement récurrent ?',
           aKey: 'help.faq.categories.technical.questions.metamaskRecurring.a',
-          aFallback: 'Pour un paiement récurrent (ex. 1 USDC × 3 mois), vous voyez 3 étapes :\n\n1) Première approbation — Vous autorisez la plateforme à utiliser vos tokens pour créer le contrat.\n\n2) Création — La transaction qui enregistre votre planning (montant, durée, bénéficiaire).\n\n3) Deuxième approbation — Vous autorisez le contrat créé à prélever le total des mensualités (ex. 3 USDC pour 3 mois).\n\nC’est le fonctionnement normal des tokens : chaque “dépenseur” doit être autorisé séparément.\n\nPlusieurs destinataires : il peut y avoir des fenêtres MetaMask supplémentaires (une approbation par contrat par bénéficiaire).',
+          aFallback: 'Pour un paiement récurrent (ex. 1 USDC × 3 mois), vous voyez 3 étapes :\n\n1) Première approbation — Vous autorisez la plateforme à utiliser vos tokens pour créer le contrat.\n\n2) Création — La transaction qui enregistre votre planning (montant, durée, bénéficiaire).\n\n3) Deuxième approbation — Vous autorisez le contrat créé à prélever chaque échéance. Le montant affiché peut couvrir toute la série (ex. 3 USDC pour 3 mois), mais les jetons ne quittent pas le wallet à ce moment-là. Seule l\'échéance du moment est transférée, à sa date.\n\nC’est le fonctionnement normal des tokens : chaque “dépenseur” doit être autorisé séparément.\n\nPlusieurs destinataires : il peut y avoir des fenêtres MetaMask supplémentaires (une approbation par contrat par bénéficiaire).',
         },
       ],
     },

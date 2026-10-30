@@ -717,6 +717,14 @@ export default function NewPaymentLinkPage() {
                       )
                     : 'The first monthly payment starts when the recipient opens the link and confirms the payment.'}
                 </p>
+                <p className="text-xs text-gray-700 dark:text-gray-200 leading-relaxed mt-2">
+                  {isTranslationReady
+                    ? t('links.create.hint.fundsStayInWallet', {
+                        defaultValue:
+                          'The amount of the whole series is not locked. The tokens stay in the payer\'s wallet. On each due date, only that instalment is debited.',
+                      })
+                    : 'The amount of the whole series is not locked. The tokens stay in the payer\'s wallet. On each due date, only that instalment is debited.'}
+                </p>
               </div>
 
               {/* First month custom - Option Same/Custom */}
