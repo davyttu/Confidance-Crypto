@@ -192,3 +192,7 @@ Les futures versions doivent rester compatibles avec les définitions existantes
 
 ### règle de non-régression sémantique
 Aucune définition existante ne peut changer de sens dans une version ultérieure.
+
+## 16. Réseaux opérationnels
+
+Confidance fonctionne sur Base Mainnet et sur Arbitrum One. Base Sepolia est un réseau de test. Une preuve Base se lit sur Basescan. Une preuve Arbitrum se lit sur Arbiscan.
