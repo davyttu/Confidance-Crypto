@@ -58,6 +58,21 @@ export function Navbar() {
   }, []);
 
   useEffect(() => {
+    const openAuth = (event: Event) => {
+      const mode = (event as CustomEvent<{ mode?: string }>).detail?.mode;
+      if (mode === 'register') {
+        setShowLoginModal(false);
+        setShowRegisterModal(true);
+        return;
+      }
+      setShowRegisterModal(false);
+      setShowLoginModal(true);
+    };
+    window.addEventListener('confidance:open-auth', openAuth);
+    return () => window.removeEventListener('confidance:open-auth', openAuth);
+  }, []);
+
+  useEffect(() => {
     if (isMounted && translationsReady) setConnectLabel(t('common.connect'));
   }, [isMounted, translationsReady, t]);
 

@@ -9,6 +9,7 @@ import { CHAINS } from '@/config/chains';
 import { getToken, type Token, type TokenSymbol } from '@/config/tokens';
 import { usePaymentLinks } from '@/hooks/usePaymentLinks';
 import { useBeneficiaries } from '@/hooks/useBeneficiaries';
+import { useAuth } from '@/hooks/useAuth';
 import {
   PaymentCategory,
   CATEGORY_COLORS,
@@ -204,6 +205,7 @@ function NetworkSelect({
 export default function NewPaymentLinkPage() {
   const { t, ready, i18n } = useTranslation();
   const { address } = useAccount();
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const { createLink, isLoading } = usePaymentLinks();
   const { beneficiaries } = useBeneficiaries();
 
@@ -321,7 +323,16 @@ export default function NewPaymentLinkPage() {
     setPaymentCategory(null);
   };
 
+  const openAuth = (mode: 'login' | 'register') => {
+    window.dispatchEvent(new CustomEvent('confidance:open-auth', { detail: { mode } }));
+  };
+
   const handleSubmit = async () => {
+    if (!isAuthenticated) {
+      setError(isTranslationReady ? t('links.create.accountRequired') : 'Sign in or create a client account to generate a payment link.');
+      openAuth('login');
+      return;
+    }
     if (!address) {
       setError(ready ? t('links.create.errors.connectWallet') : 'Connect your wallet first');
       return;
@@ -381,6 +392,15 @@ export default function NewPaymentLinkPage() {
       setCreatedId(paymentLink.id);
     } catch (err) {
       const message = err instanceof Error ? err.message : null;
+      if (message === 'Non authentifié' || message === 'Token invalide') {
+        setError(isTranslationReady ? t('links.create.accountRequired') : 'Sign in or create a client account to generate a payment link.');
+        openAuth('login');
+        return;
+      }
+      if (message === 'WALLET_OWNED_BY_OTHER_ACCOUNT') {
+        setError(isTranslationReady ? t('links.create.errors.walletOwned') : 'This wallet is already linked to another client account.');
+        return;
+      }
       setError(
         message
           || (isTranslationReady ? t('links.create.errors.create') : 'Failed to generate link')
@@ -795,9 +815,15 @@ export default function NewPaymentLinkPage() {
           )}
 
           {/* Bouton Generate */}
+          {isClient && !isAuthLoading && !isAuthenticated && (
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              {isTranslationReady ? t('links.create.accountRequired') : 'Sign in or create a client account to generate a payment link.'}
+            </p>
+          )}
+          {!isClient || isAuthLoading || isAuthenticated ? (
           <button
             onClick={handleSubmit}
-            disabled={isLoading}
+            disabled={isLoading || isAuthLoading}
             className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 text-white font-bold text-base hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
           >
             {isLoading ? (
@@ -816,6 +842,24 @@ export default function NewPaymentLinkPage() {
               </>
             )}
           </button>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => openAuth('login')}
+                className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 text-white font-bold text-base hover:shadow-2xl transition-all"
+              >
+                {isTranslationReady ? t('loginModal.submitButton') : 'Sign in'}
+              </button>
+              <button
+                type="button"
+                onClick={() => openAuth('register')}
+                className="w-full py-4 rounded-xl border-2 border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-200 font-bold text-base hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all"
+              >
+                {isTranslationReady ? t('loginModal.createAccount') : 'Create account'}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Lien généré */}

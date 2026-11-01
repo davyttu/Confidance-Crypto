@@ -989,8 +989,10 @@
         "startAt": "需要开始日期",
         "periods": "需要期数",
         "firstMonthAmount": "首期付款金额无效",
-        "labelTooLong": "标题过长"
+        "labelTooLong": "标题过长",
+        "walletOwned": "此钱包已关联到另一个客户账户。"
       },
+      "accountRequired": "请登录或创建客户账户后才能生成付款链接。",
       "generate": "生成链接",
       "generating": "生成中...",
       "success": "您的支付链接已准备好",

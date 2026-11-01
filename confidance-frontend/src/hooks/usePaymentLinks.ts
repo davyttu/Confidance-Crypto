@@ -54,9 +54,13 @@ export function usePaymentLinks() {
     setIsLoading(true);
     setError(null);
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       const response = await fetchWithTimeout(`${API_URL}/api/payment-links`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(payload),
       });
       if (!response.ok) {

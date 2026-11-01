@@ -3,6 +3,7 @@ const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 const { createNotification } = require('../services/notificationService');
 const { sendPaymentLinkEmail, sendPaymentLinkSms } = require('../services/email/sendPaymentLink');
+const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -52,8 +53,76 @@ function validatePayload(body) {
   return null;
 }
 
+async function assertCreatorWalletForUser(creatorAddress, userId) {
+  const { data: wallet, error: walletError } = await supabase
+    .from('user_wallets')
+    .select('user_id')
+    .ilike('wallet_address', creatorAddress)
+    .maybeSingle();
+
+  if (walletError) {
+    throw walletError;
+  }
+  if (wallet?.user_id === userId) return;
+  if (wallet?.user_id) {
+    const error = new Error('WALLET_OWNED_BY_OTHER_ACCOUNT');
+    error.status = 403;
+    throw error;
+  }
+
+  const { data: legacyUser, error: legacyError } = await supabase
+    .from('users')
+    .select('id')
+    .ilike('primary_wallet', creatorAddress)
+    .maybeSingle();
+
+  if (legacyError) {
+    throw legacyError;
+  }
+  if (legacyUser?.id === userId) return;
+  if (legacyUser?.id) {
+    const error = new Error('WALLET_OWNED_BY_OTHER_ACCOUNT');
+    error.status = 403;
+    throw error;
+  }
+
+  const { count, error: countError } = await supabase
+    .from('user_wallets')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId);
+
+  if (countError) {
+    throw countError;
+  }
+
+  const { error: insertError } = await supabase
+    .from('user_wallets')
+    .insert({
+      user_id: userId,
+      wallet_address: creatorAddress,
+      label: `Wallet ${(count || 0) + 1}`,
+      is_primary: !count,
+    });
+
+  if (!insertError) return;
+  if (insertError.code !== '23505') {
+    throw insertError;
+  }
+
+  const { data: existing } = await supabase
+    .from('user_wallets')
+    .select('user_id')
+    .ilike('wallet_address', creatorAddress)
+    .maybeSingle();
+
+  if (existing?.user_id === userId) return;
+  const error = new Error('WALLET_OWNED_BY_OTHER_ACCOUNT');
+  error.status = 403;
+  throw error;
+}
+
 // POST /api/payment-links
-router.post('/', async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   try {
     const errorMessage = validatePayload(req.body);
     if (errorMessage) {
@@ -87,6 +156,7 @@ router.post('/', async (req, res) => {
 
     const paymentLinkId = generatePaymentLinkId();
     const creatorAddress = String(creator).toLowerCase();
+    await assertCreatorWalletForUser(creatorAddress, req.user.userId);
     const normalizedLabel =
       typeof payment_label === 'string'
         ? payment_label.trim()
@@ -143,6 +213,9 @@ router.post('/', async (req, res) => {
     return res.status(201).json({ success: true, paymentLink });
   } catch (err) {
     console.error('❌ /api/payment-links error:', err);
+    if (err.message === 'WALLET_OWNED_BY_OTHER_ACCOUNT') {
+      return res.status(err.status || 403).json({ error: 'WALLET_OWNED_BY_OTHER_ACCOUNT' });
+    }
     return res.status(500).json({ error: 'Server error' });
   }
 });

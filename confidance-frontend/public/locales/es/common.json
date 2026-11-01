@@ -820,8 +820,10 @@
         "startAt": "Fecha de inicio requerida",
         "periods": "Períodos requeridos",
         "firstMonthAmount": "Monto del primer pago mensual inválido",
-        "labelTooLong": "La etiqueta es demasiado larga"
+        "labelTooLong": "La etiqueta es demasiado larga",
+        "walletOwned": "Este monedero ya está vinculado a otra cuenta de cliente."
       },
+      "accountRequired": "Inicia sesión o crea una cuenta de cliente para generar un enlace de pago.",
       "generate": "Generar enlace",
       "generating": "Generando...",
       "success": "Tu enlace de pago está listo",

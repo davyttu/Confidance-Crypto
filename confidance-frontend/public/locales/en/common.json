@@ -1369,8 +1369,10 @@
         "startAt": "Start date required",
         "periods": "Periods required",
         "firstMonthAmount": "Invalid first month amount",
-        "labelTooLong": "Label is too long"
+        "labelTooLong": "Label is too long",
+        "walletOwned": "This wallet is already linked to another client account."
       },
+      "accountRequired": "Sign in or create a client account to generate a payment link.",
       "generate": "Generate link",
       "generating": "Generating...",
       "success": "Your payment link is ready",

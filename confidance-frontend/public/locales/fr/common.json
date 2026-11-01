@@ -1246,8 +1246,10 @@
         "startAt": "Date de début requise",
         "periods": "Périodes requises",
         "firstMonthAmount": "Montant de première mensualité invalide",
-        "labelTooLong": "Libellé trop long"
+        "labelTooLong": "Libellé trop long",
+        "walletOwned": "Ce wallet est déjà lié à un autre compte client."
       },
+      "accountRequired": "Connectez-vous ou créez un compte client pour générer un lien de paiement.",
       "generate": "Générer le lien",
       "generating": "Génération...",
       "success": "Votre lien de paiement est prêt",
