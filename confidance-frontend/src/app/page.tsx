@@ -95,11 +95,11 @@ export default function Home() {
   const stats = isMounted && ready ? [
     { label: t('home.stats.executed'), value: '1500+', icon: TrendingUp },
     { label: t('home.stats.success'), value: '100%', icon: CheckCircle2 },
-    { label: t('home.stats.users'), value: '500+', icon: Users },
+    { label: '', value: t('home.stats.control', { defaultValue: 'Take back control of your money' }), icon: Users },
   ] : [
     { label: 'Paiements exécutés', value: '1500+', icon: TrendingUp },
     { label: 'Taux de succès', value: '100%', icon: CheckCircle2 },
-    { label: 'Utilisateurs actifs', value: '500+', icon: Users },
+    { label: '', value: 'Reprends le contrôle de ton argent', icon: Users },
   ];
 
   return (
@@ -186,8 +186,10 @@ export default function Home() {
               {stats.map((stat, i) => (
                 <div key={i} className="text-center space-y-2 animate-slide-up" style={{ animationDelay: `${i * 100}ms` }}>
                   <stat.icon className="h-8 w-8 mx-auto text-primary-500" />
-                  <div className="text-4xl font-bold gradient-text">{stat.value}</div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">{stat.label}</div>
+                  <div className={`text-4xl font-bold gradient-text ${stat.label ? '' : 'leading-tight text-balance'}`}>{stat.value}</div>
+                  {stat.label ? (
+                    <div className="text-sm text-gray-600 dark:text-gray-400">{stat.label}</div>
+                  ) : null}
                 </div>
               ))}
             </div>

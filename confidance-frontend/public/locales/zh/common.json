@@ -257,7 +257,8 @@
     "stats": {
       "executed": "已执行支付",
       "success": "成功率",
-      "users": "活跃用户"
+      "users": "活跃用户",
+      "control": "重新掌控你的资金"
     },
     "ctaSection": {
       "title": "准备开始？",

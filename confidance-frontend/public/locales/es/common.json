@@ -257,7 +257,8 @@
     "stats": {
       "executed": "Pagos ejecutados",
       "success": "Tasa de éxito",
-      "users": "Usuarios activos"
+      "users": "Usuarios activos",
+      "control": "Recupera el control de tu dinero"
     },
     "ctaSection": {
       "title": "¿Listo para empezar?",

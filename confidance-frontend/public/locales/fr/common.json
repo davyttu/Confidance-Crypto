@@ -262,7 +262,8 @@
     "stats": {
       "executed": "Paiements exécutés",
       "success": "Taux de succès",
-      "users": "Utilisateurs actifs"
+      "users": "Utilisateurs actifs",
+      "control": "Reprends le contrôle de ton argent"
     },
     "ctaSection": {
       "title": "Prêt à commencer ?",

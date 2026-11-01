@@ -262,7 +262,8 @@
     "stats": {
       "executed": "Payments executed",
       "success": "Success rate",
-      "users": "Active users"
+      "users": "Active users",
+      "control": "Take back control of your money"
     },
     "ctaSection": {
       "title": "Ready to get started?",
