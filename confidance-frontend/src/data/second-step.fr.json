@@ -39,7 +39,7 @@
   "payItems": ["Mouvement de valeur", "Argent réellement transféré", "Toujours traçable quelque part"],
   "txBanner": "Une transaction peut réussir",
   "txBannerAccent": "sans qu'aucun argent ne bouge.",
-  "ahaTitle": "ETH vs Tokens : le moment « aha »",
+  "ahaTitle": "ETH vs Tokens",
   "tabEth": "Paiement en ETH",
   "tabToken": "Paiement en USDC/USDT",
   "ethTitle": "ETH n'est PAS un token",

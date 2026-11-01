@@ -39,7 +39,7 @@
   "payItems": ["价值的转移", "资金真正被划转", "总能在某处追踪到"],
   "txBanner": "一笔交易可以成功",
   "txBannerAccent": "却没有任何资金移动。",
-  "ahaTitle": "ETH 与代币：恍然大悟的一刻",
+  "ahaTitle": "ETH 与代币",
   "tabEth": "用 ETH 支付",
   "tabToken": "用 USDC/USDT 支付",
   "ethTitle": "ETH 不是代币",
