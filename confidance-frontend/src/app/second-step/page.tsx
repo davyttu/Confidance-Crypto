@@ -1,10 +1,38 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useTranslation } from 'react-i18next';
+import copyFr from '@/data/second-step.fr.json';
+import copyEn from '@/data/second-step.en.json';
+import copyEs from '@/data/second-step.es.json';
+import copyRu from '@/data/second-step.ru.json';
+import copyZh from '@/data/second-step.zh.json';
+
+const copyByLang: Record<string, typeof copyFr> = {
+  fr: copyFr,
+  en: copyEn,
+  es: copyEs,
+  ru: copyRu,
+  zh: copyZh,
+};
 
 export default function BlockchainGuidePage() {
+  const { i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState<'eth' | 'token'>('eth');
+  // Fixed French until mount so server and client render the same text.
+  const [lang, setLang] = useState('fr');
+
+  useEffect(() => {
+    const code = (i18n.language || 'fr').split('-')[0];
+    setLang(copyByLang[code] ? code : 'fr');
+  }, [i18n.language]);
+
+  const c = copyByLang[lang] || copyFr;
+
+  useEffect(() => {
+    if (c.pageTitle) document.title = `${c.pageTitle} | Confidance`;
+  }, [c.pageTitle]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-blue-950 dark:to-purple-950">
@@ -19,25 +47,25 @@ export default function BlockchainGuidePage() {
           </div>
 
           <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 dark:text-white mb-6 leading-tight">
-            Lire la blockchain,<br />
+            {c.heroTitle1}<br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
-              c'est lire une preuve
+              {c.heroTitle2}
             </span>
           </h1>
 
           <p className="text-xl sm:text-2xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto mb-8">
-            Chaque paiement Confidance laisse une trace publique, vérifiable, inaltérable.
+            {c.heroLead}
           </p>
 
           <p className="text-lg text-gray-500 dark:text-gray-400 max-w-2xl mx-auto">
-            Cette page vous apprend où la trouver.
+            {c.heroLearn}
           </p>
         </section>
 
         {/* SECTION 2 : Ce que la blockchain montre/ne montre pas */}
         <section className="glass rounded-3xl p-10 mb-16">
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-8 text-center">
-            Ce que la blockchain montre… et ce qu'elle ne montre pas
+            {c.showsTitle}
           </h2>
 
           <div className="grid md:grid-cols-2 gap-8 mb-8">
@@ -48,17 +76,11 @@ export default function BlockchainGuidePage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
                 <h3 className="text-2xl font-bold text-red-900 dark:text-red-100">
-                  Ne montre PAS
+                  {c.notTitle}
                 </h3>
               </div>
               <ul className="space-y-4">
-                {[
-                  "L'intention",
-                  "La description",
-                  "Le \"pourquoi\"",
-                  "Votre nom",
-                  "La motivation"
-                ].map((item, index) => (
+                {c.notItems.map((item, index) => (
                   <li key={index} className="flex items-start gap-3 text-gray-700 dark:text-gray-300">
                     <svg className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
@@ -76,17 +98,11 @@ export default function BlockchainGuidePage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <h3 className="text-2xl font-bold text-green-900 dark:text-green-100">
-                  Montre UNIQUEMENT
+                  {c.onlyTitle}
                 </h3>
               </div>
               <ul className="space-y-4">
-                {[
-                  "Ce qui a été exécuté",
-                  "Le montant exact",
-                  "La date précise",
-                  "Les adresses",
-                  "Le résultat technique"
-                ].map((item, index) => (
+                {c.onlyItems.map((item, index) => (
                   <li key={index} className="flex items-start gap-3 text-gray-700 dark:text-gray-300">
                     <svg className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
@@ -100,9 +116,9 @@ export default function BlockchainGuidePage() {
 
           <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white text-center">
             <p className="text-2xl sm:text-3xl font-bold">
-              Sur la blockchain, on ne lit pas ce qu'on voulait faire.
+              {c.showsQuote}
               <br />
-              <span className="text-yellow-300">On lit ce qui a été fait.</span>
+              <span className="text-yellow-300">{c.showsQuoteAccent}</span>
             </p>
           </div>
         </section>
@@ -110,7 +126,7 @@ export default function BlockchainGuidePage() {
         {/* SECTION 3 : Table de vérité Confidance vs Blockchain */}
         <section className="glass rounded-3xl p-10 mb-16">
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-8 text-center">
-            Confidance vs Blockchain : deux réalités complémentaires
+            {c.compareTitle}
           </h2>
 
           <div className="overflow-x-auto">
@@ -136,13 +152,7 @@ export default function BlockchainGuidePage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {[
-                  { confidance: "Formulaire", blockchain: "Code" },
-                  { confidance: "Date programmée", blockchain: "Condition" },
-                  { confidance: "\"Paiement exécuté\"", blockchain: "Transaction" },
-                  { confidance: "Description", blockchain: "Rien" },
-                  { confidance: "Intention", blockchain: "Preuve" }
-                ].map((row, index) => (
+                {c.rows.map((row, index) => (
                   <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                     <td className="px-8 py-5 text-lg text-gray-700 dark:text-gray-300 font-medium">
                       {row.confidance}
@@ -158,8 +168,8 @@ export default function BlockchainGuidePage() {
 
           <div className="mt-8 bg-blue-50 dark:bg-blue-950/30 border-l-4 border-blue-600 p-6 rounded-r-xl">
             <p className="text-gray-800 dark:text-gray-200 text-lg">
-              <strong>Pourquoi cette distinction ?</strong><br />
-              Confidance vous donne l'expérience. La blockchain vous donne la garantie.
+              <strong>{c.whyDistinction}</strong><br />
+              {c.whyDistinctionBody}
             </p>
           </div>
         </section>
@@ -174,10 +184,10 @@ export default function BlockchainGuidePage() {
             </div>
             <div className="flex-1">
               <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-                L'explorateur de blockchain : le journal public
+                {c.explorerTitle}
               </h2>
               <p className="text-xl text-gray-700 dark:text-gray-300">
-                Un explorateur, c'est comme un moteur de recherche pour la blockchain.
+                {c.explorerLead}
               </p>
             </div>
           </div>
@@ -185,19 +195,19 @@ export default function BlockchainGuidePage() {
           <div className="space-y-6 mb-8">
             <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30 rounded-xl p-6">
               <h3 className="font-bold text-gray-900 dark:text-white mb-3 text-lg">
-                Pourquoi tout est public ?
+                {c.publicTitle}
               </h3>
               <p className="text-gray-700 dark:text-gray-300">
-                Parce que c'est la seule façon de garantir que personne ne triche. Si tout le monde peut vérifier, personne ne peut mentir.
+                {c.publicBody}
               </p>
             </div>
 
             <div className="bg-gradient-to-r from-green-50 to-teal-50 dark:from-green-950/30 dark:to-teal-950/30 rounded-xl p-6">
               <h3 className="font-bold text-gray-900 dark:text-white mb-3 text-lg">
-                Pourquoi c'est une force, pas un danger ?
+                {c.strengthTitle}
               </h3>
               <p className="text-gray-700 dark:text-gray-300">
-                Vos données personnelles (nom, email) ne sont jamais sur la blockchain. Seulement les montants, dates, et adresses techniques.
+                {c.strengthBody}
               </p>
             </div>
           </div>
@@ -215,7 +225,7 @@ export default function BlockchainGuidePage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                 </svg>
               </div>
-              <p className="text-blue-100 mb-2">Le réseau de production</p>
+              <p className="text-blue-100 mb-2">{c.mainnetDesc}</p>
               <code className="text-sm bg-blue-900/50 px-3 py-1 rounded">basescan.org</code>
             </a>
 
@@ -231,7 +241,7 @@ export default function BlockchainGuidePage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                 </svg>
               </div>
-              <p className="text-purple-100 mb-2">Le réseau de test</p>
+              <p className="text-purple-100 mb-2">{c.testnetDesc}</p>
               <code className="text-sm bg-purple-900/50 px-3 py-1 rounded">sepolia.basescan.org</code>
             </a>
           </div>
@@ -240,9 +250,9 @@ export default function BlockchainGuidePage() {
             <svg className="w-12 h-12 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
-            <p className="text-2xl font-bold mb-2">Règle d'or</p>
+            <p className="text-2xl font-bold mb-2">{c.goldenTitle}</p>
             <p className="text-xl">
-              Même adresse + mauvais réseau = <span className="text-yellow-300">rien à voir</span>
+              {c.goldenBody} <span className="text-yellow-300">{c.goldenAccent}</span>
             </p>
           </div>
         </section>
@@ -250,7 +260,7 @@ export default function BlockchainGuidePage() {
         {/* SECTION 5 : Transaction ≠ Paiement */}
         <section className="glass rounded-3xl p-10 mb-16">
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-8 text-center">
-            Transaction ≠ Paiement
+            {c.txTitle}
           </h2>
 
           <div className="grid md:grid-cols-2 gap-8 mb-8">
@@ -261,21 +271,15 @@ export default function BlockchainGuidePage() {
                 </svg>
               </div>
               <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                Transaction
+                {c.txName}
               </h3>
               <ul className="space-y-3 text-gray-700 dark:text-gray-300">
-                <li className="flex items-start gap-2">
-                  <span className="text-gray-400">•</span>
-                  <span>Une action technique</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-gray-400">•</span>
-                  <span>Appel d'un smart contract</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-gray-400">•</span>
-                  <span>Peut réussir sans qu'aucun argent ne bouge</span>
-                </li>
+                {c.txItems.map((item) => (
+                  <li key={item} className="flex items-start gap-2">
+                    <span className="text-gray-400">•</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
               </ul>
             </div>
 
@@ -286,29 +290,23 @@ export default function BlockchainGuidePage() {
                 </svg>
               </div>
               <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                Paiement
+                {c.payName}
               </h3>
               <ul className="space-y-3 text-gray-700 dark:text-gray-300">
-                <li className="flex items-start gap-2">
-                  <span className="text-green-600">✓</span>
-                  <span>Mouvement de valeur</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-green-600">✓</span>
-                  <span>Argent réellement transféré</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-green-600">✓</span>
-                  <span>Toujours traçable quelque part</span>
-                </li>
+                {c.payItems.map((item) => (
+                  <li key={item} className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
               </ul>
             </div>
           </div>
 
           <div className="bg-gradient-to-r from-yellow-600 to-orange-600 rounded-2xl p-8 text-white text-center">
             <p className="text-2xl sm:text-3xl font-bold">
-              Une transaction peut réussir<br />
-              <span className="text-yellow-200">sans qu'aucun argent ne bouge.</span>
+              {c.txBanner}<br />
+              <span className="text-yellow-200">{c.txBannerAccent}</span>
             </p>
           </div>
         </section>
@@ -316,7 +314,7 @@ export default function BlockchainGuidePage() {
         {/* SECTION 6 : ETH vs Tokens */}
         <section className="glass rounded-3xl p-10 mb-16">
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-8 text-center">
-            ETH vs Tokens : le moment "aha"
+            {c.ahaTitle}
           </h2>
 
           {/* Tabs */}
@@ -329,7 +327,7 @@ export default function BlockchainGuidePage() {
                   : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
-              Paiement en ETH
+              {c.tabEth}
             </button>
             <button
               onClick={() => setActiveTab('token')}
@@ -339,7 +337,7 @@ export default function BlockchainGuidePage() {
                   : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
-              Paiement en USDC/USDT
+              {c.tabToken}
             </button>
           </div>
 
@@ -348,7 +346,7 @@ export default function BlockchainGuidePage() {
             <div className="space-y-6">
               <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30 rounded-2xl p-8">
                 <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-                  🔹 ETH n'est PAS un token
+                  🔹 {c.ethTitle}
                 </h3>
                 
                 <div className="space-y-4 mb-6">
@@ -357,7 +355,7 @@ export default function BlockchainGuidePage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                     <p className="text-lg text-gray-700 dark:text-gray-300">
-                      ETH <strong>n'apparaît PAS</strong> dans "Token Transfers"
+                      {c.ethNotBefore} <strong>{c.ethNotStrong}</strong> {c.ethNotAfter}
                     </p>
                   </div>
 
@@ -366,30 +364,30 @@ export default function BlockchainGuidePage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                     <p className="text-lg text-gray-700 dark:text-gray-300">
-                      ETH apparaît dans <strong>"Internal Transactions"</strong>
+                      {c.ethYesBefore} <strong>{c.ethYesStrong}</strong>
                     </p>
                   </div>
                 </div>
 
                 <div className="bg-white dark:bg-gray-800 rounded-xl p-6">
                   <p className="text-sm text-gray-500 dark:text-gray-400 mb-3 text-center">
-                    Chemin d'un paiement ETH :
+                    {c.ethPath}
                   </p>
                   <div className="flex items-center justify-center gap-4 text-center">
                     <div className="bg-blue-100 dark:bg-blue-900 px-6 py-3 rounded-lg">
-                      <p className="font-bold text-gray-900 dark:text-white">Contrat</p>
+                      <p className="font-bold text-gray-900 dark:text-white">{c.contract}</p>
                     </div>
                     <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                     </svg>
                     <div className="bg-purple-100 dark:bg-purple-900 px-6 py-3 rounded-lg">
-                      <p className="font-bold text-gray-900 dark:text-white">Internal TX</p>
+                      <p className="font-bold text-gray-900 dark:text-white">{c.internalTx}</p>
                     </div>
                     <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                     </svg>
                     <div className="bg-green-100 dark:bg-green-900 px-6 py-3 rounded-lg">
-                      <p className="font-bold text-gray-900 dark:text-white">Destinataire</p>
+                      <p className="font-bold text-gray-900 dark:text-white">{c.recipient}</p>
                     </div>
                   </div>
                 </div>
@@ -397,8 +395,8 @@ export default function BlockchainGuidePage() {
 
               <div className="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-600 p-6 rounded-r-xl">
                 <p className="text-gray-800 dark:text-gray-200">
-                  <strong>💡 Pourquoi ?</strong><br />
-                  ETH est la monnaie native de la blockchain. Elle n'a pas besoin de contrat pour exister.
+                  <strong>💡 {c.ethWhyTitle}</strong><br />
+                  {c.ethWhyBody}
                 </p>
               </div>
             </div>
@@ -409,7 +407,7 @@ export default function BlockchainGuidePage() {
             <div className="space-y-6">
               <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 rounded-2xl p-8">
                 <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-                  🔹 Les tokens parlent via des événements
+                  🔹 {c.tokenTitle}
                 </h3>
                 
                 <div className="space-y-4 mb-6">
@@ -418,7 +416,7 @@ export default function BlockchainGuidePage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                     <p className="text-lg text-gray-700 dark:text-gray-300">
-                      USDC/USDT apparaissent dans <strong>"Token Transfers (ERC-20)"</strong>
+                      {c.tokenYesBefore} <strong>{c.tokenYesStrong}</strong>
                     </p>
                   </div>
 
@@ -427,30 +425,30 @@ export default function BlockchainGuidePage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <p className="text-lg text-gray-700 dark:text-gray-300">
-                      Chaque transfert émet un événement <code className="bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded">Transfer</code>
+                      {c.tokenEventBefore} <code className="bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded">Transfer</code>
                     </p>
                   </div>
                 </div>
 
                 <div className="bg-white dark:bg-gray-800 rounded-xl p-6">
                   <p className="text-sm text-gray-500 dark:text-gray-400 mb-3 text-center">
-                    Chemin d'un paiement Token :
+                    {c.tokenPath}
                   </p>
                   <div className="flex items-center justify-center gap-4 text-center">
                     <div className="bg-purple-100 dark:bg-purple-900 px-6 py-3 rounded-lg">
-                      <p className="font-bold text-gray-900 dark:text-white">USDC Contract</p>
+                      <p className="font-bold text-gray-900 dark:text-white">{c.usdcContract}</p>
                     </div>
                     <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                     </svg>
                     <div className="bg-pink-100 dark:bg-pink-900 px-6 py-3 rounded-lg">
-                      <p className="font-bold text-gray-900 dark:text-white">Event Transfer</p>
+                      <p className="font-bold text-gray-900 dark:text-white">{c.eventTransfer}</p>
                     </div>
                     <svg className="w-8 h-8 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                     </svg>
                     <div className="bg-green-100 dark:bg-green-900 px-6 py-3 rounded-lg">
-                      <p className="font-bold text-gray-900 dark:text-white">Token Transfers</p>
+                      <p className="font-bold text-gray-900 dark:text-white">{c.tokenTransfers}</p>
                     </div>
                   </div>
                 </div>
@@ -458,12 +456,12 @@ export default function BlockchainGuidePage() {
 
               <div className="bg-orange-50 dark:bg-orange-900/20 border-l-4 border-orange-600 p-6 rounded-r-xl">
                 <p className="text-gray-800 dark:text-gray-200 mb-3">
-                  <strong>⚠️ Si pas de ligne ERC-20 visible :</strong>
+                  <strong>⚠️ {c.warnTitle}</strong>
                 </p>
                 <ul className="space-y-2 ml-6">
-                  <li className="text-gray-700 dark:text-gray-300">• Soit pas de transfert réel</li>
-                  <li className="text-gray-700 dark:text-gray-300">• Soit mauvais token sélectionné</li>
-                  <li className="text-gray-700 dark:text-gray-300">• Soit mauvais réseau</li>
+                  {c.warnItems.map((item) => (
+                    <li key={item} className="text-gray-700 dark:text-gray-300">• {item}</li>
+                  ))}
                 </ul>
               </div>
             </div>
@@ -474,8 +472,8 @@ export default function BlockchainGuidePage() {
             <table className="w-full bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-lg">
               <thead className="bg-gradient-to-r from-gray-700 to-gray-800 text-white">
                 <tr>
-                  <th className="px-6 py-4 text-left text-lg font-bold">Type de paiement</th>
-                  <th className="px-6 py-4 text-left text-lg font-bold">Où regarder</th>
+                  <th className="px-6 py-4 text-left text-lg font-bold">{c.tableType}</th>
+                  <th className="px-6 py-4 text-left text-lg font-bold">{c.tableWhere}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -509,35 +507,35 @@ export default function BlockchainGuidePage() {
         {/* SECTION 7 : Internal Transactions */}
         <section className="glass rounded-3xl p-10 mb-16">
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-8 text-center">
-            Pourquoi les "Internal Transactions" sont si importantes
+            {c.internalTitle}
           </h2>
 
           <div className="space-y-6">
             <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 rounded-2xl p-8">
               <p className="text-xl text-gray-700 dark:text-gray-300 mb-6">
-                Un smart contract peut envoyer de l'ETH <strong>sans être le signataire de la transaction</strong>.
+                {c.internalLeadBefore} <strong>{c.internalLeadStrong}</strong>
               </p>
               
               <div className="bg-white dark:bg-gray-800 rounded-xl p-6 mb-6">
-                <h3 className="font-bold text-gray-900 dark:text-white mb-4">Ce que ça signifie :</h3>
+                <h3 className="font-bold text-gray-900 dark:text-white mb-4">{c.internalMeans}</h3>
                 <ul className="space-y-3">
                   <li className="flex items-start gap-3 text-gray-700 dark:text-gray-300">
                     <svg className="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
                     </svg>
-                    <span>C'est <strong>invisible au premier niveau</strong> de la transaction</span>
+                    <span>{c.internalInvisibleBefore} <strong>{c.internalInvisibleStrong}</strong> {c.internalInvisibleAfter}</span>
                   </li>
                   <li className="flex items-start gap-3 text-gray-700 dark:text-gray-300">
                     <svg className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
                     </svg>
-                    <span>Mais <strong>visible dans "Internal Transactions"</strong></span>
+                    <span>{c.internalVisibleBefore} <strong>{c.internalVisibleStrong}</strong></span>
                   </li>
                   <li className="flex items-start gap-3 text-gray-700 dark:text-gray-300">
                     <svg className="w-6 h-6 text-purple-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
                     </svg>
-                    <span>C'est là que Confidance <strong>libère les fonds</strong></span>
+                    <span>{c.internalReleaseBefore} <strong>{c.internalReleaseStrong}</strong></span>
                   </li>
                 </ul>
               </div>
@@ -548,10 +546,10 @@ export default function BlockchainGuidePage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
               <p className="text-3xl font-bold mb-2">
-                Quand l'argent sort d'un contrat,
+                {c.internalBanner}
               </p>
               <p className="text-2xl">
-                la vérité est dans les <span className="text-yellow-300">Internal Transactions</span>.
+                {c.internalBannerMid} <span className="text-yellow-300">{c.internalBannerAccent}</span>.
               </p>
             </div>
           </div>
@@ -567,17 +565,13 @@ export default function BlockchainGuidePage() {
             </div>
             <div className="flex-1">
               <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-                Ce que vous n'avez PAS besoin de comprendre
+                {c.skipTitle}
               </h2>
             </div>
           </div>
 
           <div className="grid md:grid-cols-3 gap-6 mb-8">
-            {[
-              { title: "Bytecode", desc: "Le code machine du contrat" },
-              { title: "Gas optimizations", desc: "Les détails techniques des frais" },
-              { title: "Appels internes complexes", desc: "La mécanique bas niveau" }
-            ].map((item, index) => (
+            {c.skipItems.map((item, index) => (
               <div key={index} className="bg-gray-100 dark:bg-gray-800 rounded-xl p-6 text-center">
                 <div className="w-12 h-12 bg-gray-300 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
                   <svg className="w-6 h-6 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -592,10 +586,10 @@ export default function BlockchainGuidePage() {
 
           <div className="bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 rounded-2xl p-8 text-center border-2 border-purple-300 dark:border-purple-700">
             <p className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-              Vous n'avez pas besoin de tout comprendre.
+              {c.skipNoNeed}
             </p>
             <p className="text-2xl text-gray-700 dark:text-gray-300">
-              Juste de savoir <span className="text-purple-600 dark:text-purple-400 font-bold">où regarder</span>.
+              {c.skipLookBefore} <span className="text-purple-600 dark:text-purple-400 font-bold">{c.skipLookStrong}</span>
             </p>
           </div>
         </section>
@@ -603,7 +597,7 @@ export default function BlockchainGuidePage() {
         {/* SECTION 9 : Pourquoi Confidance enseigne ça */}
         <section className="glass rounded-3xl p-10 mb-16">
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-8 text-center">
-            Pourquoi Confidance vous apprend ça
+            {c.whyTitle}
           </h2>
 
           <div className="space-y-6 mb-8">
@@ -614,10 +608,10 @@ export default function BlockchainGuidePage() {
                 </div>
                 <div>
                   <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
-                    Confidance ne demande pas la confiance
+                    {c.why1Title}
                   </h3>
                   <p className="text-gray-700 dark:text-gray-300">
-                    Nous la rendons <strong>vérifiable</strong>. À tout moment. Par n'importe qui.
+                    {c.why1Before} <strong>{c.why1Strong}</strong>{c.why1After}
                   </p>
                 </div>
               </div>
@@ -630,10 +624,10 @@ export default function BlockchainGuidePage() {
                 </div>
                 <div>
                   <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
-                    Comprendre la blockchain = autonomie
+                    {c.why2Title}
                   </h3>
                   <p className="text-gray-700 dark:text-gray-300">
-                    Vous ne dépendez plus de nous pour savoir si un paiement a été exécuté. <strong>Vous voyez par vous-même.</strong>
+                    {c.why2Before} <strong>{c.why2Strong}</strong>
                   </p>
                 </div>
               </div>
@@ -646,10 +640,10 @@ export default function BlockchainGuidePage() {
                 </div>
                 <div>
                   <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
-                    C'est notre engagement
+                    {c.why3Title}
                   </h3>
                   <p className="text-gray-700 dark:text-gray-300">
-                    Nous construisons des outils transparents par design. Pas par marketing.
+                    {c.why3Body}
                   </p>
                 </div>
               </div>
@@ -661,10 +655,10 @@ export default function BlockchainGuidePage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
             <p className="text-3xl font-bold mb-4">
-              La transparence n'est pas une option.
+              {c.whyBanner}
             </p>
             <p className="text-xl">
-              C'est notre architecture.
+              {c.whyBanner2}
             </p>
           </div>
         </section>
@@ -676,14 +670,14 @@ export default function BlockchainGuidePage() {
           </svg>
 
           <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white mb-6">
-            Vous savez maintenant<br />
+            {c.ctaTitle1}<br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
-              lire la preuve
+              {c.ctaTitle2}
             </span>
           </h2>
 
           <p className="text-xl text-gray-700 dark:text-gray-300 mb-12 max-w-2xl mx-auto">
-            La blockchain n'attend que vous. Chaque paiement Confidance y laisse sa trace.
+            {c.ctaBody}
           </p>
 
           <div className="flex flex-col sm:flex-row gap-6 justify-center">
@@ -694,7 +688,7 @@ export default function BlockchainGuidePage() {
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
-              Trouver ma preuve étape par étape
+              {c.ctaProof}
             </Link>
 
             <Link
@@ -704,7 +698,7 @@ export default function BlockchainGuidePage() {
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
               </svg>
-              Retour au Dashboard
+              {c.ctaDashboard}
             </Link>
           </div>
         </section>
