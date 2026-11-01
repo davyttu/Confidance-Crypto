@@ -63,7 +63,7 @@ export default function Home() {
     {
       icon: Shield,
       title: 'Sécurisé',
-      description: 'Smart contracts audités. Vos fonds sont verrouillés on-chain',
+      description: 'Par la blockchain.',
       gradient: 'from-green-400 to-emerald-500',
     },
     {
