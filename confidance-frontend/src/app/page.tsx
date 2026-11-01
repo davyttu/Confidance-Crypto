@@ -186,7 +186,10 @@ export default function Home() {
               {stats.map((stat, i) => (
                 <div key={i} className="text-center space-y-2 animate-slide-up" style={{ animationDelay: `${i * 100}ms` }}>
                   <stat.icon className="h-8 w-8 mx-auto text-primary-500" />
-                  <div className={`text-4xl font-bold gradient-text ${stat.label ? '' : 'leading-tight text-balance'}`}>{stat.value}</div>
+                  <div className={stat.label
+                    ? 'text-4xl font-bold gradient-text'
+                    : 'mx-auto max-w-xs text-xl font-bold gradient-text leading-snug text-balance sm:text-2xl'
+                  }>{stat.value}</div>
                   {stat.label ? (
                     <div className="text-sm text-gray-600 dark:text-gray-400">{stat.label}</div>
                   ) : null}
