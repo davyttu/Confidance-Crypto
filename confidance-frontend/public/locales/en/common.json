@@ -1208,7 +1208,9 @@
       "title": "Category insights",
       "subtitle": "Based on your executed payments timeline",
       "loading": "Loading insights...",
-      "empty": "No insight available for this month."
+      "empty": "No insight available for this month.",
+      "authRequired": "Sign in to view insights.",
+      "loadFailed": "Could not load insights."
     },
     "feesBreakdown": {
       "title": "Fee breakdown - {{month}}",

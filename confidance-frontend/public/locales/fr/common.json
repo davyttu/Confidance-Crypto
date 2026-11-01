@@ -1415,7 +1415,9 @@
       "title": "Insights par catégorie",
       "subtitle": "Basé sur la chronologie de vos paiements exécutés",
       "loading": "Chargement des insights...",
-      "empty": "Aucun insight disponible pour ce mois."
+      "empty": "Aucun insight disponible pour ce mois.",
+      "authRequired": "Connectez-vous pour afficher les insights.",
+      "loadFailed": "Impossible de charger les insights."
     },
     "feesBreakdown": {
       "title": "Décomposition des frais - {{month}}",

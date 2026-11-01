@@ -1,12 +1,93 @@
-const CATEGORY_LABELS_FR = {
-  housing: 'Logement',
-  salary: 'Salaire',
-  subscription: 'Abonnement',
-  utilities: 'Services publics',
-  services: 'Services',
-  transfer: 'Virement',
-  other: 'Autre'
+const SUPPORTED_LOCALES = ['en', 'fr', 'es', 'zh', 'ru'];
+
+const CATEGORY_LABELS = {
+  en: {
+    housing: 'Housing',
+    salary: 'Salary',
+    subscription: 'Subscription',
+    utilities: 'Utilities',
+    services: 'Services',
+    transfer: 'Transfer',
+    other: 'Other'
+  },
+  fr: {
+    housing: 'Logement',
+    salary: 'Salaire',
+    subscription: 'Abonnement',
+    utilities: 'Services publics',
+    services: 'Services',
+    transfer: 'Virement',
+    other: 'Autre'
+  },
+  es: {
+    housing: 'Vivienda',
+    salary: 'Salario',
+    subscription: 'Suscripción',
+    utilities: 'Suministros',
+    services: 'Servicios',
+    transfer: 'Transferencia',
+    other: 'Otro'
+  },
+  zh: {
+    housing: '住房',
+    salary: '工资',
+    subscription: '订阅',
+    utilities: '公共事业',
+    services: '服务',
+    transfer: '转账',
+    other: '其他'
+  },
+  ru: {
+    housing: 'Жильё',
+    salary: 'Зарплата',
+    subscription: 'Подписка',
+    utilities: 'Коммунальные услуги',
+    services: 'Услуги',
+    transfer: 'Перевод',
+    other: 'Другое'
+  }
 };
+
+const INSIGHT_COPY = {
+  en: {
+    distribution: 'Your main spending this month is {{first}} ({{firstPct}}%) and {{second}} ({{secondPct}}%).',
+    unusedOne: 'You have 1 active subscription with no recent activity.',
+    unusedMany: 'You have {{count}} active subscriptions with no recent activity.',
+    growth: 'Spending on {{label}} is up {{pct}}% this month.'
+  },
+  fr: {
+    distribution: 'Vos principales dépenses ce mois-ci concernent {{first}} ({{firstPct}} %) et {{second}} ({{secondPct}} %).',
+    unusedOne: 'Vous avez 1 abonnement actif sans interaction récente.',
+    unusedMany: 'Vous avez {{count}} abonnements actifs sans interaction récente.',
+    growth: 'Les dépenses liées à {{label}} ont augmenté de +{{pct}} % ce mois-ci.'
+  },
+  es: {
+    distribution: 'Tus principales gastos de este mes son {{first}} ({{firstPct}} %) y {{second}} ({{secondPct}} %).',
+    unusedOne: 'Tienes 1 suscripción activa sin actividad reciente.',
+    unusedMany: 'Tienes {{count}} suscripciones activas sin actividad reciente.',
+    growth: 'Los gastos de {{label}} aumentaron un {{pct}} % este mes.'
+  },
+  zh: {
+    distribution: '本月主要支出是{{first}}（{{firstPct}}%）和{{second}}（{{secondPct}}%）。',
+    unusedOne: '您有 1 个近期没有活动的有效订阅。',
+    unusedMany: '您有 {{count}} 个近期没有活动的有效订阅。',
+    growth: '本月{{label}}相关支出增加了 {{pct}}%。'
+  },
+  ru: {
+    distribution: 'Основные расходы в этом месяце: {{first}} ({{firstPct}} %) и {{second}} ({{secondPct}} %).',
+    unusedOne: 'У вас 1 активная подписка без недавней активности.',
+    unusedMany: 'У вас {{count}} активных подписок без недавней активности.',
+    growth: 'Расходы на {{label}} выросли на {{pct}} % в этом месяце.'
+  }
+};
+
+const resolveLocale = (locale) => {
+  const code = String(locale || 'en').split('-')[0].toLowerCase();
+  return SUPPORTED_LOCALES.includes(code) ? code : 'en';
+};
+
+const fillTemplate = (template, values) =>
+  template.replace(/\{\{(\w+)\}\}/g, (_, name) => String(values[name] ?? ''));
 
 const INSIGHTS = {
   categoryDistribution: {
@@ -49,10 +130,11 @@ const normalizeCategory = (category) => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
-const getCategoryLabel = (category) => {
+const getCategoryLabel = (category, locale) => {
   const normalized = normalizeCategory(category);
   if (!normalized) return null;
-  return CATEGORY_LABELS_FR[normalized] || 'Autre';
+  const labels = CATEGORY_LABELS[locale] || CATEGORY_LABELS.en;
+  return labels[normalized] || labels.other;
 };
 
 const summarizeCategories = (entries) => {
@@ -92,7 +174,7 @@ const summarizeCategories = (entries) => {
   return ranked;
 };
 
-const getCategoryDistributionInsight = async (supabase, userId, monthKey) => {
+const getCategoryDistributionInsight = async (supabase, userId, monthKey, locale) => {
   const range = getMonthRange(monthKey);
   if (!range) return null;
 
@@ -113,11 +195,16 @@ const getCategoryDistributionInsight = async (supabase, userId, monthKey) => {
   if (!ranked || ranked.length < 2) return null;
 
   const [first, second] = ranked;
-  const firstLabel = getCategoryLabel(first.category);
-  const secondLabel = getCategoryLabel(second.category);
+  const firstLabel = getCategoryLabel(first.category, locale);
+  const secondLabel = getCategoryLabel(second.category, locale);
   if (!firstLabel || !secondLabel) return null;
 
-  const message = `Vos principales dépenses ce mois-ci concernent ${firstLabel} (${Math.round(first.percentage)} %) et ${secondLabel} (${Math.round(second.percentage)} %).`;
+  const message = fillTemplate(INSIGHT_COPY[locale].distribution, {
+    first: firstLabel,
+    second: secondLabel,
+    firstPct: Math.round(first.percentage),
+    secondPct: Math.round(second.percentage)
+  });
 
   return {
     ...INSIGHTS.categoryDistribution,
@@ -125,7 +212,7 @@ const getCategoryDistributionInsight = async (supabase, userId, monthKey) => {
   };
 };
 
-const getUnusedSubscriptionsInsight = async (supabase, userId, monthKey, inactivityMonths = 3) => {
+const getUnusedSubscriptionsInsight = async (supabase, userId, monthKey, locale, inactivityMonths = 3) => {
   const range = getMonthRange(monthKey);
   if (!range) return null;
 
@@ -194,8 +281,9 @@ const getUnusedSubscriptionsInsight = async (supabase, userId, monthKey, inactiv
 
   if (inactiveCount === 0) return null;
 
-  const label = inactiveCount > 1 ? 'abonnements' : 'abonnement';
-  const message = `Vous avez ${inactiveCount} ${label} actifs sans interaction récente.`;
+  const message = inactiveCount > 1
+    ? fillTemplate(INSIGHT_COPY[locale].unusedMany, { count: inactiveCount })
+    : INSIGHT_COPY[locale].unusedOne;
 
   return {
     ...INSIGHTS.unusedSubscriptions,
@@ -203,7 +291,7 @@ const getUnusedSubscriptionsInsight = async (supabase, userId, monthKey, inactiv
   };
 };
 
-const getCategoryGrowthInsight = async (supabase, userId, monthKey) => {
+const getCategoryGrowthInsight = async (supabase, userId, monthKey, locale) => {
   const range = getMonthRange(monthKey);
   const previousKey = getPreviousMonthKey(monthKey);
   if (!range || !previousKey) return null;
@@ -260,10 +348,13 @@ const getCategoryGrowthInsight = async (supabase, userId, monthKey) => {
 
   if (!best) return null;
 
-  const label = getCategoryLabel(best.category);
+  const label = getCategoryLabel(best.category, locale);
   if (!label) return null;
 
-  const message = `Les dépenses liées à ${label} ont augmenté de +${Math.round(best.increasePct)} % ce mois-ci.`;
+  const message = fillTemplate(INSIGHT_COPY[locale].growth, {
+    label,
+    pct: Math.round(best.increasePct)
+  });
 
   return {
     ...INSIGHTS.categoryGrowth,
@@ -271,11 +362,12 @@ const getCategoryGrowthInsight = async (supabase, userId, monthKey) => {
   };
 };
 
-const buildCategoryInsights = async ({ supabase, userId, monthKey }) => {
+const buildCategoryInsights = async ({ supabase, userId, monthKey, locale }) => {
+  const resolvedLocale = resolveLocale(locale);
   const [distribution, unusedSubscriptions, growth] = await Promise.all([
-    getCategoryDistributionInsight(supabase, userId, monthKey),
-    getUnusedSubscriptionsInsight(supabase, userId, monthKey),
-    getCategoryGrowthInsight(supabase, userId, monthKey)
+    getCategoryDistributionInsight(supabase, userId, monthKey, resolvedLocale),
+    getUnusedSubscriptionsInsight(supabase, userId, monthKey, resolvedLocale),
+    getCategoryGrowthInsight(supabase, userId, monthKey, resolvedLocale)
   ]);
 
   return [distribution, unusedSubscriptions, growth].filter(Boolean);

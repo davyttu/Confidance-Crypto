@@ -352,7 +352,8 @@ app.get('/api/analytics/:month/insights', authenticateToken, async (req, res) =>
     const insights = await buildCategoryInsights({
       supabase,
       userId,
-      monthKey: month
+      monthKey: month,
+      locale: req.query.locale
     });
 
     res.json(Array.isArray(insights) ? insights : []);

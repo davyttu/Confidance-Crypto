@@ -1396,7 +1396,9 @@
       "title": "Insights por categoría",
       "subtitle": "Basado en la cronología de tus pagos ejecutados",
       "loading": "Cargando insights...",
-      "empty": "No hay insights disponibles para este mes."
+      "empty": "No hay insights disponibles para este mes.",
+      "authRequired": "Inicia sesión para ver los insights.",
+      "loadFailed": "No se pudieron cargar los insights."
     },
     "feesBreakdown": {
       "title": "Desglose de comisiones - {{month}}",

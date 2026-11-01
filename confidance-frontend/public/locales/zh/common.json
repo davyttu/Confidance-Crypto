@@ -1417,7 +1417,9 @@
       "title": "分类洞察",
       "subtitle": "基于您已执行付款的时间线",
       "loading": "正在加载洞察...",
-      "empty": "本月没有可用洞察。"
+      "empty": "本月没有可用洞察。",
+      "authRequired": "请登录后查看洞察。",
+      "loadFailed": "无法加载洞察。"
     },
     "feesBreakdown": {
       "title": "费用明细 - {{month}}",

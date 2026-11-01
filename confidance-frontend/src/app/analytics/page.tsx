@@ -240,29 +240,22 @@ export default function AnalyticsPage() {
       setCategoryInsightsError(null);
 
       try {
+        const locale = (i18n.language || 'en').split('-')[0];
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/analytics/${activeMonth.month}/insights`,
+          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/analytics/${activeMonth.month}/insights?locale=${encodeURIComponent(locale)}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         if (!response.ok) {
-          const fallbackMessage = response.status === 401
-            ? 'Connexion requise pour afficher les insights.'
-            : `Erreur ${response.status} lors du chargement.`;
-          let errorMessage = fallbackMessage;
-          try {
-            const payload = await response.json();
-            if (payload?.error) {
-              errorMessage = `${fallbackMessage} ${payload.error}`;
-            }
-          } catch {
-            // ignore JSON parse errors
-          }
-          throw new Error(errorMessage);
+          throw new Error(
+            response.status === 401
+              ? t('analytics.insights.authRequired')
+              : t('analytics.insights.loadFailed')
+          );
         }
         const data = await response.json();
         setCategoryInsights(Array.isArray(data) ? data : []);
       } catch (err) {
-        const message = (err as Error)?.message || 'Impossible de charger les insights.';
+        const message = (err as Error)?.message || t('analytics.insights.loadFailed');
         setCategoryInsightsError(message);
         setCategoryInsights([]);
       } finally {
@@ -271,7 +264,7 @@ export default function AnalyticsPage() {
     };
 
     loadInsights();
-  }, [activeMonth?.month]);
+  }, [activeMonth?.month, i18n.language, t]);
 
   useEffect(() => {
     if (!selectedYear || !selectedMonth) return;
