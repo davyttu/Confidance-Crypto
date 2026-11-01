@@ -1183,14 +1183,41 @@
     "preferenceSaved": "Preference saved"
   },
   "analytics": {
+    "title": "Monthly analytics",
+    "subtitle": "Review your overall activity on the platform",
+    "month": "Month",
+    "year": "Year",
+    "connectTitle": "Connect your wallet",
+    "connectSubtitle": "Connect your wallet first to access your analytics",
+    "loadError": "Failed to load data: {{message}}",
+    "emptyTitle": "No data available",
+    "emptySubtitle": "Create your first payments to see your analytics",
+    "timelineBased": "Based on this month's executed events",
+    "timelineTitle": "Timeline of executed events",
+    "viewEvents": "View events",
+    "hideTimeline": "Hide timeline",
+    "timelineAuth": "Sign in to view the timeline.",
+    "timelineEmpty": "No events this month.",
     "kpi": {
       "transactions": "Transactions",
       "totalVolume": "Total Volume",
       "totalFees": "Total Fees",
       "realCost": "Real Cost"
     },
+    "insights": {
+      "title": "Category insights",
+      "subtitle": "Based on your executed payments timeline",
+      "loading": "Loading insights...",
+      "empty": "No insight available for this month."
+    },
     "feesBreakdown": {
-      "totalMonthlyFees": "TOTAL MONTHLY FEES"
+      "title": "Fee breakdown - {{month}}",
+      "gasFees": "Gas fees (Base Network)",
+      "protocolFees": "Confidance protocol fees ({{rate}}%)",
+      "totalMonthlyFees": "TOTAL MONTHLY FEES",
+      "tipTitle": "Optimization tip",
+      "tipHighGas": "Gas fees make up most of your costs. Off-peak hours (weekends and nights) can save up to 30%.",
+      "tipBalanced": "Your fees are balanced between gas and the protocol. Keep it up."
     },
     "transactionTypeTable": {
       "title": "Transaction type breakdown",
@@ -1204,7 +1231,64 @@
       "total": "TOTAL"
     },
     "monthlyComparison": {
-      "history": "Monthly History"
+      "history": "Monthly History",
+      "month": "Month",
+      "txs": "Txs",
+      "volume": "Volume",
+      "fees": "Fees",
+      "ratio": "Ratio %",
+      "current": "Current",
+      "best": "Best",
+      "high": "High",
+      "cheapest": "Cheapest month:",
+      "costliest": "Costliest month:",
+      "average": "Average ratio:"
+    },
+    "export": {
+      "title": "Download this month",
+      "csvTitle": "CSV - Accounting",
+      "csvSubtitle": "For Excel and accounting software",
+      "pdfTitle": "PDF - Statement",
+      "pdfSubtitle": "For printing and archives",
+      "inProgress": "Export in progress...",
+      "csvError": "CSV export failed",
+      "pdfError": "PDF export failed. Please try again.",
+      "csv": {
+        "month": "Month",
+        "transactions": "Transactions",
+        "totalVolume": "Total volume (ETH)",
+        "totalFees": "Total fees (ETH)",
+        "ratio": "Ratio %",
+        "gasFees": "Gas fees (ETH)",
+        "protocolFees": "Protocol fees (ETH)",
+        "instant": "Instant payments",
+        "scheduled": "Scheduled payments",
+        "recurring": "Recurring payments"
+      },
+      "pdf": {
+        "title": "Monthly analytics report",
+        "period": "Period",
+        "wallet": "Wallet",
+        "generatedAt": "Generated on",
+        "transactions": "Transactions",
+        "totalVolume": "Total volume",
+        "totalFees": "Total fees",
+        "realCost": "Real cost",
+        "indicator": "Indicator",
+        "value": "Value",
+        "instant": "Instant",
+        "scheduled": "Scheduled",
+        "recurring": "Recurring",
+        "type": "Type",
+        "count": "Count",
+        "volumeEth": "Volume (ETH)",
+        "gasFees": "Gas fees",
+        "protocolFees": "Protocol fees",
+        "feeType": "Fee type",
+        "amount": "Amount",
+        "share": "Share",
+        "page": "Page {{page}} of {{total}}"
+      }
     }
   },
   "liquidity": {

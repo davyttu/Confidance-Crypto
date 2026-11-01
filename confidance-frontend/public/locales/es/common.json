@@ -1371,13 +1371,41 @@
     "preferenceSaved": "Preferencia guardada"
   },
   "analytics": {
+    "title": "Analíticas mensuales",
+    "subtitle": "Analiza tu actividad global en la plataforma",
+    "month": "Mes",
+    "year": "Año",
+    "connectTitle": "Conecta tu cartera",
+    "connectSubtitle": "Para acceder a tus analíticas, conecta primero tu cartera",
+    "loadError": "Error al cargar los datos: {{message}}",
+    "emptyTitle": "No hay datos disponibles",
+    "emptySubtitle": "Crea tus primeros pagos para ver tus analíticas",
+    "timelineBased": "Basado en los eventos ejecutados del mes",
+    "timelineTitle": "Cronología de eventos ejecutados",
+    "viewEvents": "Ver los eventos",
+    "hideTimeline": "Ocultar la cronología",
+    "timelineAuth": "Inicia sesión para ver la cronología.",
+    "timelineEmpty": "No hay eventos este mes.",
     "kpi": {
       "transactions": "Transacciones",
       "totalVolume": "Volumen total",
-      "totalFees": "Comisiones totales"
+      "totalFees": "Comisiones totales",
+      "realCost": "Costo real"
+    },
+    "insights": {
+      "title": "Insights por categoría",
+      "subtitle": "Basado en la cronología de tus pagos ejecutados",
+      "loading": "Cargando insights...",
+      "empty": "No hay insights disponibles para este mes."
     },
     "feesBreakdown": {
-      "totalMonthlyFees": "TOTAL COMISIONES MENSUALES"
+      "title": "Desglose de comisiones - {{month}}",
+      "gasFees": "Comisiones de gas (Base Network)",
+      "protocolFees": "Comisiones del protocolo Confidance ({{rate}}%)",
+      "totalMonthlyFees": "TOTAL COMISIONES MENSUALES",
+      "tipTitle": "Consejo de optimización",
+      "tipHighGas": "Las comisiones de gas representan la mayor parte de los costos. Prioriza horas valle (fines de semana, noche) para ahorrar hasta un 30%.",
+      "tipBalanced": "Tus comisiones están equilibradas entre gas y protocolo. ¡Sigue así!"
     },
     "transactionTypeTable": {
       "title": "Desglose por tipo de transacción",
@@ -1391,7 +1419,64 @@
       "total": "TOTAL"
     },
     "monthlyComparison": {
-      "history": "Historial mensual"
+      "history": "Historial mensual",
+      "month": "Mes",
+      "txs": "Txs",
+      "volume": "Volumen",
+      "fees": "Comisiones",
+      "ratio": "Ratio %",
+      "current": "Actual",
+      "best": "Mejor",
+      "high": "Más alto",
+      "cheapest": "Mes más económico:",
+      "costliest": "Mes más caro:",
+      "average": "Ratio medio:"
+    },
+    "export": {
+      "title": "Descargar este mes",
+      "csvTitle": "CSV - Contabilidad",
+      "csvSubtitle": "Para Excel/software contable",
+      "pdfTitle": "PDF - Justificante",
+      "pdfSubtitle": "Para impresión/archivos",
+      "inProgress": "Exportación en curso...",
+      "csvError": "Error al exportar CSV",
+      "pdfError": "Error al exportar PDF. Inténtalo de nuevo.",
+      "csv": {
+        "month": "Mes",
+        "transactions": "Transacciones",
+        "totalVolume": "Volumen total (ETH)",
+        "totalFees": "Comisiones totales (ETH)",
+        "ratio": "Ratio %",
+        "gasFees": "Comisiones de gas (ETH)",
+        "protocolFees": "Comisiones de protocolo (ETH)",
+        "instant": "Pagos instantáneos",
+        "scheduled": "Pagos programados",
+        "recurring": "Pagos recurrentes"
+      },
+      "pdf": {
+        "title": "Informe de analíticas mensual",
+        "period": "Periodo",
+        "wallet": "Cartera",
+        "generatedAt": "Generado el",
+        "transactions": "Transacciones",
+        "totalVolume": "Volumen total",
+        "totalFees": "Comisiones totales",
+        "realCost": "Costo real",
+        "indicator": "Indicador",
+        "value": "Valor",
+        "instant": "Instantáneos",
+        "scheduled": "Programados",
+        "recurring": "Recurrentes",
+        "type": "Tipo",
+        "count": "Cantidad",
+        "volumeEth": "Volumen (ETH)",
+        "gasFees": "Comisiones de gas",
+        "protocolFees": "Comisiones de protocolo",
+        "feeType": "Tipo de comisión",
+        "amount": "Importe",
+        "share": "Parte",
+        "page": "Página {{page}} de {{total}}"
+      }
     }
   },
   "liquidity": {

@@ -2,6 +2,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Payment } from './useDashboard';
 import { formatAmount } from '@/lib/utils/amountFormatter';
 import { formatUnits } from 'viem';
@@ -88,10 +89,22 @@ interface AnalyticsApiMonth {
   };
 }
 
-const MONTH_NAMES = [
-  'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-  'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
-];
+const DATE_LOCALES: Record<string, string> = {
+  fr: 'fr-FR',
+  en: 'en-GB',
+  es: 'es-ES',
+  ru: 'ru-RU',
+  zh: 'zh-CN',
+};
+
+function formatDisplayMonth(monthKey: string, language: string) {
+  const [year, monthNum] = monthKey.split('-');
+  const locale = DATE_LOCALES[language] || 'en-GB';
+  const formatted = new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(
+    new Date(Number(year), Number(monthNum) - 1, 1)
+  );
+  return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+}
 
 const FEE_PERCENTAGE = 179; // 1.79%
 const FEE_DENOMINATOR = 10000;
@@ -128,6 +141,8 @@ export function useMonthlyAnalytics(
   transactions: PaymentTransaction[] = [],
   isProVerified: boolean = false
 ) {
+  const { i18n } = useTranslation();
+  const language = (i18n.language || 'en').split('-')[0];
   const [apiMonthlyData, setApiMonthlyData] = useState<MonthlyStats[] | null>(null);
 
   useEffect(() => {
@@ -162,9 +177,7 @@ export function useMonthlyAnalytics(
           const totalVolumeUsd = normalizedPrice ? totalVolumeEth * normalizedPrice : null;
           const totalFeesUsd = normalizedPrice ? totalFeesEth * normalizedPrice : null;
 
-          const [year, monthNum] = row.month.split('-');
-          const monthIndex = parseInt(monthNum) - 1;
-          const displayMonth = `${MONTH_NAMES[monthIndex]} ${year}`;
+          const displayMonth = formatDisplayMonth(row.month, language);
 
           const mapBreakdown = (entry: AnalyticsApiBreakdown): TransactionTypeStats => {
             const volume = BigInt(entry.volume || '0');
@@ -243,7 +256,7 @@ export function useMonthlyAnalytics(
     return () => {
       isMounted = false;
     };
-  }, [priceUsd]);
+  }, [priceUsd, language]);
 
   const computedMonthlyData = useMemo(() => {
     // Grouper les paiements par mois
@@ -434,9 +447,7 @@ export function useMonthlyAnalytics(
         const totalFeesUsd = normalizedPrice ? totalFeesEth * normalizedPrice : null;
 
         // Date formatée
-        const [year, monthNum] = month.split('-');
-        const monthIndex = parseInt(monthNum) - 1;
-        const displayMonth = `${MONTH_NAMES[monthIndex]} ${year}`;
+        const displayMonth = formatDisplayMonth(month, language);
 
         // Calculer les stats par type de transaction
         const instantStats = calculateTypeStats(instantPayments);
@@ -497,7 +508,7 @@ export function useMonthlyAnalytics(
     });
 
     return stats;
-  }, [payments, priceUsd, transactions, isProVerified]);
+  }, [payments, priceUsd, transactions, isProVerified, language]);
 
   // Toujours utiliser les données calculées localement pour les statistiques
   // car la vue SQL de l'API ne gère pas correctement :
@@ -505,20 +516,23 @@ export function useMonthlyAnalytics(
   // - Le comptage des échéances individuelles des paiements récurrents
   // On préserve seulement les explications AI de l'API si disponibles
   const monthlyData = useMemo(() => {
+    const localize = (rows: MonthlyStats[]) =>
+      rows.map((row) => ({ ...row, displayMonth: formatDisplayMonth(row.month, language) }));
+
     if (!apiMonthlyData || apiMonthlyData.length === 0) {
-      return computedMonthlyData;
+      return localize(computedMonthlyData);
     }
     
     // Fusionner : utiliser les données calculées mais garder les explications AI de l'API
-    return computedMonthlyData.map((computed) => {
+    return localize(computedMonthlyData.map((computed) => {
       const apiMonth = apiMonthlyData.find((api) => api.month === computed.month);
       return {
         ...computed,
         // Garder les explications de l'API si disponibles (générées par AI)
         explanations: apiMonth?.explanations ?? computed.explanations
       };
-    });
-  }, [apiMonthlyData, computedMonthlyData]);
+    }));
+  }, [apiMonthlyData, computedMonthlyData, language]);
 
   return {
     monthlyData,

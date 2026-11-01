@@ -1390,20 +1390,112 @@
     "preferenceSaved": "Préférence enregistrée"
   },
   "analytics": {
+    "title": "Analytics mensuels",
+    "subtitle": "Analysez votre activité globale sur la plateforme",
+    "month": "Mois",
+    "year": "Année",
+    "connectTitle": "Connectez votre wallet",
+    "connectSubtitle": "Pour accéder à vos analytics, connectez d'abord votre wallet",
+    "loadError": "Erreur lors du chargement des données : {{message}}",
+    "emptyTitle": "Aucune donnée disponible",
+    "emptySubtitle": "Créez vos premiers paiements pour voir vos analytics",
+    "timelineBased": "Basé sur les événements exécutés du mois",
+    "timelineTitle": "Timeline des événements exécutés",
+    "viewEvents": "Voir les événements",
+    "hideTimeline": "Masquer la timeline",
+    "timelineAuth": "Connexion requise pour afficher la timeline.",
+    "timelineEmpty": "Aucun événement ce mois-ci.",
     "kpi": {
       "transactions": "Transactions",
       "totalVolume": "Volume total",
       "totalFees": "Frais totaux",
       "realCost": "Coût réel"
     },
+    "insights": {
+      "title": "Insights par catégorie",
+      "subtitle": "Basé sur la chronologie de vos paiements exécutés",
+      "loading": "Chargement des insights...",
+      "empty": "Aucun insight disponible pour ce mois."
+    },
     "feesBreakdown": {
-      "totalMonthlyFees": "TOTAL FRAIS MENSUELS"
+      "title": "Décomposition des frais - {{month}}",
+      "gasFees": "Frais de gaz (Base Network)",
+      "protocolFees": "Frais protocole Confidance ({{rate}}%)",
+      "totalMonthlyFees": "TOTAL FRAIS MENSUELS",
+      "tipTitle": "Astuce d'optimisation",
+      "tipHighGas": "Vos frais de gaz représentent la majorité des coûts. Privilégiez les heures creuses (week-end, nuit) pour économiser jusqu'à 30%.",
+      "tipBalanced": "Vos frais sont équilibrés entre gaz et protocole. Continuez ainsi !"
     },
     "transactionTypeTable": {
+      "title": "Répartition par type de transaction",
+      "typeHeader": "Type de transaction",
+      "countHeader": "Nombre",
+      "volumeHeader": "Volume",
+      "avgFeesHeader": "Frais moyens",
+      "instant": "Paiements instantanés",
+      "scheduled": "Paiements programmés",
+      "recurring": "Paiements récurrents",
       "total": "TOTAL"
     },
     "monthlyComparison": {
-      "history": "Historique mensuel"
+      "history": "Historique mensuel",
+      "month": "Mois",
+      "txs": "Txs",
+      "volume": "Volume",
+      "fees": "Frais",
+      "ratio": "Ratio %",
+      "current": "Actuel",
+      "best": "Meilleur",
+      "high": "Élevé",
+      "cheapest": "Mois le plus économique :",
+      "costliest": "Mois le plus coûteux :",
+      "average": "Ratio moyen :"
+    },
+    "export": {
+      "title": "Télécharger ce mois",
+      "csvTitle": "CSV - Comptabilité",
+      "csvSubtitle": "Pour Excel/logiciels compta",
+      "pdfTitle": "PDF - Justificatif",
+      "pdfSubtitle": "Pour impression/archives",
+      "inProgress": "Export en cours...",
+      "csvError": "Erreur lors de l'export CSV",
+      "pdfError": "Erreur lors de l'export PDF. Veuillez réessayer.",
+      "csv": {
+        "month": "Mois",
+        "transactions": "Transactions",
+        "totalVolume": "Volume total (ETH)",
+        "totalFees": "Frais totaux (ETH)",
+        "ratio": "Ratio %",
+        "gasFees": "Frais gaz (ETH)",
+        "protocolFees": "Frais protocole (ETH)",
+        "instant": "Paiements instantanés",
+        "scheduled": "Paiements programmés",
+        "recurring": "Paiements récurrents"
+      },
+      "pdf": {
+        "title": "Rapport analytics mensuel",
+        "period": "Période",
+        "wallet": "Wallet",
+        "generatedAt": "Généré le",
+        "transactions": "Transactions",
+        "totalVolume": "Volume total",
+        "totalFees": "Frais totaux",
+        "realCost": "Coût réel",
+        "indicator": "Indicateur",
+        "value": "Valeur",
+        "instant": "Instantanés",
+        "scheduled": "Programmés",
+        "recurring": "Récurrents",
+        "type": "Type",
+        "count": "Nombre",
+        "volumeEth": "Volume (ETH)",
+        "gasFees": "Frais de gaz",
+        "protocolFees": "Frais protocole",
+        "feeType": "Type de frais",
+        "amount": "Montant",
+        "share": "Part",
+        "page": "Page {{page}} sur {{total}}"
+      }
     }
   },
   "liquidity": {

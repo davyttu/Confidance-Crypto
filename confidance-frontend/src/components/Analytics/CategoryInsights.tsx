@@ -42,7 +42,7 @@ export function CategoryInsights({ insights, loading, error, monthLabel }: Categ
         )}
         {!loading && !error && insights.length === 0 && (
           <p className="text-sm text-gray-500">
-            {t('analytics.insights.empty', { defaultValue: 'Aucun insight disponible pour ce mois.' })}
+            {t('analytics.insights.empty')}
           </p>
         )}
         {!loading && !error && insights.length > 0 && insights.map((insight) => (

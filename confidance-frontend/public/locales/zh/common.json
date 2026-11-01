@@ -1392,14 +1392,41 @@
     "preferenceSaved": "偏好已保存"
   },
   "analytics": {
+    "title": "月度分析",
+    "subtitle": "分析您在平台上的整体活动",
+    "month": "月份",
+    "year": "年份",
+    "connectTitle": "连接钱包",
+    "connectSubtitle": "要访问分析，请先连接钱包",
+    "loadError": "加载数据出错：{{message}}",
+    "emptyTitle": "暂无数据",
+    "emptySubtitle": "创建您的第一笔支付以查看分析",
+    "timelineBased": "基于本月已执行的事件",
+    "timelineTitle": "已执行事件时间线",
+    "viewEvents": "查看事件",
+    "hideTimeline": "隐藏时间线",
+    "timelineAuth": "请登录后查看时间线。",
+    "timelineEmpty": "本月没有事件。",
     "kpi": {
       "transactions": "交易笔数",
       "totalVolume": "总交易量",
       "totalFees": "总手续费",
       "realCost": "实际成本"
     },
+    "insights": {
+      "title": "分类洞察",
+      "subtitle": "基于您已执行付款的时间线",
+      "loading": "正在加载洞察...",
+      "empty": "本月没有可用洞察。"
+    },
     "feesBreakdown": {
-      "totalMonthlyFees": "月度手续费合计"
+      "title": "费用明细 - {{month}}",
+      "gasFees": "Gas 费用（Base 网络）",
+      "protocolFees": "Confidance 协议费用（{{rate}}%）",
+      "totalMonthlyFees": "月度手续费合计",
+      "tipTitle": "优化建议",
+      "tipHighGas": "Gas 费用占比最高。建议在低峰时段（周末、夜间）操作，最多可节省 30%。",
+      "tipBalanced": "费用在 Gas 与协议之间较为均衡，继续保持。"
     },
     "transactionTypeTable": {
       "title": "按交易类型细分",
@@ -1413,7 +1440,64 @@
       "total": "合计"
     },
     "monthlyComparison": {
-      "history": "月度历史"
+      "history": "月度历史",
+      "month": "月份",
+      "txs": "交易数",
+      "volume": "交易量",
+      "fees": "费用",
+      "ratio": "比例 %",
+      "current": "当前",
+      "best": "最佳",
+      "high": "最高",
+      "cheapest": "最省费用月份：",
+      "costliest": "费用最高月份：",
+      "average": "平均比例："
+    },
+    "export": {
+      "title": "下载本月",
+      "csvTitle": "CSV - 财务",
+      "csvSubtitle": "用于 Excel 和财务软件",
+      "pdfTitle": "PDF - 凭证",
+      "pdfSubtitle": "用于打印和存档",
+      "inProgress": "导出中...",
+      "csvError": "导出 CSV 失败",
+      "pdfError": "导出 PDF 失败，请重试。",
+      "csv": {
+        "month": "月份",
+        "transactions": "交易数",
+        "totalVolume": "总交易量 (ETH)",
+        "totalFees": "总费用 (ETH)",
+        "ratio": "比例 %",
+        "gasFees": "Gas 费用 (ETH)",
+        "protocolFees": "协议费用 (ETH)",
+        "instant": "即时支付",
+        "scheduled": "预约支付",
+        "recurring": "定期支付"
+      },
+      "pdf": {
+        "title": "月度分析报告",
+        "period": "周期",
+        "wallet": "钱包",
+        "generatedAt": "生成日期",
+        "transactions": "交易数",
+        "totalVolume": "总交易量",
+        "totalFees": "总费用",
+        "realCost": "实际成本",
+        "indicator": "指标",
+        "value": "数值",
+        "instant": "即时",
+        "scheduled": "预约",
+        "recurring": "定期",
+        "type": "类型",
+        "count": "笔数",
+        "volumeEth": "交易量 (ETH)",
+        "gasFees": "Gas 费用",
+        "protocolFees": "协议费用",
+        "feeType": "费用类型",
+        "amount": "金额",
+        "share": "占比",
+        "page": "第 {{page}} 页，共 {{total}} 页"
+      }
     }
   },
   "liquidity": {
