@@ -127,7 +127,7 @@ export default function Home() {
 
               {/* Description */}
               <p className="max-w-2xl mx-auto text-lg sm:text-xl text-gray-600 dark:text-gray-400 text-balance">
-                {isMounted && ready ? t('home.subtitle', { defaultValue: 'Release them automatically at a specific date.' }) : 'Release them automatically at a specific date.'}
+                {isMounted && ready ? t('home.subtitle', { defaultValue: 'Automatic and recurring payments in cryptocurrency, stablecoin and ETH' }) : 'Automatic and recurring payments in cryptocurrency, stablecoin and ETH'}
                 <br />
                 <strong className="text-gray-900 dark:text-white">{isMounted && ready ? t('home.tagline', { defaultValue: 'No intermediaries. 100% on-chain.' }) : 'No intermediaries. 100% on-chain.'}</strong>
               </p>
