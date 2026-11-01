@@ -216,7 +216,7 @@ export default function Home() {
                 {isMounted && ready ? t('home.why.title') : 'Pourquoi Confidance ?'}
               </h2>
               <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto animate-slide-in-left">
-                {isMounted && ready ? t('home.why.description') : 'Confidance a été conçu pour rendre les paiements crypto prévisibles, vérifiables et indépendants des intermédiaires.'}
+                {isMounted && ready ? t('home.why.description') : 'Confidance a été conçu pour rendre les paiements crypto indépendants des intermédiaires.'}
               </p>
             </div>
 
