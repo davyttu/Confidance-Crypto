@@ -289,6 +289,8 @@
       "button": "Mi Liquidez"
     },
     "statement": {
+      "button": "Extracto",
+      "buttonTitle": "Extracto bancario simplificado",
       "backToDashboard": "Volver al panel",
       "title": "Extracto de Cuenta",
       "account": "Cuenta",
@@ -830,6 +832,7 @@
       "sendLinkTitle": "Enviar el enlace directamente",
       "sendByEmail": "Enviar por e-mail",
       "sendBySms": "Enviar por SMS",
+      "smsComingSoon": "Próximamente",
       "emailPlaceholder": "ej: destinatario@ejemplo.com",
       "phonePlaceholder": "ej: +34 612 34 56 78",
       "pickFromRecipients": "Elegir entre mis destinatarios"

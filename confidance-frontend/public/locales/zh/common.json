@@ -289,6 +289,8 @@
       "button": "我的流动性"
     },
     "statement": {
+      "button": "对账单",
+      "buttonTitle": "简化账户对账单",
       "backToDashboard": "返回仪表板",
       "title": "账户明细",
       "account": "账户",
@@ -999,6 +1001,7 @@
       "sendLinkTitle": "直接发送链接",
       "sendByEmail": "通过邮件发送",
       "sendBySms": "通过短信发送",
+      "smsComingSoon": "即将推出",
       "emailPlaceholder": "例：recipient@example.com",
       "phonePlaceholder": "例：+86 138 0000 0000",
       "pickFromRecipients": "从我的收款人中选择"

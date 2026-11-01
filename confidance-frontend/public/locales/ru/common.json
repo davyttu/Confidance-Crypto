@@ -289,6 +289,8 @@
       "button": "Моя Ликвидность"
     },
     "statement": {
+      "button": "Выписка",
+      "buttonTitle": "Упрощённая выписка",
       "backToDashboard": "Назад в панель",
       "title": "Выписка по счёту",
       "account": "Счёт",
@@ -1000,6 +1002,7 @@
       "sendLinkTitle": "Отправить ссылку напрямую",
       "sendByEmail": "Отправить по e-mail",
       "sendBySms": "Отправить по SMS",
+      "smsComingSoon": "Скоро",
       "emailPlaceholder": "напр. recipient@example.com",
       "phonePlaceholder": "напр. +7 912 345 67 89",
       "pickFromRecipients": "Выбрать из моих получателей"

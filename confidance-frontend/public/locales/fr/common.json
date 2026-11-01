@@ -294,6 +294,8 @@
       "button": "My Liquidity"
     },
     "statement": {
+      "button": "Relevé",
+      "buttonTitle": "Relevé bancaire simplifié",
       "backToDashboard": "Retour au dashboard",
       "title": "Relevé de Compte",
       "account": "Compte",
@@ -1256,6 +1258,7 @@
       "sendLinkTitle": "Envoyer le lien directement",
       "sendByEmail": "Envoyer par e-mail",
       "sendBySms": "Envoyer par SMS",
+      "smsComingSoon": "Bientôt disponible",
       "emailPlaceholder": "ex: destinataire@exemple.com",
       "phonePlaceholder": "ex: +33 6 12 34 56 78",
       "pickFromRecipients": "Choisir parmi mes destinataires"

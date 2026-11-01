@@ -294,6 +294,8 @@
       "button": "My Liquidity"
     },
     "statement": {
+      "button": "Statement",
+      "buttonTitle": "Simplified account statement",
       "backToDashboard": "Back to dashboard",
       "title": "Account Statement",
       "account": "Account",
@@ -1379,6 +1381,7 @@
       "sendLinkTitle": "Send link directly",
       "sendByEmail": "Send by email",
       "sendBySms": "Send by SMS",
+      "smsComingSoon": "Coming soon",
       "emailPlaceholder": "e.g. recipient@example.com",
       "phonePlaceholder": "e.g. +1 234 567 8900",
       "pickFromRecipients": "Choose from my recipients"
