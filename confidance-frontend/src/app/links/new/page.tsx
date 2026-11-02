@@ -262,6 +262,12 @@ export default function NewPaymentLinkPage() {
   }, []);
 
   useEffect(() => {
+    if (token === 'ETH' && paymentType === 'recurring') {
+      setPaymentType('instant');
+    }
+  }, [token, paymentType]);
+
+  useEffect(() => {
     if (paymentType === 'recurring' && frequency !== 'monthly') {
       setFrequency('monthly');
     }
@@ -351,6 +357,12 @@ export default function NewPaymentLinkPage() {
       return;
     }
 
+    if (token === 'ETH' && paymentType === 'recurring') {
+      setPaymentType('instant');
+      setError(isTranslationReady ? t('links.create.hint.recurringStablecoinsOnly') : 'Feature only available for USDT/USDC.');
+      return;
+    }
+
     if (paymentType === 'recurring') {
       if (!periods || periods < 1) {
         setError(ready ? t('links.create.errors.periods') : 'Periods required');
@@ -399,6 +411,10 @@ export default function NewPaymentLinkPage() {
       }
       if (message === 'WALLET_OWNED_BY_OTHER_ACCOUNT') {
         setError(isTranslationReady ? t('links.create.errors.walletOwned') : 'This wallet is already linked to another client account.');
+        return;
+      }
+      if (message === 'RECURRING_STABLECOIN_ONLY') {
+        setError(isTranslationReady ? t('links.create.hint.recurringStablecoinsOnly') : 'Feature only available for USDT/USDC.');
         return;
       }
       setError(
@@ -595,19 +611,29 @@ export default function NewPaymentLinkPage() {
             </h3>
 
             <div className="grid grid-cols-3 gap-2">
-              {(['instant', 'scheduled', 'recurring'] as PaymentType[]).map((type) => (
+              {(['instant', 'scheduled', 'recurring'] as PaymentType[]).map((type) => {
+                const recurringLocked = type === 'recurring' && token === 'ETH';
+                return (
                 <button
                   key={type}
                   type="button"
-                  onClick={() => setPaymentType(type)}
+                  disabled={recurringLocked}
+                  onClick={() => {
+                    if (recurringLocked) return;
+                    setPaymentType(type);
+                  }}
                   className={`p-3 rounded-xl border-2 transition-all ${
-                    paymentType === type
+                    recurringLocked
+                      ? 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800/60 opacity-60 cursor-not-allowed'
+                      : paymentType === type
                       ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30 shadow-md'
                       : 'border-gray-200 dark:border-gray-700 hover:border-purple-300'
                   }`}
                 >
                   <div className={`flex items-center gap-2 ${
-                    paymentType === type ? 'text-purple-600 dark:text-purple-400' : 'text-gray-500'
+                    recurringLocked
+                      ? 'text-gray-400 dark:text-gray-500'
+                      : paymentType === type ? 'text-purple-600 dark:text-purple-400' : 'text-gray-500'
                   }`}>
                     {getPaymentTypeIcon(type)}
                     <span className="text-xs font-semibold">
@@ -615,8 +641,16 @@ export default function NewPaymentLinkPage() {
                     </span>
                   </div>
                 </button>
-              ))}
+                );
+              })}
             </div>
+            {token === 'ETH' && (
+              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                {isTranslationReady
+                  ? t('links.create.hint.recurringStablecoinsOnly')
+                  : 'Feature only available for USDT/USDC.'}
+              </p>
+            )}
           </div>
 
           {/* Scheduled options */}

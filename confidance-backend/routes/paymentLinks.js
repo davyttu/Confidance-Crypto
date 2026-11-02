@@ -41,6 +41,9 @@ function validatePayload(body) {
   }
 
   if (payment_type === 'recurring') {
+    if (String(token).toUpperCase() === 'ETH') {
+      return 'RECURRING_STABLECOIN_ONLY';
+    }
     if (!periods) {
       return 'Missing recurring fields';
     }

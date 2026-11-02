@@ -973,7 +973,8 @@
       "hint": {
         "label": "给你的链接一个清晰的标题。",
         "startAtInformative": "首月付款将在收款人打开链接并确认支付后开始。",
-        "fundsStayInWallet": "整段金额不会被锁定。代币留在付款人的钱包里。每个到期日只扣当期。"
+        "fundsStayInWallet": "整段金额不会被锁定。代币留在付款人的钱包里。每个到期日只扣当期。",
+        "recurringStablecoinsOnly": "此功能仅适用于 USDT/USDC。"
       },
       "aria": {
         "enableIdentity": "启用支付标识",

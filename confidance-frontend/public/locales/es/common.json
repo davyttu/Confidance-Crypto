@@ -804,7 +804,8 @@
       "hint": {
         "label": "Dale un título claro a tu enlace.",
         "startAtInformative": "El primer pago mensual comienza cuando el destinatario abre el enlace y confirma el pago.",
-        "fundsStayInWallet": "El importe de toda la serie no queda bloqueado. Los tokens permanecen en el wallet del pagador. En cada vencimiento solo se cobra esa cuota."
+        "fundsStayInWallet": "El importe de toda la serie no queda bloqueado. Los tokens permanecen en el wallet del pagador. En cada vencimiento solo se cobra esa cuota.",
+        "recurringStablecoinsOnly": "Función disponible solo para USDT/USDC."
       },
       "aria": {
         "enableIdentity": "Activar identidad de pago",
