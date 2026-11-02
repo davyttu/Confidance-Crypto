@@ -191,6 +191,8 @@ export default function PayLinkPage() {
         totalMonths,
         dayOfMonth,
         paymentLinkId: link.id,
+        label: linkIdentity.label,
+        category: linkIdentity.category,
       });
       return;
     }
@@ -212,8 +214,20 @@ export default function PayLinkPage() {
       amount,
       releaseTime,
       cancellable: false,
+      label: linkIdentity.label,
+      category: linkIdentity.category,
     });
   };
+
+  const linkIdentity = useMemo(() => {
+    const label = typeof link?.payment_label === 'string' ? link.payment_label.trim() : '';
+    const rawCategory = link?.payment_categorie || link?.payment_category || '';
+    const category = typeof rawCategory === 'string' ? rawCategory.trim() : '';
+    return {
+      label: label || undefined,
+      category: category || undefined,
+    };
+  }, [link]);
 
   useEffect(() => {
     const hasSuccess =
