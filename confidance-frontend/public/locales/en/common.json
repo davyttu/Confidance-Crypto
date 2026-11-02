@@ -1439,8 +1439,7 @@
       "hint": {
         "label": "Give your link a clear title.",
         "startAtInformative": "The first monthly payment starts when the recipient opens the link and confirms the payment.",
-        "fundsStayInWallet": "The amount of the whole series is not locked. The tokens stay in the payer's wallet. On each due date, only that instalment is debited.",
-        "recurringStablecoinsOnly": "Feature only available for USDT/USDC."
+        "fundsStayInWallet": "The amount of the whole series is not locked. The tokens stay in the payer's wallet. On each due date, only that instalment is debited."
       },
       "aria": {
         "enableIdentity": "Enable payment identity",

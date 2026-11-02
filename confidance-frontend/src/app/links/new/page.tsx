@@ -359,7 +359,7 @@ export default function NewPaymentLinkPage() {
 
     if (token === 'ETH' && paymentType === 'recurring') {
       setPaymentType('instant');
-      setError(isTranslationReady ? t('links.create.hint.recurringStablecoinsOnly') : 'Feature only available for USDT/USDC.');
+      setError(isTranslationReady ? t('create.date.recurringTooltip') : '⚠️ Feature only available for USDT/USDC');
       return;
     }
 
@@ -414,7 +414,7 @@ export default function NewPaymentLinkPage() {
         return;
       }
       if (message === 'RECURRING_STABLECOIN_ONLY') {
-        setError(isTranslationReady ? t('links.create.hint.recurringStablecoinsOnly') : 'Feature only available for USDT/USDC.');
+        setError(isTranslationReady ? t('create.date.recurringTooltip') : '⚠️ Feature only available for USDT/USDC');
         return;
       }
       setError(
@@ -613,44 +613,52 @@ export default function NewPaymentLinkPage() {
             <div className="grid grid-cols-3 gap-2">
               {(['instant', 'scheduled', 'recurring'] as PaymentType[]).map((type) => {
                 const recurringLocked = type === 'recurring' && token === 'ETH';
+                const button = (
+                  <button
+                    type="button"
+                    disabled={recurringLocked}
+                    onClick={() => {
+                      if (recurringLocked) return;
+                      setPaymentType(type);
+                    }}
+                    className={`w-full p-3 rounded-xl border-2 transition-all ${
+                      recurringLocked
+                        ? 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800/60 opacity-60 cursor-not-allowed'
+                        : paymentType === type
+                        ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30 shadow-md'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-purple-300'
+                    }`}
+                  >
+                    <div className={`flex items-center gap-2 ${
+                      recurringLocked
+                        ? 'text-gray-400 dark:text-gray-500'
+                        : paymentType === type ? 'text-purple-600 dark:text-purple-400' : 'text-gray-500'
+                    }`}>
+                      {getPaymentTypeIcon(type)}
+                      <span className="text-xs font-semibold">
+                        {isTranslationReady ? t(`links.types.${type}`) : type.charAt(0).toUpperCase() + type.slice(1)}
+                      </span>
+                    </div>
+                  </button>
+                );
+
+                if (type !== 'recurring') {
+                  return <div key={type}>{button}</div>;
+                }
+
                 return (
-                <button
-                  key={type}
-                  type="button"
-                  disabled={recurringLocked}
-                  onClick={() => {
-                    if (recurringLocked) return;
-                    setPaymentType(type);
-                  }}
-                  className={`p-3 rounded-xl border-2 transition-all ${
-                    recurringLocked
-                      ? 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800/60 opacity-60 cursor-not-allowed'
-                      : paymentType === type
-                      ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30 shadow-md'
-                      : 'border-gray-200 dark:border-gray-700 hover:border-purple-300'
-                  }`}
-                >
-                  <div className={`flex items-center gap-2 ${
-                    recurringLocked
-                      ? 'text-gray-400 dark:text-gray-500'
-                      : paymentType === type ? 'text-purple-600 dark:text-purple-400' : 'text-gray-500'
-                  }`}>
-                    {getPaymentTypeIcon(type)}
-                    <span className="text-xs font-semibold">
-                      {isTranslationReady ? t(`links.types.${type}`) : type.charAt(0).toUpperCase() + type.slice(1)}
-                    </span>
+                  <div key={type} className="relative group">
+                    {button}
+                    {recurringLocked && (
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                        {isTranslationReady ? t('create.date.recurringTooltip') : '⚠️ Feature only available for USDT/USDC'}
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900"></div>
+                      </div>
+                    )}
                   </div>
-                </button>
                 );
               })}
             </div>
-            {token === 'ETH' && (
-              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                {isTranslationReady
-                  ? t('links.create.hint.recurringStablecoinsOnly')
-                  : 'Feature only available for USDT/USDC.'}
-              </p>
-            )}
           </div>
 
           {/* Scheduled options */}
