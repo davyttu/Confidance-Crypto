@@ -388,6 +388,12 @@
       "beneficiary": "Beneficiary",
       "amount": "Amount",
       "referenceAmountNote": "Not debited",
+      "types": {
+        "instant": "Instant",
+        "scheduled": "Scheduled",
+        "recurring": "Recurring",
+        "batch": "Batch ({{count}})"
+      },
       "nextInstallmentNote": "Funds not locked",
       "releaseDate": "Release date",
       "status": "Status",

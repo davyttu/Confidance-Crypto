@@ -382,6 +382,12 @@
       "beneficiary": "受益人",
       "amount": "金额",
       "referenceAmountNote": "未扣款",
+      "types": {
+        "instant": "即时",
+        "scheduled": "定时",
+        "recurring": "定期",
+        "batch": "批量 ({{count}})"
+      },
       "nextInstallmentNote": "资金未锁定",
       "releaseDate": "释放日期",
       "status": "状态",

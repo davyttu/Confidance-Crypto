@@ -382,6 +382,12 @@
       "beneficiary": "Beneficiario",
       "amount": "Monto",
       "referenceAmountNote": "No debitado",
+      "types": {
+        "instant": "Instantáneo",
+        "scheduled": "Programado",
+        "recurring": "Recurrente",
+        "batch": "Lote ({{count}})"
+      },
       "nextInstallmentNote": "Fondos no bloqueados",
       "releaseDate": "Fecha de liberación",
       "status": "Estado",

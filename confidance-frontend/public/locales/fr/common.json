@@ -388,6 +388,12 @@
       "beneficiary": "Bénéficiaire",
       "amount": "Montant",
       "referenceAmountNote": "Non prélevé",
+      "types": {
+        "instant": "Instantané",
+        "scheduled": "Programmé",
+        "recurring": "Récurrent",
+        "batch": "Lot ({{count}})"
+      },
       "nextInstallmentNote": "Fonds non bloqués",
       "releaseDate": "Date de libération",
       "status": "Statut",

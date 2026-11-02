@@ -307,20 +307,24 @@ export function TransactionRow({ payment, onRename, onCancel, onDelete, onEmailC
   // Déterminer le type de paiement avec emoji et texte
   const getPaymentType = () => {
     const types: Array<{ emoji: string; text: string }> = [];
+    const typeLabel = (key: string, fallback: string, options?: Record<string, string | number>) =>
+      translationsReady ? t(key, { defaultValue: fallback, ...options }) : fallback;
 
     if (payment.is_batch) {
-      types.push({ emoji: '👥', text: `Batch (${payment.batch_count || 0})` });
+      types.push({
+        emoji: '👥',
+        text: typeLabel('dashboard.table.types.batch', 'Batch ({{count}})', { count: payment.batch_count || 0 }),
+      });
     }
-    if (payment.payment_type === 'recurring') {
-      types.push({ emoji: '🔄', text: 'Récurrent' });
+    if (payment.payment_type === 'recurring' || payment.is_recurring) {
+      types.push({ emoji: '🔄', text: typeLabel('dashboard.table.types.recurring', 'Recurring') });
     }
     if (payment.is_instant || payment.payment_type === 'instant') {
-      types.push({ emoji: '⚡', text: 'Instantané' });
+      types.push({ emoji: '⚡', text: typeLabel('dashboard.table.types.instant', 'Instant') });
     }
 
-    // Par défaut: programmé si rien de spécifique
     if (types.length === 0) {
-      types.push({ emoji: '🕐', text: 'Programmé' });
+      types.push({ emoji: '🕐', text: typeLabel('dashboard.table.types.scheduled', 'Scheduled') });
     }
 
     return types;
